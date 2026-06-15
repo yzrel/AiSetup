@@ -1,0 +1,440 @@
+import { useState } from "react";
+import { Check, X, Users, FileText } from "lucide-react";
+import { applicantStore } from "../store/applicantStore";
+
+export function PrescreeningForm() {
+  const [activeTab, setActiveTab] = useState<
+    "form" | "registry"
+  >("form");
+  const [qualified, setQualified] = useState<boolean | null>(
+    null,
+  );
+  const [formData, setFormData] = useState({
+    applicantName: "",
+    designation: "",
+    enterpriseName: "",
+    contactNumber: "",
+    emailAddress: "",
+    businessType: "",
+    businessNature: "",
+    businessSector: "",
+    yearsOfOperation: "",
+    enterpriseType: "",
+    coreProducts: "",
+    exportClassification: "",
+    msmeSize: "",
+    assetSize: "",
+    classificationRange: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setQualified(true);
+    // Save to shared applicant registry
+    applicantStore.add({
+      applicantName: formData.applicantName,
+      designation: formData.designation,
+      enterpriseName: formData.enterpriseName,
+      contactNumber: formData.contactNumber,
+      emailAddress: formData.emailAddress,
+      businessType: formData.businessType,
+      businessNature: formData.businessNature,
+      businessSector: formData.businessSector,
+      yearsOfOperation: formData.yearsOfOperation,
+      enterpriseType: formData.enterpriseType,
+      msmeSize: formData.msmeSize,
+      assetSize: formData.assetSize,
+      region: "NCR",
+      address: "",
+      currentModule: "prescreening",
+      qualified: true,
+      moduleData: {},
+    });
+  };
+
+  return (
+    <div className="p-4 sm:p-6 space-y-5">
+ 
+
+      {/* Form tab */}
+      {activeTab === "form" && (
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
+            <div className="bg-blue-600 text-white p-6 rounded-t-lg flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded flex items-center justify-center">
+                  <span className="text-blue-600 font-bold">
+                    ai
+                  </span>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    aiSETUP Pre-Screening Module
+                  </h1>
+                  <p className="text-blue-100 text-sm">
+                    Applicant will accomplish this form to
+                    determine if qualified for the SETUP Program
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="p-8 space-y-8"
+            >
+              {qualified !== null && (
+                <div
+                  className={`p-6 rounded-lg ${qualified ? "bg-green-50 border-2 border-green-500" : "bg-red-50 border-2 border-red-500"}`}
+                >
+                  <div className="flex items-center gap-4">
+                    {qualified ? (
+                      <>
+                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                          <Check className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-green-800">
+                            Qualified to Proceed
+                          </h3>
+                          <p className="text-green-700">
+                            You meet the minimum qualifications
+                            to proceed with the SETUP
+                            registration.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                          <X className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-red-800">
+                            Not Qualified to SETUP
+                          </h3>
+                          <p className="text-red-700">
+                            Based on your initial answers, you
+                            do not meet the minimum
+                            qualifications for SETUP.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                  Applicant Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Applicant Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.applicantName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          applicantName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Designation
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.designation}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          designation: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Enterprise Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.enterpriseName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          enterpriseName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Number
+                    </label>
+                    <input
+                      type="tel"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.contactNumber}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactNumber: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.emailAddress}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          emailAddress: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                  Main Qualification Questions
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      A. Nature of Business
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="businessNature"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>
+                          Registered with DTI or SEC for
+                          manufacturing
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="businessNature"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>
+                          Startup (Includes enterprises with or
+                          without revenue)
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      B. Essential Period Question
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="period"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="period"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Eligible for SETUP: Startup to
+                      product-scaling business phase (or 0-10
+                      years)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      C. Business Record Turnover
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter turnover amount"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      D. Type of Enterprise
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="enterpriseType"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Sole Proprietor</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="enterpriseType"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Partnership</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="enterpriseType"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Corporation</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="enterpriseType"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Cooperative</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      E. Nature of Product or Service
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Describe your core product or service"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      F. EXPORT Classification
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="export"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="export"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>No</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="export"
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span>Potential Export</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                  G. MSME Classification
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Size
+                    </label>
+                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option>Select size</option>
+                      <option>Micro</option>
+                      <option>Small</option>
+                      <option>Medium</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Asset Size
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Enter amount"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Classification Range
+                      </label>
+                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option>Select range</option>
+                        <option>₱0 - ₱3M</option>
+                        <option>₱3M - ₱15M</option>
+                        <option>₱15M - ₱100M</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition-colors font-medium"
+                >
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  className="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
