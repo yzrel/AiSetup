@@ -38,6 +38,14 @@ function stepsAfterRequirements(applicant: Applicant | null): ModuleStatus[] {
   return ["tna1", "tna2", "project-proposal"];
 }
 
+function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
+  if (!applicant) return [];
+  const currentIdx = MODULE_ORDER.indexOf(applicant.currentModule);
+  const landbankIdx = MODULE_ORDER.indexOf("landbank-withdrawal");
+  if (currentIdx < landbankIdx) return [];
+  return ["landbank-withdrawal", "procurement-liquidation"];
+}
+
 export function getApplicantDashboardSteps(
   applicant: Applicant | null,
 ): ApplicantProgressStep[] {
@@ -47,6 +55,7 @@ export function getApplicantDashboardSteps(
     "letter-of-intent",
     "requirements",
     ...stepsAfterRequirements(applicant),
+    ...postApprovalSteps(applicant),
   ];
 
   const current = applicant?.currentModule ?? "prescreening";
@@ -83,7 +92,8 @@ export function moduleToApplicantView(
 
 export function isAwaitingStaffReview(applicant: Applicant | null): boolean {
   if (!applicant) return false;
-  const idx = MODULE_ORDER.indexOf(applicant.currentModule);
-  const rtecIdx = MODULE_ORDER.indexOf("conduct-rtec");
-  return idx >= rtecIdx && applicant.currentModule !== "completed";
+  return (
+    applicant.currentModule === "conduct-rtec" ||
+    applicant.currentModule === "approval-letter"
+  );
 }

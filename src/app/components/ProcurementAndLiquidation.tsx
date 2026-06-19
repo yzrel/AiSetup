@@ -953,6 +953,18 @@ export function ProcurementAndLiquidation({ onSubmitSuccess }: ProcurementAndLiq
           </p>
         </div>
         <Module16 />
+        {onSubmitSuccess && (
+          <div className="print:hidden pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onSubmitSuccess}
+              className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+              style={{ background: "#0C2461" }}
+            >
+              Continue — Project Complete →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

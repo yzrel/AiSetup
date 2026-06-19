@@ -823,10 +823,30 @@ export default function App() {
                 <ApprovalLetter />
               )}
               {currentView === "landbank-withdrawal" && (
-                <LandBankAndWithdrawal />
+                <LandBankAndWithdrawal
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "procurement-liquidation",
+                      });
+                    }
+                    navigate("procurement-liquidation");
+                  }}
+                />
               )}
               {currentView === "procurement-liquidation" && (
-                <ProcurementAndLiquidation />
+                <ProcurementAndLiquidation
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "completed",
+                      });
+                    }
+                    navigate("dashboard");
+                  }}
+                />
               )}
               {currentView === "refund-delinquent" && (
                 <RefundAndDelinquent />

@@ -73,7 +73,7 @@ const seedApplicants: Applicant[] = [
     assetSize: '₱8,000,000',
     region: REGION_12_LABEL,
     address: '123 Mabini St., Koronadal City, South Cotabato',
-    currentModule: 'approval-letter',
+    currentModule: 'landbank-withdrawal',
     qualified: true,
     submittedAt: 'Apr 10, 2024',
     lastUpdated: 'Apr 27, 2024',
