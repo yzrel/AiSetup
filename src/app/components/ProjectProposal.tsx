@@ -528,7 +528,7 @@ export function ProjectProposal({ onSubmitSuccess }: ProjectProposalProps = {}) 
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
                 <FileText className="w-4 h-4" />
                 Save as Draft
@@ -537,6 +537,16 @@ export function ProjectProposal({ onSubmitSuccess }: ProjectProposalProps = {}) 
                 <CheckCircle className="w-4 h-4" />
                 Generate Proposal
               </button>
+              {onSubmitSuccess && (
+                <button
+                  type="button"
+                  onClick={onSubmitSuccess}
+                  className="flex items-center gap-2 bg-[#0C2461] hover:bg-[#0a1d4d] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors ml-auto"
+                >
+                  Submit &amp; Continue
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 

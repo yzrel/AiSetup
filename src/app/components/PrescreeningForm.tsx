@@ -5,7 +5,13 @@ import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 
-export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
+export function PrescreeningForm({
+  user,
+  onSubmitSuccess,
+}: {
+  user?: AuthUser | null;
+  onSubmitSuccess?: () => void;
+}) {
   const [activeTab, setActiveTab] = useState<
     "form" | "registry"
   >("form");
@@ -28,7 +34,14 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
     msmeSize: "",
     assetSize: "",
     classificationRange: "",
+    essentialPeriod: "",
+    turnover: "",
   });
+
+  const setField = <K extends keyof typeof formData>(
+    key: K,
+    value: (typeof formData)[K],
+  ) => setFormData((prev) => ({ ...prev, [key]: value }));
 
   useEffect(() => {
     const app = resolveApplicantForUser(user);
@@ -49,6 +62,8 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
       msmeSize: app.msmeSize,
       assetSize: app.assetSize,
       classificationRange: String(app.moduleData?.classificationRange ?? ""),
+      essentialPeriod: String(app.moduleData?.essentialPeriod ?? ""),
+      turnover: String(app.moduleData?.turnover ?? ""),
     });
     if (app.qualified) setQualified(true);
   }, [user?.id, user?.email]);
@@ -72,13 +87,15 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
       assetSize: formData.assetSize,
       region: existing?.region ?? REGION_12_LABEL,
       address: existing?.address ?? "",
-      currentModule: "prescreening" as const,
+      currentModule: "registration" as const,
       qualified: true,
       moduleData: {
         ...existing?.moduleData,
         coreProducts: formData.coreProducts,
         exportClassification: formData.exportClassification,
         classificationRange: formData.classificationRange,
+        essentialPeriod: formData.essentialPeriod,
+        turnover: formData.turnover,
       },
     };
 
@@ -262,58 +279,58 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                       A. Nature of Business
                     </label>
                     <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="businessNature"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>
-                          Registered with DTI or SEC for
-                          manufacturing
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="businessNature"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>
-                          Startup (Includes enterprises with or
-                          without revenue)
-                        </span>
-                      </label>
+                      {[
+                        "Registered with DTI or SEC for manufacturing",
+                        "Startup (Includes enterprises with or without revenue)",
+                      ].map((option) => (
+                        <label key={option} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="businessNature"
+                            className="w-4 h-4 text-blue-600"
+                            checked={formData.businessNature === option}
+                            onChange={() => setField("businessNature", option)}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      B. Essential Period Question
+                      B. Essential Period Question (0–10 years of operation)
                     </label>
                     <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="period"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="period"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>No</span>
-                      </label>
+                      {["Yes", "No"].map((option) => (
+                        <label key={option} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="essentialPeriod"
+                            className="w-4 h-4 text-blue-600"
+                            checked={formData.essentialPeriod === option}
+                            onChange={() => setField("essentialPeriod", option)}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Eligible for SETUP: Startup to
-                      product-scaling business phase (or 0-10
-                      years)
-                    </p>
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Years of Operation
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={50}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.yearsOfOperation}
+                        onChange={(e) =>
+                          setField("yearsOfOperation", e.target.value)
+                        }
+                        placeholder="e.g. 5"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -324,6 +341,8 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                       type="text"
                       placeholder="Enter turnover amount"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.turnover}
+                      onChange={(e) => setField("turnover", e.target.value)}
                     />
                   </div>
 
@@ -332,38 +351,23 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                       D. Type of Enterprise
                     </label>
                     <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="enterpriseType"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Sole Proprietor</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="enterpriseType"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Partnership</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="enterpriseType"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Corporation</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="enterpriseType"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Cooperative</span>
-                      </label>
+                      {[
+                        "Sole Proprietor",
+                        "Partnership",
+                        "Corporation",
+                        "Cooperative",
+                      ].map((option) => (
+                        <label key={option} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="enterpriseType"
+                            className="w-4 h-4 text-blue-600"
+                            checked={formData.enterpriseType === option}
+                            onChange={() => setField("enterpriseType", option)}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
@@ -375,6 +379,8 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Describe your core product or service"
+                      value={formData.coreProducts}
+                      onChange={(e) => setField("coreProducts", e.target.value)}
                     />
                   </div>
 
@@ -383,31 +389,43 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                       F. EXPORT Classification
                     </label>
                     <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="export"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="export"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>No</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="export"
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Potential Export</span>
-                      </label>
+                      {["Yes", "No", "Potential Export"].map((option) => (
+                        <label key={option} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="exportClassification"
+                            className="w-4 h-4 text-blue-600"
+                            checked={formData.exportClassification === option}
+                            onChange={() =>
+                              setField("exportClassification", option)
+                            }
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Business Sector
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.businessSector}
+                      onChange={(e) =>
+                        setField("businessSector", e.target.value)
+                      }
+                    >
+                      <option value="">Select sector</option>
+                      <option>Agri-processing</option>
+                      <option>Food Processing</option>
+                      <option>Manufacturing</option>
+                      <option>Services</option>
+                      <option>ICT</option>
+                      <option>Metals & Engineering</option>
+                      <option>Pharmaceuticals & Herbal</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -421,8 +439,12 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Size
                     </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option>Select size</option>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.msmeSize}
+                      onChange={(e) => setField("msmeSize", e.target.value)}
+                    >
+                      <option value="">Select size</option>
                       <option>Micro</option>
                       <option>Small</option>
                       <option>Medium</option>
@@ -431,20 +453,28 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Asset Size
+                        Asset Size (PHP)
                       </label>
                       <input
                         type="number"
                         placeholder="Enter amount"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.assetSize}
+                        onChange={(e) => setField("assetSize", e.target.value)}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Classification Range
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option>Select range</option>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.classificationRange}
+                        onChange={(e) =>
+                          setField("classificationRange", e.target.value)
+                        }
+                      >
+                        <option value="">Select range</option>
                         <option>₱0 - ₱3M</option>
                         <option>₱3M - ₱15M</option>
                         <option>₱15M - ₱100M</option>
@@ -454,13 +484,22 @@ export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   type="submit"
                   className="flex-1 bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition-colors font-medium"
                 >
                   Submit
                 </button>
+                {qualified && onSubmitSuccess && (
+                  <button
+                    type="button"
+                    onClick={onSubmitSuccess}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Continue to Enterprise Registration →
+                  </button>
+                )}
                 <button
                   type="button"
                   className="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"

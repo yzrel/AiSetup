@@ -271,7 +271,13 @@ function ReportViewer({ title, content, color, badge }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
-export function TechnologyNeedsAssessment1({ user }: { user?: AuthUser | null }) {
+export function TechnologyNeedsAssessment1({
+  user,
+  onSubmitSuccess,
+}: {
+  user?: AuthUser | null;
+  onSubmitSuccess?: () => void;
+}) {
   const [step, setStep] = useState("identification");
   const isStaff = user ? authStore.isStaff(user.role) : false;
   const [staffMode, setStaffMode] = useState(false);
@@ -1235,7 +1241,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               onPrint={printTnaForm01}
             />
 
-            <div className="flex gap-3 print:hidden">
+            <div className="flex flex-col sm:flex-row gap-3 print:hidden">
               <button
                 onClick={() => setStep("validation")}
                 className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 text-sm"
@@ -1249,6 +1255,16 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   style={{ background: DOST_BLUE }}
                 >
                   Print / Save as PDF
+                </button>
+              )}
+              {onSubmitSuccess && !isStaff && (
+                <button
+                  type="button"
+                  onClick={onSubmitSuccess}
+                  className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
+                  style={{ background: "#059669" }}
+                >
+                  Continue to TNA 2 →
                 </button>
               )}
             </div>

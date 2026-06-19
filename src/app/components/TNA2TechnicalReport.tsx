@@ -535,6 +535,15 @@ export function TNA2TechnicalReport({ onSubmitSuccess }: TNA2TechnicalReportProp
 
             {/* Download buttons */}
             <div className="space-y-2">
+              {onSubmitSuccess && (
+                <button
+                  type="button"
+                  onClick={onSubmitSuccess}
+                  className="w-full flex items-center justify-center gap-2 bg-[#0C2461] hover:bg-[#0a1d4d] text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Continue to Project Proposal →
+                </button>
+              )}
               <button className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
                 <Download className="w-4 h-4" />
                 Download TNA 2 Report (PDF)

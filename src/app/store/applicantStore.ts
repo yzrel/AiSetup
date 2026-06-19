@@ -77,7 +77,29 @@ const seedApplicants: Applicant[] = [
     qualified: true,
     submittedAt: 'Apr 10, 2024',
     lastUpdated: 'Apr 27, 2024',
-    moduleData: { approvedAmount: '₱2,000,000', password: 'Demo@1234', accountStatus: 'active' },
+    moduleData: {
+      approvedAmount: '₱2,000,000',
+      password: 'Demo@1234',
+      accountStatus: 'active',
+      province: 'South Cotabato',
+      zipCode: '9506',
+      tinNumber: '123-456-789-000',
+      registrationType: 'DTI',
+      registrationNumber: 'DTI-12-0012345',
+      dateEstablished: '2019-03-15',
+      companyDescription:
+        'ABC Food Processing manufactures and distributes processed food products for local and regional markets.',
+      coreProducts: 'Dried mangoes, banana chips, fruit preserves',
+      productServices: 'Dried mangoes, banana chips, fruit preserves',
+      exportClassification: 'Domestic with export potential',
+      turnover: '₱4,500,000',
+      projectDescription:
+        'Acquisition of vacuum packaging equipment and small-scale dehydration line to improve product shelf life and capacity.',
+      expectedOutcome:
+        'Increase production capacity by 40% and meet food safety certification requirements.',
+      budget: '2500000',
+      timeline: '18 months',
+    },
   },
   {
     id: '2',

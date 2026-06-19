@@ -54,4 +54,10 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+
+  generateLoi: (payload: import("./types").LoiGenerationRequest) =>
+    apiFetch<import("./types").LoiDocumentResponse>("/loi/generate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

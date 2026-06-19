@@ -1,4 +1,5 @@
 import { Applicant } from "./applicantStore";
+import { yearFromDateEstablished } from "../utils/applicantPrefill";
 
 export const EMPTY_TNA_TABLES = {
   rawMaterials: [["", "", "", ""]],
@@ -34,8 +35,32 @@ export function mapMsmeToEmploymentClass(msmeSize: string): string {
   return "";
 }
 
+function yearFromYearsOfOperation(yearsOfOperation: string): string {
+  if (!yearsOfOperation) return "";
+  const years = parseInt(yearsOfOperation, 10);
+  if (Number.isNaN(years)) return "";
+  return String(new Date().getFullYear() - years);
+}
+
 export function buildInitialTnaForm(applicant: Applicant | null) {
   const md = applicant?.moduleData ?? {};
+  const dateEstablished = String(md.dateEstablished ?? "");
+  const yearEstablished =
+    yearFromDateEstablished(dateEstablished) ||
+    yearFromYearsOfOperation(applicant?.yearsOfOperation ?? "");
+
+  const mainProduct = String(
+    md.productServices ?? md.coreProducts ?? "",
+  );
+  const projectDescription = String(md.projectDescription ?? "");
+  const loiDoc = md.loiDocument as { bodyParagraphs?: string[] } | undefined;
+  const loiBackground =
+    loiDoc?.bodyParagraphs?.length
+      ? loiDoc.bodyParagraphs.join("\n\n")
+      : "";
+  const assetDigits = applicant?.assetSize?.replace(/[^\d]/g, "") ?? "";
+  const budgetDigits = String(md.budget ?? "").replace(/[^\d]/g, "");
+
   return {
     enterpriseName: applicant?.enterpriseName ?? "",
     contactPerson: applicant?.applicantName ?? "",
@@ -60,9 +85,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     undertakingDate: "",
     productionSite: applicant?.address ?? "",
     businessPermitNo: "",
-    yearRegistered: applicant?.yearsOfOperation
-      ? String(new Date().getFullYear() - parseInt(applicant.yearsOfOperation, 10) || 0)
-      : "",
+    yearRegistered: yearEstablished,
     organizationType:
       mapBusinessTypeToOrganization(applicant?.businessType ?? "") ||
       (md.registrationType === "DTI"
@@ -77,23 +100,28 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     employeesFemale: "",
     employeesIndirect: "",
     employeesContract: "",
-    enterpriseBackground: applicant?.businessNature ?? "",
-    yearEstablished: applicant?.yearsOfOperation
-      ? String(new Date().getFullYear() - parseInt(applicant.yearsOfOperation, 10) || 0)
-      : "",
+    enterpriseBackground:
+      loiBackground ||
+      String(md.companyDescription ?? "") ||
+      [applicant?.businessNature, mainProduct].filter(Boolean).join(" — ") ||
+      applicant?.businessNature ||
+      "",
+    yearEstablished,
     initialCapital: "",
-    registrationNo: String(md.tinNumber ?? md.registrationNumber ?? ""),
-    presentCapital: applicant?.assetSize?.replace(/[^\d]/g, "") ?? "",
+    registrationNo: String(
+      md.registrationNumber ?? md.tinNumber ?? "",
+    ),
+    presentCapital: assetDigits || budgetDigits,
     employmentClass: mapMsmeToEmploymentClass(applicant?.msmeSize ?? ""),
     sector: applicant?.businessSector ?? "",
     commodity: applicant?.businessNature ?? "",
-    mainProduct: "",
-    reasonsForAssistance: "",
+    mainProduct,
+    reasonsForAssistance: projectDescription,
     consultedOther: "",
     consultedAgency: "",
-    assistanceType: "",
+    assistanceType: String(md.timeline ?? ""),
     whyNotConsulted: "",
-    plan5Years: "",
+    plan5Years: String(md.expectedOutcome ?? ""),
     plan10Years: "",
     agreements: "",
     cashFlow: "",
@@ -106,7 +134,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     employeeWelfare: "",
     productionProblemsConcerns: "",
     wasteManagement: "",
-    productionPlan: "",
+    productionPlan: projectDescription,
     plantLayoutFileName: "",
     plantLayoutFileData: "",
     processFlowMode: "text" as "text" | "attachment",
@@ -129,7 +157,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     packLabelRemarks: "",
     packExpiry: false,
     packExpiryRemarks: "",
-    otherConcerns: "",
+    otherConcerns: String(md.exportClassification ?? ""),
     preparedDate: "",
     validatedDate: "",
   };
@@ -141,8 +169,17 @@ export function mergeTnaSavedData(
 ) {
   const base = buildInitialTnaForm(applicant);
   if (!saved?.form) return { form: base, tables: saved?.tables ?? EMPTY_TNA_TABLES };
+
+  const merged = { ...base, ...saved.form } as typeof base;
+  for (const key of Object.keys(base) as (keyof typeof base)[]) {
+    const savedVal = saved.form[key];
+    if (savedVal === "" && base[key] !== "") {
+      (merged as Record<string, unknown>)[key] = base[key];
+    }
+  }
+
   return {
-    form: { ...base, ...saved.form },
+    form: merged,
     tables: saved.tables ?? EMPTY_TNA_TABLES,
   };
 }

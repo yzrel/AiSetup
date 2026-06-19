@@ -13,12 +13,16 @@ import { LandBankAndWithdrawal } from "./components/LandBankAndWithdrawal";
 import { ProcurementAndLiquidation } from "./components/ProcurementAndLiquidation";
 import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
 import { AccountManagement } from "./components/AccountManagement";
+import { MyAccount } from "./components/MyAccount";
 import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
 // import { ClientPortal } from "./components/ClientPortal";
 import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
+import { applicantStore } from "./store/applicantStore";
+import { resolveApplicantForUser } from "./utils/resolveApplicant";
+import { moduleToApplicantView } from "./utils/applicantProgress";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -266,6 +270,10 @@ const viewTitles: Record<
     title: "Account Management",
     subtitle: "Monitor & manage registered MSME accounts",
   },
+  "my-account": {
+    title: "My Account",
+    subtitle: "Profile, password & registration details",
+  },
 };
 
 /* ── Sidebar Nav Content (shared between desktop + mobile drawer) ── */
@@ -436,11 +444,20 @@ export default function App() {
     };
   }, [drawerOpen]);
 
-  // Applicants start at pre-screening after sign-in
+  // Applicants resume at their last saved module after sign-in
   useEffect(() => {
     if (!user) return;
     if (authStore.isClientRole(user.role)) {
-      setCurrentView("prescreening");
+      const app = resolveApplicantForUser(user);
+      const target = app
+        ? moduleToApplicantView(app.currentModule)
+        : "prescreening";
+      const view = target === "dashboard" ? "dashboard" : target;
+      if (authStore.canAccessView(user.role, view)) {
+        setCurrentView(view);
+      } else {
+        setCurrentView("dashboard");
+      }
     }
   }, [user?.id]);
 
@@ -625,53 +642,70 @@ export default function App() {
 
             <div className="w-px h-6 bg-gray-200 shrink-0" />
 
-            {/* User info */}
-            <div className="flex items-center gap-2 cursor-pointer group">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt="avatar"
-                  className="w-8 h-8 rounded-full object-cover border-2 border-[#0C2461]/20 shrink-0"
-                />
+            {/* User info + logout */}
+            <div className="flex items-center gap-1 shrink-0">
+              {authStore.isClientRole(user.role) ? (
+                <button
+                  type="button"
+                  onClick={() => navigate("my-account")}
+                  title="My Account"
+                  className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors text-left"
+                >
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt="avatar"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-[#0C2461]/20 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[#0C2461] flex items-center justify-center shrink-0">
+                      <span className="text-white text-[11px] font-bold">
+                        {user.firstName[0]}
+                        {user.lastName[0]}
+                      </span>
+                    </div>
+                  )}
+                  <div className="hidden md:block max-w-[140px]">
+                    <p className="text-[12px] font-semibold text-gray-800 leading-tight truncate">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
+                        {ROLE_LABELS[user.role]}
+                      </span>
+                      {user.applicationId && (
+                        <span className="text-[9px] text-gray-400 font-mono truncate">
+                          {user.applicationId}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#0C2461] flex items-center justify-center shrink-0">
-                  <span className="text-white text-[11px] font-bold">
-                    {user.firstName[0]}
-                    {user.lastName[0]}
-                  </span>
+                <div className="flex items-center gap-2 px-1.5 py-1">
+                  <div className="w-8 h-8 rounded-full bg-[#0C2461] flex items-center justify-center shrink-0">
+                    <span className="text-white text-[11px] font-bold">
+                      {user.firstName[0]}
+                      {user.lastName[0]}
+                    </span>
+                  </div>
+                  <div className="hidden md:block">
+                    <p className="text-[12px] font-semibold text-gray-800 leading-tight">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                      {ROLE_LABELS[user.role]}
+                    </span>
+                  </div>
                 </div>
               )}
-              <div className="hidden md:block">
-                <p className="text-[12px] font-semibold text-gray-800 leading-tight">
-                  {user.firstName} {user.lastName}
-                </p>
-                <div className="flex items-center gap-1">
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                      user.role === "agent"
-                        ? "bg-blue-100 text-blue-700"
-                        : user.role === "admin"
-                          ? "bg-purple-100 text-purple-700"
-                          : user.role === "client"
-                            ? "bg-teal-100 text-teal-700"
-                            : "bg-green-100 text-green-700"
-                    }`}
-                  >
-                    {ROLE_LABELS[user.role]}
-                  </span>
-                  {user.applicationId && (
-                    <span className="text-[9px] text-gray-400 font-mono">
-                      {user.applicationId}
-                    </span>
-                  )}
-                </div>
-              </div>
               <button
+                type="button"
                 onClick={() => authStore.logout()}
                 title="Logout"
-                className="hidden md:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-300 transition-colors ml-1"
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-400 transition-colors"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -691,25 +725,98 @@ export default function App() {
         <main className="flex-1 overflow-auto">
           {authStore.canAccessView(user.role, currentView) ? (
             <>
-              {currentView === "dashboard" && <Dashboard user={user} />}
+              {currentView === "dashboard" && (
+                <Dashboard user={user} onNavigate={navigate} />
+              )}
               {currentView === "prescreening" && (
-                <PrescreeningForm user={user} />
+                <PrescreeningForm
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, { currentModule: "registration" });
+                    }
+                    navigate("registration");
+                  }}
+                />
               )}
               {currentView === "registration" && (
-                <EnterpriseRegistration />
+                <EnterpriseRegistration
+                  user={user}
+                  onOpenAccount={() => navigate("my-account")}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, { currentModule: "letter-of-intent" });
+                    }
+                    navigate("letter-of-intent");
+                  }}
+                />
               )}
               {currentView === "letter-of-intent" && (
-                <LetterOfIntent user={user} />
+                <LetterOfIntent
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, { currentModule: "requirements" });
+                    }
+                    navigate("requirements");
+                  }}
+                />
               )}
               {currentView === "requirements" && (
-                <SubmissionRequirements user={user} />
+                <SubmissionRequirements
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (!app) return;
+                    const nextView =
+                      app.moduleData?.routingDecision === "project-proposal"
+                        ? "project-proposal"
+                        : "tna1";
+                    applicantStore.update(app.id, { currentModule: nextView });
+                    navigate(nextView);
+                  }}
+                />
               )}
               {currentView === "tna1" && (
-                <TechnologyNeedsAssessment1 user={user} />
+                <TechnologyNeedsAssessment1
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, { currentModule: "tna2" });
+                    }
+                    navigate("tna2");
+                  }}
+                />
               )}
-              {currentView === "tna2" && <TNA2TechnicalReport />}
+              {currentView === "tna2" && (
+                <TNA2TechnicalReport
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "project-proposal",
+                      });
+                    }
+                    navigate("project-proposal");
+                  }}
+                />
+              )}
               {currentView === "project-proposal" && (
-                <ProjectProposal />
+                <ProjectProposal
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "conduct-rtec",
+                      });
+                    }
+                    navigate("dashboard");
+                  }}
+                />
               )}
               {currentView === "conduct-rtec" && <ConductOfRTEC />}
               {currentView === "approval-letter" && (
@@ -727,6 +834,7 @@ export default function App() {
               {currentView === "account-management" && (
                 <AccountManagement user={user} />
               )}
+              {currentView === "my-account" && <MyAccount user={user} />}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">

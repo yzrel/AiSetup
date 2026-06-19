@@ -18,7 +18,8 @@ export type AdminView =
   | "landbank-withdrawal"
   | "procurement-liquidation"
   | "refund-delinquent"
-  | "account-management";
+  | "account-management"
+  | "my-account";
 
 export type DashboardTab = "overview" | "analytics" | "alerts" | "registry";
 
@@ -45,14 +46,15 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "letter-of-intent": ["admin", "agent", "client", "applicant"],
   requirements: ["admin", "agent", "client", "applicant"],
   tna1: ["admin", "agent", "client", "applicant"],
-  tna2: ["admin", "agent"],
-  "project-proposal": ["admin", "agent"],
+  tna2: ["admin", "agent", "client", "applicant"],
+  "project-proposal": ["admin", "agent", "client", "applicant"],
   "conduct-rtec": ["admin"],
   "approval-letter": ["admin"],
   "landbank-withdrawal": ["admin", "agent", "client", "applicant"],
   "procurement-liquidation": ["admin", "agent", "client", "applicant"],
   "refund-delinquent": ["admin"],
   "account-management": ["admin", "agent"],
+  "my-account": ["client", "applicant"],
 };
 
 const DASHBOARD_TAB_PERMISSIONS: Record<DashboardTab, UserRole[]> = {
@@ -86,6 +88,12 @@ export const authStore = {
 
   logout: () => {
     currentUser = null;
+    notify();
+  },
+
+  updateUser: (patch: Partial<AuthUser>) => {
+    if (!currentUser) return;
+    currentUser = { ...currentUser, ...patch };
     notify();
   },
 

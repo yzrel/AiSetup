@@ -6,7 +6,6 @@ import {
   X,
   AlertCircle,
   Eye,
-  Printer,
   ChevronRight,
   Shield,
   Paperclip,
@@ -19,6 +18,14 @@ import { applicantStore, Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
+import { api, ApiError } from "../api/client";
+import type { LoiDocumentResponse } from "../api/types";
+import {
+  buildLoiGenerationPayload,
+  buildLocalLoiDocument,
+} from "../utils/loiLetter";
+import { LoiDocumentPreview } from "./LoiDocumentPreview";
 
 interface LetterOfIntentProps {
   user?: AuthUser | null;
@@ -157,8 +164,45 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     commitDate: new Date().toISOString().split("T")[0],
   });
 
+  const [loiDocument, setLoiDocument] = useState<LoiDocumentResponse | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
   useEffect(() => {
-    setApplicant(resolveApplicantForUser(user));
+    const app = resolveApplicantForUser(user);
+    setApplicant(app);
+    if (!app) return;
+    setAdditional((prev) => buildLoiAdditionalFromApplicant(app, prev));
+
+    const saved = app.moduleData?.loiDocument as LoiDocumentResponse | undefined;
+    if (saved?.bodyParagraphs?.length) {
+      setLoiDocument(saved);
+      setStep("complete");
+      if (saved.signature) {
+        setGeneralAgreement((prev) => ({
+          ...prev,
+          signature: saved.signature.typedName || prev.signature,
+          signedDate: saved.signature.dateSigned || prev.signedDate,
+          agreeTerms: true,
+          agreeAccuracy: true,
+          agreeCooperate: true,
+          agreeRefund: true,
+        }));
+      }
+      const md = app.moduleData ?? {};
+      if (md.commitmentAmount || md.repaymentTerm) {
+        setCommitmentRefund((prev) => ({
+          ...prev,
+          approvedAmount: String(md.commitmentAmount ?? prev.approvedAmount),
+          repaymentTerm: String(md.repaymentTerm ?? prev.repaymentTerm),
+          agreeRefundTerms: true,
+          agreeInterestFree: true,
+          agreePDC: true,
+          agreePenalty: true,
+          commitSignature: saved.signature?.typedName || prev.commitSignature,
+        }));
+      }
+    }
   }, [user?.id, user?.email, user?.role]);
 
   const setAdd = (k: string, v: string) => setAdditional((prev) => ({ ...prev, [k]: v }));
@@ -211,12 +255,66 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     if (file) setProductionPlanFile(file);
   };
 
-  const handleFinalSubmit = () => {
+  const buildCurrentPayload = () => {
+    if (!applicant) return null;
+    return buildLoiGenerationPayload(
+      applicant,
+      additional,
+      {
+        approvedAmount: commitmentRefund.approvedAmount,
+        repaymentTerm: commitmentRefund.repaymentTerm,
+      },
+      {
+        signature: generalAgreement.signature,
+        signedDate: generalAgreement.signedDate,
+      },
+      productionPlanFile?.name ?? String(applicant.moduleData?.productionPlanFile ?? ""),
+    );
+  };
+
+  const generateLoiDocument = async () => {
+    const payload = buildCurrentPayload();
+    if (!payload || generating) return null;
+
+    setGenerating(true);
+    setGenerateError(null);
+
+    let document: LoiDocumentResponse;
+    try {
+      document = await api.generateLoi(payload);
+      if (!document.aiGenerated) {
+        setGenerateError(
+          "Letter generated using the standard template. Set ANTHROPIC_API_KEY on the backend for AI-drafted paragraphs.",
+        );
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status < 500) {
+        setGenerateError(err.message || "Could not generate letter. Please check your entries and try again.");
+        setGenerating(false);
+        return null;
+      }
+      document = buildLocalLoiDocument(payload);
+      setGenerateError(
+        "Backend unavailable — generated from template. Run npm run backend for server-side generation.",
+      );
+    }
+
+    setLoiDocument(document);
+    setGenerating(false);
+    return document;
+  };
+
+  const persistLoiDocument = (document: LoiDocumentResponse) => {
     if (!applicant) return;
     applicantStore.update(applicant.id, {
       currentModule: "letter-of-intent",
       moduleData: {
         ...applicant.moduleData,
+        dateEstablished: additional.dateEstablished,
+        province: additional.province,
+        zipCode: additional.zipCode,
+        postalCode: additional.zipCode,
+        productServices: additional.productServices,
         projectDescription: additional.projectDescription,
         budget: additional.budget,
         timeline: additional.timeline,
@@ -224,14 +322,33 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         registrationType: additional.registrationType,
         registrationNumber: additional.registrationNumber,
         expectedOutcome: additional.expectedOutcome,
-        productionPlanFile: productionPlanFile?.name,
+        productionPlanFile: productionPlanFile?.name ?? applicant.moduleData?.productionPlanFile,
         commitmentAmount: commitmentRefund.approvedAmount,
         repaymentTerm: commitmentRefund.repaymentTerm,
         loiSubmittedAt: new Date().toISOString(),
+        loiDocument: document,
       },
     });
+    setApplicant(
+      applicantStore.getById(applicant.id) ?? {
+        ...applicant,
+        moduleData: { ...applicant.moduleData, loiDocument: document },
+      },
+    );
+  };
+
+  const handleFinalSubmit = async () => {
+    if (!applicant || generating) return;
+    const document = await generateLoiDocument();
+    if (!document) return;
+    persistLoiDocument(document);
     setStep("complete");
-    setTimeout(() => onSubmitSuccess?.(), 1200);
+  };
+
+  const handleRegenerate = async () => {
+    const document = await generateLoiDocument();
+    if (!document) return;
+    persistLoiDocument(document);
   };
 
   const DOST_BLUE = "#0C2461";
@@ -842,17 +959,25 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 : <span className="text-gray-400">· Signature required</span>}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 relative">
+              {generating && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm">
+                  <div className="text-center space-y-2">
+                    <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-sm font-semibold text-gray-700">Generating your Letter of Intent…</p>
+                  </div>
+                </div>
+              )}
               <button onClick={() => setStep("production-plan")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
               <button
                 onClick={handleFinalSubmit}
-                disabled={!commitmentComplete}
+                disabled={!commitmentComplete || generating}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: "#059669" }}
               >
-                Sign & Generate Letter of Intent →
+                {generating ? "Generating Letter of Intent…" : "Sign & Generate Letter of Intent →"}
               </button>
             </div>
           </div>
@@ -861,7 +986,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         {/* ────────────────────────────────────────────────────────────────────
             STEP 7 — Generated LOI Preview
         ──────────────────────────────────────────────────────────────────── */}
-        {step === "complete" && (
+        {step === "complete" && loiDocument && (
           <div className="p-6 space-y-5">
             <div className="bg-green-50 border-2 border-green-400 rounded-xl p-5 text-center">
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
@@ -869,81 +994,17 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <p className="text-sm text-green-600 mt-1">
                 Your LOI has been submitted and recorded in the DOST aiSETUP system. Reference: <strong>{applicant?.applicationId}</strong>
               </p>
+              {generateError && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+                  {generateError}
+                </p>
+              )}
             </div>
 
-            {/* LOI document preview */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
-                <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-500" /> Letter of Intent — Document Preview
-                </p>
-                <button className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
-                  <Printer className="w-3.5 h-3.5" /> Print / Download
-                </button>
-              </div>
-
-              <div className="p-8 space-y-5 text-sm text-gray-700 leading-relaxed font-serif max-h-[520px] overflow-y-auto">
-                <div className="text-center space-y-1">
-                  <p className="text-xs text-gray-400 uppercase tracking-widest">Republic of the Philippines</p>
-                  <p className="font-black text-base text-gray-800">Department of Science and Technology</p>
-                  <p className="text-xs text-gray-500">Small Enterprise Technology Upgrading Program (SETUP) 4.0</p>
-                  <div className="border-t border-b border-gray-200 py-2 mt-3">
-                    <p className="font-black text-lg tracking-wide">LETTER OF INTENT</p>
-                  </div>
-                </div>
-
-                <p>Date: {new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}</p>
-
-                <p>
-                  The Regional Director / SETUP Program Manager<br />
-                  Department of Science and Technology<br />
-                  {applicant?.region ?? REGION_12_LABEL}
-                </p>
-
-                <p>Dear Sir/Madam,</p>
-
-                <p>
-                  I, <strong>{applicant?.applicantName}</strong>, <strong>{applicant?.designation}</strong> of <strong>{applicant?.enterpriseName}</strong>, hereby express our sincere intent to participate in the SETUP 4.0 program of the Department of Science and Technology.
-                </p>
-
-                <p>
-                  Our enterprise, <strong>{applicant?.enterpriseName}</strong>, is a {applicant?.msmeSize}-sized {applicant?.businessType} classified under the {applicant?.businessSector} sector, operating in {applicant?.region}. We have been in operation for {applicant?.yearsOfOperation} year(s) with total assets of {applicant?.assetSize}.
-                </p>
-
-                <p><strong>Nature of Business:</strong> {applicant?.businessNature}</p>
-                <p><strong>Products/Services Offered:</strong> {additional.productServices}</p>
-                <p><strong>Project Description:</strong> {additional.projectDescription}</p>
-                <p><strong>Expected Outcome:</strong> {additional.expectedOutcome}</p>
-                <p><strong>Estimated Budget:</strong> ₱{additional.budget} &nbsp;|&nbsp; <strong>Timeline:</strong> {additional.timeline}</p>
-
-                <p>
-                  We commit to fully comply with all DOST SETUP 4.0 guidelines, requirements, and repayment obligations. We understand that the approved seed fund of ₱{commitmentRefund.approvedAmount} shall be repaid over {commitmentRefund.repaymentTerm} at 0% interest commencing {commitmentRefund.startDate}.
-                </p>
-
-                <p>We attach our Production Plan (<em>{productionPlanFile?.name ?? "uploaded document"}</em>) for your reference and evaluation.</p>
-
-                <p>We trust this application will be given due consideration and look forward to a productive partnership with DOST in advancing our enterprise's technological capabilities.</p>
-
-                <p>Respectfully yours,</p>
-
-                <div className="mt-6 space-y-1">
-                  <p className="font-black text-gray-800 border-b border-gray-500 inline-block pr-20 italic pb-1">
-                    {generalAgreement.signature}
-                  </p>
-                  <p className="font-semibold text-gray-800">{applicant?.applicantName}</p>
-                  <p className="text-gray-500">{applicant?.designation}</p>
-                  <p className="text-gray-500">{applicant?.enterpriseName}</p>
-                  <p className="text-gray-400 text-xs mt-1">Date Signed: {generalAgreement.signedDate}</p>
-                </div>
-
-                <div className="border-t border-gray-200 pt-4 text-xs text-gray-400 space-y-0.5">
-                  <p>Application ID: {applicant?.applicationId}</p>
-                  <p>Registration: {additional.registrationType} No. {additional.registrationNumber}</p>
-                  <p>TIN: {additional.tinNumber}</p>
-                  <p>Generated by DOST aiSETUP Portal · {new Date().toLocaleString("en-PH")}</p>
-                </div>
-              </div>
-            </div>
+            <LoiDocumentPreview
+              document={loiDocument}
+              applicationId={applicant?.applicationId}
+            />
 
             {/* Summary strip */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -955,13 +1016,52 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
                 <Paperclip className="w-6 h-6 text-blue-600 mx-auto mb-1" />
                 <p className="text-xs font-bold text-blue-700">Production Plan</p>
-                <p className="text-xs text-blue-500 mt-0.5 truncate px-2">{productionPlanFile?.name ?? "Uploaded"}</p>
+                <p className="text-xs text-blue-500 mt-0.5 truncate px-2">
+                  {productionPlanFile?.name ?? String(applicant?.moduleData?.productionPlanFile ?? "Uploaded")}
+                </p>
               </div>
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
                 <Banknote className="w-6 h-6 text-amber-600 mx-auto mb-1" />
                 <p className="text-xs font-bold text-amber-700">Commitment of Refund</p>
                 <p className="text-xs text-amber-500 mt-0.5">₱{commitmentRefund.approvedAmount} · {commitmentRefund.repaymentTerm}</p>
               </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 print:hidden">
+              <button
+                type="button"
+                onClick={() => onSubmitSuccess?.()}
+                className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+                style={{ background: "#059669" }}
+              >
+                Continue to Submit Requirements →
+              </button>
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                disabled={generating}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm disabled:opacity-40"
+              >
+                {generating ? "Regenerating…" : "Regenerate Letter"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoiDocument(null);
+                  setGenerateError(null);
+                  setStep("review");
+                  if (applicant) {
+                    const md = { ...applicant.moduleData };
+                    delete md.loiDocument;
+                    delete md.loiSubmittedAt;
+                    applicantStore.update(applicant.id, { moduleData: md });
+                    setApplicant({ ...applicant, moduleData: md });
+                  }
+                }}
+                className="text-sm text-gray-500 hover:text-blue-600 underline underline-offset-2 transition-colors"
+              >
+                Start over
+              </button>
             </div>
           </div>
         )}

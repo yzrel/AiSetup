@@ -618,6 +618,8 @@ export function RegisterPage({
       moduleData: {
         selfie: form.selfie,
         tinNumber: form.tinNumber,
+        registrationType: form.registrationType,
+        registrationNumber: form.registrationNumber,
         password: form.password,
         firstName: form.firstName,
         middleName: form.middleName,
@@ -625,6 +627,13 @@ export function RegisterPage({
         province: form.province,
         regionLabel: REGION_12_LABEL,
         accountStatus: "active",
+        companyStartDate: form.companyStartDate,
+        companyDescription: form.companyDescription,
+        birthday: form.birthday,
+        gender: form.gender,
+        civilStatus: form.civilStatus,
+        isPWD: form.isPWD,
+        pwdType: form.pwdType,
         registeredAt: new Date().toISOString(),
       },
     });

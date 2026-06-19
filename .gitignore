@@ -24,3 +24,8 @@ Thumbs.db
 
 # Vite
 *.local
+
+# Java / Spring Boot
+backend/target/
+backend/.jdk/
+backend/.mvn/wrapper/maven-wrapper.jar

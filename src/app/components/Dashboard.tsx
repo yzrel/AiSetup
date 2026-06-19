@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -43,7 +43,13 @@ import {
   Eye,
 } from "lucide-react";
 import { ApplicantListView } from "./ApplicantListView";
-import { authStore, AuthUser, DashboardTab } from "../store/authStore";
+import { authStore, AdminView, AuthUser, DashboardTab } from "../store/authStore";
+import { applicantStore } from "../store/applicantStore";
+import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import {
+  getApplicantDashboardSteps,
+  isAwaitingStaffReview,
+} from "../utils/applicantProgress";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 
 // ── Payment Monitoring Data ───────────────────────────────────────────────────
@@ -949,9 +955,25 @@ function SectionTitle({
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-export function Dashboard({ user }: { user: AuthUser }) {
+export function Dashboard({
+  user,
+  onNavigate,
+}: {
+  user: AuthUser;
+  onNavigate?: (view: AdminView) => void;
+}) {
   const allowedTabs = authStore.getAllowedDashboardTabs(user.role);
   const isClientView = authStore.isClientRole(user.role);
+  const [, bump] = useState(0);
+
+  useEffect(() => {
+    if (!isClientView) return;
+    return applicantStore.subscribe(() => bump((n) => n + 1));
+  }, [isClientView]);
+
+  const application = resolveApplicantForUser(user);
+  const progressSteps = getApplicantDashboardSteps(application);
+  const awaitingReview = isAwaitingStaffReview(application);
   const [activeTab, setActiveTab] = useState<DashboardTab>(
     allowedTabs[0] ?? "overview",
   );
@@ -1088,36 +1110,58 @@ export function Dashboard({ user }: { user: AuthUser }) {
               <SectionTitle sub="Track your SETUP application progress">
                 Application Progress
               </SectionTitle>
+              {awaitingReview && (
+                <div className="mt-4 mb-2 flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
+                  <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">
+                      Awaiting DOST review
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Your submission is with DOST Region XII for RTEC evaluation
+                      and approval. You will be notified when the next step is ready.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="mt-4 space-y-3">
-                {[
-                  { step: "Pre-Screening", status: "current" },
-                  { step: "Enterprise Registration", status: "upcoming" },
-                  { step: "Letter of Intent", status: "upcoming" },
-                  { step: "Submit Requirements", status: "upcoming" },
-                ].map((item) => (
-                  <div
-                    key={item.step}
-                    className={`flex items-center gap-3 p-3 rounded-xl border ${
+                {progressSteps.map((item) => (
+                  <button
+                    key={item.module}
+                    type="button"
+                    disabled={!item.view || !onNavigate}
+                    onClick={() => item.view && onNavigate?.(item.view)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
                       item.status === "current"
                         ? "border-[#0C2461]/20 bg-blue-50"
-                        : "border-gray-100 bg-gray-50"
-                    }`}
+                        : item.status === "completed"
+                          ? "border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50"
+                          : "border-gray-100 bg-gray-50"
+                    } ${item.view && onNavigate ? "cursor-pointer" : "cursor-default"}`}
                   >
                     {item.status === "current" ? (
                       <Clock className="w-5 h-5 text-[#0C2461] shrink-0" />
+                    ) : item.status === "completed" ? (
+                      <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
                     ) : (
                       <CheckCircle className="w-5 h-5 text-gray-300 shrink-0" />
                     )}
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">{item.step}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{item.label}</p>
                       <p className="text-xs text-gray-400 capitalize">{item.status}</p>
                     </div>
-                  </div>
+                    {item.view && onNavigate && item.status !== "upcoming" && (
+                      <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    )}
+                  </button>
                 ))}
               </div>
               <p className="text-xs text-gray-400 mt-4">
-                Use the sidebar to complete each application step. DOST will review
-                assessments and approvals on your behalf.
+                {application?.applicationId
+                  ? `Application ${application.applicationId} · `
+                  : ""}
+                Use the sidebar or tap a step above to continue your application.
+                DOST will review assessments and approvals on your behalf.
               </p>
             </div>
           ) : (

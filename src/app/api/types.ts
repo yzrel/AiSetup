@@ -40,3 +40,78 @@ export interface ApiTnaFormPayload {
   };
   submitted: boolean;
 }
+
+export interface LoiGenerationRequest {
+  applicantName?: string;
+  designation?: string;
+  enterpriseName: string;
+  emailAddress?: string;
+  contactNumber?: string;
+  address?: string;
+  province?: string;
+  zipCode?: string;
+  tinNumber?: string;
+  registrationType?: string;
+  registrationNumber?: string;
+  companyDescription?: string;
+  dateEstablished?: string;
+  msmeSize?: string;
+  businessType?: string;
+  businessSector?: string;
+  businessNature?: string;
+  yearsOfOperation?: string;
+  assetSize?: string;
+  coreProducts?: string;
+  turnover?: string;
+  qualified?: boolean;
+  exportClassification?: string;
+  productServices?: string;
+  projectDescription?: string;
+  expectedOutcome?: string;
+  budget?: string;
+  timeline?: string;
+  commitmentAmount?: string;
+  repaymentTerm?: string;
+  productionPlanFile?: string;
+  signature?: string;
+  dateSigned?: string;
+}
+
+export interface LoiLetterhead {
+  enterpriseName: string;
+  address: string;
+  email: string;
+  mobile: string;
+  date: string;
+}
+
+export interface LoiAddressee {
+  name: string;
+  title: string;
+  thruLine?: string;
+  officeName?: string;
+  lines: string[];
+  addressLines?: string[];
+  defaulted?: boolean;
+}
+
+export interface LoiSignature {
+  typedName: string;
+  printedName: string;
+  designation: string;
+  enterpriseName: string;
+  dateSigned: string;
+}
+
+export interface LoiDocumentResponse {
+  letterhead: LoiLetterhead;
+  regionalAddressee: LoiAddressee;
+  thruAddressee: LoiAddressee;
+  salutation: string;
+  bodyParagraphs: string[];
+  closing: string;
+  signature: LoiSignature;
+  generatedAt: string;
+  aiGenerated: boolean;
+  provincialOfficeDefaulted: boolean;
+}
