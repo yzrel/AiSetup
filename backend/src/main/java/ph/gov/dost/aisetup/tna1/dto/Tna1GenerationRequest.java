@@ -1,3 +1,6 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
 package ph.gov.dost.aisetup.tna1.dto;
 
 import jakarta.validation.constraints.NotBlank;

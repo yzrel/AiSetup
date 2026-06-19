@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { ApiError } from "../api/client";
 
 /** User-facing message for failed AI generation API calls. */

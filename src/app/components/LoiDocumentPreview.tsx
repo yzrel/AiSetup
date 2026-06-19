@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useRef } from "react";
 import { Printer } from "lucide-react";
 import type { LoiDocumentResponse } from "../api/types";

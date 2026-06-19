@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { cn } from "./utils";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {

@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 // Client community portal — currently disabled.
 // Applicants use Register → Login → aiSETUP application workflow instead.
 // See App.tsx (ClientPortal import/routing commented out).

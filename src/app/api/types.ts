@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 /** DTO shapes aligned with planned Spring Boot REST API */
 
 export type ApiRole = "applicant" | "agent" | "admin";

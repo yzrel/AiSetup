@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import React, { useState, useEffect } from "react";
 import {
   BarChart,
@@ -50,6 +54,13 @@ import {
   getApplicantDashboardSteps,
   isAwaitingStaffReview,
 } from "../utils/applicantProgress";
+import {
+  getOfficeContact,
+  resolveApplicantOfficeId,
+  resolveApplicantProvince,
+} from "../utils/provincialOffice";
+import { notificationStore } from "../store/notificationStore";
+import { timeAgo } from "../utils/timeAgo";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 
 // ── Payment Monitoring Data ───────────────────────────────────────────────────
@@ -278,29 +289,6 @@ const recentApps = [
     amount: "₱5.0M",
     region: REGION_12_PROVINCES[3],
     module: "Step 1",
-  },
-];
-
-const alerts = [
-  {
-    type: "warning",
-    msg: "3 applications pending RTEC evaluation for over 30 days",
-    time: "2h ago",
-  },
-  {
-    type: "info",
-    msg: "New LandBank account verification required for 5 enterprises",
-    time: "4h ago",
-  },
-  {
-    type: "success",
-    msg: "ABC Food Processing — MOA signed successfully",
-    time: "1d ago",
-  },
-  {
-    type: "warning",
-    msg: "PDC payment overdue: XYZ Manufacturing Co.",
-    time: "2d ago",
   },
 ];
 
@@ -967,13 +955,27 @@ export function Dashboard({
   const [, bump] = useState(0);
 
   useEffect(() => {
-    if (!isClientView) return;
-    return applicantStore.subscribe(() => bump((n) => n + 1));
-  }, [isClientView]);
+    const unsubs = [
+      applicantStore.subscribe(() => bump((n) => n + 1)),
+      notificationStore.subscribe(() => bump((n) => n + 1)),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, []);
 
   const application = resolveApplicantForUser(user);
   const progressSteps = getApplicantDashboardSteps(application);
   const awaitingReview = isAwaitingStaffReview(application);
+  const userNotifications = notificationStore.getForUser(user);
+  const unreadNotifications = userNotifications.filter((n) => !n.read);
+  const awaitingRequirementsReview =
+    !!application?.moduleData?.documentsSubmitted &&
+    !application?.moduleData?.staffDecision;
+  const provincialOffice = application
+    ? getOfficeContact(resolveApplicantOfficeId(application))
+    : null;
+  const applicantProvince = application
+    ? resolveApplicantProvince(application)
+    : "";
   const [activeTab, setActiveTab] = useState<DashboardTab>(
     allowedTabs[0] ?? "overview",
   );
@@ -1057,11 +1059,12 @@ export function Dashboard({
               trend="Registered"
             />
             <StatCard
-              label="Assigned Agent"
-              value="Pending"
-              sub="Will be assigned after review"
+              label="Provincial S&T Office"
+              value={applicantProvince ? applicantProvince.split(" ")[0] : "—"}
+              sub={provincialOffice?.name ?? "Based on your province"}
               icon={PhoneCall}
               color="bg-amber-500"
+              trend={provincialOffice?.phone ?? "Region XII"}
             />
           </>
         ) : (
@@ -1113,13 +1116,21 @@ export function Dashboard({
               {awaitingReview && (
                 <div className="mt-4 mb-2 flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
                   <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-900">
-                      Awaiting DOST review
+                  <div className="text-sm text-amber-800">
+                    <p className="font-semibold">Under review by DOST</p>
+                    <p className="mt-0.5">
+                      Your application is with DOST personnel for evaluation. You will be notified when you can proceed.
                     </p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Your submission is with DOST Region XII for RTEC evaluation
-                      and approval. You will be notified when the next step is ready.
+                  </div>
+                </div>
+              )}
+              {awaitingRequirementsReview && !awaitingReview && (
+                <div className="mt-4 mb-2 flex items-start gap-3 p-4 rounded-xl border border-blue-200 bg-blue-50">
+                  <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-semibold">Requirements submitted</p>
+                    <p className="mt-0.5">
+                      {provincialOffice?.name ?? "Your provincial office"} is reviewing your documentary requirements.
                     </p>
                   </div>
                 </div>
@@ -1163,6 +1174,28 @@ export function Dashboard({
                 Use the sidebar or tap a step above to continue your application.
                 DOST will review assessments and approvals on your behalf.
               </p>
+              {userNotifications.length > 0 && (
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    Recent notifications
+                  </p>
+                  <div className="space-y-2">
+                    {userNotifications.slice(0, 3).map((n) => (
+                      <div
+                        key={n.id}
+                        className={`text-sm p-3 rounded-xl border ${
+                          !n.read
+                            ? "bg-blue-50 border-blue-100"
+                            : "bg-gray-50 border-gray-100"
+                        }`}
+                      >
+                        <p className="font-semibold text-gray-800">{n.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -1370,43 +1403,49 @@ export function Dashboard({
                 </SectionTitle>
                 <span className="text-[10px] bg-red-50 text-red-500 border border-red-100 font-bold px-2 py-0.5 rounded-full">
                   {
-                    alerts.filter((a) => a.type === "warning")
-                      .length
+                    unreadNotifications.filter(
+                      (n) =>
+                        n.urgent ||
+                        n.kind === "warning" ||
+                        n.kind === "action",
+                    ).length
                   }{" "}
                   warnings
                 </span>
               </div>
               <div className="space-y-2.5">
-                {alerts.slice(0, 3).map((alert, i) => (
+                {userNotifications.slice(0, 3).map((alert) => (
                   <div
-                    key={i}
+                    key={alert.id}
                     className={`flex gap-2.5 p-2.5 rounded-lg text-xs ${
-                      alert.type === "warning"
+                      alert.kind === "warning" || alert.kind === "action"
                         ? "bg-amber-50 border border-amber-100"
-                        : alert.type === "success"
+                        : alert.kind === "success"
                           ? "bg-emerald-50 border border-emerald-100"
                           : "bg-blue-50 border border-blue-100"
                     }`}
                   >
                     <AlertCircle
                       className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                        alert.type === "warning"
+                        alert.kind === "warning" || alert.kind === "action"
                           ? "text-amber-500"
-                          : alert.type === "success"
+                          : alert.kind === "success"
                             ? "text-emerald-500"
                             : "text-blue-500"
                       }`}
                     />
                     <div>
-                      <p className="text-gray-700 leading-snug">
-                        {alert.msg}
-                      </p>
+                      <p className="font-semibold text-gray-800">{alert.title}</p>
+                      <p className="text-gray-700 leading-snug">{alert.message}</p>
                       <p className="text-gray-400 mt-0.5">
-                        {alert.time}
+                        {timeAgo(alert.timestamp)}
                       </p>
                     </div>
                   </div>
                 ))}
+                {userNotifications.length === 0 && (
+                  <p className="text-xs text-gray-400">No recent alerts.</p>
+                )}
               </div>
             </div>
           </div>
@@ -1755,19 +1794,21 @@ export function Dashboard({
             {[
               {
                 label: "Warnings",
-                count: 2,
+                count: userNotifications.filter(
+                  (n) => n.kind === "warning" || n.kind === "action",
+                ).length,
                 color:
                   "bg-amber-50 border-amber-200 text-amber-700",
               },
               {
-                label: "Notifications",
-                count: 1,
+                label: "Unread",
+                count: unreadNotifications.length,
                 color:
                   "bg-blue-50 border-blue-200 text-blue-700",
               },
               {
                 label: "Completed",
-                count: 1,
+                count: userNotifications.filter((n) => n.kind === "success").length,
                 color:
                   "bg-emerald-50 border-emerald-200 text-emerald-700",
               },
@@ -1783,48 +1824,72 @@ export function Dashboard({
               </div>
             ))}
           </div>
-          {alerts.map((alert, i) => (
+          {userNotifications.map((alert) => (
             <div
-              key={i}
+              key={alert.id}
               className={`flex gap-3 p-4 rounded-xl border text-sm ${
-                alert.type === "warning"
+                alert.kind === "warning" || alert.kind === "action"
                   ? "bg-amber-50 border-amber-200"
-                  : alert.type === "success"
+                  : alert.kind === "success"
                     ? "bg-emerald-50 border-emerald-200"
                     : "bg-blue-50 border-blue-200"
               }`}
             >
               <AlertCircle
                 className={`w-5 h-5 shrink-0 mt-0.5 ${
-                  alert.type === "warning"
+                  alert.kind === "warning" || alert.kind === "action"
                     ? "text-amber-500"
-                    : alert.type === "success"
+                    : alert.kind === "success"
                       ? "text-emerald-500"
                       : "text-blue-500"
                 }`}
               />
               <div className="flex-1">
-                <p className="text-gray-800 font-medium">
-                  {alert.msg}
-                </p>
+                <p className="text-gray-800 font-medium">{alert.title}</p>
+                <p className="text-gray-600 text-sm mt-0.5">{alert.message}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {alert.time}
+                  {timeAgo(alert.timestamp)}
                 </p>
               </div>
-              <button className="text-xs font-semibold text-gray-500 hover:text-gray-700 shrink-0">
-                Dismiss
-              </button>
+              {!alert.read && (
+                <button
+                  type="button"
+                  onClick={() => notificationStore.markRead(alert.id)}
+                  className="text-xs font-semibold text-gray-500 hover:text-gray-700 shrink-0"
+                >
+                  Mark read
+                </button>
+              )}
             </div>
           ))}
+          {userNotifications.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-8">No notifications.</p>
+          )}
         </div>
       )}
 
       {/* ── Applicant Registry Tab ── */}
       {activeTab === "registry" && authStore.canAccessDashboardTab(user.role, "registry") && (
-        <ApplicantListView
-          module="prescreening"
-          title="All Applicants"
-        />
+        <div className="space-y-4">
+          {onNavigate && (
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+              <p className="text-sm text-gray-600">
+                Manage client case files, assessments, and provincial scope in Clients.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate("clients")}
+                className="text-sm font-bold text-[#0C2461] hover:underline shrink-0"
+              >
+                Open Clients →
+              </button>
+            </div>
+          )}
+          <ApplicantListView
+            module="prescreening"
+            title="All Applicants"
+          />
+        </div>
       )}
     </div>
   );

@@ -1,3 +1,6 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
 package ph.gov.dost.aisetup.loi;
 
 import ph.gov.dost.aisetup.loi.dto.AddresseeDto;

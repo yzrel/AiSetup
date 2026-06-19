@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { SETUP_PRIORITY_SECTORS } from "../constants/setupBrochure";
 
 type PrioritySectorSelectProps = {

@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect } from "react";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { applicantStore } from "../store/applicantStore";

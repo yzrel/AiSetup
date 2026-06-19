@@ -1,3 +1,6 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
 package ph.gov.dost.aisetup.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;

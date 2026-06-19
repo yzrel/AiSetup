@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { authStore, AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
@@ -6,7 +10,6 @@ import {
   EMPTY_TNA_TABLES,
   buildInitialTnaForm,
 } from "../store/tnaFormDefaults";
-import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import type { Tna1DocumentResponse } from "../api/types";
@@ -16,6 +19,10 @@ import {
   buildTna1GenerationPayload,
   mergeAiTnaSuggestions,
 } from "../utils/tnaForm01";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { appendStaffAssessment } from "../utils/clientAssessment";
+import { notifyTna1Submitted } from "../utils/notificationHelpers";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 
@@ -289,9 +296,8 @@ export function TechnologyNeedsAssessment1({
   onSubmitSuccess?: () => void;
 }) {
   const [step, setStep] = useState("identification");
-  const isStaff = user ? authStore.isStaff(user.role) : false;
+  const { applicant, isStaff } = useStaffApplicant(user);
   const [staffMode, setStaffMode] = useState(false);
-  const [applicant, setApplicant] = useState<Applicant | null>(null);
   const [saveNotice, setSaveNotice] = useState("");
 
   const [form, setForm] = useState(() => buildInitialTnaForm(null));
@@ -306,7 +312,7 @@ export function TechnologyNeedsAssessment1({
   const setT = (key, rows) => setTables(t => ({ ...t, [key]: rows }));
 
   const loadApplicantData = useCallback((app: Applicant | null) => {
-    setApplicant(app);
+    if (!app) return;
     const saved = app?.moduleData?.tna1;
     const merged = mergeTnaSavedData(app, saved);
     setForm(merged.form);
@@ -317,8 +323,8 @@ export function TechnologyNeedsAssessment1({
   }, []);
 
   useEffect(() => {
-    loadApplicantData(resolveApplicantForUser(user));
-  }, [user?.id, user?.email, user?.applicationId, user?.role, loadApplicantData]);
+    loadApplicantData(applicant);
+  }, [applicant?.id, loadApplicantData]);
 
   const saveTnaDraft = useCallback(
     (submitted = false) => {
@@ -337,7 +343,6 @@ export function TechnologyNeedsAssessment1({
           },
         },
       });
-      setApplicant(applicantStore.getById(applicant.id) ?? applicant);
       setSaveNotice(submitted ? "TNA Form 01 submitted." : "Draft saved.");
       setTimeout(() => setSaveNotice(""), 3000);
     },
@@ -374,7 +379,6 @@ export function TechnologyNeedsAssessment1({
         tna1Document: snapshot,
       },
     });
-    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
   };
 
   const handleGenerateTna1 = async () => {
@@ -593,29 +597,9 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
           {saveNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{saveNotice}</p>
           )}
-          {isStaff && (
-            <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
-              <label className="text-[10px] font-bold uppercase tracking-wide text-white/60 block mb-1.5">
-                Review applicant TNA Form 01
-              </label>
-              <select
-                value={applicant?.id ?? ""}
-                onChange={(e) => {
-                  const app = applicantStore.getById(e.target.value);
-                  loadApplicantData(app ?? null);
-                }}
-                className="w-full text-sm rounded-lg px-3 py-2 text-gray-800 border-0"
-              >
-                <option value="">Select enterprise…</option>
-                {applicantStore.getAll().map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.enterpriseName} — {a.applicationId}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <StaffApplicantPicker user={user} label="Review applicant TNA Form 01" />
         </div>
+        <StaffApplicantBanner user={user} />
 
         {/* ══════════════════════════════════════════════════════════════════
             STEP 1 — Enterprise Identification
@@ -1330,6 +1314,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   else {
                     saveTnaDraft(true);
                     setApplicantSubmitted(true);
+                    if (applicant) notifyTna1Submitted(applicant);
                     goToStep("complete");
                   }
                 }}
@@ -1428,7 +1413,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
         {/* ══════════════════════════════════════════════════════════════════
             STEP 7 — Staff Review
         ══════════════════════════════════════════════════════════════════ */}
-        {step === "staff-review" && (
+        {step === "staff-review" && isStaff && (
           <div className="p-6 space-y-5">
             {!staffMode ? (
               <div className="text-center py-16 space-y-4">

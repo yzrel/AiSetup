@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 // ── Client Portal Store ────────────────────────────────────────────────────────
 // Purely client-to-client. DOST has NO relation to this module.
 

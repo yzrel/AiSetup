@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import {
   REGION_12_LABEL,
   REGION_12_PROVINCES,
@@ -150,7 +154,7 @@ const seedApplicants: Applicant[] = [
     enterpriseType: 'Services',
     msmeSize: 'Medium',
     assetSize: '₱32,000,000',
-    region: REGION_12_PROVINCES[4],
+    region: 'General Santos City',
     address: '456 J. Catolico Ave., General Santos City',
     currentModule: 'tna2',
     qualified: true,
@@ -159,7 +163,7 @@ const seedApplicants: Applicant[] = [
     moduleData: {
       password: 'Demo@1234',
       accountStatus: 'active',
-      province: 'South Cotabato',
+      province: 'General Santos City',
       projectDescription: 'Cloud-based inventory and order management system for retail operations.',
       expectedOutcome: 'Reduce order processing time by 50% and improve stock accuracy.',
       productServices: 'Software development and IT consulting',
@@ -306,7 +310,11 @@ const seedApplicants: Applicant[] = [
     qualified: true,
     submittedAt: 'Apr 20, 2024',
     lastUpdated: 'Apr 22, 2024',
-    moduleData: {},
+    moduleData: {
+      password: 'Demo@1234',
+      accountStatus: 'active',
+      province: 'Sultan Kudarat',
+    },
   },
   {
     id: '4',
@@ -329,7 +337,12 @@ const seedApplicants: Applicant[] = [
     qualified: true,
     submittedAt: 'Apr 18, 2024',
     lastUpdated: 'Apr 24, 2024',
-    moduleData: {},
+    moduleData: {
+      password: 'Demo@1234',
+      accountStatus: 'active',
+      province: 'Sarangani',
+      documentsSubmitted: true,
+    },
   },
 ];
 

@@ -1,4 +1,10 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 // ── Auth Store ─────────────────────────────────────────────────────────────────
+
+import { staffContextStore } from "./staffContextStore";
 
 export type UserRole = "applicant" | "client" | "agent" | "admin";
 
@@ -18,6 +24,7 @@ export type AdminView =
   | "landbank-withdrawal"
   | "procurement-liquidation"
   | "refund-delinquent"
+  | "clients"
   | "account-management"
   | "my-account";
 
@@ -36,6 +43,9 @@ export interface AuthUser {
   verified: boolean;
   /** Which portal the user signed in through */
   portal?: LoginPortal;
+  /** Provincial office scope for staff */
+  officeId?: string;
+  assignedProvinces?: string[];
 }
 
 /** Views each role may access in the admin shell */
@@ -53,6 +63,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "landbank-withdrawal": ["admin", "agent", "client", "applicant"],
   "procurement-liquidation": ["admin", "agent", "client", "applicant"],
   "refund-delinquent": ["admin"],
+  clients: ["admin", "agent"],
   "account-management": ["admin", "agent"],
   "my-account": ["client", "applicant"],
 };
@@ -88,6 +99,7 @@ export const authStore = {
 
   logout: () => {
     currentUser = null;
+    staffContextStore.clearSelection();
     notify();
   },
 

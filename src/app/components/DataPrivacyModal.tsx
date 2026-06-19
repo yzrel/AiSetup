@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { X, Shield, FileText, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 

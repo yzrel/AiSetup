@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect } from 'react';
 import {
   DOST_REGION_12_OFFICE,
@@ -58,12 +62,15 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           id: 'agent-001', email, firstName: 'DOST', middleName: '', lastName: 'Agent',
           role: 'agent', enterpriseName: `${DOST_REGION_12_OFFICE} — Provincial S&T Center`, verified: true,
           portal: 'admin',
+          officeId: 'south-cotabato',
+          assignedProvinces: ['South Cotabato'],
         });
       } else if (email === 'admin@dost.gov.ph' && password === 'admin123') {
         authStore.login({
           id: 'admin-001', email, firstName: 'DOST', middleName: '', lastName: 'Admin',
           role: 'admin', enterpriseName: `${DOST_REGION_12_OFFICE} — Regional Office`, verified: true,
           portal: 'admin',
+          officeId: 'regional',
         });
       } else {
         setError('Invalid credentials. Only authorized DOST personnel can access this portal.');

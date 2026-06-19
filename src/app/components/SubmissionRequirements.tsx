@@ -1,13 +1,20 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect, useRef } from "react";
 import {
   Upload, FileText, CheckCircle, AlertCircle, X, Info,
   ClipboardCheck, Eye, UserCheck, ShieldCheck, RefreshCw,
   ChevronRight, Building, Banknote, ArrowRight, BadgeCheck,
-  AlertTriangle, Pencil, Send,
+  AlertTriangle, Pencil, Send, Clock,
 } from "lucide-react";
 import { applicantStore, Applicant } from "../store/applicantStore";
-import { AuthUser } from "../store/authStore";
-import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { AuthUser, authStore } from "../store/authStore";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { appendStaffAssessment } from "../utils/clientAssessment";
+import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
 
 interface SubmissionRequirementsProps {
   user?: AuthUser | null;
@@ -91,9 +98,10 @@ function StepHeader({ current, steps, maxReached }: { current: StepId; steps: ty
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequirementsProps = {}) {
+  const { applicant, isStaff } = useStaffApplicant(user);
   const [step, setStep]         = useState<StepId>("documents");
   const [maxReached, setMaxReached] = useState(0);
-  const [applicant, setApplicant] = useState<Applicant | null>(null);
+  const [awaitingStaffReview, setAwaitingStaffReview] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [declarationChecked, setDeclarationChecked] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -143,12 +151,19 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
 
   // Auto-load applicant from store
   useEffect(() => {
-    setApplicant(resolveApplicantForUser(user));
+    if (applicant?.moduleData?.documentsSubmitted && !isStaff) {
+      setAwaitingStaffReview(true);
+    }
+    if (applicant?.moduleData?.staffDecision === "needs-revision") {
+      setStep("changes-requested");
+    } else if (isStaff && applicant?.moduleData?.documentsSubmitted) {
+      setStep("staff-review");
+    }
 
     const init: Record<string, { status: "ok" | "flagged" | ""; remark: string }> = {};
     documents.forEach(d => { init[d.id] = { status: "", remark: "" }; });
     setStaffRemarks(init);
-  }, [user?.id, user?.email, user?.role]);
+  }, [applicant?.id, isStaff]);
 
   const advanceStep = (next: StepId) => {
     const idx = STEPS.findIndex(s => s.id === next);
@@ -181,6 +196,33 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const rtecReady =
     rtec.evaluatorName && rtec.evaluationDate && rtec.overallScore &&
     rtec.findings && rtec.recommendations && rtec.rtecQualified !== null;
+
+  const handleApplicantSubmit = () => {
+    if (!applicant) return;
+    applicantStore.update(applicant.id, {
+      moduleData: {
+        ...applicant.moduleData,
+        documentsSubmitted: true,
+        documentsSubmittedList: documents.filter(d => d.uploaded).map(d => d.name),
+        requirementsSubmittedAt: new Date().toISOString(),
+      },
+    });
+    setAwaitingStaffReview(true);
+    notifyRequirementsSubmitted(applicant);
+  };
+
+  const recordRequirementsAssessment = (decision: string, remarks?: string) => {
+    if (!applicant || !user) return;
+    applicantStore.update(applicant.id, {
+      ...appendStaffAssessment(applicant, {
+        stage: "requirements",
+        decision,
+        assessedBy: user.email,
+        assessedAt: new Date().toISOString(),
+        remarks,
+      }),
+    });
+  };
 
   // Final submit
   const handleFinalSubmit = () => {
@@ -216,14 +258,32 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               <p className="text-white/60 text-sm">Step 4 — Documentary Submission & Verification</p>
             </div>
           </div>
-          <StepHeader current={step} steps={STEPS} maxReached={maxReached} />
+          <StepHeader current={step} steps={isStaff ? STEPS : STEPS.filter(s => s.id === "documents" || s.id === "changes-requested")} maxReached={maxReached} />
+          {isStaff && (
+            <StaffApplicantPicker
+              user={user}
+              label="Review applicant requirements"
+              className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20"
+            />
+          )}
         </div>
+        <StaffApplicantBanner user={user} />
 
         {/* ══════════════════════════════════════════════════════════════════
             STEP 1 — DOCUMENT SUBMISSION
         ══════════════════════════════════════════════════════════════════ */}
         {step === "documents" && (
           <div className="p-6 space-y-6">
+
+            {awaitingStaffReview && !isStaff && (
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-semibold mb-0.5">Submitted — Awaiting DOST Review</p>
+                  <p>Your requirements have been submitted. Your provincial DOST office will verify your documents and notify you if revisions are needed.</p>
+                </div>
+              </div>
+            )}
 
             {/* Auto-fill notice */}
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
@@ -376,12 +436,16 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 {draftSaved ? "✓ Saved!" : "Save Draft"}
               </button>
               <button
-                onClick={() => advanceStep("staff-review")}
-                disabled={!allRequiredUp || !declarationChecked}
+                onClick={() => {
+                  if (isStaff) advanceStep("staff-review");
+                  else handleApplicantSubmit();
+                }}
+                disabled={!allRequiredUp || !declarationChecked || (awaitingStaffReview && !isStaff)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
                 style={{ background: "#059669" }}
               >
-                <Send className="w-4 h-4" /> Submit All Requirements
+                <Send className="w-4 h-4" />{" "}
+                {isStaff ? "Continue to Staff Review" : awaitingStaffReview ? "Submitted" : "Submit All Requirements"}
               </button>
             </div>
           </div>
@@ -390,7 +454,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         {/* ══════════════════════════════════════════════════════════════════
             STEP 2 — STAFF VERIFICATION
         ══════════════════════════════════════════════════════════════════ */}
-        {step === "staff-review" && (
+        {step === "staff-review" && isStaff && (
           <div className="p-6 space-y-6">
             <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-xl p-4">
               <ShieldCheck className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
@@ -536,7 +600,17 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             <div className="flex gap-3">
               <button onClick={() => advanceStep("documents")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
               <button
-                onClick={() => advanceStep(staffDecision === "approved" ? "rtec" : "changes-requested")}
+                onClick={() => {
+                  recordRequirementsAssessment(
+                    staffDecision,
+                    staffNotes || undefined,
+                  );
+                  notifyRequirementsDecision(
+                    applicant!,
+                    staffDecision === "approved" ? "approved" : "needs-revision",
+                  );
+                  advanceStep(staffDecision === "approved" ? "rtec" : "changes-requested");
+                }}
                 disabled={!staffDecisionReady}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: staffDecision === "approved" ? "#059669" : "#dc2626" }}
@@ -637,7 +711,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         {/* ══════════════════════════════════════════════════════════════════
             STEP 4 — RTEC GENERATION REPORT
         ══════════════════════════════════════════════════════════════════ */}
-        {step === "rtec" && (
+        {step === "rtec" && isStaff && (
           <div className="p-6 space-y-6">
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <ClipboardCheck className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -786,7 +860,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         {/* ══════════════════════════════════════════════════════════════════
             STEP 5 — ROUTING DECISION
         ══════════════════════════════════════════════════════════════════ */}
-        {step === "routing" && (
+        {step === "routing" && isStaff && (
           <div className="p-6 space-y-6">
 
             {/* RTEC report summary */}

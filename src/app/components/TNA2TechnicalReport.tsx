@@ -1,8 +1,15 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import { FileText, CheckCircle, Clock, Users } from "lucide-react";
-import { authStore, AuthUser } from "../store/authStore";
+import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
-import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { StaffApplicantBanner } from "./StaffApplicantPicker";
+import { appendStaffAssessment } from "../utils/clientAssessment";
+import { notifyTna2Published } from "../utils/notificationHelpers";
 import { api, ApiError } from "../api/client";
 import type { Tna2DocumentResponse } from "../api/types";
 import {
@@ -28,8 +35,8 @@ export function TNA2TechnicalReport({
   user,
   onSubmitSuccess,
 }: TNA2TechnicalReportProps = {}) {
-  const isStaff = user ? authStore.isStaff(user.role) : false;
-  const [applicant, setApplicant] = useState<Applicant | null>(null);
+  const { applicant, isStaff, scopedApplicants, setSelectedApplicantId } =
+    useStaffApplicant(user);
   const [draft, setDraft] = useState<Tna2DocumentResponse | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -38,20 +45,14 @@ export function TNA2TechnicalReport({
   const [editSavedNotice, setEditSavedNotice] = useState("");
 
   const loadApplicant = useCallback((app: Applicant | null) => {
-    setApplicant(app);
     const stored = getTna2Draft(app);
     setDraft(stored ?? null);
     setEditMode(false);
   }, []);
 
   useEffect(() => {
-    if (isStaff) {
-      const all = applicantStore.getAll();
-      loadApplicant(all.find((a) => a.qualified) ?? all[0] ?? null);
-    } else {
-      loadApplicant(resolveApplicantForUser(user));
-    }
-  }, [user?.id, user?.email, isStaff, loadApplicant]);
+    loadApplicant(applicant);
+  }, [applicant?.id, loadApplicant]);
 
   useEffect(() => {
     return applicantStore.subscribe(() => {
@@ -94,14 +95,12 @@ export function TNA2TechnicalReport({
     saveTna2Draft(applicant.id, document);
     setDraft(document);
     setEditMode(true);
-    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
     setGenerating(false);
   };
 
   const handleSaveEdits = () => {
     if (!applicant || !draft) return;
     saveTna2Draft(applicant.id, draft);
-    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
     setEditSavedNotice("Draft saved.");
     setTimeout(() => setEditSavedNotice(""), 3000);
   };
@@ -114,7 +113,18 @@ export function TNA2TechnicalReport({
     if (!applicant || !draft) return;
     saveTna2Draft(applicant.id, draft);
     publishTna2Document(applicant.id, draft);
-    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
+    if (user) {
+      applicantStore.update(applicant.id, {
+        ...appendStaffAssessment(applicant, {
+          stage: "tna2",
+          decision: "published",
+          assessedBy: user.email,
+          assessedAt: new Date().toISOString(),
+          remarks: "TNA Form 02 published to applicant",
+        }),
+      });
+    }
+    notifyTna2Published(applicant);
     setPublishNotice("TNA Form 02 published to applicant.");
     setTimeout(() => setPublishNotice(""), 4000);
   };
@@ -138,14 +148,11 @@ export function TNA2TechnicalReport({
             </div>
             <select
               value={applicant?.id ?? ""}
-              onChange={(e) => {
-                const app = applicantStore.getById(e.target.value);
-                loadApplicant(app ?? null);
-              }}
+              onChange={(e) => setSelectedApplicantId(e.target.value || null)}
               className="w-full text-sm rounded-lg px-3 py-2 border border-gray-200"
             >
               <option value="">Select enterprise…</option>
-              {applicantStore.getAll().map((a) => (
+              {scopedApplicants.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.enterpriseName} — {a.applicationId}
                 </option>

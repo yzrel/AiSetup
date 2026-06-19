@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useEffect, useState } from "react";
 import { User, Lock, Building2, CheckCircle, AlertCircle } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";

@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 /** SETUP 4.0 brochure content — DOST Region XII */
 
 export const SETUP_4_TAGLINE =

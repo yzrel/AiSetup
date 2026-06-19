@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import * as React from "react";
 
 import { cn } from "./utils";

@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { Plus, Trash2 } from "lucide-react";
 import type {
   Tna2DocumentResponse,

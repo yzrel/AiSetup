@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { API_BASE_URL } from "./config";
 
 export class ApiError extends Error {

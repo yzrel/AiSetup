@@ -1,3 +1,6 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
 package ph.gov.dost.aisetup.config;
 
 import org.springframework.beans.factory.annotation.Value;

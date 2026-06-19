@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { Printer } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Tna2DocumentResponse } from "../api/types";

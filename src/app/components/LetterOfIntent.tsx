@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect, useRef } from "react";
 import {
   FileText,
@@ -17,7 +21,8 @@ import {
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { AuthUser, authStore } from "../store/authStore";
-import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
@@ -122,9 +127,8 @@ function ValidationRow({ label, value, passed }: { label: string; value: string;
 }
 
 export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = {}) {
-  const isStaff = user ? authStore.isStaff(user.role) : false;
+  const { applicant, isStaff } = useStaffApplicant(user);
   const [step, setStep] = useState<StepId>("review");
-  const [applicant, setApplicant] = useState<Applicant | null>(null);
 
   const [additional, setAdditional] = useState({
     dateEstablished: "",
@@ -171,7 +175,6 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   const [generateError, setGenerateError] = useState<string | null>(null);
 
   const loadApplicantData = (app: Applicant | null) => {
-    setApplicant(app);
     if (!app) return;
     setAdditional((prev) => buildLoiAdditionalFromApplicant(app, prev));
 
@@ -210,8 +213,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   };
 
   useEffect(() => {
-    loadApplicantData(resolveApplicantForUser(user));
-  }, [user?.id, user?.email, user?.role]);
+    loadApplicantData(applicant);
+  }, [applicant?.id]);
 
   const setAdd = (k: string, v: string) => setAdditional((prev) => ({ ...prev, [k]: v }));
   const setGA = (k: string, v: boolean | string) => setGeneralAgreement((prev) => ({ ...prev, [k]: v }));
@@ -378,29 +381,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             </div>
           </div>
           <StepHeader current={step} steps={STEPS} />
-          {isStaff && (
-            <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
-              <label className="text-[10px] font-bold uppercase tracking-wide text-white/60 block mb-1.5">
-                Review applicant LOI
-              </label>
-              <select
-                value={applicant?.id ?? ""}
-                onChange={(e) => {
-                  const app = applicantStore.getById(e.target.value);
-                  loadApplicantData(app ?? null);
-                }}
-                className="w-full text-sm rounded-lg px-3 py-2 text-gray-800 border-0"
-              >
-                <option value="">Select enterprise…</option>
-                {applicantStore.getAll().map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.enterpriseName} — {a.applicationId}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <StaffApplicantPicker user={user} label="Review applicant LOI" />
         </div>
+        <StaffApplicantBanner user={user} />
 
         {/* ────────────────────────────────────────────────────────────────────
             STEP 1 — Review Auto-filled Info

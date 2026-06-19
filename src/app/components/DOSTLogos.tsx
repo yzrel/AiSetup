@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 /** Official DOST image assets */
 
 export const DOST_LOGO_MARK = "/assets/dost-logo-mark.png";

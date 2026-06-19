@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect } from "react";
 import { REGION_12_LABEL } from "../constants/region12";
 import { isSetupPrioritySector } from "../constants/setupBrochure";
@@ -6,6 +10,7 @@ import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
+import { notifyPrescreeningResult } from "../utils/notificationHelpers";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -107,8 +112,11 @@ export function PrescreeningForm({
 
     if (existing) {
       applicantStore.update(existing.id, payload);
+      const saved = applicantStore.getById(existing.id);
+      if (saved) notifyPrescreeningResult(saved, sectorQualified);
     } else {
-      applicantStore.add(payload);
+      const added = applicantStore.add(payload);
+      notifyPrescreeningResult(added, sectorQualified);
     }
   };
 

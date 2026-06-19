@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { Applicant } from "./applicantStore";
 import { yearFromDateEstablished } from "../utils/applicantPrefill";
 

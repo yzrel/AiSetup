@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { Applicant } from "../store/applicantStore";
 
 export function normalizeRegistrationType(value: string): string {

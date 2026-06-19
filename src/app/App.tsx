@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { useState, useEffect } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { PrescreeningForm } from "./components/PrescreeningForm";
@@ -13,6 +17,9 @@ import { LandBankAndWithdrawal } from "./components/LandBankAndWithdrawal";
 import { ProcurementAndLiquidation } from "./components/ProcurementAndLiquidation";
 import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
 import { AccountManagement } from "./components/AccountManagement";
+import { ClientManagement } from "./components/ClientManagement";
+import { StaffClientBar } from "./components/StaffClientBar";
+import { NotificationBell } from "./components/NotificationPanel";
 import { MyAccount } from "./components/MyAccount";
 import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
@@ -21,6 +28,7 @@ import { LandingPage } from "./components/LandingPage";
 // import { ClientPortal } from "./components/ClientPortal";
 import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
 import { applicantStore } from "./store/applicantStore";
+import { staffContextStore } from "./store/staffContextStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView } from "./utils/applicantProgress";
 import {
@@ -34,10 +42,10 @@ import {
   BarChart2,
   Settings,
   LogOut,
-  Bell,
   Search,
   Cpu,
   User,
+  Users,
   Menu,
   X,
   Shield,
@@ -201,6 +209,12 @@ const menuGroups = [
     label: "Administration",
     items: [
       {
+        id: "clients" as ViewType,
+        label: "Clients",
+        icon: Users,
+        module: "Admin",
+      },
+      {
         id: "account-management" as ViewType,
         label: "Account Management",
         icon: Settings,
@@ -265,6 +279,10 @@ const viewTitles: Record<
   "refund-delinquent": {
     title: "Refund & Delinquent Management",
     subtitle: "Modules 15 & 17 — Repayment Monitoring",
+  },
+  clients: {
+    title: "Clients",
+    subtitle: "Overview, case files & assessment",
   },
   "account-management": {
     title: "Account Management",
@@ -537,6 +555,7 @@ export default function App() {
   // }
 
   const isRestrictedClient = authStore.isClientRole(user.role);
+  const isStaff = authStore.isStaff(user.role);
   const { title, subtitle } = viewTitles[currentView];
 
   return (
@@ -635,10 +654,7 @@ export default function App() {
             </div>
 
             {/* Bell */}
-            <button className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors shrink-0">
-              <Bell className="w-4 h-4 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-            </button>
+            <NotificationBell user={user} onNavigate={navigate} />
 
             <div className="w-px h-6 bg-gray-200 shrink-0" />
 
@@ -719,6 +735,14 @@ export default function App() {
               Evaluation and approval modules require DOST personnel.
             </p>
           </div>
+        )}
+
+        {isStaff && (
+          <StaffClientBar
+            user={user}
+            onNavigate={navigate}
+            onOpenClients={() => navigate("clients")}
+          />
         )}
 
         {/* ── Page content ── */}
@@ -851,6 +875,9 @@ export default function App() {
               )}
               {currentView === "refund-delinquent" && (
                 <RefundAndDelinquent />
+              )}
+              {currentView === "clients" && (
+                <ClientManagement user={user} onNavigate={navigate} />
               )}
               {currentView === "account-management" && (
                 <AccountManagement user={user} />

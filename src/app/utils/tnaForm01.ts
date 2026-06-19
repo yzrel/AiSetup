@@ -1,3 +1,7 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
 import { Applicant } from "../store/applicantStore";
 import { EMPTY_TNA_TABLES } from "../store/tnaFormDefaults";
 import type { Tna1DocumentResponse, Tna1GenerationRequest } from "../api/types";
