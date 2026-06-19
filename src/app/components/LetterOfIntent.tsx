@@ -16,10 +16,11 @@ import {
 } from "lucide-react";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
-import { AuthUser } from "../store/authStore";
+import { AuthUser, authStore } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import { api, ApiError } from "../api/client";
+import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import type { LoiDocumentResponse } from "../api/types";
 import {
   buildLoiGenerationPayload,
@@ -121,6 +122,7 @@ function ValidationRow({ label, value, passed }: { label: string; value: string;
 }
 
 export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = {}) {
+  const isStaff = user ? authStore.isStaff(user.role) : false;
   const [step, setStep] = useState<StepId>("review");
   const [applicant, setApplicant] = useState<Applicant | null>(null);
 
@@ -168,8 +170,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const app = resolveApplicantForUser(user);
+  const loadApplicantData = (app: Applicant | null) => {
     setApplicant(app);
     if (!app) return;
     setAdditional((prev) => buildLoiAdditionalFromApplicant(app, prev));
@@ -202,7 +203,14 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
           commitSignature: saved.signature?.typedName || prev.commitSignature,
         }));
       }
+    } else {
+      setLoiDocument(null);
+      setStep("review");
     }
+  };
+
+  useEffect(() => {
+    loadApplicantData(resolveApplicantForUser(user));
   }, [user?.id, user?.email, user?.role]);
 
   const setAdd = (k: string, v: string) => setAdditional((prev) => ({ ...prev, [k]: v }));
@@ -238,7 +246,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     generalAgreement.agreeRefund &&
     generalAgreement.signature.trim().length > 2;
 
-  const productionPlanComplete = !!productionPlanFile;
+  const productionPlanComplete =
+    !!productionPlanFile || !!(applicant?.moduleData?.productionPlanFile);
 
   const commitmentComplete =
     commitmentRefund.agreeRefundTerms &&
@@ -289,7 +298,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       }
     } catch (err) {
       if (err instanceof ApiError && err.status < 500) {
-        setGenerateError(err.message || "Could not generate letter. Please check your entries and try again.");
+        setGenerateError(aiGenerateErrorMessage(err, "Could not generate letter. Please check your entries and try again."));
         setGenerating(false);
         return null;
       }
@@ -369,6 +378,28 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             </div>
           </div>
           <StepHeader current={step} steps={STEPS} />
+          {isStaff && (
+            <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
+              <label className="text-[10px] font-bold uppercase tracking-wide text-white/60 block mb-1.5">
+                Review applicant LOI
+              </label>
+              <select
+                value={applicant?.id ?? ""}
+                onChange={(e) => {
+                  const app = applicantStore.getById(e.target.value);
+                  loadApplicantData(app ?? null);
+                }}
+                className="w-full text-sm rounded-lg px-3 py-2 text-gray-800 border-0"
+              >
+                <option value="">Select enterprise…</option>
+                {applicantStore.getAll().map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.enterpriseName} — {a.applicationId}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* ────────────────────────────────────────────────────────────────────

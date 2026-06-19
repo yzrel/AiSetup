@@ -5,6 +5,9 @@ import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { normalizeRegistrationType } from "../utils/applicantPrefill";
 
+const DOST_BLUE = "#0C2461";
+const DOST_MID = "#1a3a7a";
+
 export function EnterpriseRegistration({
   user,
   onOpenAccount,
@@ -92,23 +95,35 @@ export function EnterpriseRegistration({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg">
-        <div className="bg-blue-600 text-white p-6 rounded-t-lg">
-          <h1 className="text-2xl font-bold">Enterprise Registration</h1>
-          <p className="text-blue-100 text-sm mt-1">
-            Step 2 — Legal business profile for your SETUP application.
-          </p>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div
+          className="p-6 text-white"
+          style={{
+            background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)`,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+              <span className="text-blue-800 font-black text-sm">ai</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-black">Enterprise Registration</h1>
+              <p className="text-white/60 text-sm">
+                Step 2 — Legal business profile for your SETUP application
+              </p>
+            </div>
+          </div>
         </div>
 
         {saved && (
-          <div className="mx-8 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+          <div className="mx-6 mt-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm">
             Enterprise details saved. These will carry forward to Letter of
             Intent and TNA Form 01.
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
             <p className="font-semibold mb-1">Contact information</p>
             <p>

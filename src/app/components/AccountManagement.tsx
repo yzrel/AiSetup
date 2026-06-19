@@ -24,6 +24,8 @@ import {
 } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
+import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
+import type { Tna2StoredDocument } from "../api/types";
 
 interface AccountManagementProps {
   user: AuthUser;
@@ -42,6 +44,7 @@ export function AccountManagement({ user }: AccountManagementProps) {
     text: string;
   } | null>(null);
   const [showTnaPreview, setShowTnaPreview] = useState(false);
+  const [showTna2Preview, setShowTna2Preview] = useState(false);
 
   const refresh = () =>
     setAccounts(applicantStore.getRegisteredAccounts());
@@ -351,6 +354,31 @@ export function AccountManagement({ user }: AccountManagementProps) {
                           }
                         }
                         onPrint={printTnaForm01}
+                        compact
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selected.moduleData?.tna2Document && (
+                <div className="border-t border-gray-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowTna2Preview((p) => !p)}
+                    className="w-full flex items-center justify-center gap-2 border border-[#0C2461]/20 text-[#0C2461] text-sm font-bold py-2.5 rounded-xl hover:bg-blue-50 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    {showTna2Preview ? "Hide TNA Form 02" : "View TNA Form 02"}
+                  </button>
+                  {showTna2Preview && (
+                    <div className="mt-4 max-h-[480px] overflow-y-auto rounded-xl border border-gray-200">
+                      <TnaForm02Preview
+                        document={selected.moduleData.tna2Document as Tna2StoredDocument}
+                        applicationId={selected.applicationId}
+                        aiGenerated={(selected.moduleData.tna2Document as Tna2StoredDocument).aiGenerated}
+                        published={(selected.moduleData.tna2Document as Tna2StoredDocument).published}
+                        onPrint={printTnaForm02}
                         compact
                       />
                     </div>

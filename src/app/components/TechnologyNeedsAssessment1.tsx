@@ -8,6 +8,7 @@ import {
 } from "../store/tnaFormDefaults";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { api, ApiError } from "../api/client";
+import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import type { Tna1DocumentResponse } from "../api/types";
 import {
   buildLocalTna1Document,
@@ -391,7 +392,7 @@ export function TechnologyNeedsAssessment1({
       }
     } catch (err) {
       if (err instanceof ApiError && err.status < 500) {
-        setTnaGenerateError(err.message || "Could not generate form content. Please try again.");
+        setTnaGenerateError(aiGenerateErrorMessage(err, "Could not generate form content. Please try again."));
         setTnaGenerating(false);
         return null;
       }
@@ -1259,7 +1260,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               </div>
             </div>
 
-            {!isStaff && applicant && (
+            {applicant && (!isStaff || staffMode) && (
               <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-bold text-purple-900">AI-assisted form completion</p>
@@ -1275,7 +1276,9 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   )}
                 </div>
                 <p className="text-xs text-purple-700">
-                  Fills only empty narrative fields and tables. Your existing entries are preserved.
+                  {isStaff
+                    ? "Generate narrative sections and tables for the selected applicant. Existing entries are preserved."
+                    : "Fills only empty narrative fields and tables. Your existing entries are preserved."}
                 </p>
                 {tnaGenerateError && (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">

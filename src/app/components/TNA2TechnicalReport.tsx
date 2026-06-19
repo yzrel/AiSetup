@@ -1,588 +1,269 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { FileText, CheckCircle, Clock, Users } from "lucide-react";
+import { authStore, AuthUser } from "../store/authStore";
+import { applicantStore, Applicant } from "../store/applicantStore";
+import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { api, ApiError } from "../api/client";
+import type { Tna2DocumentResponse } from "../api/types";
 import {
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  Download,
-  CheckCircle,
-  Mic,
-  Globe,
-  ClipboardList,
-  Wrench,
-  BarChart2,
-  Lightbulb,
-  TrendingUp,
-} from "lucide-react";
+  buildLocalTna2Document,
+  buildTna2GenerationPayload,
+  getPublishedTna2,
+  getTna2Draft,
+  publishTna2Document,
+  saveTna2Draft,
+} from "../utils/tnaForm02";
+import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
+import { TnaForm02Editor } from "./TnaForm02Editor";
+import { aiGenerateErrorMessage } from "../utils/apiErrors";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface Section {
-  id: string;
-  title: string;
-  icon: React.ReactNode;
-  content: React.ReactNode;
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function CollapsibleSection({
-  title,
-  icon,
-  children,
-  defaultOpen = true,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left"
-      >
-        <div className="flex items-center gap-2 text-blue-700 font-semibold text-sm">
-          {icon}
-          {title}
-        </div>
-        {open ? (
-          <ChevronUp className="w-4 h-4 text-gray-400" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-gray-400" />
-        )}
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 pt-2 bg-white text-sm text-gray-700 space-y-2 border-t border-gray-100">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function InfoRow({
-  label,
-  value,
-  badge,
-}: {
-  label: string;
-  value: string;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between py-1 border-b border-gray-50 last:border-0">
-      <span className="text-gray-500 w-40 shrink-0">
-        {label}
-      </span>
-      <span className="flex-1 font-medium text-gray-800">
-        {value}
-      </span>
-      {badge && <span>{badge}</span>}
-    </div>
-  );
-}
-
-function StatusBadge({
-  label,
-  color,
-}: {
-  label: string;
-  color: "green" | "yellow" | "blue" | "gray";
-}) {
-  const colors = {
-    green: "bg-green-100 text-green-700 border-green-200",
-    yellow: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    blue: "bg-blue-100 text-blue-700 border-blue-200",
-    gray: "bg-gray-100 text-gray-600 border-gray-200",
-  };
-  return (
-    <span
-      className={`text-xs font-medium px-2 py-0.5 rounded-full border ${colors[color]}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function BulletList({ items }: { items: string[] }) {
-  return (
-    <ol className="list-decimal list-inside space-y-1 pl-1">
-      {items.map((item, i) => (
-        <li key={i} className="text-gray-700">
-          {item}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
+const DOST_BLUE = "#0C2461";
 
 interface TNA2TechnicalReportProps {
+  user?: AuthUser | null;
   onSubmitSuccess?: () => void;
 }
 
-export function TNA2TechnicalReport({ onSubmitSuccess }: TNA2TechnicalReportProps = {}) {
-  const [language, setLanguage] = useState<
-    "English" | "Filipino"
-  >("English");
+export function TNA2TechnicalReport({
+  user,
+  onSubmitSuccess,
+}: TNA2TechnicalReportProps = {}) {
+  const isStaff = user ? authStore.isStaff(user.role) : false;
+  const [applicant, setApplicant] = useState<Applicant | null>(null);
+  const [draft, setDraft] = useState<Tna2DocumentResponse | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [publishNotice, setPublishNotice] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [editSavedNotice, setEditSavedNotice] = useState("");
 
-  // ── Fake data matching the screenshot ──────────────────────────────────────
-  const applicantName = "Juan Dela Cruz";
-  const applicationId = "LOI-2024-000145";
-  const docRef = "TNA2-2024-000045";
-  const date = "April 27, 2024";
+  const loadApplicant = useCallback((app: Applicant | null) => {
+    setApplicant(app);
+    const stored = getTna2Draft(app);
+    setDraft(stored ?? null);
+    setEditMode(false);
+  }, []);
 
-  const reportIncludes = [
-    "Technical Analysis",
-    "Technology Gap Identification",
-    "Recommended Equipment List",
-    "Equipment Recommendation",
-    "Expected Productivity Improvement",
-  ];
+  useEffect(() => {
+    if (isStaff) {
+      const all = applicantStore.getAll();
+      loadApplicant(all.find((a) => a.qualified) ?? all[0] ?? null);
+    } else {
+      loadApplicant(resolveApplicantForUser(user));
+    }
+  }, [user?.id, user?.email, isStaff, loadApplicant]);
+
+  useEffect(() => {
+    return applicantStore.subscribe(() => {
+      if (applicant) {
+        const updated = applicantStore.getById(applicant.id);
+        if (updated) loadApplicant(updated);
+      }
+    });
+  }, [applicant?.id, loadApplicant]);
+
+  const published = getPublishedTna2(applicant);
+  const displayDoc = isStaff ? draft : published;
+
+  const handleGenerate = async () => {
+    if (!applicant || generating) return;
+    const payload = buildTna2GenerationPayload(applicant);
+    setGenerating(true);
+    setGenerateError(null);
+
+    let document: Tna2DocumentResponse;
+    try {
+      document = await api.generateTna2(payload);
+      if (!document.aiGenerated) {
+        setGenerateError(
+          "Report generated using template. Set ANTHROPIC_API_KEY on the backend for AI-drafted content.",
+        );
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status < 500) {
+        setGenerateError(aiGenerateErrorMessage(err, "Could not generate report."));
+        setGenerating(false);
+        return;
+      }
+      document = buildLocalTna2Document(payload);
+      setGenerateError(
+        "Backend unavailable — generated from template. Run npm run backend for server-side generation.",
+      );
+    }
+
+    saveTna2Draft(applicant.id, document);
+    setDraft(document);
+    setEditMode(true);
+    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
+    setGenerating(false);
+  };
+
+  const handleSaveEdits = () => {
+    if (!applicant || !draft) return;
+    saveTna2Draft(applicant.id, draft);
+    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
+    setEditSavedNotice("Draft saved.");
+    setTimeout(() => setEditSavedNotice(""), 3000);
+  };
+
+  const handleDraftChange = (updated: Tna2DocumentResponse) => {
+    setDraft(updated);
+  };
+
+  const handlePublish = () => {
+    if (!applicant || !draft) return;
+    saveTna2Draft(applicant.id, draft);
+    publishTna2Document(applicant.id, draft);
+    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
+    setPublishNotice("TNA Form 02 published to applicant.");
+    setTimeout(() => setPublishNotice(""), 4000);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* ── Page Header ── */}
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              TNA 2 Technical Report
-            </h1>
-            <p className="text-gray-500 text-sm mt-1 max-w-2xl">
-              This auto-generated TNA 2 report provides a
-              comprehensive technical analysis of the current
-              operational conditions of the enterprise,
-              identifies technology gaps, and proposes science
-              and technology interventions for productivity
-              improvement.
-            </p>
-          </div>
+      <div className="max-w-5xl mx-auto space-y-5">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">TNA Form 02 — Technical Report</h1>
+          <p className="text-gray-500 text-sm mt-1 max-w-3xl">
+            Official DOST Technology Needs Assessment report based on TNA Form 01 and site
+            validation findings. Staff prepare and publish; applicants receive read-only access.
+          </p>
         </div>
 
-        {/* ── Meta bar ── */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-gray-600">
-          <span>
-            <span className="text-gray-400">
-              Applicant Name
-            </span>{" "}
-            &nbsp;{" "}
-            <span className="font-semibold text-gray-800">
-              {applicantName}
-            </span>
-          </span>
-          <span>
-            <span className="text-gray-400">
-              Application ID:
-            </span>{" "}
-            &nbsp;{" "}
-            <span className="font-semibold text-gray-800">
-              {applicationId}
-            </span>
-          </span>
-          <span className="font-semibold text-gray-800">
-            {docRef}
-          </span>
-          <button className="ml-auto flex items-center gap-1.5 bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            <Download className="w-3.5 h-3.5" />
-            Download PDF
-          </button>
-        </div>
-
-        {/* ── Two-column layout ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ── LEFT: Report body ── */}
-          <div className="lg:col-span-2 space-y-1">
-            {/* Report header card */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-2 text-blue-700 font-semibold mb-4">
-                <ClipboardList className="w-5 h-5" />
-                TNA 2 Technical Report
-              </div>
-
-              {/* DOST branding strip */}
-              <div className="flex items-center gap-3 border border-gray-200 rounded-lg p-3 mb-4">
-                <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center shrink-0">
-                  <span className="text-white font-bold text-xs">
-                    ai
-                  </span>
-                </div>
-                <div>
-                  <p className="font-bold text-blue-700 text-sm">
-                    DOST &nbsp; TNA 2
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Technology Needs Assessment Report
-                  </p>
-                </div>
-                <span className="ml-auto text-xs bg-gray-100 border border-gray-200 text-gray-500 px-2 py-0.5 rounded">
-                  STAGE
-                </span>
-              </div>
-
-              <p className="text-center text-blue-600 font-semibold text-sm mb-3">
-                TNA 2 Technical No: {docRef}
-              </p>
-
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Document Reference Number: {docRef}</span>
-                <span>{date}</span>
-              </div>
+        {isStaff && (
+          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <Users className="w-4 h-4" />
+              Select enterprise
             </div>
-
-            {/* Enterprise Profile */}
-            <CollapsibleSection
-              title="Enterprise Profile"
-              icon={<FileText className="w-4 h-4" />}
+            <select
+              value={applicant?.id ?? ""}
+              onChange={(e) => {
+                const app = applicantStore.getById(e.target.value);
+                loadApplicant(app ?? null);
+              }}
+              className="w-full text-sm rounded-lg px-3 py-2 border border-gray-200"
             >
-              <InfoRow
-                label="Business Name:"
-                value="ABC Food Processing"
-                badge={
-                  <StatusBadge
-                    label="Completed"
-                    color="green"
-                  />
-                }
-              />
-              <InfoRow
-                label="Business Address:"
-                value="123 Mabini St., Cotabato, SOCCSKSARGEN"
-                badge={
-                  <StatusBadge
-                    label="TNA Pregree"
-                    color="blue"
-                  />
-                }
-              />
-              <InfoRow
-                label="Business Type:"
-                value="Food Processing"
-                badge={
-                  <StatusBadge label="Pending" color="yellow" />
-                }
-              />
-              <InfoRow
-                label="Location:"
-                value="Warehouse food preserves, jams, producing fruit preserves and jams."
-              />
-              <InfoRow
-                label="Employees:"
-                value="23 (at least 35 years)"
-              />
-            </CollapsibleSection>
+              <option value="">Select enterprise…</option>
+              {applicantStore.getAll().map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.enterpriseName} — {a.applicationId}
+                </option>
+              ))}
+            </select>
 
-            {/* Production Process Analysis */}
-            <CollapsibleSection
-              title="Production Process Analysis"
-              icon={<Wrench className="w-4 h-4" />}
-            >
-              <p className="text-gray-600 text-xs mb-2">
-                Current production setup including the
-                dexeletafied process
+            {!applicant?.moduleData?.tna1 && !applicant?.moduleData?.tna1Document && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                This applicant has no TNA Form 01 data. Complete TNA 1 first for best results.
               </p>
-              <BulletList
-                items={[
-                  "Outdated equipment such as cooking prolca-divetated technology",
-                  "Inefficient manual packing operations, un it tisa kbrem-pointnoles scansa",
-                  "High product spoilage rates for the fliewed sstor-stanvices",
-                ]}
-              />
-            </CollapsibleSection>
+            )}
 
-            {/* Technology Gap Analysis */}
-            <CollapsibleSection
-              title="Technology Gap Analysis"
-              icon={<BarChart2 className="w-4 h-4" />}
-            >
-              <p className="text-gray-600 text-xs mb-2">
-                Hiedwank, or outdated technologies by tatretiss
-                ine eagreptitary technology.
-              </p>
-              <BulletList
-                items={[
-                  "Outdated cooking and sterilization equipment",
-                  "Manual packing leading to bottlenecks and pred espolciing statebly onippody",
-                  "Lack of automatiom and rapid cooking, cappotalizes for product quanly rates",
-                ]}
-              />
-            </CollapsibleSection>
-
-            {/* Proposed Technology Intervention */}
-            <CollapsibleSection
-              title="Proposed Technology Intervention"
-              icon={<Lightbulb className="w-4 h-4" />}
-            >
-              <BulletList
-                items={[
-                  "Upgreds to upgraeite to newer, automated cooking and sterilizatiom equipment. Erinsures consistent, reliable processing.",
-                  "Automating packing process with sani automatic filing and sealing machines.",
-                  "Installing temperature-controlled storage to reduce spoilage and extend shelf life.",
-                ]}
-              />
-            </CollapsibleSection>
-
-            {/* Recommended Equipment List */}
-            <CollapsibleSection
-              title="Recommended Equipment List"
-              icon={<ClipboardList className="w-4 h-4" />}
-              defaultOpen={false}
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-blue-50">
-                      <th className="text-left p-2 border border-gray-200 text-blue-700">
-                        #
-                      </th>
-                      <th className="text-left p-2 border border-gray-200 text-blue-700">
-                        Equipment
-                      </th>
-                      <th className="text-left p-2 border border-gray-200 text-blue-700">
-                        Qty
-                      </th>
-                      <th className="text-left p-2 border border-gray-200 text-blue-700">
-                        Est. Cost (₱)
-                      </th>
-                      <th className="text-left p-2 border border-gray-200 text-blue-700">
-                        Priority
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {
-                        name: "Automated Cooking Retort",
-                        qty: 1,
-                        cost: "1,200,000",
-                        priority: "High",
-                      },
-                      {
-                        name: "Automatic Sealing Machine",
-                        qty: 2,
-                        cost: "450,000",
-                        priority: "High",
-                      },
-                      {
-                        name: "Cold Storage Unit (5-ton)",
-                        qty: 1,
-                        cost: "850,000",
-                        priority: "Medium",
-                      },
-                      {
-                        name: "pH & Brix Testing Kit",
-                        qty: 3,
-                        cost: "75,000",
-                        priority: "Medium",
-                      },
-                      {
-                        name: "Industrial Food Dehydrator",
-                        qty: 1,
-                        cost: "320,000",
-                        priority: "Low",
-                      },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        <td className="p-2 border border-gray-200">
-                          {i + 1}
-                        </td>
-                        <td className="p-2 border border-gray-200 font-medium">
-                          {row.name}
-                        </td>
-                        <td className="p-2 border border-gray-200">
-                          {row.qty}
-                        </td>
-                        <td className="p-2 border border-gray-200">
-                          {row.cost}
-                        </td>
-                        <td className="p-2 border border-gray-200">
-                          <StatusBadge
-                            label={row.priority}
-                            color={
-                              row.priority === "High"
-                                ? "green"
-                                : row.priority === "Medium"
-                                  ? "yellow"
-                                  : "gray"
-                            }
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CollapsibleSection>
-
-            {/* Expected Productivity Improvement */}
-            <CollapsibleSection
-              title="Expected Productivity Improvement"
-              icon={<TrendingUp className="w-4 h-4" />}
-              defaultOpen={false}
-            >
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                {[
-                  {
-                    label: "Production Volume",
-                    before: "120 kg/day",
-                    after: "280 kg/day",
-                    gain: "+133%",
-                  },
-                  {
-                    label: "Spoilage Rate",
-                    before: "18%",
-                    after: "4%",
-                    gain: "-78%",
-                  },
-                  {
-                    label: "Labor Cost",
-                    before: "₱45,000/mo",
-                    after: "₱28,000/mo",
-                    gain: "-38%",
-                  },
-                ].map((kpi) => (
-                  <div
-                    key={kpi.label}
-                    className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center"
-                  >
-                    <p className="text-xs text-blue-500 font-medium mb-1">
-                      {kpi.label}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Before: {kpi.before}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      After: {kpi.after}
-                    </p>
-                    <p className="text-sm font-bold text-blue-700 mt-1">
-                      {kpi.gain}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <BulletList
-                items={[
-                  "Estimated ROI within 24–30 months post-technology adoption.",
-                  "Projected revenue increase of ₱1.8M annually after full implementation.",
-                  "GMP and HACCP compliance achievable within 6 months of upgrade.",
-                ]}
-              />
-            </CollapsibleSection>
-
-            {/* Tip bar */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700 mt-2">
-              <span className="font-semibold">Tip:</span> This
-              report is generated based on data from TNA Form 1,
-              site validation findings, and uploaded
-              requirements.
-            </div>
-          </div>
-
-          {/* ── RIGHT: Sidebar ── */}
-          <div className="space-y-4">
-            {/* Report includes card */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <p className="font-semibold text-gray-700 mb-3 text-sm">
-                This report includes:
-              </p>
-              <ul className="space-y-2">
-                {reportIncludes.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-2 text-sm text-gray-700"
-                  >
-                    <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Illustration */}
-            <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg overflow-hidden h-36 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow">
-                  <ClipboardList className="w-8 h-8 text-blue-600" />
-                </div>
-                <p className="text-xs text-blue-700 font-medium">
-                  TNA 2 Assessment
-                </p>
-              </div>
-            </div>
-
-            {/* Second report includes */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <p className="font-semibold text-gray-700 mb-3 text-sm">
-                This report includes:
-              </p>
-              <ul className="space-y-2">
-                {reportIncludes.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-2 text-sm text-gray-700"
-                  >
-                    <CheckCircle className="w-4 h-4 text-blue-400 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Download buttons */}
-            <div className="space-y-2">
-              {onSubmitSuccess && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleGenerate()}
+                disabled={!applicant || generating}
+                className="px-4 py-2.5 rounded-lg text-white text-sm font-bold disabled:opacity-40"
+                style={{ background: "#7c3aed" }}
+              >
+                {generating ? "Generating…" : "Generate with AI"}
+              </button>
+              {draft && (
                 <button
                   type="button"
-                  onClick={onSubmitSuccess}
-                  className="w-full flex items-center justify-center gap-2 bg-[#0C2461] hover:bg-[#0a1d4d] text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                  onClick={() => setEditMode((m) => !m)}
+                  className="px-4 py-2.5 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50"
                 >
-                  Continue to Project Proposal →
+                  {editMode ? "Preview report" : "Edit report"}
                 </button>
               )}
-              <button className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-                <Download className="w-4 h-4" />
-                Download TNA 2 Report (PDF)
-              </button>
-              <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-                <Download className="w-4 h-4" />
-                Download Technical Summary (DoCX)
-              </button>
-              <button className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-                <Download className="w-4 h-4" />
-                Download Equipment List (CSV)
-              </button>
+              {draft && (
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  className="px-4 py-2.5 rounded-lg text-white text-sm font-bold"
+                  style={{ background: "#059669" }}
+                >
+                  Publish to applicant
+                </button>
+              )}
             </div>
 
-            {/* Voice / language */}
-            <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3">
-              <button className="flex items-center gap-1.5 text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors">
-                <Mic className="w-4 h-4" />
-                Voice Input
-              </button>
-              <div className="ml-auto">
-                <button
-                  onClick={() =>
-                    setLanguage(
-                      language === "English"
-                        ? "Filipino"
-                        : "English",
-                    )
-                  }
-                  className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                  {language}
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-              </div>
+            {generateError && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {generateError}
+              </p>
+            )}
+            {publishNotice && (
+              <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                {publishNotice}
+              </p>
+            )}
+            {editSavedNotice && (
+              <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                {editSavedNotice}
+              </p>
+            )}
+            {draft && (
+              <p className="text-xs text-gray-500 flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" />
+                Draft: {draft.documentRef}
+                {getTna2Draft(applicant)?.published && (
+                  <span className="text-emerald-600 font-semibold">· Published</span>
+                )}
+              </p>
+            )}
+          </div>
+        )}
+
+        {!isStaff && !published && (
+          <div className="flex items-start gap-3 p-5 rounded-xl border border-amber-200 bg-amber-50">
+            <Clock className="w-6 h-6 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-900">Awaiting DOST preparation</p>
+              <p className="text-sm text-amber-700 mt-1">
+                DOST Region XII is preparing your TNA Form 02 technical report based on your TNA
+                Form 01 and site validation. You will be able to view and download it here once
+                published.
+              </p>
+              {applicant && (
+                <p className="text-xs text-amber-600 mt-2 font-mono">
+                  Application: {applicant.applicationId}
+                </p>
+              )}
             </div>
           </div>
-        </div>
+        )}
+
+        {isStaff && draft && editMode && (
+          <TnaForm02Editor
+            document={draft}
+            onChange={handleDraftChange}
+            onSave={handleSaveEdits}
+          />
+        )}
+
+        {displayDoc && !editMode && (
+          <TnaForm02Preview
+            document={displayDoc}
+            applicationId={applicant?.applicationId}
+            aiGenerated={displayDoc.aiGenerated}
+            published={isStaff ? getTna2Draft(applicant)?.published : true}
+            onPrint={printTnaForm02}
+          />
+        )}
+
+        {!isStaff && published && onSubmitSuccess && (
+          <button
+            type="button"
+            onClick={onSubmitSuccess}
+            className="w-full py-3 rounded-xl text-white font-bold text-sm print:hidden"
+            style={{ background: DOST_BLUE }}
+          >
+            Continue to Project Proposal →
+          </button>
+        )}
       </div>
     </div>
   );

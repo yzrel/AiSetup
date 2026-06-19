@@ -152,3 +152,80 @@ export interface Tna1DocumentResponse {
   generatedAt: string;
   aiGenerated: boolean;
 }
+
+export interface Tna2EnterpriseProfile {
+  enterpriseName?: string;
+  address?: string;
+  businessType?: string;
+  sector?: string;
+  commodity?: string;
+  mainProduct?: string;
+  employees?: string;
+  contactPerson?: string;
+  contactNumber?: string;
+  emailAddress?: string;
+}
+
+export interface Tna2EquipmentRow {
+  name: string;
+  specifications?: string;
+  quantity?: string;
+  estimatedCost?: string;
+  priority?: string;
+}
+
+export interface Tna2Kpi {
+  label: string;
+  before?: string;
+  after?: string;
+  change?: string;
+}
+
+export interface Tna2Assessor {
+  name?: string;
+  title?: string;
+  office?: string;
+}
+
+export interface Tna2DocumentResponse {
+  documentRef: string;
+  assessmentDate: string;
+  applicationId?: string;
+  enterpriseProfile: Tna2EnterpriseProfile;
+  siteValidationFindings: string[];
+  productionProcessAnalysis: { summary: string; findings: string[] };
+  technologyGaps: string[];
+  proposedInterventions: string[];
+  recommendedEquipment: Tna2EquipmentRow[];
+  productivityImprovement: { kpis: Tna2Kpi[]; outcomes: string[] };
+  assessor: Tna2Assessor;
+  generatedAt: string;
+  aiGenerated: boolean;
+}
+
+export interface Tna2StoredDocument extends Tna2DocumentResponse {
+  published: boolean;
+  publishedAt?: string;
+}
+
+export interface Tna2GenerationRequest {
+  applicationId?: string;
+  enterpriseName: string;
+  applicantName?: string;
+  designation?: string;
+  emailAddress?: string;
+  contactNumber?: string;
+  address?: string;
+  province?: string;
+  msmeSize?: string;
+  businessType?: string;
+  businessSector?: string;
+  businessNature?: string;
+  productServices?: string;
+  projectDescription?: string;
+  expectedOutcome?: string;
+  budget?: string;
+  loiBackground?: string;
+  tna1Form: Record<string, unknown>;
+  tna1Tables: Tna1TablesDto;
+}

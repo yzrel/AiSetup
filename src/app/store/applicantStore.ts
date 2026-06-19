@@ -73,7 +73,7 @@ const seedApplicants: Applicant[] = [
     assetSize: '₱8,000,000',
     region: REGION_12_LABEL,
     address: '123 Mabini St., Koronadal City, South Cotabato',
-    currentModule: 'landbank-withdrawal',
+    currentModule: 'tna2',
     qualified: true,
     submittedAt: 'Apr 10, 2024',
     lastUpdated: 'Apr 27, 2024',
@@ -99,6 +99,40 @@ const seedApplicants: Applicant[] = [
         'Increase production capacity by 40% and meet food safety certification requirements.',
       budget: '2500000',
       timeline: '18 months',
+      tna1: {
+        submitted: true,
+        submittedAt: '2024-04-20T10:00:00.000Z',
+        form: {
+          enterpriseName: 'ABC Food Processing',
+          contactPerson: 'Juan Dela Cruz',
+          position: 'Owner',
+          officeAddress: '123 Mabini St., Koronadal City, South Cotabato',
+          officeTel: '09171234567',
+          officeEmail: 'juan@abcfood.com',
+          organizationType: 'Sole Proprietorship (DTI)',
+          sector: 'Agri-processing',
+          commodity: 'Food Processing',
+          mainProduct: 'Dried mangoes, banana chips, fruit preserves',
+          employeesMale: '12',
+          employeesFemale: '11',
+          productionProblemsConcerns:
+            'Manual packing bottlenecks and inconsistent dehydration capacity during peak season.',
+          processFlow:
+            'Receiving → sorting → washing → slicing → dehydration → packaging → storage → distribution',
+          enterpriseBackground:
+            'ABC Food Processing manufactures processed fruit products for local and regional markets.',
+          reasonsForAssistance:
+            'Acquisition of vacuum packaging equipment and dehydration line to improve shelf life and capacity.',
+        },
+        tables: {
+          rawMaterials: [['Fresh fruit', 'Local farmers', '80', '5000 kg/year']],
+          production: [['Dried mangoes', '3000 kg/year', '120', '360000']],
+          equipment: [
+            ['Tray dehydrator', '50kg/batch', '50kg/day', '2', '2018'],
+            ['Manual sealer', 'Impulse type', '200 packs/hr', '3', '2020'],
+          ],
+        },
+      },
     },
   },
   {
@@ -118,11 +152,138 @@ const seedApplicants: Applicant[] = [
     assetSize: '₱32,000,000',
     region: REGION_12_PROVINCES[4],
     address: '456 J. Catolico Ave., General Santos City',
-    currentModule: 'tna1',
+    currentModule: 'tna2',
     qualified: true,
     submittedAt: 'Apr 15, 2024',
     lastUpdated: 'Apr 25, 2024',
-    moduleData: { password: 'Demo@1234', accountStatus: 'blocked' },
+    moduleData: {
+      password: 'Demo@1234',
+      accountStatus: 'active',
+      province: 'South Cotabato',
+      projectDescription: 'Cloud-based inventory and order management system for retail operations.',
+      expectedOutcome: 'Reduce order processing time by 50% and improve stock accuracy.',
+      productServices: 'Software development and IT consulting',
+      tna1: {
+        submitted: true,
+        submittedAt: '2024-04-18T09:00:00.000Z',
+        form: {
+          enterpriseName: 'Tech Innovations Inc.',
+          contactPerson: 'Maria Santos',
+          position: 'General Manager',
+          officeAddress: '456 J. Catolico Ave., General Santos City',
+          officeTel: '09189876543',
+          officeEmail: 'maria@techinno.com',
+          organizationType: 'Corporation (SEC)',
+          sector: 'Services',
+          commodity: 'ICT Services',
+          mainProduct: 'Custom software and IT solutions',
+          employeesMale: '18',
+          employeesFemale: '14',
+          productionProblemsConcerns:
+            'Manual inventory tracking and fragmented order processing across branches.',
+          processFlow:
+            'Order intake → manual encoding → inventory check → fulfillment → billing → reporting',
+          enterpriseBackground:
+            'Tech Innovations provides software and IT services to SMEs in Region XII.',
+          reasonsForAssistance:
+            'Acquire integrated inventory and order management system to scale operations.',
+        },
+        tables: {
+          rawMaterials: [['Software licenses', 'Various vendors', '100', 'Annual renewal']],
+          production: [['IT services', '120 projects/year', '850000', '10200000']],
+          equipment: [
+            ['Workstations', 'Core i7, 16GB RAM', '40 units/day', '12', '2021'],
+            ['Network server', 'On-premise', 'N/A', '2', '2020'],
+          ],
+        },
+      },
+      tna2Document: {
+        documentRef: 'TNA2-2024-000201',
+        assessmentDate: 'April 22, 2024',
+        applicationId: 'LOI-2024-000201',
+        enterpriseProfile: {
+          enterpriseName: 'Tech Innovations Inc.',
+          address: '456 J. Catolico Ave., General Santos City',
+          businessType: 'Corporation (SEC)',
+          sector: 'Services',
+          commodity: 'ICT Services',
+          mainProduct: 'Custom software and IT solutions',
+          employees: '18 male / 14 female',
+          contactPerson: 'Maria Santos',
+          contactNumber: '09189876543',
+          emailAddress: 'maria@techinno.com',
+        },
+        siteValidationFindings: [
+          'Site validation confirmed registered office and development team capacity.',
+          'Manual inventory and order workflows verified during peak business hours.',
+          'Existing IT infrastructure supports partial automation with upgrading gaps identified.',
+        ],
+        productionProcessAnalysis: {
+          summary:
+            'Order intake → manual encoding → inventory check → fulfillment → billing → reporting',
+          findings: [
+            'Manual encoding creates delays during peak order volume.',
+            'Inventory data is not synchronized across branch locations in real time.',
+            'Reporting relies on spreadsheet consolidation with limited analytics.',
+          ],
+        },
+        technologyGaps: [
+          'No integrated inventory management system',
+          'Manual order processing and encoding',
+          'Limited real-time reporting and analytics',
+        ],
+        proposedInterventions: [
+          'Deploy cloud-based inventory and order management platform',
+          'Integrate barcode scanning for stock movement tracking',
+          'Provide staff training on digital workflow adoption',
+        ],
+        recommendedEquipment: [
+          {
+            name: 'Barcode scanners',
+            specifications: 'Wireless, USB/Bluetooth',
+            quantity: '6',
+            estimatedCost: '₱84,000',
+            priority: 'High',
+          },
+          {
+            name: 'Network server upgrade',
+            specifications: 'RAID storage, 32GB RAM',
+            quantity: '1',
+            estimatedCost: '₱185,000',
+            priority: 'Medium',
+          },
+        ],
+        productivityImprovement: {
+          kpis: [
+            {
+              label: 'Order Processing Time',
+              before: '4 hours avg.',
+              after: '2 hours avg.',
+              change: '50% reduction',
+            },
+            {
+              label: 'Inventory Accuracy',
+              before: '82%',
+              after: '96%',
+              change: '+14 pp',
+            },
+          ],
+          outcomes: [
+            'Reduce order processing time by 50% and improve stock accuracy.',
+            'Enable real-time inventory visibility across branch operations.',
+          ],
+        },
+        assessor: {
+          name: 'PROVINCIAL DIRECTOR',
+          title: 'Provincial Director',
+          office: 'DOST Provincial Office — South Cotabato',
+        },
+        generatedAt: '2024-04-22T10:30:00.000Z',
+        aiGenerated: false,
+        published: true,
+        publishedAt: '2024-04-22T11:00:00.000Z',
+      },
+    },
   },
   {
     id: '3',

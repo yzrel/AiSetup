@@ -5,6 +5,9 @@ import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 
+const DOST_BLUE = "#0C2461";
+const DOST_MID = "#1a3a7a";
+
 export function PrescreeningForm({
   user,
   onSubmitSuccess,
@@ -107,36 +110,29 @@ export function PrescreeningForm({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
- 
-
-      {/* Form tab */}
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
       {activeTab === "form" && (
-        <div className="min-h-screen bg-gray-50">
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
-            <div className="bg-blue-600 text-white p-6 rounded-t-lg flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded flex items-center justify-center">
-                  <span className="text-blue-600 font-bold">
-                    ai
-                  </span>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">
-                    aiSETUP Pre-Screening Module
-                  </h1>
-                  <p className="text-blue-100 text-sm">
-                    Applicant will accomplish this form to
-                    determine if qualified for the SETUP Program
-                  </p>
-                </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div
+            className="p-6 text-white"
+            style={{
+              background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)`,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+                <span className="text-blue-800 font-black text-sm">ai</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-black">aiSETUP Pre-Screening</h1>
+                <p className="text-white/60 text-sm">
+                  Determine eligibility for the DOST SETUP Program
+                </p>
               </div>
             </div>
+          </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="p-8 space-y-8"
-            >
+          <form onSubmit={handleSubmit} className="p-6 space-y-8">
               {qualified !== null && (
                 <div
                   className={`p-6 rounded-lg ${qualified ? "bg-green-50 border-2 border-green-500" : "bg-red-50 border-2 border-red-500"}`}
@@ -508,7 +504,6 @@ export function PrescreeningForm({
                 </button>
               </div>
             </form>
-          </div>
         </div>
       )}
     </div>

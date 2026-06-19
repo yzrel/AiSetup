@@ -10,7 +10,9 @@
   #loi-document-print,
   #loi-document-print *,
   #tna-form-01-preview,
-  #tna-form-01-preview * {
+  #tna-form-01-preview *,
+  #tna-form-02-preview,
+  #tna-form-02-preview * {
     visibility: visible;
   }
 
@@ -25,6 +27,18 @@
   }
 
   #tna-form-01-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0.75in !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  #tna-form-02-preview {
     position: absolute;
     left: 0;
     top: 0;

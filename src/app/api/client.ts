@@ -66,4 +66,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  generateTna2: (payload: import("./types").Tna2GenerationRequest) =>
+    apiFetch<import("./types").Tna2DocumentResponse>("/tna2/generate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

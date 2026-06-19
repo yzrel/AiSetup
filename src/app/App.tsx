@@ -794,6 +794,7 @@ export default function App() {
               )}
               {currentView === "tna2" && (
                 <TNA2TechnicalReport
+                  user={user}
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (app) {
