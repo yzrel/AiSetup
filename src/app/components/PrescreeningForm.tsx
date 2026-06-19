@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { REGION_12_LABEL } from "../constants/region12";
 import { Check, X, Users, FileText } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";
+import { AuthUser } from "../store/authStore";
+import { resolveApplicantForUser } from "../utils/resolveApplicant";
 
-export function PrescreeningForm() {
+export function PrescreeningForm({ user }: { user?: AuthUser | null }) {
   const [activeTab, setActiveTab] = useState<
     "form" | "registry"
   >("form");
@@ -27,11 +30,34 @@ export function PrescreeningForm() {
     classificationRange: "",
   });
 
+  useEffect(() => {
+    const app = resolveApplicantForUser(user);
+    if (!app) return;
+    setFormData({
+      applicantName: app.applicantName,
+      designation: app.designation,
+      enterpriseName: app.enterpriseName,
+      contactNumber: app.contactNumber,
+      emailAddress: app.emailAddress,
+      businessType: app.businessType,
+      businessNature: app.businessNature,
+      businessSector: app.businessSector,
+      yearsOfOperation: app.yearsOfOperation,
+      enterpriseType: app.enterpriseType,
+      coreProducts: String(app.moduleData?.coreProducts ?? ""),
+      exportClassification: String(app.moduleData?.exportClassification ?? ""),
+      msmeSize: app.msmeSize,
+      assetSize: app.assetSize,
+      classificationRange: String(app.moduleData?.classificationRange ?? ""),
+    });
+    if (app.qualified) setQualified(true);
+  }, [user?.id, user?.email]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setQualified(true);
-    // Save to shared applicant registry
-    applicantStore.add({
+    const existing = resolveApplicantForUser(user);
+    const payload = {
       applicantName: formData.applicantName,
       designation: formData.designation,
       enterpriseName: formData.enterpriseName,
@@ -44,12 +70,23 @@ export function PrescreeningForm() {
       enterpriseType: formData.enterpriseType,
       msmeSize: formData.msmeSize,
       assetSize: formData.assetSize,
-      region: "NCR",
-      address: "",
-      currentModule: "prescreening",
+      region: existing?.region ?? REGION_12_LABEL,
+      address: existing?.address ?? "",
+      currentModule: "prescreening" as const,
       qualified: true,
-      moduleData: {},
-    });
+      moduleData: {
+        ...existing?.moduleData,
+        coreProducts: formData.coreProducts,
+        exportClassification: formData.exportClassification,
+        classificationRange: formData.classificationRange,
+      },
+    };
+
+    if (existing) {
+      applicantStore.update(existing.id, payload);
+    } else {
+      applicantStore.add(payload);
+    }
   };
 
   return (

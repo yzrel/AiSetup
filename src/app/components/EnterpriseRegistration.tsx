@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { REGION_12_LABEL, REGION_12_PROVINCES } from '../constants/region12';
 
 export function EnterpriseRegistration() {
   const [formData, setFormData] = useState({
@@ -13,7 +14,7 @@ export function EnterpriseRegistration() {
     mobileNumber: '',
     enterpriseAddress: '',
     province: '',
-    region: '',
+    region: REGION_12_LABEL,
     postalCode: ''
   });
 
@@ -230,25 +231,19 @@ export function EnterpriseRegistration() {
                         onChange={(e) => setFormData({ ...formData, province: e.target.value })}
                       >
                         <option value="">Select province</option>
-                        <option>Metro Manila</option>
-                        <option>Cebu</option>
-                        <option>Davao</option>
-                        <option>Laguna</option>
+                        {REGION_12_PROVINCES.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Region</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.region}
-                        onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      >
-                        <option value="">Select region</option>
-                        <option>NCR</option>
-                        <option>Region VII</option>
-                        <option>Region XI</option>
-                        <option>Region IV-A</option>
-                      </select>
+                      <input
+                        type="text"
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600 text-sm"
+                        value={REGION_12_LABEL}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Postal/Zip Code</label>

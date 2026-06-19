@@ -6,6 +6,7 @@ import {
   EMPTY_TNA_TABLES,
   buildInitialTnaForm,
 } from "../store/tnaFormDefaults";
+import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
@@ -295,15 +296,8 @@ export function TechnologyNeedsAssessment1({ user }: { user?: AuthUser | null })
   }, []);
 
   useEffect(() => {
-    const app =
-      (user?.id ? applicantStore.getById(user.id) : null) ??
-      (user?.email ? applicantStore.getByEmail(user.email) : null) ??
-      (user?.applicationId
-        ? applicantStore.getAll().find((a) => a.applicationId === user.applicationId)
-        : null) ??
-      null;
-    loadApplicantData(app);
-  }, [user?.id, user?.email, user?.applicationId, loadApplicantData]);
+    loadApplicantData(resolveApplicantForUser(user));
+  }, [user?.id, user?.email, user?.applicationId, user?.role, loadApplicantData]);
 
   const saveTnaDraft = useCallback(
     (submitted = false) => {
@@ -1284,7 +1278,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   <div className="w-9 h-9 rounded-full bg-sky-400 flex items-center justify-center font-bold text-blue-900 text-sm">PS</div>
                   <div>
                     <p className="font-bold text-sm">Provincial Staff Review Mode</p>
-                    <p className="text-xs text-white/60">Staff ID: PSTD-ZP-001 · DOST Zamboanga Peninsula · {new Date().toLocaleDateString("en-PH", { dateStyle: "medium" })}</p>
+                    <p className="text-xs text-white/60">Staff ID: PSTD-R12-001 · DOST Region XII · {new Date().toLocaleDateString("en-PH", { dateStyle: "medium" })}</p>
                   </div>
                   <div className="ml-auto">
                     <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-sky-300">🔒 Secure Mode</span>

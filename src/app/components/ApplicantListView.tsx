@@ -27,6 +27,7 @@ import {
   MODULE_LABELS,
   MODULE_ORDER,
 } from "../store/applicantStore";
+import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -290,29 +291,13 @@ function ApplicantDetail({
                   type="email"
                 />
                 <EditField
-                  label="Region"
+                  label="Province / Area"
                   name="region"
                   value={form.region}
                   onChange={handleChange}
                   options={[
-                    "NCR",
-                    "Region I",
-                    "Region II",
-                    "Region III",
-                    "Region IV-A",
-                    "Region IV-B",
-                    "Region V",
-                    "Region VI",
-                    "Region VII",
-                    "Region VIII",
-                    "Region IX",
-                    "Region X",
-                    "Region XI",
-                    "Region XII",
-                    "Region XIII",
-                    "BARMM",
-                    "CAR",
-                    "SOCCSKSARGEN",
+                    REGION_12_LABEL,
+                    ...REGION_12_PROVINCES,
                   ]}
                 />
                 <EditField

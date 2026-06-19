@@ -263,7 +263,7 @@ const seedPosts: FeedPost[] = [
     tags: ['question', 'suppliers'],
   },
   {
-    id: 'p4', clientId: 'c5', clientName: 'Eduardo Villanueva', enterpriseName: 'Visayas Food Solutions',
+    id: 'p4', clientId: 'c5', clientName: 'Eduardo Villanueva', enterpriseName: 'SOCCSKSARGEN Food Solutions',
     avatarInitials: 'EV', avatarColor: '#f59e0b',
     content: '📸 Before & After our production area! Left: old manual setup. Right: new automated line with SETUP-funded equipment. Total productivity increase: 180%! Worth every paper we had to submit 😄 #Transformation',
     type: 'milestone',

@@ -266,7 +266,7 @@ export function ConductOfRTEC({ onSubmitSuccess }: ConductOfRTECProps = {}) {
                   </span>
                   <span className="flex items-center gap-1 text-gray-600">
                     <MapPin className="w-3.5 h-3.5" />
-                    Pasay City, NCR
+                    Koronadal City, South Cotabato
                   </span>
                   <span className="text-blue-500 italic">
                     · Monitor the status below.
@@ -346,7 +346,7 @@ export function ConductOfRTEC({ onSubmitSuccess }: ConductOfRTECProps = {}) {
                       <TimelineItem
                         done={false}
                         label="Scheduled for RTEC Evaluation"
-                        sub="May 3, 2024, 10:00 AM Onwards, Pasay City, NCR"
+                        sub="May 3, 2024, 10:00 AM Onwards, Koronadal City, South Cotabato"
                       />
 
                       {/* Budget breakdown inside timeline */}

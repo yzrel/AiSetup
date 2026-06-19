@@ -6,8 +6,14 @@ import {
   AlertTriangle, Pencil, Send,
 } from "lucide-react";
 import { applicantStore, Applicant } from "../store/applicantStore";
+import { AuthUser } from "../store/authStore";
+import { resolveApplicantForUser } from "../utils/resolveApplicant";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+interface SubmissionRequirementsProps {
+  user?: AuthUser | null;
+  onSubmitSuccess?: () => void;
+}
+
 interface DocumentUpload {
   id: string;
   name: string;
@@ -25,10 +31,6 @@ type StepId =
   | "changes-requested"
   | "rtec"
   | "routing";
-
-interface SubmissionRequirementsProps {
-  onSubmitSuccess?: () => void;
-}
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
 const DOST_BLUE = "#0C2461";
@@ -88,7 +90,7 @@ function StepHeader({ current, steps, maxReached }: { current: StepId; steps: ty
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export function SubmissionRequirements({ onSubmitSuccess }: SubmissionRequirementsProps = {}) {
+export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequirementsProps = {}) {
   const [step, setStep]         = useState<StepId>("documents");
   const [maxReached, setMaxReached] = useState(0);
   const [applicant, setApplicant] = useState<Applicant | null>(null);
@@ -141,15 +143,12 @@ export function SubmissionRequirements({ onSubmitSuccess }: SubmissionRequiremen
 
   // Auto-load applicant from store
   useEffect(() => {
-    const all = applicantStore.getAll();
-    const found = all.find(a => a.qualified) ?? all[0] ?? null;
-    setApplicant(found ?? null);
+    setApplicant(resolveApplicantForUser(user));
 
-    // Pre-init staff remarks
     const init: Record<string, { status: "ok" | "flagged" | ""; remark: string }> = {};
     documents.forEach(d => { init[d.id] = { status: "", remark: "" }; });
     setStaffRemarks(init);
-  }, []);
+  }, [user?.id, user?.email, user?.role]);
 
   const advanceStep = (next: StepId) => {
     const idx = STEPS.findIndex(s => s.id === next);

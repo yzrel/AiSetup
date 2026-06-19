@@ -16,8 +16,12 @@ import {
   Info,
 } from "lucide-react";
 import { applicantStore, Applicant } from "../store/applicantStore";
+import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
+import { AuthUser } from "../store/authStore";
+import { resolveApplicantForUser } from "../utils/resolveApplicant";
 
 interface LetterOfIntentProps {
+  user?: AuthUser | null;
   onSubmitSuccess?: () => void;
 }
 
@@ -109,7 +113,7 @@ function ValidationRow({ label, value, passed }: { label: string; value: string;
   );
 }
 
-export function LetterOfIntent({ onSubmitSuccess }: LetterOfIntentProps = {}) {
+export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = {}) {
   const [step, setStep] = useState<StepId>("review");
   const [applicant, setApplicant] = useState<Applicant | null>(null);
 
@@ -154,10 +158,8 @@ export function LetterOfIntent({ onSubmitSuccess }: LetterOfIntentProps = {}) {
   });
 
   useEffect(() => {
-    const all = applicantStore.getAll();
-    const found = all.find((a) => a.qualified) ?? all[0] ?? null;
-    setApplicant(found ?? null);
-  }, []);
+    setApplicant(resolveApplicantForUser(user));
+  }, [user?.id, user?.email, user?.role]);
 
   const setAdd = (k: string, v: string) => setAdditional((prev) => ({ ...prev, [k]: v }));
   const setGA = (k: string, v: boolean | string) => setGeneralAgreement((prev) => ({ ...prev, [k]: v }));
@@ -309,7 +311,7 @@ export function LetterOfIntent({ onSubmitSuccess }: LetterOfIntentProps = {}) {
                       <label className={labelCls}>Province *</label>
                       <select className={inputCls} value={additional.province} onChange={(e) => setAdd("province", e.target.value)}>
                         <option value="">Select province</option>
-                        {["Metro Manila","Cebu","Davao del Sur","Laguna","Bulacan","Pampanga","Cavite","Rizal","Batangas","Iloilo","Zamboanga del Sur","North Cotabato","Misamis Oriental"].map((p) => (
+                        {REGION_12_PROVINCES.map((p) => (
                           <option key={p}>{p}</option>
                         ))}
                       </select>
@@ -786,7 +788,7 @@ export function LetterOfIntent({ onSubmitSuccess }: LetterOfIntentProps = {}) {
                 {[
                   { key: "agreeRefundTerms", text: "1. I/We agree to repay the full approved SETUP seed fund amount within the agreed repayment period as specified above." },
                   { key: "agreeInterestFree", text: "2. I/We understand that the fund is interest-free (0%) for the duration of the repayment term, provided repayment is made on schedule. Late payments may incur applicable penalties." },
-                  { key: "agreePDC", text: "3. I/We commit to submit Post-Dated Checks (PDCs) covering the full repayment period to the DOST Regional Office prior to the official release of funds." },
+                  { key: "agreePDC", text: "3. I/We commit to submit Post-Dated Checks (PDCs) covering the full repayment period to the DOST Region XII Office in Koronadal City prior to the official release of funds." },
                   { key: "agreePenalty", text: "4. I/We acknowledge that failure to repay on time or bouncing of PDCs may result in penalty charges, legal proceedings, and inclusion in the Delinquent Enterprises registry, which shall disqualify the enterprise from all future DOST programs." },
                 ].map((clause) => (
                   <label
@@ -895,7 +897,7 @@ export function LetterOfIntent({ onSubmitSuccess }: LetterOfIntentProps = {}) {
                 <p>
                   The Regional Director / SETUP Program Manager<br />
                   Department of Science and Technology<br />
-                  {applicant?.region ?? "Regional Office"}
+                  {applicant?.region ?? REGION_12_LABEL}
                 </p>
 
                 <p>Dear Sir/Madam,</p>

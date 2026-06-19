@@ -44,7 +44,9 @@ type Lang = "en-PH" | "fil-PH";
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are the DOST aiSETUP Assistant — a friendly, knowledgeable AI chatbot for the Department of Science and Technology (DOST) Small Enterprise Technology Upgrading Program (SETUP) in the Philippines.
+const SYSTEM_PROMPT = `You are the DOST aiSETUP Assistant — a friendly, knowledgeable AI chatbot for DOST Region XII (SOCCSKSARGEN) Small Enterprise Technology Upgrading Program (SETUP) in the Philippines.
+
+You serve MSMEs and DOST staff in Region XII only: South Cotabato, Cotabato, Sultan Kudarat, Sarangani, and General Santos City. The regional office is in Koronadal City.
 
 You can:
 1. Answer questions about DOST SETUP — eligibility, requirements, process, funding.
@@ -284,8 +286,8 @@ function generateMockReport(type: string): GeneratedReport {
         content: "Applications received: 234 | Approved: 156 | In progress: 67 | Success rate: 88.2%",
       },
       {
-        heading: "Regional Distribution",
-        content: "NCR: 42% | Region IV-A: 23% | Region VII: 18% | Other regions: 17%",
+        heading: "Provincial Distribution (Region XII)",
+        content: "South Cotabato: 32% | General Santos City: 24% | Sultan Kudarat: 18% | Cotabato: 16% | Sarangani: 10%",
       },
       {
         heading: "Fund Utilization",
@@ -517,7 +519,7 @@ export function DOSTChatbot() {
       const errMsg =
         lang === "fil-PH"
           ? "Nagkaroon ng problema sa koneksyon. Pakisubukan muli."
-          : "I'm having trouble connecting. Please try again or contact your nearest DOST office.";
+          : "I'm having trouble connecting. Please try again or contact DOST Region XII in Koronadal City.";
       setMessages((prev) => [
         ...prev,
         {

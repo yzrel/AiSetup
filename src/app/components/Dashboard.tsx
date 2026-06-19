@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { ApplicantListView } from "./ApplicantListView";
 import { authStore, AuthUser, DashboardTab } from "../store/authStore";
+import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 
 // ── Payment Monitoring Data ───────────────────────────────────────────────────
 
@@ -75,7 +76,7 @@ const paymentRecords: PaymentRecord[] = [
   {
     id: "LOI-2024-000012",
     enterprise: "XYZ Manufacturing Co.",
-    region: "NCR",
+    region: REGION_12_PROVINCES[4],
     type: "Medium",
     approvedAmount: "₱4,500,000",
     totalBalance: "₱3,240,000",
@@ -92,7 +93,7 @@ const paymentRecords: PaymentRecord[] = [
   {
     id: "LOI-2024-000034",
     enterprise: "Sunrise Agri-Products",
-    region: "Region IV-A",
+    region: REGION_12_PROVINCES[0],
     type: "Small",
     approvedAmount: "₱2,000,000",
     totalBalance: "₱1,560,000",
@@ -109,7 +110,7 @@ const paymentRecords: PaymentRecord[] = [
   {
     id: "LOI-2023-000089",
     enterprise: "Northern Star Textiles",
-    region: "Region III",
+    region: REGION_12_PROVINCES[2],
     type: "Small",
     approvedAmount: "₱1,800,000",
     totalBalance: "₱900,000",
@@ -126,7 +127,7 @@ const paymentRecords: PaymentRecord[] = [
   {
     id: "LOI-2024-000056",
     enterprise: "Pacific Seafood Processors",
-    region: "Region VII",
+    region: REGION_12_PROVINCES[1],
     type: "Medium",
     approvedAmount: "₱3,200,000",
     totalBalance: "₱2,880,000",
@@ -143,7 +144,7 @@ const paymentRecords: PaymentRecord[] = [
   {
     id: "LOI-2023-000112",
     enterprise: "Mindanao Craft Industries",
-    region: "Region XI",
+    region: REGION_12_PROVINCES[3],
     type: "Micro",
     approvedAmount: "₱800,000",
     totalBalance: "₱720,000",
@@ -159,8 +160,8 @@ const paymentRecords: PaymentRecord[] = [
   },
   {
     id: "LOI-2024-000078",
-    enterprise: "Visayas Food Solutions",
-    region: "Region VI",
+    enterprise: "SOCCSKSARGEN Food Solutions",
+    region: REGION_12_PROVINCES[0],
     type: "Small",
     approvedAmount: "₱2,500,000",
     totalBalance: "₱2,100,000",
@@ -219,11 +220,11 @@ const fundData = [
 ];
 
 const regionData = [
-  { name: "NCR", value: 35, color: "#0C2461" },
-  { name: "Region IV-A", value: 28, color: "#00AEEF" },
-  { name: "Region III", value: 22, color: "#10b981" },
-  { name: "Region VII", value: 18, color: "#f59e0b" },
-  { name: "Others", value: 67, color: "#e5e7eb" },
+  { name: REGION_12_PROVINCES[0], value: 35, color: "#0C2461" },
+  { name: REGION_12_PROVINCES[4], value: 28, color: "#00AEEF" },
+  { name: REGION_12_PROVINCES[2], value: 22, color: "#10b981" },
+  { name: REGION_12_PROVINCES[1], value: 18, color: "#f59e0b" },
+  { name: REGION_12_PROVINCES[3], value: 12, color: "#8b5cf6" },
 ];
 
 const recentApps = [
@@ -233,7 +234,7 @@ const recentApps = [
     date: "Apr 27, 2026",
     type: "Small",
     amount: "₱2.0M",
-    region: "SOCCSKSARGEN",
+    region: REGION_12_LABEL,
     module: "Module 9",
   },
   {
@@ -242,7 +243,7 @@ const recentApps = [
     date: "Apr 25, 2026",
     type: "Medium",
     amount: "₱4.2M",
-    region: "NCR",
+    region: REGION_12_PROVINCES[4],
     module: "Module 5",
   },
   {
@@ -251,7 +252,7 @@ const recentApps = [
     date: "Apr 24, 2026",
     type: "Micro",
     amount: "₱1.8M",
-    region: "Region III",
+    region: REGION_12_PROVINCES[2],
     module: "Step 2",
   },
   {
@@ -260,7 +261,7 @@ const recentApps = [
     date: "Apr 23, 2026",
     type: "Small",
     amount: "₱3.5M",
-    region: "Region VII",
+    region: REGION_12_PROVINCES[1],
     module: "Step 4",
   },
   {
@@ -269,7 +270,7 @@ const recentApps = [
     date: "Apr 22, 2026",
     type: "Medium",
     amount: "₱5.0M",
-    region: "NCR",
+    region: REGION_12_PROVINCES[3],
     module: "Step 1",
   },
 ];
@@ -1170,8 +1171,8 @@ export function Dashboard({ user }: { user: AuthUser }) {
 
             {/* Regional breakdown */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <SectionTitle sub="Applications by region">
-                Regional Breakdown
+              <SectionTitle sub="Applications by province in Region XII">
+                Region XII Breakdown
               </SectionTitle>
               <ResponsiveContainer width="100%" height={130}>
                 <PieChart>

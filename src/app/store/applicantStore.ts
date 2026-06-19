@@ -1,4 +1,7 @@
-// ── Shared Applicant Store ─────────────────────────────────────────────────────
+import {
+  REGION_12_LABEL,
+  REGION_12_PROVINCES,
+} from "../constants/region12";
 // Simple in-memory store using a singleton + event-based reactivity
 
 export type ModuleStatus =
@@ -68,8 +71,8 @@ const seedApplicants: Applicant[] = [
     enterpriseType: 'Manufacturing',
     msmeSize: 'Small',
     assetSize: '₱8,000,000',
-    region: 'SOCCSKSARGEN',
-    address: '123 Mabini St., Cotabato City',
+    region: REGION_12_LABEL,
+    address: '123 Mabini St., Koronadal City, South Cotabato',
     currentModule: 'approval-letter',
     qualified: true,
     submittedAt: 'Apr 10, 2024',
@@ -91,8 +94,8 @@ const seedApplicants: Applicant[] = [
     enterpriseType: 'Services',
     msmeSize: 'Medium',
     assetSize: '₱32,000,000',
-    region: 'NCR',
-    address: '456 Ayala Ave., Makati City',
+    region: REGION_12_PROVINCES[4],
+    address: '456 J. Catolico Ave., General Santos City',
     currentModule: 'tna1',
     qualified: true,
     submittedAt: 'Apr 15, 2024',
@@ -114,8 +117,8 @@ const seedApplicants: Applicant[] = [
     enterpriseType: 'Manufacturing',
     msmeSize: 'Small',
     assetSize: '₱5,500,000',
-    region: 'Region IV-A',
-    address: '789 Rizal St., Laguna',
+    region: REGION_12_PROVINCES[2],
+    address: '789 Quezon Blvd., Tacurong City, Sultan Kudarat',
     currentModule: 'registration',
     qualified: true,
     submittedAt: 'Apr 20, 2024',
@@ -137,8 +140,8 @@ const seedApplicants: Applicant[] = [
     enterpriseType: 'Manufacturing',
     msmeSize: 'Small',
     assetSize: '₱12,000,000',
-    region: 'Region III',
-    address: '321 Pampanga St., San Fernando',
+    region: REGION_12_PROVINCES[3],
+    address: '321 National Highway, Alabel, Sarangani',
     currentModule: 'requirements',
     qualified: true,
     submittedAt: 'Apr 18, 2024',

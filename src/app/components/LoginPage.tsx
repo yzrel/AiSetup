@@ -1,20 +1,24 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2, Shield, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  DOST_REGION_12_OFFICE,
+  REGION_12_LABEL,
+} from "../constants/region12";
+import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2, Shield } from 'lucide-react';
 import { authStore } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
 
-type PortalType = 'select' | 'applicant' | 'staff';
+type PortalType = 'applicant' | 'staff';
 
 interface LoginPageProps {
   onRegister: () => void;
   onHome?: () => void;
-  /** Skip portal picker — e.g. after registration */
+  /** Pre-select portal — e.g. from landing page Staff Portal or after registration */
   defaultPortal?: 'applicant' | 'staff';
 }
 
 export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps) {
   const [portalType, setPortalType] = useState<PortalType>(
-    defaultPortal ?? 'select',
+    defaultPortal ?? 'applicant',
   );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +27,12 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
   const [loading, setLoading] = useState(false);
   const [registeredNotice] = useState(defaultPortal === 'applicant');
 
+  useEffect(() => {
+    if (defaultPortal) {
+      setPortalType(defaultPortal);
+    }
+  }, [defaultPortal]);
+
   const resetForm = () => {
     setEmail('');
     setPassword('');
@@ -30,7 +40,8 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
     setShowPw(false);
   };
 
-  const selectPortal = (type: 'applicant' | 'staff') => {
+  const selectPortal = (type: PortalType) => {
+    if (type === portalType) return;
     resetForm();
     setPortalType(type);
   };
@@ -45,13 +56,13 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
       if (email === 'agent@dost.gov.ph' && password === 'admin123') {
         authStore.login({
           id: 'agent-001', email, firstName: 'DOST', middleName: '', lastName: 'Agent',
-          role: 'agent', enterpriseName: 'DOST Regional Office', verified: true,
+          role: 'agent', enterpriseName: `${DOST_REGION_12_OFFICE} — Provincial S&T Center`, verified: true,
           portal: 'admin',
         });
       } else if (email === 'admin@dost.gov.ph' && password === 'admin123') {
         authStore.login({
           id: 'admin-001', email, firstName: 'DOST', middleName: '', lastName: 'Admin',
-          role: 'admin', enterpriseName: 'DOST Central Office', verified: true,
+          role: 'admin', enterpriseName: `${DOST_REGION_12_OFFICE} — Regional Office`, verified: true,
           portal: 'admin',
         });
       } else {
@@ -75,7 +86,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           portal: 'admin',
         });
       } else if (blockReason === 'blocked') {
-        setError('This account has been blocked by DOST. Please contact your regional office for assistance.');
+        setError('This account has been blocked by DOST Region XII. Please contact the DOST XII office in Koronadal City for assistance.');
       } else {
         setError('Invalid email or password. Please register first or check your credentials.');
       }
@@ -107,144 +118,87 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
     ? 'from-[#4C1D95] via-[#6D28D9] to-[#7C3AED]'
     : 'from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a]';
 
-  /* ── Portal Selection Screen ── */
-  if (portalType === 'select') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a] flex items-center justify-center p-4">
-        <div className="w-full max-w-lg relative z-10">
-          {onHome && (
-            <button onClick={onHome} className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-6 transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back to Home
-            </button>
-          )}
-
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-br from-[#0C2461] to-[#1a3a7a] px-8 py-8 text-center">
-              <p className="text-white/60 text-[10px] font-semibold uppercase tracking-[0.2em] mb-1">Republic of the Philippines</p>
-              <p className="text-white font-bold text-base tracking-wide mb-0.5">Department of Science &amp; Technology</p>
-              <div className="flex items-center justify-center gap-1.5 mt-2">
-                <span className="text-[#00AEEF] font-black text-xl tracking-tight">ai</span>
-                <span className="text-white font-black text-xl tracking-tight">SETUP</span>
-              </div>
-              <p className="text-white/40 text-xs mt-1">Small Enterprise Technology Upgrading Program</p>
-            </div>
-
-            <div className="px-8 py-8">
-              <h2 className="text-lg font-bold text-gray-800 mb-1 text-center">Sign In</h2>
-              <p className="text-gray-400 text-sm mb-7 text-center">New applicants must register before signing in</p>
-
-              <div className="space-y-4">
-                <button
-                  onClick={() => selectPortal('applicant')}
-                  className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-blue-100 hover:border-[#0C2461] hover:bg-blue-50 transition-all group text-left"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-blue-100 group-hover:bg-[#0C2461] flex items-center justify-center transition-colors shrink-0">
-                    <Building2 className="w-6 h-6 text-[#0C2461] group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-800 text-base">MSME Applicant</p>
-                    <p className="text-sm text-gray-500 mt-0.5">Sign in to start or continue your SETUP application</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#0C2461] shrink-0 transition-colors" />
-                </button>
-
-                {/* Client Portal — disabled
-                <button
-                  onClick={() => selectPortal('client')}
-                  className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-blue-100 hover:border-[#0C2461] hover:bg-blue-50 transition-all group text-left"
-                >
-                  ...
-                </button>
-                */}
-
-                <button
-                  onClick={() => selectPortal('staff')}
-                  className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-purple-100 hover:border-purple-600 hover:bg-purple-50 transition-all group text-left"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-purple-100 group-hover:bg-purple-600 flex items-center justify-center transition-colors shrink-0">
-                    <Shield className="w-6 h-6 text-purple-600 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-800 text-base">DOST Personnel</p>
-                    <p className="text-sm text-gray-500 mt-0.5">For authorized DOST agents and administrators</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-purple-600 shrink-0 transition-colors" />
-                </button>
-              </div>
-
-              <div className="mt-7 text-center">
-                <p className="text-sm text-gray-500">
-                  No account yet?{' '}
-                  <button onClick={onRegister} className="text-[#0C2461] font-bold hover:underline">
-                    Register as MSME Applicant
-                  </button>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-center text-white/30 text-[10px] mt-4">
-            © {new Date().getFullYear()} Department of Science and Technology — Republic of the Philippines
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Login Form Screen ── */
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a] flex items-center justify-center p-4">
       <div className="w-full max-w-md relative z-10">
-        <button
-          onClick={() => setPortalType('select')}
-          className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to sign-in options
-        </button>
+        {onHome && (
+          <button onClick={onHome} className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </button>
+        )}
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className={`bg-gradient-to-br ${headerGrad} px-8 py-8 text-center`}>
-            <div className="flex items-center justify-center gap-2 mb-3">
+          <div className={`bg-gradient-to-br ${headerGrad} px-8 py-7 text-center transition-all duration-300`}>
+            <div className="flex items-center justify-center gap-2 mb-2">
               <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
                 {isStaff
                   ? <Shield className="w-5 h-5 text-white" />
                   : <Building2 className="w-5 h-5 text-white" />}
               </div>
               <span className="text-white font-bold text-sm">
-                {isStaff ? 'DOST Personnel Portal' : 'aiSETUP Application'}
+                {isStaff ? 'DOST Staff Portal' : 'aiSETUP Application'}
               </span>
             </div>
-            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-[0.2em] mb-1">Republic of the Philippines</p>
-            <p className="text-white font-bold text-base tracking-wide mb-0.5">Department of Science &amp; Technology</p>
-            <div className="flex items-center justify-center gap-1.5 mt-2">
-              <span className="text-[#00AEEF] font-black text-xl tracking-tight">ai</span>
-              <span className="text-white font-black text-xl tracking-tight">SETUP</span>
-            </div>
-            <p className="text-white/40 text-xs mt-1">Small Enterprise Technology Upgrading Program</p>
+            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-[0.2em] mb-0.5">Republic of the Philippines</p>
+            <p className="text-white font-bold text-sm tracking-wide">Department of Science &amp; Technology</p>
+          </div>
+
+          {/* Portal tabs */}
+          <div className="flex border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => selectPortal('applicant')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-bold transition-colors ${
+                !isStaff
+                  ? 'text-[#0C2461] border-b-2 border-[#0C2461] bg-blue-50/50'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              MSME Applicant
+            </button>
+            <button
+              type="button"
+              onClick={() => selectPortal('staff')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-bold transition-colors ${
+                isStaff
+                  ? 'text-purple-700 border-b-2 border-purple-600 bg-purple-50/50'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              DOST Staff
+            </button>
           </div>
 
           <div className="px-8 py-7">
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-4 ${isStaff ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-800'}`}>
-              {isStaff ? <Shield className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
-              {isStaff ? 'DOST Personnel Access' : 'MSME Applicant Access'}
-            </div>
-
             <h2 className="text-lg font-bold text-gray-800 mb-1">
-              {registeredNotice ? 'Registration complete' : 'Welcome back'}
+              {registeredNotice && !isStaff
+                ? 'Registration complete'
+                : isStaff
+                  ? 'Staff sign in'
+                  : 'Welcome back'}
             </h2>
             <p className="text-gray-400 text-sm mb-6">
-              {registeredNotice
-                ? 'Sign in with the email and password you just registered to begin your application.'
+              {registeredNotice && !isStaff
+                ? 'Sign in with the email and password you just registered.'
                 : isStaff
-                  ? 'Sign in with your DOST credentials'
-                  : 'Sign in to continue your SETUP application'}
+                  ? 'Access the admin dashboard, account management, and application reviews.'
+                  : 'Sign in to continue your SETUP application.'}
             </p>
 
-            {registeredNotice && (
+            {registeredNotice && !isStaff && (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl px-3 py-2.5 mb-4">
                 <Building2 className="w-4 h-4 shrink-0" />
                 Your account was created. Sign in below to open aiSETUP.
+              </div>
+            )}
+
+            {isStaff && (
+              <div className="flex items-start gap-2 bg-purple-50 border border-purple-100 text-purple-800 text-xs rounded-xl px-3 py-2.5 mb-4">
+                <Shield className="w-4 h-4 shrink-0 mt-0.5" />
+                For authorized DOST agents and administrators only. MSME applicants should use the Applicant tab.
               </div>
             )}
 
@@ -258,7 +212,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">
-                  {isStaff ? 'DOST Email Address' : 'Email Address'}
+                  {isStaff ? 'DOST Email' : 'Email Address'}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -267,7 +221,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                    placeholder={isStaff ? 'you@dost.gov.ph' : 'you@example.com'}
+                    placeholder={isStaff ? 'name@dost.gov.ph' : 'you@example.com'}
                     className={`w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 ${accentRing}`}
                   />
                 </div>
@@ -292,11 +246,13 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <button type="button" className={`text-xs font-medium hover:underline ${accentText}`}>
-                  Forgot password?
-                </button>
-              </div>
+              {isStaff && (
+                <div className="flex justify-end">
+                  <button type="button" className={`text-xs font-medium hover:underline ${accentText}`}>
+                    Contact IT support
+                  </button>
+                </div>
+              )}
 
               <button
                 onClick={handleLogin}
@@ -307,9 +263,9 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : isStaff ? (
-                  <>Sign In <ArrowRight className="w-4 h-4" /></>
+                  <>Sign In to Admin Portal <ArrowRight className="w-4 h-4" /></>
                 ) : (
-                  <>Sign In &amp; Start Application <ArrowRight className="w-4 h-4" /></>
+                  <>Sign In &amp; Continue Application <ArrowRight className="w-4 h-4" /></>
                 )}
               </button>
             </div>
@@ -319,36 +275,24 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 <p className="text-sm text-gray-500">
                   Don&apos;t have an account?{' '}
                   <button onClick={onRegister} className="text-[#0C2461] font-bold hover:underline">
-                    Register first
+                    Register as MSME Applicant
                   </button>
                 </p>
               </div>
             )}
 
-            {isStaff && (
-              <div className="mt-4 text-center">
-                <button
-                  type="button"
-                  onClick={() => selectPortal('applicant')}
-                  className="text-xs text-gray-400 hover:text-[#0C2461] hover:underline"
-                >
-                  MSME applicant? Sign in here
-                </button>
-              </div>
-            )}
-
-            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
+            <div className={`mt-4 rounded-xl p-3 border ${isStaff ? 'bg-purple-50/50 border-purple-100' : 'bg-gray-50 border-gray-200'}`}>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Demo Credentials</p>
               {isStaff ? (
                 <>
-                  <p className="text-[11px] text-gray-500">Agent: <span className="font-mono font-semibold">agent@dost.gov.ph</span> / <span className="font-mono font-semibold">admin123</span></p>
-                  <p className="text-[11px] text-gray-500">Admin: <span className="font-mono font-semibold">admin@dost.gov.ph</span> / <span className="font-mono font-semibold">admin123</span></p>
+                  <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
+                  <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                 </>
               ) : (
-                <p className="text-[11px] text-gray-500">Use your registered email and password</p>
-              )}
-              {!isStaff && (
-                <p className="text-[11px] text-gray-500 mt-1">Demo blocked: <span className="font-mono">maria@techinno.com</span> / <span className="font-mono">Demo@1234</span></p>
+                <>
+                  <p className="text-[11px] text-gray-500">Use your registered email and password</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Demo: <span className="font-mono">juan@abcfood.com</span> / <span className="font-mono">Demo@1234</span></p>
+                </>
               )}
             </div>
           </div>

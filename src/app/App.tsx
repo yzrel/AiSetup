@@ -41,18 +41,7 @@ import {
 
 type ViewType = AdminView;
 
-/* ── DOST Geometric Mark SVG ── */
-function DOSTMark({ size = 48 }: { size?: number }) {
-  return (
-    <img
-      src="/assets/dost-logo-mark.png"
-      alt="DOST"
-      width={size}
-      height={size}
-      className="object-contain"
-    />
-  );
-}
+import { DOSTMark } from "./components/DOSTLogos";
 
 interface LoginPageProps {
   onRegister: () => void;
@@ -62,7 +51,7 @@ interface LoginPageProps {
 function SidebarLogo() {
   return (
     <div className="flex items-center gap-3">
-      <DOSTMark size={36} light />
+      <DOSTMark size={36} />
       <div>
         <div className="flex items-center gap-1 leading-none">
           <span className="text-white font-black text-[15px] tracking-tight">
@@ -73,7 +62,7 @@ function SidebarLogo() {
           </span>
         </div>
         <p className="text-white/35 text-[9px] tracking-wide mt-0.5">
-          DOST · Small Enterprise Program
+          DOST Region XII · SETUP 4.0
         </p>
       </div>
     </div>
@@ -83,7 +72,7 @@ function SidebarLogo() {
 function TopbarLogo() {
   return (
     <div className="flex items-center gap-2.5 shrink-0">
-      <DOSTMark size={36} light={false} />
+      <DOSTMark size={36} />
       <div className="flex flex-col leading-none hidden sm:flex">
         <span className="text-[8px] font-semibold tracking-[0.18em] text-gray-400 uppercase">
           Republic of the Philippines
@@ -396,7 +385,7 @@ function SidebarNav({
           </span>
         </button>
         {/* <div className="mt-3 pt-3 border-t border-white/8 flex items-center justify-center opacity-20">
-          <DOSTMark size={22} light />
+          <DOSTMark size={22} />
         </div> */}
       </div>
     </>
@@ -416,7 +405,9 @@ export default function App() {
   const [registrationType, setRegistrationType] = useState<
     "single-proprietor" | "non-single-proprietor"
   >("single-proprietor");
-  const [loginAsApplicant, setLoginAsApplicant] = useState(false);
+  const [loginPortal, setLoginPortal] = useState<
+    "applicant" | "staff" | null
+  >(null);
   const [user, setUser] = useState<AuthUser | null>(
     authStore.getUser(),
   );
@@ -467,7 +458,11 @@ export default function App() {
       return (
         <LandingPage
           onLogin={() => {
-            setLoginAsApplicant(true);
+            setLoginPortal("applicant");
+            setAuthPage("login");
+          }}
+          onStaffLogin={() => {
+            setLoginPortal("staff");
             setAuthPage("login");
           }}
           onRegister={(type) => {
@@ -482,11 +477,11 @@ export default function App() {
         <RegisterPage
           applicationType={registrationType}
           onLogin={() => {
-            setLoginAsApplicant(true);
+            setLoginPortal("applicant");
             setAuthPage("login");
           }}
           onSuccess={() => {
-            setLoginAsApplicant(true);
+            setLoginPortal("applicant");
             setAuthPage("login");
           }}
           onHome={() => setAuthPage("landing")}
@@ -495,9 +490,12 @@ export default function App() {
     }
     return (
       <LoginPage
-        defaultPortal={loginAsApplicant ? "applicant" : undefined}
+        defaultPortal={loginPortal ?? undefined}
         onRegister={() => setAuthPage("register")}
-        onHome={() => setAuthPage("landing")}
+        onHome={() => {
+          setLoginPortal(null);
+          setAuthPage("landing");
+        }}
       />
     );
   }
@@ -695,16 +693,16 @@ export default function App() {
             <>
               {currentView === "dashboard" && <Dashboard user={user} />}
               {currentView === "prescreening" && (
-                <PrescreeningForm />
+                <PrescreeningForm user={user} />
               )}
               {currentView === "registration" && (
                 <EnterpriseRegistration />
               )}
               {currentView === "letter-of-intent" && (
-                <LetterOfIntent />
+                <LetterOfIntent user={user} />
               )}
               {currentView === "requirements" && (
-                <SubmissionRequirements />
+                <SubmissionRequirements user={user} />
               )}
               {currentView === "tna1" && (
                 <TechnologyNeedsAssessment1 user={user} />

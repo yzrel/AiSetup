@@ -22,6 +22,11 @@ import {
 } from "lucide-react";
 import { DataPrivacyModal } from "./DataPrivacyModal";
 import { applicantStore } from "../store/applicantStore";
+import {
+  REGION_12_ADDRESS_PLACEHOLDER,
+  REGION_12_LABEL,
+  REGION_12_PROVINCES,
+} from "../constants/region12";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -487,6 +492,7 @@ export function RegisterPage({
 
     // Step 3 — Enterprise
     companyName: "",
+    province: "",
     companyAddress: "",
     tinNumber: "",
     registrationType:
@@ -553,6 +559,8 @@ export function RegisterPage({
     if (step === 3) {
       if (!form.companyName.trim())
         errs.companyName = "Company name is required";
+      if (!form.province)
+        errs.province = "Select your province in Region XII";
       if (!form.companyAddress.trim())
         errs.companyAddress = "Company address is required";
       if (
@@ -603,7 +611,7 @@ export function RegisterPage({
       enterpriseType: "",
       msmeSize: "",
       assetSize: "",
-      region: "",
+      region: form.province || REGION_12_LABEL,
       address: form.companyAddress,
       currentModule: "prescreening",
       qualified: false,
@@ -614,6 +622,8 @@ export function RegisterPage({
         firstName: form.firstName,
         middleName: form.middleName,
         lastName: form.lastName,
+        province: form.province,
+        regionLabel: REGION_12_LABEL,
         accountStatus: "active",
         registeredAt: new Date().toISOString(),
       },
@@ -1055,6 +1065,28 @@ export function RegisterPage({
                 </div>
 
                 <Field
+                  label="Province (Region XII)"
+                  required
+                  error={errors.province}
+                >
+                  <select
+                    value={form.province}
+                    onChange={(e) => {
+                      set("province", e.target.value);
+                      clearErr("province");
+                    }}
+                    className={inputCls}
+                  >
+                    <option value="">Select province</option>
+                    {REGION_12_PROVINCES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field
                   label="Company Address"
                   required
                   error={errors.companyAddress}
@@ -1067,7 +1099,7 @@ export function RegisterPage({
                     }}
                     rows={2}
                     className={inputCls + " resize-none"}
-                    placeholder="Street, Barangay, City/Municipality, Province"
+                    placeholder={REGION_12_ADDRESS_PLACEHOLDER}
                   />
                 </Field>
 
