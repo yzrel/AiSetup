@@ -27,6 +27,7 @@ import {
   REGION_12_LABEL,
   REGION_12_PROVINCES,
 } from "../constants/region12";
+import { PrioritySectorSelect } from "./PrioritySectorSelect";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -492,6 +493,7 @@ export function RegisterPage({
 
     // Step 3 — Enterprise
     companyName: "",
+    businessSector: "",
     province: "",
     companyAddress: "",
     tinNumber: "",
@@ -577,6 +579,8 @@ export function RegisterPage({
       if (!form.companyStartDate)
         errs.companyStartDate =
           "Company start date is required";
+      if (!form.businessSector)
+        errs.businessSector = "Select your SETUP priority sector";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -606,7 +610,7 @@ export function RegisterPage({
       emailAddress: form.email,
       businessType: form.registrationType,
       businessNature: "",
-      businessSector: "",
+      businessSector: form.businessSector,
       yearsOfOperation: "",
       enterpriseType: "",
       msmeSize: "",
@@ -1074,6 +1078,22 @@ export function RegisterPage({
                 </div>
 
                 <Field
+                  label="Priority Sector (SETUP 4.0)"
+                  required
+                  error={errors.businessSector}
+                  hint="Must match one of the priority sectors on the SETUP landing page"
+                >
+                  <PrioritySectorSelect
+                    value={form.businessSector}
+                    onChange={(value) => {
+                      set("businessSector", value);
+                      clearErr("businessSector");
+                    }}
+                    className={selectCls}
+                  />
+                </Field>
+
+                <Field
                   label="Province (Region XII)"
                   required
                   error={errors.province}
@@ -1309,6 +1329,10 @@ export function RegisterPage({
                     {
                       label: "Address",
                       value: form.companyAddress,
+                    },
+                    {
+                      label: "Priority Sector",
+                      value: form.businessSector,
                     },
                     { label: "TIN", value: form.tinNumber },
                     {

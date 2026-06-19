@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { REGION_12_LABEL } from "../constants/region12";
+import { isSetupPrioritySector } from "../constants/setupBrochure";
 import { Check, X, Users, FileText } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { PrioritySectorSelect } from "./PrioritySectorSelect";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -73,7 +75,8 @@ export function PrescreeningForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setQualified(true);
+    const sectorQualified = isSetupPrioritySector(formData.businessSector);
+    setQualified(sectorQualified);
     const existing = resolveApplicantForUser(user);
     const payload = {
       applicantName: formData.applicantName,
@@ -90,8 +93,8 @@ export function PrescreeningForm({
       assetSize: formData.assetSize,
       region: existing?.region ?? REGION_12_LABEL,
       address: existing?.address ?? "",
-      currentModule: "registration" as const,
-      qualified: true,
+      currentModule: sectorQualified ? ("registration" as const) : ("prescreening" as const),
+      qualified: sectorQualified,
       moduleData: {
         ...existing?.moduleData,
         coreProducts: formData.coreProducts,
@@ -164,9 +167,8 @@ export function PrescreeningForm({
                             Not Qualified to SETUP
                           </h3>
                           <p className="text-red-700">
-                            Based on your initial answers, you
-                            do not meet the minimum
-                            qualifications for SETUP.
+                            Your enterprise must fall under one of the SETUP 4.0
+                            priority sectors listed on the landing page to proceed.
                           </p>
                         </div>
                       </>
@@ -404,24 +406,16 @@ export function PrescreeningForm({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Business Sector
+                      Priority Sector (SETUP 4.0) *
                     </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <PrioritySectorSelect
+                      required
                       value={formData.businessSector}
-                      onChange={(e) =>
-                        setField("businessSector", e.target.value)
-                      }
-                    >
-                      <option value="">Select sector</option>
-                      <option>Agri-processing</option>
-                      <option>Food Processing</option>
-                      <option>Manufacturing</option>
-                      <option>Services</option>
-                      <option>ICT</option>
-                      <option>Metals & Engineering</option>
-                      <option>Pharmaceuticals & Herbal</option>
-                    </select>
+                      onChange={(value) => setField("businessSector", value)}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Must match one of the priority sectors on the SETUP landing page.
+                    </p>
                   </div>
                 </div>
               </div>

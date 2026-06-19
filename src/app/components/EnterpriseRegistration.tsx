@@ -4,6 +4,7 @@ import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { normalizeRegistrationType } from "../utils/applicantPrefill";
+import { PrioritySectorSelect } from "./PrioritySectorSelect";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -24,6 +25,7 @@ export function EnterpriseRegistration({
   });
   const [formData, setFormData] = useState({
     enterpriseName: "",
+    businessSector: "",
     dtiSec: "DTI",
     registrationNumber: "",
     tinNumber: "",
@@ -44,6 +46,7 @@ export function EnterpriseRegistration({
     });
     setFormData({
       enterpriseName: app.enterpriseName,
+      businessSector: app.businessSector,
       dtiSec: normalizeRegistrationType(
         String(md.registrationType ?? app.businessType ?? "DTI"),
       ),
@@ -74,6 +77,7 @@ export function EnterpriseRegistration({
 
     applicantStore.update(existing.id, {
       enterpriseName: formData.enterpriseName,
+      businessSector: formData.businessSector,
       address: formData.enterpriseAddress,
       businessType: formData.dtiSec,
       region: formData.province || existing.region,
@@ -153,6 +157,20 @@ export function EnterpriseRegistration({
               value={formData.enterpriseName}
               onChange={(e) => setField("enterpriseName", e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Priority Sector (SETUP 4.0) *
+            </label>
+            <PrioritySectorSelect
+              required
+              value={formData.businessSector}
+              onChange={(value) => setField("businessSector", value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select the SETUP priority sector that best describes your enterprise.
+            </p>
           </div>
 
           <div>

@@ -28,6 +28,7 @@ import {
   MODULE_ORDER,
 } from "../store/applicantStore";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
+import { SETUP_PRIORITY_SECTORS } from "../constants/setupBrochure";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -374,20 +375,11 @@ function ApplicantDetail({
                   onChange={handleChange}
                 />
                 <EditField
-                  label="Business Sector"
+                  label="Priority Sector"
                   name="businessSector"
                   value={form.businessSector}
                   onChange={handleChange}
-                  options={[
-                    "Agri-processing",
-                    "Manufacturing",
-                    "Services",
-                    "ICT",
-                    "Handicrafts",
-                    "Food Processing",
-                    "Textiles",
-                    "Other",
-                  ]}
+                  options={[...SETUP_PRIORITY_SECTORS]}
                 />
                 <EditField
                   label="MSME Size"

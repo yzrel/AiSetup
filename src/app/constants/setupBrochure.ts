@@ -27,6 +27,12 @@ export const SETUP_PRIORITY_SECTORS = [
   "Agrimachinery / Farm Implements / Food Processing Equipment",
 ] as const;
 
+export type SetupPrioritySector = (typeof SETUP_PRIORITY_SECTORS)[number];
+
+export function isSetupPrioritySector(sector: string): boolean {
+  return SETUP_PRIORITY_SECTORS.includes(sector as SetupPrioritySector);
+}
+
 export const SETUP_SERVICES = [
   "Infusion of Appropriate Technologies",
   "Training & Human Resources Development",

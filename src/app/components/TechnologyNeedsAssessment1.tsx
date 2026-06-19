@@ -17,6 +17,7 @@ import {
   mergeAiTnaSuggestions,
 } from "../utils/tnaForm01";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
+import { PrioritySectorSelect } from "./PrioritySectorSelect";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
 const DOST_BLUE = "#0C2461";
@@ -324,6 +325,7 @@ export function TechnologyNeedsAssessment1({
       if (!applicant) return;
       applicantStore.update(applicant.id, {
         ...(submitted ? { currentModule: "tna1" as const } : {}),
+        businessSector: String(form.sector ?? applicant.businessSector),
         moduleData: {
           ...applicant.moduleData,
           tna1: {
@@ -864,7 +866,13 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>Sector <span className="text-red-500">*</span></label>
-                    <input value={form.sector} onChange={e => set("sector", e.target.value)} className={inputCls} placeholder="e.g. Food Processing" />
+                    <PrioritySectorSelect
+                      required
+                      value={form.sector}
+                      onChange={(value) => set("sector", value)}
+                      className={inputCls}
+                      placeholder="Select priority sector"
+                    />
                   </div>
                   <div>
                     <label className={labelCls}>Commodity <span className="text-red-500">*</span></label>

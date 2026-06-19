@@ -4,6 +4,7 @@ import type {
   Tna2EquipmentRow,
   Tna2Kpi,
 } from "../api/types";
+import { PrioritySectorSelect } from "./PrioritySectorSelect";
 
 const inputCls =
   "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50";
@@ -179,7 +180,14 @@ export function TnaForm02Editor({ document: doc, onChange, onSave }: TnaForm02Ed
           <Field label="Enterprise name" value={doc.enterpriseProfile.enterpriseName ?? ""} onChange={(v) => patchProfile("enterpriseName", v)} />
           <Field label="Business type" value={doc.enterpriseProfile.businessType ?? ""} onChange={(v) => patchProfile("businessType", v)} />
           <Field label="Address" value={doc.enterpriseProfile.address ?? ""} onChange={(v) => patchProfile("address", v)} multiline />
-          <Field label="Sector" value={doc.enterpriseProfile.sector ?? ""} onChange={(v) => patchProfile("sector", v)} />
+          <div>
+            <label className={labelCls}>Sector</label>
+            <PrioritySectorSelect
+              value={doc.enterpriseProfile.sector ?? ""}
+              onChange={(v) => patchProfile("sector", v)}
+              className={inputCls}
+            />
+          </div>
           <Field label="Commodity" value={doc.enterpriseProfile.commodity ?? ""} onChange={(v) => patchProfile("commodity", v)} />
           <Field label="Main product" value={doc.enterpriseProfile.mainProduct ?? ""} onChange={(v) => patchProfile("mainProduct", v)} />
           <Field label="Employees" value={doc.enterpriseProfile.employees ?? ""} onChange={(v) => patchProfile("employees", v)} />
