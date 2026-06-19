@@ -30,6 +30,31 @@ public class AnthropicClient {
     }
 
     public List<String> generateBodyParagraphs(String prompt) {
+        try {
+            return parseParagraphsJson(callAnthropic(prompt));
+        } catch (RestClientException e) {
+            log.warn("Anthropic API request failed: {}", e.getMessage());
+            throw new IllegalStateException("Anthropic API request failed", e);
+        } catch (Exception e) {
+            log.warn("Failed to parse Anthropic response: {}", e.getMessage());
+            throw new IllegalStateException("Failed to parse Anthropic response", e);
+        }
+    }
+
+    public JsonNode generateJsonObject(String prompt) {
+        try {
+            String text = callAnthropic(prompt);
+            return parseJsonObject(text);
+        } catch (RestClientException e) {
+            log.warn("Anthropic API request failed: {}", e.getMessage());
+            throw new IllegalStateException("Anthropic API request failed", e);
+        } catch (Exception e) {
+            log.warn("Failed to parse Anthropic response: {}", e.getMessage());
+            throw new IllegalStateException("Failed to parse Anthropic response", e);
+        }
+    }
+
+    private String callAnthropic(String prompt) {
         if (!properties.isConfigured()) {
             throw new IllegalStateException("Anthropic API key is not configured");
         }
@@ -40,35 +65,46 @@ public class AnthropicClient {
                 "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 
+        String responseBody = restClient.post()
+                .uri(API_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-key", properties.getApiKey())
+                .header("anthropic-version", "2023-06-01")
+                .body(body)
+                .retrieve()
+                .body(String.class);
+
+        if (responseBody == null || responseBody.isBlank()) {
+            throw new IllegalStateException("Empty response from Anthropic API");
+        }
+
         try {
-            String responseBody = restClient.post()
-                    .uri(API_URL)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("x-api-key", properties.getApiKey())
-                    .header("anthropic-version", "2023-06-01")
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-
-            if (responseBody == null || responseBody.isBlank()) {
-                throw new IllegalStateException("Empty response from Anthropic API");
-            }
-
             JsonNode root = objectMapper.readTree(responseBody);
             JsonNode content = root.path("content");
             if (!content.isArray() || content.isEmpty()) {
                 throw new IllegalStateException("Unexpected Anthropic response format");
             }
-
-            String text = content.get(0).path("text").asText("");
-            return parseParagraphsJson(text);
+            return content.get(0).path("text").asText("");
         } catch (RestClientException e) {
-            log.warn("Anthropic API request failed: {}", e.getMessage());
-            throw new IllegalStateException("Anthropic API request failed", e);
+            throw e;
         } catch (Exception e) {
-            log.warn("Failed to parse Anthropic response: {}", e.getMessage());
             throw new IllegalStateException("Failed to parse Anthropic response", e);
         }
+    }
+
+    private JsonNode parseJsonObject(String text) throws Exception {
+        String trimmed = text.trim();
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            trimmed = trimmed.substring(start, end + 1);
+        }
+
+        JsonNode node = objectMapper.readTree(trimmed);
+        if (!node.isObject()) {
+            throw new IllegalStateException("AI response is not a JSON object");
+        }
+        return node;
     }
 
     private List<String> parseParagraphsJson(String text) throws Exception {

@@ -7,6 +7,14 @@ import {
   buildInitialTnaForm,
 } from "../store/tnaFormDefaults";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { api, ApiError } from "../api/client";
+import type { Tna1DocumentResponse } from "../api/types";
+import {
+  buildLocalTna1Document,
+  buildTna1DocumentSnapshot,
+  buildTna1GenerationPayload,
+  mergeAiTnaSuggestions,
+} from "../utils/tnaForm01";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
@@ -288,6 +296,9 @@ export function TechnologyNeedsAssessment1({
 
   const [tables, setTables] = useState(EMPTY_TNA_TABLES);
   const [applicantSubmitted, setApplicantSubmitted] = useState(false);
+  const [tnaGenerating, setTnaGenerating] = useState(false);
+  const [tnaGenerateError, setTnaGenerateError] = useState<string | null>(null);
+  const [tnaAiGenerated, setTnaAiGenerated] = useState<boolean | null>(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setT = (key, rows) => setTables(t => ({ ...t, [key]: rows }));
@@ -299,6 +310,8 @@ export function TechnologyNeedsAssessment1({
     setForm(merged.form);
     setTables(merged.tables);
     setApplicantSubmitted(!!saved?.submitted);
+    const doc = app?.moduleData?.tna1Document as { aiGenerated?: boolean } | undefined;
+    setTnaAiGenerated(doc?.aiGenerated ?? null);
   }, []);
 
   useEffect(() => {
@@ -331,6 +344,70 @@ export function TechnologyNeedsAssessment1({
   const goToStep = (next: string) => {
     if (applicant && !isStaff) saveTnaDraft(false);
     setStep(next);
+  };
+
+  const persistTna1Document = (
+    mergedForm: Record<string, unknown>,
+    mergedTables: typeof tables,
+    document: Tna1DocumentResponse,
+  ) => {
+    if (!applicant) return;
+    const snapshot = buildTna1DocumentSnapshot(
+      mergedForm,
+      mergedTables,
+      document.aiGenerated,
+      document.generatedAt,
+    );
+    applicantStore.update(applicant.id, {
+      moduleData: {
+        ...applicant.moduleData,
+        tna1: {
+          form: mergedForm,
+          tables: mergedTables,
+          submitted: applicant.moduleData?.tna1?.submitted ?? false,
+          submittedAt: applicant.moduleData?.tna1?.submittedAt,
+          updatedAt: new Date().toISOString(),
+        },
+        tna1Document: snapshot,
+      },
+    });
+    setApplicant(applicantStore.getById(applicant.id) ?? applicant);
+  };
+
+  const handleGenerateTna1 = async () => {
+    if (!applicant || tnaGenerating) return null;
+
+    const payload = buildTna1GenerationPayload(applicant, form, tables);
+    setTnaGenerating(true);
+    setTnaGenerateError(null);
+
+    let response: Tna1DocumentResponse;
+    try {
+      response = await api.generateTna1(payload);
+      if (!response.aiGenerated) {
+        setTnaGenerateError(
+          "Suggestions generated using the standard template. Set ANTHROPIC_API_KEY on the backend for AI-drafted content.",
+        );
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status < 500) {
+        setTnaGenerateError(err.message || "Could not generate form content. Please try again.");
+        setTnaGenerating(false);
+        return null;
+      }
+      response = buildLocalTna1Document(payload);
+      setTnaGenerateError(
+        "Backend unavailable — filled empty fields from template. Run npm run backend for server-side generation.",
+      );
+    }
+
+    const merged = mergeAiTnaSuggestions(form, tables, response);
+    setForm(merged.form);
+    setTables(merged.tables);
+    setTnaAiGenerated(response.aiGenerated);
+    persistTna1Document(merged.form, merged.tables, response);
+    setTnaGenerating(false);
+    return response;
   };
 
   // ── Document state ───────────────────────────────────────────────────────────
@@ -1170,18 +1247,57 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 <span className={`text-2xl ${allValid ? "text-green-600" : "text-red-500"}`}>{allValid ? "✅" : "❌"}</span>
                 <div>
                   <p className={`font-bold ${allValid ? "text-green-800" : "text-red-700"}`}>
-                    {allValid ? "All fields validated — ready to submit for staff review!"
+                    {allValid ? "All fields validated — ready to generate and submit!"
                               : `${validationChecks.filter(c => !c.passed).length} field(s) missing — go back and complete`}
                   </p>
                   <p className={`text-xs mt-0.5 ${allValid ? "text-green-600" : "text-red-500"}`}>
-                    {allValid ? "Your TNA1 form is complete. Proceed to staff review."
-                              : "Return to the previous steps to fill in the missing information."}
+                    {allValid
+                      ? "Use Generate with AI to complete empty narrative sections, then submit your TNA Form 01."
+                      : "Return to the previous steps to fill in the missing information."}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            {!isStaff && applicant && (
+              <div className="space-y-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-purple-900">AI-assisted form completion</p>
+                  {tnaAiGenerated === true && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      AI Generated
+                    </span>
+                  )}
+                  {tnaAiGenerated === false && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      Template fallback
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-purple-700">
+                  Fills only empty narrative fields and tables. Your existing entries are preserved.
+                </p>
+                {tnaGenerateError && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    {tnaGenerateError}
+                  </p>
+                )}
+                {tnaGenerating ? (
+                  <AILoader label="Generating TNA Form 01 content" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerateTna1()}
+                    className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+                    style={{ background: "#7c3aed" }}
+                  >
+                    🤖 Generate with AI
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setStep("finance-hr")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
               {applicantSubmitted && !isStaff ? (
                 <div className="flex-1 flex flex-col sm:flex-row gap-2">
@@ -1231,13 +1347,40 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                     Submitted {new Date(applicant.moduleData.tna1.submittedAt).toLocaleString("en-PH")}
                   </span>
                 )}
+                {tnaAiGenerated !== null && (
+                  <span className="block text-xs mt-1">
+                    {tnaAiGenerated ? "Content: AI generated" : "Content: template fallback"}
+                  </span>
+                )}
               </p>
             </div>
 
+            {!isStaff && applicant && (
+              <div className="print:hidden flex flex-wrap gap-2 items-center justify-end">
+                {tnaGenerating ? (
+                  <AILoader label="Regenerating TNA Form 01 content" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerateTna1()}
+                    className="text-sm font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90"
+                    style={{ background: "#7c3aed" }}
+                  >
+                    🤖 Regenerate with AI
+                  </button>
+                )}
+              </div>
+            )}
+
             <TnaForm01Preview
               applicant={applicant}
-              form={form}
-              tables={tables}
+              form={
+                (applicant?.moduleData?.tna1Document?.form as Record<string, unknown>) ?? form
+              }
+              tables={
+                (applicant?.moduleData?.tna1Document?.tables as typeof tables) ?? tables
+              }
+              aiGenerated={tnaAiGenerated ?? undefined}
               onPrint={printTnaForm01}
             />
 

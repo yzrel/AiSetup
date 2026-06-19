@@ -115,3 +115,40 @@ export interface LoiDocumentResponse {
   aiGenerated: boolean;
   provincialOfficeDefaulted: boolean;
 }
+
+export interface Tna1TablesDto {
+  rawMaterials: string[][];
+  production: string[][];
+  equipment: string[][];
+}
+
+export interface Tna1GenerationRequest {
+  applicationId?: string;
+  enterpriseName: string;
+  applicantName?: string;
+  designation?: string;
+  emailAddress?: string;
+  contactNumber?: string;
+  address?: string;
+  province?: string;
+  msmeSize?: string;
+  businessType?: string;
+  businessSector?: string;
+  businessNature?: string;
+  yearsOfOperation?: string;
+  assetSize?: string;
+  productServices?: string;
+  projectDescription?: string;
+  expectedOutcome?: string;
+  companyDescription?: string;
+  loiBackground?: string;
+  form: Record<string, unknown>;
+  tables: Tna1TablesDto;
+}
+
+export interface Tna1DocumentResponse {
+  form: Record<string, unknown>;
+  tables: Tna1TablesDto;
+  generatedAt: string;
+  aiGenerated: boolean;
+}
