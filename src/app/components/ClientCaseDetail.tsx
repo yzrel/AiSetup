@@ -34,7 +34,10 @@ import {
   getOfficeName,
   resolveApplicantOfficeId,
   resolveApplicantProvince,
+  getOfficeContact,
 } from "../utils/provincialOffice";
+import { getProgramsByIds } from "../constants/dostProgramRecommendations";
+import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
 
 const moduleBadgeColors: Partial<Record<ModuleStatus, string>> = {
   prescreening: "bg-gray-100 text-gray-600",
@@ -83,6 +86,10 @@ export function ClientCaseDetail({
   const steps = getApplicantDashboardSteps(applicant);
   const staffNotes = (applicant.moduleData?.staffNotes ??
     []) as Array<{ at: string; author: string; text: string }>;
+  const recommendedProgramIds = (applicant.moduleData?.prescreening
+    ?.recommendedProgramIds ?? []) as string[];
+  const recommendedPrograms = getProgramsByIds(recommendedProgramIds);
+  const pstcEmail = getOfficeContact(resolveApplicantOfficeId(applicant)).email;
 
   const handleAssess = (task: AssessmentTask) => {
     staffContextStore.setSelectedApplicant(applicant.id);
@@ -217,6 +224,23 @@ export function ClientCaseDetail({
             </div>
           </div>
         </section>
+
+        {!applicant.qualified && recommendedPrograms.length > 0 && (
+          <section>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
+              Recommended DOST programs
+            </h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Alternative programs suggested based on the client&apos;s priority
+              sector. Staff may share these with the applicant.
+            </p>
+            <DostProgramRecommendationCards
+              programs={recommendedPrograms}
+              contactEmail={pstcEmail}
+              compact
+            />
+          </section>
+        )}
 
         <section>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">

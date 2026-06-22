@@ -4,13 +4,23 @@
 
 import { useState, useEffect } from "react";
 import { REGION_12_LABEL } from "../constants/region12";
-import { isSetupPrioritySector } from "../constants/setupBrochure";
-import { Check, X, Users, FileText } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { notifyPrescreeningResult } from "../utils/notificationHelpers";
+import {
+  evaluatePrescreening,
+  EligibilityReason,
+  PrescreeningEvaluation,
+} from "../utils/prescreeningEligibility";
+import {
+  DostProgram,
+  getProgramsByIds,
+} from "../constants/dostProgramRecommendations";
+import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
+import { getOfficeContact, resolveApplicantOfficeId } from "../utils/provincialOffice";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -26,6 +36,9 @@ export function PrescreeningForm({
     "form" | "registry"
   >("form");
   const [qualified, setQualified] = useState<boolean | null>(
+    null,
+  );
+  const [evaluation, setEvaluation] = useState<PrescreeningEvaluation | null>(
     null,
   );
   const [formData, setFormData] = useState({
@@ -75,13 +88,51 @@ export function PrescreeningForm({
       essentialPeriod: String(app.moduleData?.essentialPeriod ?? ""),
       turnover: String(app.moduleData?.turnover ?? ""),
     });
-    if (app.qualified) setQualified(true);
+    if (app.qualified) {
+      setQualified(true);
+      setEvaluation(null);
+    } else if (app.qualified === false) {
+      setQualified(false);
+      const storedIds = (app.moduleData?.prescreening?.recommendedProgramIds ??
+        []) as string[];
+      const recomputed = evaluatePrescreening({
+        businessSector: app.businessSector,
+        businessNature: app.businessNature,
+        yearsOfOperation: app.yearsOfOperation,
+        msmeSize: app.msmeSize,
+        exportClassification: String(
+          app.moduleData?.exportClassification ?? "",
+        ),
+      });
+      const storedReasons = (app.moduleData?.prescreening?.failedReasons ??
+        []) as EligibilityReason[];
+      const programs =
+        storedIds.length > 0
+          ? getProgramsByIds(storedIds)
+          : recomputed.recommendedPrograms;
+      setEvaluation({
+        qualified: false,
+        failedReasons:
+          storedReasons.length > 0
+            ? storedReasons
+            : recomputed.failedReasons,
+        recommendedPrograms: programs,
+        recommendedProgramIds: programs.map((p) => p.id),
+      });
+    }
   }, [user?.id, user?.email]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const sectorQualified = isSetupPrioritySector(formData.businessSector);
-    setQualified(sectorQualified);
+    const result = evaluatePrescreening({
+      businessSector: formData.businessSector,
+      businessNature: formData.businessNature,
+      yearsOfOperation: formData.yearsOfOperation,
+      msmeSize: formData.msmeSize,
+      exportClassification: formData.exportClassification,
+    });
+    setQualified(result.qualified);
+    setEvaluation(result);
     const existing = resolveApplicantForUser(user);
     const payload = {
       applicantName: formData.applicantName,
@@ -98,8 +149,8 @@ export function PrescreeningForm({
       assetSize: formData.assetSize,
       region: existing?.region ?? REGION_12_LABEL,
       address: existing?.address ?? "",
-      currentModule: sectorQualified ? ("registration" as const) : ("prescreening" as const),
-      qualified: sectorQualified,
+      currentModule: result.qualified ? ("registration" as const) : ("prescreening" as const),
+      qualified: result.qualified,
       moduleData: {
         ...existing?.moduleData,
         coreProducts: formData.coreProducts,
@@ -107,18 +158,32 @@ export function PrescreeningForm({
         classificationRange: formData.classificationRange,
         essentialPeriod: formData.essentialPeriod,
         turnover: formData.turnover,
+        prescreening: {
+          failedReasons: result.failedReasons,
+          recommendedProgramIds: result.recommendedProgramIds,
+          evaluatedAt: new Date().toISOString(),
+        },
       },
     };
 
     if (existing) {
       applicantStore.update(existing.id, payload);
       const saved = applicantStore.getById(existing.id);
-      if (saved) notifyPrescreeningResult(saved, sectorQualified);
+      if (saved) notifyPrescreeningResult(saved, result.qualified);
     } else {
       const added = applicantStore.add(payload);
-      notifyPrescreeningResult(added, sectorQualified);
+      notifyPrescreeningResult(added, result.qualified);
     }
   };
+
+  const contactEmail = (() => {
+    const app = resolveApplicantForUser(user);
+    if (!app) return undefined;
+    return getOfficeContact(resolveApplicantOfficeId(app)).email;
+  })();
+
+  const recommendedPrograms: DostProgram[] =
+    evaluation?.recommendedPrograms ?? [];
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
@@ -148,10 +213,10 @@ export function PrescreeningForm({
                 <div
                   className={`p-6 rounded-lg ${qualified ? "bg-green-50 border-2 border-green-500" : "bg-red-50 border-2 border-red-500"}`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     {qualified ? (
                       <>
-                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shrink-0">
                           <Check className="w-8 h-8 text-white" />
                         </div>
                         <div>
@@ -167,21 +232,58 @@ export function PrescreeningForm({
                       </>
                     ) : (
                       <>
-                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shrink-0">
                           <X className="w-8 h-8 text-white" />
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-bold text-red-800">
-                            Not Qualified to SETUP
+                            Not Qualified for SETUP
                           </h3>
-                          <p className="text-red-700">
-                            Your enterprise must fall under one of the SETUP 4.0
-                            priority sectors listed on the landing page to proceed.
+                          <p className="text-red-700 mb-3">
+                            Your enterprise does not yet meet all SETUP
+                            requirements. Review the items below and explore
+                            alternative DOST programs for your sector.
                           </p>
+                          {evaluation?.failedReasons && (
+                            <ul className="space-y-1.5">
+                              {evaluation.failedReasons.map((reason) => (
+                                <li
+                                  key={reason.text}
+                                  className={`flex items-start gap-2 text-sm ${reason.ok ? "text-green-700" : "text-red-800"}`}
+                                >
+                                  <span className="shrink-0 font-bold">
+                                    {reason.ok ? "✓" : "✗"}
+                                  </span>
+                                  <span>{reason.text}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       </>
                     )}
                   </div>
+                </div>
+              )}
+
+              {qualified === false && recommendedPrograms.length > 0 && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-5 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#0C2461]">
+                      Recommended DOST Programs You May Avail
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Based on your priority sector
+                      {formData.businessSector
+                        ? `: ${formData.businessSector}`
+                        : ""}
+                      . Preview each program for full details.
+                    </p>
+                  </div>
+                  <DostProgramRecommendationCards
+                    programs={recommendedPrograms}
+                    contactEmail={contactEmail}
+                  />
                 </div>
               )}
 

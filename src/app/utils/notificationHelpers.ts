@@ -72,8 +72,8 @@ export function notifyPrescreeningResult(applicant: Applicant, qualified: boolea
     kind: qualified ? "success" : "warning",
     title: qualified ? "Pre-screening passed" : "Not qualified for SETUP",
     message: qualified
-      ? "You meet the priority sector requirements. Continue with enterprise registration."
-      : "Your enterprise must fall under a SETUP 4.0 priority sector to proceed.",
+      ? "You meet the SETUP requirements. Continue with enterprise registration."
+      : "You do not yet meet SETUP requirements. Review recommended DOST programs for your sector on the pre-screening page.",
     view: qualified ? "registration" : "prescreening",
     urgent: !qualified,
   });
@@ -188,6 +188,65 @@ export function notifySigningDayComplete(applicant: Applicant) {
       "Signed MOA is on file. You may proceed to LandBank account setup.",
     urgent: true,
     view: "landbank-withdrawal",
+  });
+}
+
+export function notifyLandBankComplete(applicant: Applicant) {
+  notificationStore.add({
+    id: `landbank-complete-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "LandBank & withdrawal complete",
+    message:
+      "Your LandBank account and withdrawal documents are on file. Proceed to procurement and liquidation.",
+    view: "procurement-liquidation",
+  });
+  notificationStore.add({
+    id: `landbank-staff-${applicant.id}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "info",
+    title: "Withdrawal documents submitted",
+    message: `${applicant.enterpriseName} completed LandBank & withdrawal (Modules 11–13).`,
+    view: "landbank-withdrawal",
+  });
+}
+
+export function notifyProcurementComplete(applicant: Applicant) {
+  notificationStore.add({
+    id: `procurement-complete-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "Procurement & liquidation complete",
+    message:
+      "Procurement, liquidation, and account untagging are complete. Refund monitoring will begin per your MOA schedule.",
+    view: "refund-delinquent",
+  });
+  notificationStore.add({
+    id: `procurement-staff-${applicant.id}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "action",
+    title: "Refund monitoring required",
+    message: `${applicant.enterpriseName} is ready for refund schedule and PDC monitoring.`,
+    view: "refund-delinquent",
+  });
+}
+
+export function notifyRefundMonitoringComplete(applicant: Applicant) {
+  notificationStore.add({
+    id: `refund-complete-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "SETUP project completed",
+    message:
+      "Refund monitoring is active. Continue making scheduled payments per your refund agreement.",
+    view: "dashboard",
   });
 }
 
