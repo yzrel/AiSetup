@@ -13,6 +13,7 @@ import { TNA2TechnicalReport } from "./components/TNA2TechnicalReport";
 import { ProjectProposal } from "./components/ProjectProposal";
 import { ConductOfRTEC } from "./components/ConductOfRTEC";
 import { ApprovalLetter } from "./components/ApprovalLetter";
+import { ProjectInformationSheet } from "./components/ProjectInformationSheet";
 import { LandBankAndWithdrawal } from "./components/LandBankAndWithdrawal";
 import { ProcurementAndLiquidation } from "./components/ProcurementAndLiquidation";
 import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
@@ -175,6 +176,12 @@ const menuGroups = [
         icon: FileText,
         module: "Module 9",
       },
+      {
+        id: "project-information-sheet" as ViewType,
+        label: "Project Information Sheet",
+        icon: ClipboardCheck,
+        module: "Module 10",
+      },
     ],
   },
   {
@@ -268,6 +275,10 @@ const viewTitles: Record<
     title: "Approval Letter",
     subtitle: "Module 9 — Official DOST Approval",
   },
+  "project-information-sheet": {
+    title: "Project Information Sheet",
+    subtitle: "Module 10 — MOA Signing Day & Form 009 PIS",
+  },
   "landbank-withdrawal": {
     title: "LandBank & Withdrawal",
     subtitle: "Modules 11–13 — Account & Fund Access",
@@ -301,7 +312,6 @@ function SidebarNav({
   collapsed,
   onToggleGroup,
   userRole,
-  onOpenSettings,
   applicant,
 }: {
   currentView: ViewType;
@@ -309,13 +319,8 @@ function SidebarNav({
   collapsed: Record<string, boolean>;
   onToggleGroup: (label: string) => void;
   userRole: AuthUser["role"];
-  onOpenSettings?: () => void;
   applicant?: ReturnType<typeof resolveApplicantForUser>;
 }) {
-  const canManageAccounts = authStore.canAccessView(
-    userRole,
-    "account-management",
-  );
   const visibleGroups = menuGroups
     .map((group) => ({
       ...group,
@@ -400,20 +405,6 @@ function SidebarNav({
 
       {/* Bottom actions */}
       <div className="px-2 py-3 border-t border-white/10 space-y-0.5">
-        {canManageAccounts && onOpenSettings && (
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors ${
-              currentView === "account-management"
-                ? "bg-white/15 text-white"
-                : "text-white/40 hover:bg-white/10 hover:text-white/70"
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span className="text-[12px] font-medium">Settings</span>
-          </button>
-        )}
         <button
           onClick={() => authStore.logout()}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/40 hover:bg-white/10 hover:text-red-300 transition-colors"
@@ -600,7 +591,6 @@ export default function App() {
           collapsed={collapsed}
           onToggleGroup={toggleGroup}
           userRole={user.role}
-          onOpenSettings={() => navigate("account-management")}
           applicant={activeApplicant}
         />
       </aside>
@@ -635,7 +625,6 @@ export default function App() {
           collapsed={collapsed}
           onToggleGroup={toggleGroup}
           userRole={user.role}
-          onOpenSettings={() => navigate("account-management")}
           applicant={activeApplicant}
         />
       </aside>
@@ -877,9 +866,47 @@ export default function App() {
                   }}
                 />
               )}
-              {currentView === "conduct-rtec" && <ConductOfRTEC />}
+              {currentView === "conduct-rtec" && (
+                <ConductOfRTEC
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "approval-letter",
+                      });
+                    }
+                    navigate("approval-letter");
+                  }}
+                />
+              )}
               {currentView === "approval-letter" && (
-                <ApprovalLetter />
+                <ApprovalLetter
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "project-information-sheet",
+                      });
+                    }
+                    navigate("project-information-sheet");
+                  }}
+                />
+              )}
+              {currentView === "project-information-sheet" && (
+                <ProjectInformationSheet
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "landbank-withdrawal",
+                      });
+                    }
+                    navigate("landbank-withdrawal");
+                  }}
+                />
               )}
               {currentView === "landbank-withdrawal" && (
                 <LandBankAndWithdrawal
@@ -900,10 +927,14 @@ export default function App() {
                     const app = resolveApplicantForUser(user);
                     if (app) {
                       applicantStore.update(app.id, {
-                        currentModule: "completed",
+                        currentModule: "refund-delinquent",
                       });
                     }
-                    navigate("dashboard");
+                    if (user?.role === "admin") {
+                      navigate("refund-delinquent");
+                    } else {
+                      navigate("dashboard");
+                    }
                   }}
                 />
               )}

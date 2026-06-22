@@ -400,3 +400,232 @@ export interface AiFieldSuggestionResponse {
   bullets?: string[];
   aiGenerated: boolean;
 }
+
+// ── SETUP Form 002 — RTEC Report (Annex A-2) ──────────────────────────────────
+
+export type RtecComplianceStatus = "complied" | "not_complied" | "na" | "";
+
+export interface RtecComplianceItem {
+  id: string;
+  label: string;
+  status: RtecComplianceStatus;
+}
+
+export interface RtecConstraintRow {
+  id: string;
+  processProblem: string;
+  proposedIntervention: string;
+  equipmentSkills: string;
+  impact: string;
+}
+
+export interface RtecFabricatorRow {
+  id: string;
+  name: string;
+  address: string;
+  contactNo: string;
+}
+
+export interface RtecSignatures {
+  chairperson: string;
+  member1: string;
+  member2: string;
+  member3: string;
+  rpmo: string;
+  regionalDirector: string;
+  evaluationDate: string;
+}
+
+export interface RtecReportOverrides {
+  complianceItems?: RtecComplianceItem[];
+  recommendation?: string;
+  signatures?: RtecSignatures;
+  constraintRows?: RtecConstraintRow[];
+  fabricatorRows?: RtecFabricatorRow[];
+  ratioNarrative?: string;
+}
+
+export interface RtecReportForm {
+  projectCostProponent: string;
+  projectCostSetup: string;
+  projectCostLgia: string;
+  projectCostTotal: string;
+  complianceItems: RtecComplianceItem[];
+  recommendation: string;
+  signatures: RtecSignatures;
+  ratioNarrative: string;
+  proposalSnapshot: ProjectProposalForm;
+  attachmentRefs: ProjectProposalAttachment[];
+  constraintRows: RtecConstraintRow[];
+  fabricatorRows: RtecFabricatorRow[];
+  overrides?: RtecReportOverrides;
+}
+
+export interface RtecReportStored {
+  form: RtecReportForm;
+  submitted?: boolean;
+  submittedAt?: string;
+  updatedAt?: string;
+}
+
+// ── SETUP Form 003 — Notice of Approval (Annex A-3) ───────────────────────────
+
+export interface ApprovalLetterForm {
+  seriesYear: string;
+  approvalDate: string;
+  referenceNumber: string;
+  recipientName: string;
+  recipientDesignation: string;
+  enterpriseName: string;
+  enterpriseAddress: string;
+  projectTitle: string;
+  approvedAmount: string;
+  refundTermYears: string;
+  insuranceRatePercent: string;
+  pstoDirectorTitle: string;
+  pstoOfficeName: string;
+  bodyParagraphs?: string[];
+  signatoryName: string;
+  signatoryTitle: string;
+  conformeDeadlineDays: string;
+  published: boolean;
+  acknowledgedAt?: string;
+  conformeSignedName?: string;
+}
+
+export interface ApprovalLetterStored {
+  form: ApprovalLetterForm;
+  published: boolean;
+  publishedAt?: string;
+  acknowledged: boolean;
+  acknowledgedAt?: string;
+  signedMoa?: SignedMoaDocument;
+  updatedAt?: string;
+}
+
+export interface SignedMoaDocument {
+  fileName: string;
+  mimeType: string;
+  dataUrl: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  moaSignedDate: string;
+  signingVenue?: string;
+  notes?: string;
+}
+
+// ── SETUP Form 009 — Project Information Sheet ────────────────────────────────
+
+export interface PrePisGadRow {
+  id: string;
+  genderIssues: string;
+  gadObjectives: string;
+  gadActivities: string;
+}
+
+export interface PrePisExpectedOutputs {
+  finalProduct: string;
+  publication: string;
+  policy: string;
+  peopleServices: string;
+  partnership: string;
+  economic: string;
+  others: string;
+}
+
+export interface PrePisDraftForm {
+  labName: string;
+  projectTitle: string;
+  dostPersonnelInCharge: string;
+  dostInput: string;
+  cooperatorInput: string;
+  datePrepared: string;
+  status: string;
+  organizationName: string;
+  organizationAddress: string;
+  orgType: string;
+  natureOfBusiness: string;
+  sectors: string;
+  yearEstablished: string;
+  classification: string;
+  mainProducts: string;
+  technologyEmployed: string;
+  productionCapacity: string;
+  standardsCertifications: string;
+  personInCharge: string;
+  staffComplement: string;
+  contactNumbers: string;
+  briefDescription: string;
+  implementingAgency: string;
+  costLgu: string;
+  costDost: string;
+  costCooperators: string;
+  costTotal: string;
+  generalObjective: string;
+  specificObjectives: string[];
+  methodology: string;
+  beneficiaries: string;
+  expectedOutputs: PrePisExpectedOutputs;
+  partnerFunding: string;
+  partnerGrant: string;
+  partnerOthers: string;
+  schedulePreImplementation: string;
+  scheduleImplementation: string;
+  scheduleOperation: string;
+  projectLocation: string;
+  rdDirective: string;
+  rdExpectedOutput: string;
+  rdStartDate: string;
+  rdCompletionDate: string;
+  gadRows: PrePisGadRow[];
+}
+
+export interface SignedPrePisDocument {
+  fileName: string;
+  mimeType: string;
+  dataUrl: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  prePisSignedDate: string;
+  notes?: string;
+}
+
+export type PisSemester = "1" | "2";
+
+export interface PisOngoingFiling {
+  id: string;
+  periodLabel: string;
+  reportingYear: string;
+  semester: PisSemester;
+  projectCode: string;
+  projectTitle: string;
+  firmName: string;
+  ownerName: string;
+  assetsLand: string;
+  assetsBuilding: string;
+  assetsEquipment: string;
+  assetsWorkingCapital: string;
+  employmentDirectMale: string;
+  employmentDirectFemale: string;
+  employmentIndirectMale: string;
+  employmentIndirectFemale: string;
+  productionVolumeLocal: string;
+  productionVolumeExport: string;
+  productionDetails: string;
+  grossSalesLocal: string;
+  grossSalesExport: string;
+  exportDestinations: string;
+  dostAssistance: string[];
+  preparedBy: string;
+  filedAt: string;
+}
+
+export interface ProjectInformationSheetStored {
+  prePisDraft: PrePisDraftForm;
+  signedPrePis?: SignedPrePisDocument;
+  signingDayComplete: boolean;
+  completedAt?: string;
+  completedBy?: string;
+  ongoingFilings: PisOngoingFiling[];
+  updatedAt?: string;
+}

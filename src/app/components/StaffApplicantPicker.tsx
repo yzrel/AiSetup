@@ -4,6 +4,12 @@
 
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { AuthUser } from "../store/authStore";
+import {
+  MODULE_HEADER_HINT,
+  MODULE_HEADER_LABEL,
+  MODULE_HEADER_PICKER,
+  MODULE_HEADER_SELECT,
+} from "./moduleTheme";
 
 interface StaffApplicantPickerProps {
   user?: AuthUser | null;
@@ -14,7 +20,7 @@ interface StaffApplicantPickerProps {
 export function StaffApplicantPicker({
   user,
   label = "Review applicant",
-  className = "mt-4 p-3 bg-white/10 rounded-xl border border-white/20",
+  className = MODULE_HEADER_PICKER,
 }: StaffApplicantPickerProps) {
   const {
     isStaff,
@@ -28,13 +34,11 @@ export function StaffApplicantPicker({
 
   return (
     <div className={className}>
-      <label className="text-[10px] font-bold uppercase tracking-wide text-white/60 block mb-1.5">
-        {label}
-      </label>
+      <label className={MODULE_HEADER_LABEL}>{label}</label>
       <select
         value={applicant?.id ?? ""}
         onChange={(e) => setSelectedApplicantId(e.target.value || null)}
-        className="w-full text-sm rounded-lg px-3 py-2 text-gray-800 border-0"
+        className={MODULE_HEADER_SELECT}
       >
         <option value="">Select enterprise…</option>
         {scopedApplicants.map((a) => (
@@ -44,7 +48,7 @@ export function StaffApplicantPicker({
         ))}
       </select>
       {!hasSelection && (
-        <p className="text-[10px] text-white/50 mt-1.5">
+        <p className={MODULE_HEADER_HINT}>
           Select a client from Clients or the header bar to begin assessment.
         </p>
       )}

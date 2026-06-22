@@ -13,6 +13,7 @@ import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { moduleStepPillClass } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
 
@@ -78,12 +79,7 @@ function StepHeader({ current, steps, maxReached }: { current: StepId; steps: ty
         const locked = i > maxReached;
         return (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              active ? "bg-white text-blue-900 shadow-sm"
-              : done  ? "bg-white/20 text-white"
-              : locked ? "bg-white/5 text-white/30"
-              : "bg-white/10 text-white/50"
-            }`}>
+            <div className={moduleStepPillClass({ active, done, locked })}>
               {done ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : s.icon}
               <span className="hidden sm:inline">{s.label}</span>
               <span className="sm:hidden">{i + 1}</span>

@@ -10,12 +10,14 @@ export const REGION_12_NAME = "SOCCSKSARGEN";
 
 export const DOST_REGION_12_OFFICE = "DOST Regional Office No. XII";
 export const DOST_REGION_12_ADDRESS =
-  "PNHLSG Bldg., Brgy. Paraiso, Koronadal City, South Cotabato";
+  "PNHLSG BLDG., Brgy. Paraiso, Koronadal City, South Cotabato";
 export const DOST_REGION_12_PHONE = "(083) 826-0114";
 export const DOST_REGION_12_EMAIL = "records@region12.dost.gov.ph";
 export const DOST_REGION_12_WEBSITE = "https://www.region12.dost.gov.ph";
 export const DOST_REGION_12_FACEBOOK = "https://facebook.com/dostregion12";
 export const DOST_REGION_12_DIRECTOR = "Engr. Sammy P. Malawan, Regional Director";
+/** Signatory name for RTEC Form 002 and official letters (Annex A-2) */
+export const DOST_REGION_12_DIRECTOR_NAME = "SAMMY P. MALAWAN";
 
 /** Provinces and component city under Region XII */
 export const REGION_12_PROVINCES = [

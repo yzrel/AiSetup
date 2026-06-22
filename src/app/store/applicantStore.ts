@@ -6,6 +6,11 @@ import {
   REGION_12_LABEL,
   REGION_12_PROVINCES,
 } from "../constants/region12";
+import {
+  abcFoodTna2Document,
+  greenValleyLateStageModuleData,
+  techInnovationsProjectProposal,
+} from "../data/demoSeedModuleData";
 // Simple in-memory store using a singleton + event-based reactivity
 
 export type ModuleStatus =
@@ -18,6 +23,7 @@ export type ModuleStatus =
   | 'project-proposal'
   | 'conduct-rtec'
   | 'approval-letter'
+  | 'project-information-sheet'
   | 'landbank-withdrawal'
   | 'procurement-liquidation'
   | 'refund-delinquent'
@@ -137,11 +143,12 @@ const seedApplicants: Applicant[] = [
           ],
         },
       },
+      tna2Document: abcFoodTna2Document(),
     },
   },
   {
     id: '2',
-    applicationId: 'LOI-2024-000201',
+    applicationId: 'LOI-2024-000301',
     applicantName: 'Maria Santos',
     designation: 'General Manager',
     enterpriseName: 'Tech Innovations Inc.',
@@ -156,10 +163,10 @@ const seedApplicants: Applicant[] = [
     assetSize: '₱32,000,000',
     region: 'General Santos City',
     address: '456 J. Catolico Ave., General Santos City',
-    currentModule: 'tna2',
+    currentModule: 'conduct-rtec',
     qualified: true,
     submittedAt: 'Apr 15, 2024',
-    lastUpdated: 'Apr 25, 2024',
+    lastUpdated: 'May 1, 2024',
     moduleData: {
       password: 'Demo@1234',
       accountStatus: 'active',
@@ -202,9 +209,9 @@ const seedApplicants: Applicant[] = [
         },
       },
       tna2Document: {
-        documentRef: 'TNA2-2024-000201',
+        documentRef: 'TNA2-2024-000301',
         assessmentDate: 'April 22, 2024',
-        applicationId: 'LOI-2024-000201',
+        applicationId: 'LOI-2024-000301',
         enterpriseProfile: {
           enterpriseName: 'Tech Innovations Inc.',
           address: '456 J. Catolico Ave., General Santos City',
@@ -287,6 +294,7 @@ const seedApplicants: Applicant[] = [
         published: true,
         publishedAt: '2024-04-22T11:00:00.000Z',
       },
+      projectProposal: techInnovationsProjectProposal(),
     },
   },
   {
@@ -343,6 +351,29 @@ const seedApplicants: Applicant[] = [
       province: 'Sarangani',
       documentsSubmitted: true,
     },
+  },
+  {
+    id: '5',
+    applicationId: 'LOI-2024-000302',
+    applicantName: 'Carlos Mendoza',
+    designation: 'Plant Manager',
+    enterpriseName: 'Green Valley Foods',
+    contactNumber: '09175551234',
+    emailAddress: 'carlos@greenvalley.com',
+    businessType: 'Corporation',
+    businessNature: 'Food Processing',
+    businessSector: 'Food Processing',
+    yearsOfOperation: '7',
+    enterpriseType: 'Manufacturing',
+    msmeSize: 'Small',
+    assetSize: '₱15,000,000',
+    region: REGION_12_LABEL,
+    address: '88 Agro-Industrial Park, Koronadal City, South Cotabato',
+    currentModule: 'approval-letter',
+    qualified: true,
+    submittedAt: 'Apr 8, 2024',
+    lastUpdated: 'May 10, 2024',
+    moduleData: greenValleyLateStageModuleData(),
   },
 ];
 
@@ -445,7 +476,7 @@ export const applicantStore = {
 export const MODULE_ORDER: ModuleStatus[] = [
   'prescreening', 'registration', 'letter-of-intent', 'requirements',
   'tna1', 'tna2', 'project-proposal', 'conduct-rtec', 'approval-letter',
-  'landbank-withdrawal', 'procurement-liquidation', 'refund-delinquent', 'completed',
+  'project-information-sheet', 'landbank-withdrawal', 'procurement-liquidation', 'refund-delinquent', 'completed',
 ];
 
 export const MODULE_LABELS: Record<ModuleStatus, string> = {
@@ -458,6 +489,7 @@ export const MODULE_LABELS: Record<ModuleStatus, string> = {
   'project-proposal': 'Project Proposal',
   'conduct-rtec': 'Conduct of RTEC',
   'approval-letter': 'Approval Letter',
+  'project-information-sheet': 'Project Information Sheet',
   'landbank-withdrawal': 'LandBank & Withdrawal',
   'procurement-liquidation': 'Procurement & Liquidation',
   'refund-delinquent': 'Refund & Delinquent',

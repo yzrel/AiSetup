@@ -21,7 +21,8 @@ const MODULE_TO_VIEW: Record<ModuleStatus, AdminView | null> = {
   tna2: "tna2",
   "project-proposal": "project-proposal",
   "conduct-rtec": null,
-  "approval-letter": null,
+  "approval-letter": "approval-letter",
+  "project-information-sheet": "project-information-sheet",
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
   "refund-delinquent": null,
@@ -38,6 +39,7 @@ const VIEW_TO_MODULE: Partial<Record<AdminView, ModuleStatus>> = {
   "project-proposal": "project-proposal",
   "conduct-rtec": "conduct-rtec",
   "approval-letter": "approval-letter",
+  "project-information-sheet": "project-information-sheet",
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
   "refund-delinquent": "refund-delinquent",
@@ -65,9 +67,34 @@ function stepsAfterRequirements(applicant: Applicant | null): ModuleStatus[] {
 function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
   if (!applicant) return [];
   const currentIdx = MODULE_ORDER.indexOf(applicant.currentModule);
+  const approvalIdx = MODULE_ORDER.indexOf("approval-letter");
+  const pisIdx = MODULE_ORDER.indexOf("project-information-sheet");
   const landbankIdx = MODULE_ORDER.indexOf("landbank-withdrawal");
-  if (currentIdx < landbankIdx) return [];
-  return ["landbank-withdrawal", "procurement-liquidation"];
+  const procurementIdx = MODULE_ORDER.indexOf("procurement-liquidation");
+  const steps: ModuleStatus[] = [];
+  if (currentIdx >= approvalIdx) {
+    steps.push("approval-letter");
+  }
+  if (currentIdx >= pisIdx) {
+    steps.push("project-information-sheet");
+  }
+  if (currentIdx >= landbankIdx) {
+    steps.push("landbank-withdrawal", "procurement-liquidation");
+  }
+  if (currentIdx >= procurementIdx) {
+    steps.push("refund-delinquent");
+  }
+  return steps;
+}
+
+function evaluationSteps(applicant: Applicant | null): ModuleStatus[] {
+  if (!applicant) return [];
+  const currentIdx = MODULE_ORDER.indexOf(applicant.currentModule);
+  const rtecIdx = MODULE_ORDER.indexOf("conduct-rtec");
+  if (currentIdx >= rtecIdx) {
+    return ["conduct-rtec"];
+  }
+  return [];
 }
 
 export function getApplicantDashboardSteps(
@@ -79,6 +106,7 @@ export function getApplicantDashboardSteps(
     "letter-of-intent",
     "requirements",
     ...stepsAfterRequirements(applicant),
+    ...evaluationSteps(applicant),
     ...postApprovalSteps(applicant),
   ];
 
@@ -105,7 +133,6 @@ export function moduleToApplicantView(
 ): AdminView | "dashboard" {
   if (
     module === "conduct-rtec" ||
-    module === "approval-letter" ||
     module === "refund-delinquent" ||
     module === "completed"
   ) {
@@ -116,10 +143,53 @@ export function moduleToApplicantView(
 
 export function isAwaitingStaffReview(applicant: Applicant | null): boolean {
   if (!applicant) return false;
-  return (
-    applicant.currentModule === "conduct-rtec" ||
-    applicant.currentModule === "approval-letter"
-  );
+  if (applicant.currentModule === "conduct-rtec") return true;
+  if (applicant.currentModule === "approval-letter") {
+    const stored = applicant.moduleData?.approvalLetter as
+      | { published?: boolean }
+      | undefined;
+    return !stored?.published;
+  }
+  if (applicant.currentModule === "project-information-sheet") {
+    const pis = applicant.moduleData?.projectInformationSheet as
+      | { signingDayComplete?: boolean }
+      | undefined;
+    return !pis?.signingDayComplete;
+  }
+  return false;
+}
+
+export function getAwaitingStaffReviewMessage(
+  applicant: Applicant | null,
+): { title: string; body: string } {
+  if (!applicant) {
+    return {
+      title: "Under review by DOST",
+      body: "Your application is with DOST personnel for evaluation. You will be notified when you can proceed.",
+    };
+  }
+  if (applicant.currentModule === "conduct-rtec") {
+    return {
+      title: "RTEC evaluation in progress",
+      body: "DOST is preparing your Regional Technical Evaluation Committee (RTEC) review. You will be notified when the approval letter is ready for your conforme.",
+    };
+  }
+  if (applicant.currentModule === "approval-letter") {
+    return {
+      title: "Approval letter being prepared",
+      body: "DOST is finalizing your Notice of Approval. You will be able to acknowledge conforme once it is published.",
+    };
+  }
+  if (applicant.currentModule === "project-information-sheet") {
+    return {
+      title: "MOA signing in progress",
+      body: "DOST is coordinating MOA signing and project information requirements. LandBank enrollment unlocks after signing is complete.",
+    };
+  }
+  return {
+    title: "Under review by DOST",
+    body: "Your application is with DOST personnel for evaluation. You will be notified when you can proceed.",
+  };
 }
 
 export function isRoutedToMpex(applicant: Applicant | null): boolean {

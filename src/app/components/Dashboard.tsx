@@ -53,6 +53,7 @@ import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import {
   getApplicantDashboardSteps,
   getApplicantDashboardStats,
+  getAwaitingStaffReviewMessage,
   isAwaitingStaffReview,
   isRoutedToMpex,
 } from "../utils/applicantProgress";
@@ -969,6 +970,7 @@ export function Dashboard({
   const progressSteps = getApplicantDashboardSteps(application);
   const applicantStats = getApplicantDashboardStats(application);
   const awaitingReview = isAwaitingStaffReview(application);
+  const awaitingReviewMessage = getAwaitingStaffReviewMessage(application);
   const routedToMpex = isRoutedToMpex(application);
   const scopedApplicants = isClientView ? [] : getApplicantsForStaff(user);
   const staffActiveCount = scopedApplicants.filter(
@@ -1152,10 +1154,8 @@ export function Dashboard({
                 <div className="mt-4 mb-2 flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
                   <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="text-sm text-amber-800">
-                    <p className="font-semibold">Under review by DOST</p>
-                    <p className="mt-0.5">
-                      Your application is with DOST personnel for evaluation. You will be notified when you can proceed.
-                    </p>
+                    <p className="font-semibold">{awaitingReviewMessage.title}</p>
+                    <p className="mt-0.5">{awaitingReviewMessage.body}</p>
                   </div>
                 </div>
               )}
@@ -1194,7 +1194,11 @@ export function Dashboard({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800">{item.label}</p>
-                      <p className="text-xs text-gray-400 capitalize">{item.status}</p>
+                      <p className="text-xs text-gray-400 capitalize">
+                        {item.module === "conduct-rtec" && item.status === "current"
+                          ? "Awaiting DOST evaluation"
+                          : item.status}
+                      </p>
                     </div>
                     {item.view && onNavigate && item.status !== "upcoming" && (
                       <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />

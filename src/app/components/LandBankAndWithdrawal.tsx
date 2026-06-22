@@ -18,6 +18,7 @@ import {
   Shield,
   Banknote,
 } from "lucide-react";
+import { ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
 
 // ── Shared: Section header ────────────────────────────────────────────────────
 
@@ -499,8 +500,13 @@ interface LandBankAndWithdrawalProps {
 
 export function LandBankAndWithdrawal({ onSubmitSuccess }: LandBankAndWithdrawalProps = {}) {
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <ModuleWorkflowLayout
+      title="LandBank & Withdrawal"
+      subtitle="Open a LandBank savings account for SETUP assistance, submit withdrawal requests, and obtain authority letters for fund disbursement."
+      showStaffPicker={false}
+      insetBody={false}
+      contentClassName="p-6 space-y-8"
+    >
         {/* Module 11 */}
         <div>
           <ModuleHeader
@@ -543,7 +549,6 @@ export function LandBankAndWithdrawal({ onSubmitSuccess }: LandBankAndWithdrawal
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </ModuleWorkflowLayout>
   );
 }

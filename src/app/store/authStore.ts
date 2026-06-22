@@ -21,6 +21,7 @@ export type AdminView =
   | "project-proposal"
   | "conduct-rtec"
   | "approval-letter"
+  | "project-information-sheet"
   | "landbank-withdrawal"
   | "procurement-liquidation"
   | "refund-delinquent"
@@ -58,8 +59,9 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   tna1: ["admin", "agent", "client", "applicant"],
   tna2: ["admin", "agent", "client", "applicant"],
   "project-proposal": ["admin", "agent", "client", "applicant"],
-  "conduct-rtec": ["admin"],
-  "approval-letter": ["admin"],
+  "conduct-rtec": ["admin", "agent"],
+  "approval-letter": ["admin", "agent", "client", "applicant"],
+  "project-information-sheet": ["admin", "agent", "client", "applicant"],
   "landbank-withdrawal": ["admin", "agent", "client", "applicant"],
   "procurement-liquidation": ["admin", "agent", "client", "applicant"],
   "refund-delinquent": ["admin"],

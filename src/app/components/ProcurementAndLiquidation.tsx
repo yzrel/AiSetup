@@ -25,6 +25,7 @@ import {
   Archive,
   RefreshCw,
 } from "lucide-react";
+import { ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -896,26 +897,27 @@ interface ProcurementAndLiquidationProps {
 
 export function ProcurementAndLiquidation({ onSubmitSuccess }: ProcurementAndLiquidationProps = {}) {
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Module 14 Header */}
+    <ModuleWorkflowLayout
+      title="Procurement & Liquidation"
+      subtitle="Record procurement transactions, submit liquidation reports and equipment documentation, and complete account untagging after SETUP fund utilization."
+      showStaffPicker={false}
+      insetBody={false}
+      contentClassName="p-6 space-y-8"
+    >
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
+          <h2 className="text-lg font-bold text-gray-800 mb-1">
             Procurement{" "}
-            <span className="text-lg font-normal text-gray-500">
+            <span className="text-base font-normal text-gray-500">
               (Submission of Official Receipts)
             </span>
-          </h1>
+          </h2>
           <p className="text-gray-500 text-sm max-w-3xl">
             After the authorized withdrawal of SETUP funds, the
             cooperator proceeds with the procurement of approved
             equipment, machinery, or materials as indicated in
             the SETUP project proposal.
           </p>
-          <p className="text-gray-500 text-sm mt-1 max-w-3xl">
+          <p className="text-gray-500 text-sm mt-1 max-w-3xl mb-4">
             This module records and verifies all procurement
             transactions to ensure that SETUP funds are utilized
             strictly for approved project components.
@@ -923,18 +925,14 @@ export function ProcurementAndLiquidation({ onSubmitSuccess }: ProcurementAndLiq
         </div>
         <Module14 />
 
-        {/* Module 15 Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
+          <h2 className="text-lg font-bold text-gray-800 mb-1">
             Liquidation{" "}
-            <span className="text-lg font-normal text-gray-500">
+            <span className="text-base font-normal text-gray-500">
               (Financial Report and Equipment Documentation)
             </span>
-          </h1>
-          <p className="text-gray-500 text-sm max-w-3xl">
+          </h2>
+          <p className="text-gray-500 text-sm max-w-3xl mb-4">
             Start completing all purchases, please submit your
             liquidation report and equipment documentation for
             verification.
@@ -942,15 +940,11 @@ export function ProcurementAndLiquidation({ onSubmitSuccess }: ProcurementAndLiq
         </div>
         <Module15 />
 
-        {/* Module 16 Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
+          <h2 className="text-lg font-bold text-gray-800 mb-1">
             Untagging of Account
-          </h1>
-          <p className="text-gray-500 text-sm max-w-3xl">
+          </h2>
+          <p className="text-gray-500 text-sm max-w-3xl mb-4">
             Start the account untagging procedure to mark the
             completion of your SETUP project financial
             activities.
@@ -969,7 +963,6 @@ export function ProcurementAndLiquidation({ onSubmitSuccess }: ProcurementAndLiq
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </ModuleWorkflowLayout>
   );
 }

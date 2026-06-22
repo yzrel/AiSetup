@@ -46,6 +46,7 @@ const moduleBadgeColors: Partial<Record<ModuleStatus, string>> = {
   "project-proposal": "bg-teal-100 text-teal-700",
   "conduct-rtec": "bg-amber-100 text-amber-700",
   "approval-letter": "bg-green-100 text-green-700",
+  "project-information-sheet": "bg-teal-100 text-teal-700",
   "landbank-withdrawal": "bg-lime-100 text-lime-700",
   "procurement-liquidation": "bg-orange-100 text-orange-700",
   completed: "bg-emerald-100 text-emerald-700",

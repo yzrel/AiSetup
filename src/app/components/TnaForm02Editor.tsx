@@ -204,7 +204,7 @@ export function TnaForm02Editor({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-6 print:hidden">
+    <div className="space-y-6 print:hidden">
       <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
           <h2 className="text-base font-bold text-gray-800">Edit TNA Form 02</h2>

@@ -10,6 +10,17 @@ import {
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2, Shield } from 'lucide-react';
 import { authStore } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
+import { getApplicantsForStaff } from '../utils/provincialOffice';
+import { staffContextStore } from '../store/staffContextStore';
+
+function autoSelectStaffApplicant() {
+  const user = authStore.getUser();
+  if (!user || (user.role !== 'admin' && user.role !== 'agent')) return;
+  const scoped = getApplicantsForStaff(user);
+  if (scoped.length > 0) {
+    staffContextStore.setSelectedApplicant(scoped[0].id);
+  }
+}
 
 type PortalType = 'applicant' | 'staff';
 
@@ -65,6 +76,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           officeId: 'south-cotabato',
           assignedProvinces: ['South Cotabato'],
         });
+        autoSelectStaffApplicant();
       } else if (email === 'admin@dost.gov.ph' && password === 'admin123') {
         authStore.login({
           id: 'admin-001', email, firstName: 'DOST', middleName: '', lastName: 'Admin',
@@ -72,6 +84,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           portal: 'admin',
           officeId: 'regional',
         });
+        autoSelectStaffApplicant();
       } else {
         setError('Invalid credentials. Only authorized DOST personnel can access this portal.');
       }

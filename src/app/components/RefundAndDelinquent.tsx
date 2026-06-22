@@ -22,6 +22,7 @@ import {
   Bell,
   ClipboardList,
 } from "lucide-react";
+import { ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -668,16 +669,15 @@ interface RefundAndDelinquentProps {
 
 export function RefundAndDelinquent({ onSubmitSuccess }: RefundAndDelinquentProps = {}) {
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Module 15: Refund Schedule */}
+    <ModuleWorkflowLayout
+      title="Refund & Delinquent Accounts"
+      subtitle="Manage SETUP refund schedules, post-dated checks, and delinquent account status after project implementation."
+      showStaffPicker={false}
+      insetBody={false}
+      contentClassName="p-6 space-y-8"
+    >
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
-            Refund Schedule Management
-          </h1>
+          <h2 className="text-lg font-bold text-gray-800 mb-2">Refund Schedule Management</h2>
           <p className="text-gray-500 text-sm max-w-3xl mb-1">
             After the project has been implemented and
             monitored, the cooperator must begin the repayment
@@ -699,34 +699,25 @@ export function RefundAndDelinquent({ onSubmitSuccess }: RefundAndDelinquentProp
           <Module15Refund />
         </div>
 
-        {/* Module 17 State A: Payment Current */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
+          <h2 className="text-lg font-bold text-gray-800 mb-2">
             Delinquent Account Management
             <span className="ml-2 text-base font-normal text-green-600">
               — Payment Current
             </span>
-          </h1>
+          </h2>
           <Module17StateA />
         </div>
 
-        {/* Module 17 State B: Under Evaluation */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
+          <h2 className="text-lg font-bold text-gray-800 mb-2">
             Delinquent Account Management
             <span className="ml-2 text-base font-normal text-red-500">
               — Delinquent / Under Evaluation
             </span>
-          </h1>
+          </h2>
           <Module17StateB />
         </div>
-      </div>
-    </div>
+    </ModuleWorkflowLayout>
   );
 }

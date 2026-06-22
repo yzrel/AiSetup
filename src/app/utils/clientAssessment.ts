@@ -83,7 +83,8 @@ function postProposalStatus(applicant: Applicant): AssessmentStatus {
   if (hasAssessment(applicant, "post-proposal")) return "completed";
   if (
     applicant.currentModule === "conduct-rtec" ||
-    applicant.currentModule === "approval-letter"
+    applicant.currentModule === "approval-letter" ||
+    applicant.currentModule === "project-information-sheet"
   ) {
     return "pending";
   }
@@ -100,6 +101,7 @@ const MODULE_ORDER: ModuleStatus[] = [
   "project-proposal",
   "conduct-rtec",
   "approval-letter",
+  "project-information-sheet",
   "landbank-withdrawal",
   "procurement-liquidation",
   "refund-delinquent",

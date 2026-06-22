@@ -2,433 +2,457 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Download,
+  Eye,
   FileText,
-  Mail,
-  Printer,
-  ChevronDown,
-  Building2,
-  User,
-  Calendar,
-  DollarSign,
-  Hash,
-  Clock,
-  Shield,
+  RefreshCw,
+  Save,
+  Send,
+  Upload,
 } from "lucide-react";
+import { AuthUser, authStore } from "../store/authStore";
+import { applicantStore, Applicant } from "../store/applicantStore";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { DOST_BLUE, ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
+import { appendStaffAssessment } from "../utils/clientAssessment";
+import { notifyApprovalLetterPublished } from "../utils/notificationHelpers";
+import type { ApprovalLetterForm } from "../api/types";
+import {
+  acknowledgeApprovalLetter,
+  downloadApprovalLetterPdf,
+  getApprovalLetterForm,
+  getApprovalLetterStored,
+  getSignedMoa,
+  hasRtecReportPrerequisite,
+  publishApprovalLetter,
+  saveApprovalLetterDraft,
+  syncApprovalLetterFromRtec,
+  validateApprovalLetterAcknowledge,
+  validateApprovalLetterPublish,
+} from "../utils/approvalLetter";
+import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
+import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
+import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
 
-// ── Step Progress Bar ─────────────────────────────────────────────────────────
+const STEPS: ModuleStep[] = [
+  { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
+  { id: "details", label: "Form 003 details", icon: <FileText className="w-4 h-4" /> },
+  { id: "preview", label: "Preview & PDF", icon: <Eye className="w-4 h-4" /> },
+  { id: "publish", label: "Publish", icon: <Send className="w-4 h-4" /> },
+  { id: "moa", label: "Signed MOA", icon: <Upload className="w-4 h-4" /> },
+];
 
-function StepBar({
-  current = 9,
-  total = 10,
-}: {
-  current?: number;
-  total?: number;
-}) {
-  return (
-    <div className="flex items-center gap-1 flex-wrap">
-      {Array.from({ length: total }, (_, i) => i + 1).map(
-        (n) => (
-          <div
-            key={n}
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-              n < current
-                ? "bg-green-500 border-green-500 text-white"
-                : n === current
-                  ? "bg-blue-600 border-blue-600 text-white ring-2 ring-blue-300"
-                  : "bg-white border-gray-300 text-gray-400"
-            }`}
-          >
-            {n}
-          </div>
-        ),
-      )}
-    </div>
-  );
-}
+const STEP_IDS = ["overview", "details", "preview", "publish", "moa"] as const;
 
-// ── Approval Summary Card ─────────────────────────────────────────────────────
-
-function ApprovalSummaryCard({
-  showRef = false,
-}: {
-  showRef?: boolean;
-}) {
-  const items = [
-    {
-      icon: <User className="w-3.5 h-3.5" />,
-      text: "Juan Dela Cruz",
-    },
-    {
-      icon: <Building2 className="w-3.5 h-3.5" />,
-      text: "ABC Food Processing",
-    },
-    {
-      icon: <DollarSign className="w-3.5 h-3.5" />,
-      text: "₱2,000,000 🇵🇭",
-    },
-    {
-      icon: <Calendar className="w-3.5 h-3.5" />,
-      text: "April 30, 2024",
-    },
-    ...(showRef
-      ? [
-          {
-            icon: <Hash className="w-3.5 h-3.5" />,
-            text: "AL-2024-000145",
-          },
-        ]
-      : []),
-  ];
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <p className="font-semibold text-gray-700 mb-3 text-sm">
-        Approval Summary:
-      </p>
-      <ul className="space-y-2">
-        {items.map((item, i) => (
-          <li
-            key={i}
-            className="flex items-center gap-2 text-sm text-gray-700"
-          >
-            <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-            {item.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-// ── Official Letter Preview ───────────────────────────────────────────────────
-
-function LetterPreview() {
-  return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-      {/* Letter header */}
-      <div className="bg-blue-700 text-white px-5 py-3 flex items-center gap-3">
-        <div className="w-10 h-10 bg-white rounded flex items-center justify-center shrink-0">
-          <span className="text-blue-700 font-bold text-xs">
-            ai
-          </span>
-        </div>
-        <div>
-          <p className="font-bold text-sm uppercase tracking-wide">
-            Department of Science and Technology
-          </p>
-          <p className="text-xs text-blue-200">
-            Small Enterprise Technology Upgrading Program
-            (SETUP)
-          </p>
-        </div>
-        <div className="ml-auto text-right text-xs text-blue-200">
-          <p>April 30, 2024</p>
-          <p>Amt: ₱2,000,000</p>
-        </div>
-      </div>
-
-      {/* Letter body */}
-      <div className="p-5 text-xs text-gray-700 leading-relaxed space-y-3">
-        <p className="text-right text-gray-500">
-          April 30, 2024
-        </p>
-
-        <div>
-          <p className="font-bold">Juan Dela Cruz</p>
-          <p className="text-gray-500">
-            Agri. Jae-rammed Stoner
-          </p>
-          <p className="text-gray-500">
-            123 Mabini St., Cotabato, SOCCSKSARGEN
-          </p>
-        </div>
-
-        <p>Sir/Ma'am: Juan M&A Cruz</p>
-
-        <p className="text-justify text-gray-600">
-          We are pleased to inform you that the DOST-SETUP
-          Regional Evaluation Committee has granted final
-          approval for your submitted SETUP Project Proposal for{" "}
-          <strong>
-            Production Efficiency Improvement at ABC Food
-            Processing
-          </strong>
-          . The approved amount of <strong>₱2,000,000</strong>{" "}
-          will be released in accordance with the Memorandum of
-          Agreement to be signed between your enterprise and the
-          DOST Regional Office. Please acknowledge receipt by
-          clicking the button below and prepare for MOA signing.
-        </p>
-
-        <p className="text-gray-500 italic text-[10px]">
-          Notes: Please acknowledge receipt of this Approval
-          Letter and prepare for MOA signing.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
+type StepId = (typeof STEP_IDS)[number];
 
 interface ApprovalLetterProps {
+  user?: AuthUser | null;
   onSubmitSuccess?: () => void;
 }
 
-export function ApprovalLetter({ onSubmitSuccess }: ApprovalLetterProps = {}) {
-  const [acknowledged, setAcknowledged] = useState(false);
+export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = {}) {
+  const { applicant, isStaff } = useStaffApplicant(user);
+  const [step, setStep] = useState<StepId>("overview");
+  const [form, setForm] = useState<ApprovalLetterForm | null>(null);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+  const [publishNotice, setPublishNotice] = useState("");
+  const [conformeName, setConformeName] = useState("");
+  const [ackNotice, setAckNotice] = useState("");
+  const [, setMoaRefresh] = useState(0);
+
+  const loadForm = useCallback((app: Applicant | null) => {
+    if (!app) {
+      setForm(null);
+      return;
+    }
+    const loaded = getApprovalLetterForm(app);
+    setForm(loaded);
+    if (loaded.conformeSignedName) setConformeName(loaded.conformeSignedName);
+  }, []);
+
+  useEffect(() => {
+    loadForm(applicant);
+  }, [applicant?.id, loadForm]);
+
+  useEffect(() => {
+    return applicantStore.subscribe(() => {
+      if (applicant) {
+        const updated = applicantStore.getById(applicant.id);
+        if (updated) loadForm(updated);
+      }
+    });
+  }, [applicant?.id, loadForm]);
+
+  const rtecReady = hasRtecReportPrerequisite(applicant);
+  const stored = applicant ? getApprovalLetterStored(applicant) : null;
+  const isPublished = !!stored?.published || !!form?.published;
+  const isAcknowledged = !!stored?.acknowledged;
+  const signedMoa = getSignedMoa(applicant);
+  const uploadedBy = user?.email ?? "staff";
+
+  const handleSave = () => {
+    if (!applicant || !form) return;
+    saveApprovalLetterDraft(applicant.id, form);
+    setSaveNotice("Draft saved.");
+    setTimeout(() => setSaveNotice(""), 3000);
+  };
+
+  const handleSync = () => {
+    if (!applicant || !form) return;
+    const synced = syncApprovalLetterFromRtec(form, applicant);
+    setForm(synced);
+    saveApprovalLetterDraft(applicant.id, synced);
+    setSaveNotice("Synced from RTEC / Project Proposal.");
+    setTimeout(() => setSaveNotice(""), 3000);
+  };
+
+  const handleDownload = () => {
+    downloadApprovalLetterPdf(applicant?.applicationId);
+  };
+
+  const handlePublish = () => {
+    if (!applicant || !form) return;
+    const errors = validateApprovalLetterPublish(form);
+    if (errors.length) {
+      setSubmitErrors(errors);
+      return;
+    }
+    setSubmitErrors([]);
+    publishApprovalLetter(applicant.id, form);
+    if (user && authStore.isStaff(user.role)) {
+      applicantStore.update(applicant.id, {
+        ...appendStaffAssessment(applicant, {
+          stage: "post-proposal",
+          decision: "approval-published",
+          assessedBy: user.email,
+          assessedAt: new Date().toISOString(),
+          remarks: "SETUP Form 003 Notice of Approval published",
+        }),
+      });
+    }
+    notifyApprovalLetterPublished(applicant);
+    setPublishNotice("Notice of Approval published to applicant.");
+    setTimeout(() => setPublishNotice(""), 5000);
+    setForm({ ...form, published: true });
+  };
+
+  const handleAcknowledge = () => {
+    if (!applicant || !form) return;
+    const errors = validateApprovalLetterAcknowledge(conformeName);
+    if (errors.length) {
+      setSubmitErrors(errors);
+      return;
+    }
+    setSubmitErrors([]);
+    acknowledgeApprovalLetter(applicant.id, conformeName.trim());
+    applicantStore.update(applicant.id, { currentModule: "project-information-sheet" });
+    setAckNotice(
+      "Conforme acknowledged. Awaiting MOA signing day with your PSTO.",
+    );
+    setTimeout(() => setAckNotice(""), 5000);
+    onSubmitSuccess?.();
+  };
+
+  const stepIndex = STEPS.findIndex((s) => s.id === step);
+  const showStaffWorkflow = isStaff;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* ── Page Header ── */}
-        <div className="mb-2">
-          <h1 className="text-2xl font-bold text-gray-800">
-            <span className="text-gray-400 font-normal">
-              
-            </span>{" "}
-            Approval Letter
-          </h1>
-          <p className="text-gray-500 text-sm mt-1 max-w-2xl">
-            After approval, the system should auto-generate the
-            Approval Letter using prior project data and
-            acknowledge receipt to proceed to MOA signing.
-          </p>
-        </div>
-
-        {/* ── Meta bar ── */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
-          <span>
-            <span className="text-gray-400">
-              Applicant Name
-            </span>
-            &nbsp;
-            <span className="font-semibold text-gray-800">
-              Juan Dela Cruz
-            </span>
-          </span>
-          <span className="font-semibold text-gray-800">
-            LOI-2024-000145
-          </span>
-          <span className="font-semibold text-gray-800">
-            TN0322-000145
-          </span>
-        </div>
-
-        {/* ── Step bar ── */}
-        <div className="mb-6">
-          <StepBar current={9} total={10} />
-        </div>
-
-        {/* ── Two-column layout ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ── LEFT: Main panel ── */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Module header card */}
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center gap-2 font-semibold text-sm">
-                <FileText className="w-4 h-4" />
-                Module 9 – Approval Letter
-              </div>
-              <div className="p-4">
-                <p className="text-sm text-gray-700">
-                  DOST has approved your project proposal.
-                  Please review the official Approval Letter and
-                  acknowledge receipt to MOA signing.
+    <ModuleWorkflowLayout
+      title="SETUP Form 003 — Notice of Approval (Annex A-3)"
+      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme before MOA signing day and Pre-PIS."
+      user={user}
+      steps={showStaffWorkflow ? STEPS : undefined}
+      currentStep={showStaffWorkflow ? step : undefined}
+      onStepClick={showStaffWorkflow ? (id) => setStep(id as StepId) : undefined}
+      staffPickerLabel="Review applicant approval letter"
+      showStaffPicker={showStaffWorkflow}
+      alerts={
+        <>
+          {!applicant && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+              Select an applicant to view or prepare the Notice of Approval.
+            </div>
+          )}
+          {applicant && showStaffWorkflow && !rtecReady && !isPublished && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-sm text-red-800">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <div>
+                <p className="font-semibold">RTEC Report required</p>
+                <p className="mt-1">
+                  Complete and mark the RTEC Report (Form 002) before issuing the Notice of
+                  Approval.
                 </p>
               </div>
             </div>
-
-            {/* Proposal Information */}
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <h3 className="font-semibold text-sm text-gray-800">
-                  Proposal Information
-                </h3>
-                <div className="flex gap-2">
-                  <button className="flex items-center gap-1.5 text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors">
-                    <Printer className="w-3.5 h-3.5" />
-                    Gate filed
-                  </button>
-                  <button className="flex items-center gap-1.5 text-xs bg-blue-600 text-white rounded-lg px-3 py-1.5 hover:bg-blue-700 transition-colors">
-                    <Shield className="w-3.5 h-3.5" />
-                    DESNUETION
-                  </button>
-                </div>
-              </div>
-              <div className="p-4 space-y-2 text-sm">
-                <div className="flex gap-2">
-                  <span className="text-gray-500 shrink-0">
-                    Project Title:
-                  </span>
-                  <span className="font-medium text-gray-800">
-                    Production Efficiency Improvement at ABC
-                    Food Processing
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-gray-500 shrink-0">
-                    Reference Numbers:
-                  </span>
-                  <span className="font-medium text-gray-800">
-                    LOI-2024-000145&nbsp;&nbsp;TN0322-000145
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-gray-500 shrink-0">
-                    Approved Amount:
-                  </span>
-                  <span className="font-bold text-gray-800">
-                    ₱2,000,000
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400 italic">
-                  Notes: Please acknowledge receipt of this
-                  Approval Letter.
-                </p>
-              </div>
+          )}
+          {applicant && !showStaffWorkflow && !isPublished && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+              Your Notice of Approval is being prepared by DOST staff. You will be notified
+              when it is published.
             </div>
+          )}
+        </>
+      }
+    >
+      {applicant && form && (showStaffWorkflow || isPublished) && (
+        <div className="space-y-4">
+              {showStaffWorkflow && step === "moa" && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-5 h-5 text-[#0C2461] mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        Signed Memorandum of Agreement
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Staff upload only — attach the scanned signed MOA (PDF or image)
+                        from on-site MOA signing day.
+                      </p>
+                    </div>
+                  </div>
 
-            {/* Approval Letter (Auto-Generated) */}
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center shrink-0">
-                  <span className="text-white text-[10px] font-bold">
-                    ai
-                  </span>
+                  {!isPublished ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 space-y-3">
+                      <p>
+                        Publish the Notice of Approval (step 4) before uploading the signed
+                        MOA.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setStep("publish")}
+                        className="text-sm font-semibold text-[#0C2461] hover:underline"
+                      >
+                        Go to Publish step →
+                      </button>
+                    </div>
+                  ) : (
+                    applicant && (
+                      <SignedMoaUploadPanel
+                        applicant={applicant}
+                        uploadedBy={uploadedBy}
+                        isAcknowledged={isAcknowledged}
+                        requireAcknowledged={false}
+                        onSaved={() => setMoaRefresh((n) => n + 1)}
+                      />
+                    )
+                  )}
+
+                  {signedMoa && (
+                    <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Signed MOA on file —{" "}
+                      {new Date(signedMoa.moaSignedDate).toLocaleDateString("en-PH", {
+                        dateStyle: "long",
+                      })}
+                    </p>
+                  )}
                 </div>
-                <span className="font-semibold text-sm text-blue-700">
-                  Approval Letter
-                </span>
-                <span className="text-xs text-gray-400 italic">
-                  (Auto-Generated)
-                </span>
-              </div>
+              )}
 
-              <div className="p-4 space-y-3">
-                <div className="flex gap-6 text-sm">
-                  <span>
-                    <span className="text-gray-500">
-                      Reference Number:
-                    </span>
-                    &nbsp;
-                    <span className="font-semibold text-gray-800">
-                      AL-2024-000145
-                    </span>
-                  </span>
-                  <span>
-                    <span className="text-gray-500">
-                      Date of Approval:
-                    </span>
-                    &nbsp;
-                    <span className="font-semibold text-gray-800">
-                      April 30, 2024
-                    </span>
-                  </span>
+              {showStaffWorkflow && step === "overview" && isPublished && applicant && (
+                <div className="space-y-3 border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                  <p className="text-sm font-semibold text-gray-800">Signed MOA</p>
+                  <SignedMoaUploadPanel
+                    applicant={applicant}
+                    uploadedBy={uploadedBy}
+                    isAcknowledged={isAcknowledged}
+                    requireAcknowledged={false}
+                    onSaved={() => setMoaRefresh((n) => n + 1)}
+                  />
                 </div>
+              )}
 
-                <LetterPreview />
+              {!showStaffWorkflow && signedMoa && applicant && (
+                <SignedMoaUploadPanel
+                  applicant={applicant}
+                  uploadedBy={signedMoa.uploadedBy}
+                  readOnly
+                />
+              )}
 
-                <p className="text-xs text-gray-400 italic">
-                  Notes: Please acknowledge receipt of this
-                  Approval Letter and prepare for MOA signing.
-                </p>
+              {showStaffWorkflow && step === "overview" && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-5 h-5 text-[#0C2461] mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {form.projectTitle || "Untitled project"}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {applicant.enterpriseName} · {applicant.applicationId}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Ref. {form.referenceNumber} · Approved: {form.approvedAmount || "—"}
+                      </p>
+                    </div>
+                  </div>
+                  {isPublished && (
+                    <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Published
+                      {stored?.publishedAt
+                        ? ` on ${new Date(stored.publishedAt).toLocaleDateString()}`
+                        : ""}
+                      {isAcknowledged ? " · Applicant acknowledged conforme" : ""}
+                      {signedMoa
+                        ? ` · MOA signed ${new Date(signedMoa.moaSignedDate).toLocaleDateString()}`
+                        : ""}
+                    </p>
+                  )}
+                </div>
+              )}
 
-                {/* Action buttons */}
-                <div className="flex gap-3 pt-2">
+              {showStaffWorkflow && step === "details" && (
+                <ApprovalLetterEditor form={form} onChange={setForm} />
+              )}
+
+              {(step === "preview" || !showStaffWorkflow || step === "publish") && (
+                <ApprovalLetterPreview
+                  form={form}
+                  applicationId={applicant.applicationId}
+                  onPrint={handleDownload}
+                  showToolbar
+                />
+              )}
+
+              {!showStaffWorkflow && isPublished && !isAcknowledged && (
+                <div className="border-t border-gray-100 pt-4 space-y-3">
+                  <p className="text-sm font-semibold text-gray-800">Conforme acknowledgment</p>
+                  <p className="text-sm text-gray-600">
+                    Type your full name below to acknowledge receipt of this Notice of
+                    Approval and agree to comply with the stated conditions.
+                  </p>
+                  <input
+                    type="text"
+                    value={conformeName}
+                    onChange={(e) => setConformeName(e.target.value)}
+                    placeholder={applicant.applicantName}
+                    className="w-full max-w-md text-sm border border-gray-200 rounded-lg px-3 py-2"
+                  />
                   <button
-                    onClick={() => setAcknowledged(true)}
-                    className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors ${
-                      acknowledged
-                        ? "bg-green-700 text-white cursor-default"
-                        : "bg-green-600 hover:bg-green-700 text-white"
-                    }`}
+                    type="button"
+                    onClick={handleAcknowledge}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
                   >
                     <CheckCircle className="w-4 h-4" />
-                    {acknowledged
-                      ? "Approval Acknowledged"
-                      : "Acknowledge Approval"}
+                    Acknowledge &amp; Continue
                   </button>
-                  <button className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                </div>
+              )}
+
+              {!showStaffWorkflow && isAcknowledged && !signedMoa && (
+                <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  Conforme acknowledged. DOST will schedule MOA signing with your PSTO.
+                  Your signed MOA will be uploaded by DOST staff after the on-site signing
+                  ceremony — you do not need to upload it yourself.
+                </p>
+              )}
+
+              {!showStaffWorkflow && isAcknowledged && signedMoa && (
+                <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Conforme acknowledged. Signed MOA is on file (uploaded by DOST staff).
+                  LandBank setup will be enabled after signing day documents are complete.
+                </p>
+              )}
+
+              {showStaffWorkflow && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setStep(STEP_IDS[Math.max(0, stepIndex - 1)])}
+                    disabled={stepIndex === 0}
+                    className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStep(STEP_IDS[Math.min(STEP_IDS.length - 1, stepIndex + 1)])
+                    }
+                    disabled={stepIndex === STEPS.length - 1}
+                    className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    type="button"
+                    onClick={handleSync}
+                    disabled={!rtecReady}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-semibold hover:bg-blue-50 disabled:opacity-40"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Sync from RTEC
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-700 text-white text-sm font-semibold hover:bg-gray-800"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    disabled={!rtecReady}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+                    style={{ background: DOST_BLUE }}
+                  >
                     <Download className="w-4 h-4" />
-                    Download Approval Letter (PDF)
+                    Download PDF
                   </button>
+                  {(step === "publish" || step === "preview") && !isPublished && (
+                    <button
+                      type="button"
+                      onClick={handlePublish}
+                      disabled={!rtecReady}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
+                    >
+                      <Send className="w-4 h-4" />
+                      Publish to Applicant
+                    </button>
+                  )}
                 </div>
+              )}
 
-                {/* Email notice */}
-                <div className="flex items-center gap-2 text-xs text-gray-500 pt-1">
-                  <Mail className="w-3.5 h-3.5 text-blue-500" />
-                  An email confirmation will also be sent to
-                  you.
-                </div>
-              </div>
-            </div>
-
-            {/* Module 10 teaser */}
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-semibold text-blue-700">
-                  Module 10 – MOA Preparation and Signing
-                </span>
-              </div>
-              <span className="text-xs text-blue-500">
-                Next step →
-              </span>
-            </div>
-          </div>
-
-          {/* ── RIGHT: Sidebar ── */}
-          <div className="space-y-4">
-            <ApprovalSummaryCard showRef={false} />
-
-            {/* Illustration */}
-            <div className="bg-gradient-to-br from-blue-100 to-green-100 rounded-lg h-44 flex items-center justify-center relative overflow-hidden">
-              <div className="text-center z-10">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-md">
-                  <CheckCircle className="w-9 h-9 text-green-500" />
-                </div>
-                <p className="text-xs text-blue-700 font-semibold">
-                  Approval Granted
+              {saveNotice && (
+                <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  {saveNotice}
                 </p>
-                <p className="text-xs text-gray-500">
-                  DOST SETUP
+              )}
+              {publishNotice && (
+                <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  {publishNotice}
                 </p>
-              </div>
-              <div className="absolute bottom-0 right-0 w-20 h-20 bg-green-200 rounded-full opacity-40 translate-x-6 translate-y-6" />
-            </div>
-
-            <ApprovalSummaryCard showRef={true} />
-
-            {/* Download buttons */}
-            <div className="space-y-2">
-              <button className="w-full flex items-center justify-center gap-2 border border-blue-300 text-blue-600 text-sm font-medium py-2.5 rounded-lg hover:bg-blue-50 transition-colors">
-                <FileText className="w-4 h-4" />
-                Contact IPTSiQ3
-              </button>
-              <button
-                onClick={() => setAcknowledged(true)}
-                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Acknowledge Approval
-              </button>
-              <button className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4" />
-                Download Approval Letter (PDF)
-              </button>
-              <button className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4" />
-                Download DOCX Version
-              </button>
-            </div>
-          </div>
+              )}
+              {ackNotice && (
+                <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  {ackNotice}
+                </p>
+              )}
+              {submitErrors.length > 0 && (
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-1">
+                  {submitErrors.map((e) => (
+                    <p key={e}>• {e}</p>
+                  ))}
+                </div>
+              )}
         </div>
-      </div>
-    </div>
+      )}
+    </ModuleWorkflowLayout>
   );
 }

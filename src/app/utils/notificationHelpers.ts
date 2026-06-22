@@ -150,6 +150,47 @@ export function notifyTna2Published(applicant: Applicant) {
   });
 }
 
+export function notifyApprovalLetterPublished(applicant: Applicant) {
+  notificationStore.add({
+    id: `approval-published-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "SETUP Notice of Approval published",
+    message:
+      "Your SETUP Form 003 Notice of Approval is ready. Review the letter and acknowledge conforme to proceed.",
+    urgent: true,
+    view: "approval-letter",
+  });
+}
+
+export function notifyMoaUploaded(applicant: Applicant) {
+  notificationStore.add({
+    id: `moa-uploaded-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "info",
+    title: "Signed MOA on file",
+    message:
+      "Your signed Memorandum of Agreement has been recorded. Pre-PIS will be completed on the same signing day.",
+    view: "project-information-sheet",
+  });
+}
+
+export function notifySigningDayComplete(applicant: Applicant) {
+  notificationStore.add({
+    id: `signing-day-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "MOA signing day complete",
+    message:
+      "Signed MOA is on file. You may proceed to LandBank account setup.",
+    urgent: true,
+    view: "landbank-withdrawal",
+  });
+}
+
 export function notifyProjectProposalSubmitted(applicant: Applicant) {
   notificationStore.add({
     id: `pp-staff-${applicant.id}-${Date.now()}`,

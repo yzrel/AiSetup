@@ -25,6 +25,7 @@ import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { moduleStepPillClass } from "./moduleTheme";
 import { api, ApiError } from "../api/client";
 import type {
   ProjectProposalAttachment,
@@ -103,15 +104,7 @@ function StepHeader({ current }: { current: StepId }) {
         const active = i === currentIdx;
         return (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                active
-                  ? "bg-white text-blue-900 shadow-sm"
-                  : done
-                    ? "bg-white/20 text-white"
-                    : "bg-white/10 text-white/40"
-              }`}
-            >
+            <div className={moduleStepPillClass({ active, done, locked: false })}>
               {done ? (
                 <CheckCircle className="w-3.5 h-3.5 text-green-400" />
               ) : (

@@ -21,6 +21,7 @@ import {
 } from "../utils/tnaForm01";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { moduleStepPillClass } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
@@ -63,11 +64,7 @@ function StepHeader({ current }) {
         const active = i === currentIdx;
         return (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              active ? "bg-white text-blue-900 shadow-sm"
-              : done  ? "bg-white/20 text-white"
-                      : "bg-white/10 text-white/40"
-            }`}>
+            <div className={moduleStepPillClass({ active, done, locked: false })}>
               {done ? <span className="text-green-300">✓</span> : <span>{s.icon}</span>}
               <span className="hidden sm:inline">{s.label}</span>
               <span className="sm:hidden">{i + 1}</span>

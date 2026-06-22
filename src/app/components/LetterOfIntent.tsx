@@ -23,6 +23,7 @@ import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { moduleStepPillClass } from "./moduleTheme";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
@@ -87,13 +88,7 @@ function StepHeader({ current, steps }: { current: StepId; steps: typeof STEPS }
         return (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
             <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                active
-                  ? "bg-white text-blue-900 shadow-sm"
-                  : done
-                  ? "bg-white/20 text-white"
-                  : "bg-white/10 text-white/40"
-              }`}
+              className={moduleStepPillClass({ active, done, locked: false })}
             >
               {done ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : s.icon}
               <span className="hidden sm:inline">{s.label}</span>
