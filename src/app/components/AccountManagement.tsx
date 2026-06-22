@@ -27,6 +27,7 @@ import {
   MODULE_LABELS,
 } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
+import { getApplicantsForStaff } from "../utils/provincialOffice";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
 import type { Tna2StoredDocument } from "../api/types";
@@ -51,7 +52,9 @@ export function AccountManagement({ user }: AccountManagementProps) {
   const [showTna2Preview, setShowTna2Preview] = useState(false);
 
   const refresh = () =>
-    setAccounts(applicantStore.getRegisteredAccounts());
+    setAccounts(
+      getApplicantsForStaff(user).filter((a) => a.moduleData?.password),
+    );
 
   useEffect(() => {
     refresh();

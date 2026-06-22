@@ -34,7 +34,7 @@ public class AnthropicClient {
 
     public List<String> generateBodyParagraphs(String prompt) {
         try {
-            return parseParagraphsJson(callAnthropic(prompt));
+            return parseParagraphsJson(callAnthropic(prompt, properties.getMaxTokens()));
         } catch (RestClientException e) {
             log.warn("Anthropic API request failed: {}", e.getMessage());
             throw new IllegalStateException("Anthropic API request failed", e);
@@ -45,8 +45,12 @@ public class AnthropicClient {
     }
 
     public JsonNode generateJsonObject(String prompt) {
+        return generateJsonObject(prompt, properties.getMaxTokens());
+    }
+
+    public JsonNode generateJsonObject(String prompt, int maxTokens) {
         try {
-            String text = callAnthropic(prompt);
+            String text = callAnthropic(prompt, maxTokens);
             return parseJsonObject(text);
         } catch (RestClientException e) {
             log.warn("Anthropic API request failed: {}", e.getMessage());
@@ -57,14 +61,14 @@ public class AnthropicClient {
         }
     }
 
-    private String callAnthropic(String prompt) {
+    private String callAnthropic(String prompt, int maxTokens) {
         if (!properties.isConfigured()) {
             throw new IllegalStateException("Anthropic API key is not configured");
         }
 
         Map<String, Object> body = Map.of(
                 "model", properties.getModel(),
-                "max_tokens", properties.getMaxTokens(),
+                "max_tokens", maxTokens,
                 "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 

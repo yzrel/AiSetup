@@ -23,6 +23,7 @@ import {
 import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
 import { TnaForm02Editor } from "./TnaForm02Editor";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
+import { applicantAiContext } from "../utils/aiAssist";
 
 const DOST_BLUE = "#0C2461";
 
@@ -248,6 +249,11 @@ export function TNA2TechnicalReport({
             document={draft}
             onChange={handleDraftChange}
             onSave={handleSaveEdits}
+            aiContext={{
+              ...applicantAiContext(applicant),
+              enterpriseProfile: draft.enterpriseProfile,
+              siteValidationFindings: draft.siteValidationFindings,
+            }}
           />
         )}
 

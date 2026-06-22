@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   FileText,
   CheckCircle,
@@ -26,6 +26,8 @@ import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPick
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
+import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
+import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
 import type { LoiDocumentResponse } from "../api/types";
 import {
   buildLoiGenerationPayload,
@@ -173,6 +175,25 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   const [loiDocument, setLoiDocument] = useState<LoiDocumentResponse | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const { bind: bindLoiAi, notice: loiAiNotice } = useAiFieldSuggest("loi");
+  const loiAiContext = useMemo(
+    () => ({
+      ...applicantAiContext(applicant),
+      ...additional,
+    }),
+    [applicant, additional],
+  );
+
+  const loiAi = (field: string, apply: (value: string) => void) => {
+    const bound = bindLoiAi(field, loiAiContext, (value) =>
+      apply(Array.isArray(value) ? value.join("\n") : value),
+    );
+    return {
+      ...bound,
+      onAiSuggest: applicant ? bound.onAiSuggest : undefined,
+    };
+  };
 
   const loadApplicantData = (app: Applicant | null) => {
     if (!app) return;
@@ -384,6 +405,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
           <StaffApplicantPicker user={user} label="Review applicant LOI" />
         </div>
         <StaffApplicantBanner user={user} />
+        <div className="px-6 pt-4">
+          <AiAssistNotice message={loiAiNotice} />
+        </div>
 
         {/* ────────────────────────────────────────────────────────────────────
             STEP 1 — Review Auto-filled Info
@@ -480,8 +504,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                       <input type="text" className={inputCls} placeholder="e.g. DTI-XXXX-XXXXX" value={additional.registrationNumber} onChange={(e) => setAdd("registrationNumber", e.target.value)} />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className={labelCls}>Products / Services Offered *</label>
-                      <textarea rows={3} className={inputCls} placeholder="List your main products or services" value={additional.productServices} onChange={(e) => setAdd("productServices", e.target.value)} />
+                      <AiAssistTextarea
+                        label="Products / Services Offered *"
+                        value={additional.productServices}
+                        onChange={(productServices) => setAdd("productServices", productServices)}
+                        inputClassName={inputCls}
+                        labelClassName={labelCls}
+                        minHeight=""
+                        hint="List your main products or services"
+                        {...loiAi("productServices", (v) => setAdd("productServices", v))}
+                      />
                     </div>
                   </div>
                 </div>
@@ -525,14 +557,26 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 Project Details
               </h2>
               <div className="space-y-4">
-                <div>
-                  <label className={labelCls}>Project Description *</label>
-                  <textarea rows={4} className={inputCls} placeholder="Describe your project and how SETUP can help achieve your technology goals" value={additional.projectDescription} onChange={(e) => setAdd("projectDescription", e.target.value)} />
-                </div>
-                <div>
-                  <label className={labelCls}>Expected Outcome *</label>
-                  <textarea rows={3} className={inputCls} placeholder="What measurable outcomes do you expect from this assistance?" value={additional.expectedOutcome} onChange={(e) => setAdd("expectedOutcome", e.target.value)} />
-                </div>
+                <AiAssistTextarea
+                  label="Project Description *"
+                  value={additional.projectDescription}
+                  onChange={(projectDescription) => setAdd("projectDescription", projectDescription)}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[100px]"
+                  hint="Describe your project and how SETUP can help achieve your technology goals"
+                  {...loiAi("projectDescription", (v) => setAdd("projectDescription", v))}
+                />
+                <AiAssistTextarea
+                  label="Expected Outcome *"
+                  value={additional.expectedOutcome}
+                  onChange={(expectedOutcome) => setAdd("expectedOutcome", expectedOutcome)}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[80px]"
+                  hint="What measurable outcomes do you expect from this assistance?"
+                  {...loiAi("expectedOutcome", (v) => setAdd("expectedOutcome", v))}
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>Estimated Budget (PHP) *</label>
@@ -831,7 +875,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
 
               <div className="mt-4">
                 <label className={labelCls}>Additional Notes (Optional)</label>
-                <textarea rows={3} className={inputCls} placeholder="Any additional notes about your production plan or technology requirements..." value={productionPlanNotes} onChange={(e) => setProductionPlanNotes(e.target.value)} />
+                <AiAssistTextarea
+                  label="Production Plan Notes"
+                  value={productionPlanNotes}
+                  onChange={setProductionPlanNotes}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[80px]"
+                  hint="Any additional notes about your production plan or technology requirements"
+                  {...loiAi("productionPlanNotes", setProductionPlanNotes)}
+                />
               </div>
             </div>
 

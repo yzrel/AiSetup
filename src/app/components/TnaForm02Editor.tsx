@@ -9,15 +9,23 @@ import type {
   Tna2Kpi,
 } from "../api/types";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
+import { useAiFieldSuggest } from "../utils/aiAssist";
+import {
+  AiAssistNotice,
+  AiAssistStringList,
+  AiAssistTextarea,
+  aiAssistInputCls,
+  aiAssistLabelCls,
+} from "./AiAssistField";
 
-const inputCls =
-  "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50";
-const labelCls = "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1";
+const inputCls = aiAssistInputCls;
+const labelCls = aiAssistLabelCls + " mb-1";
 
 interface TnaForm02EditorProps {
   document: Tna2DocumentResponse;
   onChange: (document: Tna2DocumentResponse) => void;
   onSave: () => void;
+  aiContext?: Record<string, unknown>;
 }
 
 function Field({
@@ -25,12 +33,31 @@ function Field({
   value,
   onChange,
   multiline = false,
+  onAiSuggest,
+  aiLoading,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
+  onAiSuggest?: () => void;
+  aiLoading?: boolean;
 }) {
+  if (multiline && onAiSuggest) {
+    return (
+      <AiAssistTextarea
+        label={label}
+        value={value}
+        onChange={onChange}
+        onAiSuggest={onAiSuggest}
+        aiLoading={aiLoading}
+        inputClassName={inputCls}
+        labelClassName={labelCls}
+        minHeight="min-h-[80px]"
+      />
+    );
+  }
+
   return (
     <div>
       <label className={labelCls}>{label}</label>
@@ -57,11 +84,32 @@ function StringListEditor({
   label,
   items,
   onChange,
+  onAiSuggest,
+  aiLoading,
+  multiline = true,
 }: {
   label: string;
   items: string[];
   onChange: (items: string[]) => void;
+  onAiSuggest?: () => void;
+  aiLoading?: boolean;
+  multiline?: boolean;
 }) {
+  if (onAiSuggest) {
+    return (
+      <AiAssistStringList
+        label={label}
+        items={items}
+        onChange={onChange}
+        onAiSuggest={onAiSuggest}
+        aiLoading={aiLoading}
+        inputClassName={inputCls}
+        labelClassName={labelCls}
+        multiline={multiline}
+      />
+    );
+  }
+
   const update = (index: number, value: string) => {
     const next = [...items];
     next[index] = value;
@@ -101,7 +149,19 @@ function StringListEditor({
   );
 }
 
-export function TnaForm02Editor({ document: doc, onChange, onSave }: TnaForm02EditorProps) {
+export function TnaForm02Editor({
+  document: doc,
+  onChange,
+  onSave,
+  aiContext,
+}: TnaForm02EditorProps) {
+  const { bind: bindAi, notice: aiNotice } = useAiFieldSuggest("tna2");
+
+  const ai = (field: string, apply: (value: string | string[]) => void) => {
+    if (!aiContext) return {};
+    return bindAi(field, aiContext, apply);
+  };
+
   const patch = (partial: Partial<Tna2DocumentResponse>) =>
     onChange({ ...doc, ...partial });
 
@@ -162,6 +222,8 @@ export function TnaForm02Editor({ document: doc, onChange, onSave }: TnaForm02Ed
         </button>
       </div>
 
+      <AiAssistNotice message={aiNotice} />
+
       <section className="space-y-3">
         <h3 className="text-sm font-bold text-gray-700">Document metadata</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -205,6 +267,9 @@ export function TnaForm02Editor({ document: doc, onChange, onSave }: TnaForm02Ed
         label="II. Site validation findings"
         items={doc.siteValidationFindings}
         onChange={(items) => patch({ siteValidationFindings: items })}
+        {...ai("siteValidationFindings", (value) =>
+          patch({ siteValidationFindings: Array.isArray(value) ? value : [value] }),
+        )}
       />
 
       <section className="space-y-3">
@@ -214,6 +279,9 @@ export function TnaForm02Editor({ document: doc, onChange, onSave }: TnaForm02Ed
           value={doc.productionProcessAnalysis.summary ?? ""}
           onChange={(v) => patchProcess({ summary: v })}
           multiline
+          {...ai("processSummary", (value) =>
+            patchProcess({ summary: Array.isArray(value) ? value.join("\n") : value }),
+          )}
         />
         <StringListEditor
           label="Findings"
@@ -304,6 +372,11 @@ export function TnaForm02Editor({ document: doc, onChange, onSave }: TnaForm02Ed
           label="Expected outcomes"
           items={doc.productivityImprovement.outcomes}
           onChange={(outcomes) => patchProductivity({ outcomes })}
+          {...ai("expectedOutput", (value) =>
+            patchProductivity({
+              outcomes: Array.isArray(value) ? value : [value],
+            }),
+          )}
         />
       </section>
 

@@ -224,14 +224,20 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     });
   };
 
-  // Final submit
+  // Final submit — persist routing and advance applicant to the next module
   const handleFinalSubmit = () => {
     if (!applicant) return;
+    const nextModule =
+      routingDecision === "project-proposal"
+        ? ("project-proposal" as const)
+        : routingDecision === "mpex"
+          ? ("requirements" as const)
+          : ("tna1" as const);
     applicantStore.update(applicant.id, {
-      currentModule: "requirements",
+      currentModule: nextModule,
       moduleData: {
         ...applicant.moduleData,
-        documentsSubmitted: documents.filter(d => d.uploaded).map(d => d.name),
+        documentsSubmitted: documents.filter((d) => d.uploaded).map((d) => d.name),
         staffVerifiedBy: staffName,
         staffDecision,
         rtecScore: rtec.overallScore,
@@ -609,6 +615,17 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                     applicant!,
                     staffDecision === "approved" ? "approved" : "needs-revision",
                   );
+                  if (staffDecision === "approved") {
+                    applicantStore.update(applicant!.id, {
+                      currentModule: "tna1",
+                      moduleData: {
+                        ...applicant!.moduleData,
+                        staffVerifiedBy: staffName,
+                        staffDecision: "approved",
+                        requirementsApprovedAt: new Date().toISOString(),
+                      },
+                    });
+                  }
                   advanceStep(staffDecision === "approved" ? "rtec" : "changes-requested");
                 }}
                 disabled={!staffDecisionReady}

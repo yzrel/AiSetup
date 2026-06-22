@@ -233,3 +233,170 @@ export interface Tna2GenerationRequest {
   tna1Form: Record<string, unknown>;
   tna1Tables: Tna1TablesDto;
 }
+
+// ── SETUP Form 001 — Project Proposal ─────────────────────────────────────────
+
+export type ProjectProposalAttachmentKind =
+  | "vicinityMap"
+  | "plantLayout"
+  | "orgChart"
+  | "financialReports";
+
+export interface ProjectProposalAttachment {
+  id: string;
+  kind: ProjectProposalAttachmentKind;
+  fileName: string;
+  mimeType: string;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
+export interface ProjectProposalBudgetRow {
+  id: string;
+  item: string;
+  qty: string;
+  unitCost: string;
+  setupShare: string;
+  total: string;
+}
+
+export interface ProjectProposalRiskRow {
+  id: string;
+  risk: string;
+  assumption: string;
+  plan: string;
+}
+
+export interface ProjectProposalForm {
+  projectTitle: string;
+  proponentName: string;
+  proponentAddress: string;
+  projectCost: string;
+  amountRequested: string;
+  generalObjective: string;
+  specificObjectives: string[];
+  firmName: string;
+  firmAddress: string;
+  contactPerson: string;
+  contactNumber: string;
+  email: string;
+  yearEstablished: string;
+  organizationType: string;
+  profitType: string;
+  msmeSize: string;
+  employeesMale: string;
+  employeesFemale: string;
+  employeesDirect: string;
+  employeesIndirect: string;
+  registrationOffice: string;
+  registrationNumber: string;
+  registrationDate: string;
+  businessPermitNumber: string;
+  businessPermitDate: string;
+  businessActivity: string;
+  prioritySectorSpecify: string;
+  productsServices: string;
+  enterpriseBackground: string;
+  skillsExpertise: string;
+  compensation: string;
+  plantSiteNarrative: string;
+  capacityVolumeNarrative: string;
+  rawMaterialsNarrative: string;
+  rawMaterialsTable: string[][];
+  marketSituation: string;
+  productDemandSupply: string;
+  productPriceTable: string[][];
+  distributionChannel: string;
+  competitors: string;
+  marketStrategies: string[];
+  productionProcess: string;
+  equipmentTable: string[][];
+  equipmentNarrative: string;
+  interventionProblem: string;
+  interventionProposed: string;
+  interventionEquipment: string;
+  interventionImpact: string;
+  interventionCostTable: string[][];
+  fabricatorTable: string[][];
+  scheduleTable: string[][];
+  expectedOutputBullets: string[];
+  wasteManagement: string;
+  liquidityRatioTable: string[][];
+  quickRatioTable: string[][];
+  roiTable: string[][];
+  financialAnalysis: string;
+  financialConstraintsNote: string;
+  budgetItems: ProjectProposalBudgetRow[];
+  refundSchedule: string[][];
+  riskRows: ProjectProposalRiskRow[];
+}
+
+export interface ProjectProposalStored {
+  form: ProjectProposalForm;
+  attachments: ProjectProposalAttachment[];
+  document?: ProjectProposalDocumentResponse;
+  submitted?: boolean;
+  submittedAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProjectProposalDocumentResponse {
+  applicationId?: string;
+  formTitle?: string;
+  generatedAt: string;
+  aiGenerated: boolean;
+  generalObjective?: string;
+  specificObjectives?: string[];
+  enterpriseBackground?: string;
+  skillsExpertise?: string;
+  plantSiteNarrative?: string;
+  capacityVolumeNarrative?: string;
+  rawMaterialsNarrative?: string;
+  marketSituation?: string;
+  productDemandSupply?: string;
+  distributionChannel?: string;
+  competitors?: string;
+  marketStrategies?: string[];
+  productionProcess?: string;
+  equipmentNarrative?: string;
+  interventionProblem?: string;
+  interventionProposed?: string;
+  interventionEquipment?: string;
+  interventionImpact?: string;
+  expectedOutputBullets?: string[];
+  wasteManagement?: string;
+  financialAnalysis?: string;
+  riskRows?: ProjectProposalRiskRow[];
+}
+
+export interface ProjectProposalGenerationRequest {
+  applicationId?: string;
+  enterpriseName: string;
+  applicantName?: string;
+  province?: string;
+  businessSector?: string;
+  productServices?: string;
+  projectDescription?: string;
+  expectedOutcome?: string;
+  budget?: string;
+  form: ProjectProposalForm;
+  attachmentKinds?: string[];
+}
+
+// ── Shared AI field suggestion ────────────────────────────────────────────────
+
+export type AiSuggestModule = "project-proposal" | "loi" | "tna1" | "tna2";
+
+export interface AiFieldSuggestionRequest {
+  module: AiSuggestModule;
+  field: string;
+  context: Record<string, unknown>;
+}
+
+export interface AiFieldSuggestionResponse {
+  module: string;
+  field: string;
+  text?: string;
+  bullets?: string[];
+  aiGenerated: boolean;
+}

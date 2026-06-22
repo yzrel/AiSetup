@@ -52,7 +52,9 @@ import { applicantStore } from "../store/applicantStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import {
   getApplicantDashboardSteps,
+  getApplicantDashboardStats,
   isAwaitingStaffReview,
+  isRoutedToMpex,
 } from "../utils/applicantProgress";
 import {
   getOfficeContact,
@@ -60,6 +62,7 @@ import {
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
 import { notificationStore } from "../store/notificationStore";
+import { getApplicantsForStaff } from "../utils/provincialOffice";
 import { timeAgo } from "../utils/timeAgo";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 
@@ -964,7 +967,19 @@ export function Dashboard({
 
   const application = resolveApplicantForUser(user);
   const progressSteps = getApplicantDashboardSteps(application);
+  const applicantStats = getApplicantDashboardStats(application);
   const awaitingReview = isAwaitingStaffReview(application);
+  const routedToMpex = isRoutedToMpex(application);
+  const scopedApplicants = isClientView ? [] : getApplicantsForStaff(user);
+  const staffActiveCount = scopedApplicants.filter(
+    (a) => a.currentModule !== "completed",
+  ).length;
+  const staffApprovedCount = scopedApplicants.filter(
+    (a) =>
+      a.currentModule === "landbank-withdrawal" ||
+      a.currentModule === "procurement-liquidation" ||
+      a.currentModule === "completed",
+  ).length;
   const userNotifications = notificationStore.getForUser(user);
   const unreadNotifications = userNotifications.filter((n) => !n.read);
   const awaitingRequirementsReview =
@@ -1036,19 +1051,19 @@ export function Dashboard({
           <>
             <StatCard
               label="Application Status"
-              value="In Progress"
-              sub="Pre-Screening stage"
+              value={applicantStats.statusLabel}
+              sub={applicantStats.stageLabel}
               icon={Activity}
               color="bg-[#0C2461]"
-              trend="Step 1 of 13"
+              trend={applicantStats.stepTrend}
             />
             <StatCard
               label="Documents Submitted"
-              value="2 / 8"
-              sub="Requirements pending"
+              value={`${applicantStats.documentsSubmitted} / ${applicantStats.documentsRequired}`}
+              sub={applicantStats.documentsSub}
               icon={FileText}
               color="bg-[#00AEEF]"
-              trend="6 remaining"
+              trend={applicantStats.documentsTrend}
             />
             <StatCard
               label="Enterprise"
@@ -1071,35 +1086,44 @@ export function Dashboard({
           <>
             <StatCard
               label="Total Applicants"
-              value="170"
-              sub="Across all modules"
+              value={String(scopedApplicants.length)}
+              sub="In your scope"
               icon={Users}
               color="bg-[#0C2461]"
-              trend="+12 this month"
+              trend={`${staffActiveCount} active`}
             />
             <StatCard
               label="Active Applications"
-              value="83"
+              value={String(staffActiveCount)}
               sub="Currently in progress"
               icon={Activity}
               color="bg-[#00AEEF]"
-              trend="+5 this week"
+              trend={`${scopedApplicants.filter((a) => a.moduleData?.documentsSubmitted && !a.moduleData?.staffDecision).length} awaiting docs review`}
             />
             <StatCard
               label="Approved Projects"
-              value="18"
-              sub="78% approval rate"
+              value={String(staffApprovedCount)}
+              sub="Post-approval stage"
               icon={CheckCircle}
               color="bg-emerald-600"
-              trend="+3 this month"
+              trend={`${scopedApplicants.filter((a) => a.currentModule === "project-proposal" || a.currentModule === "conduct-rtec").length} in evaluation`}
             />
             <StatCard
-              label="Funds Released"
-              value="₱42M"
-              sub="FY 2024–2025 total"
+              label="Needs Assessment"
+              value={String(
+                scopedApplicants.filter((a) => {
+                  const md = a.moduleData;
+                  return (
+                    (md?.documentsSubmitted && !md?.staffDecision) ||
+                    (md?.tna1?.submitted && !md?.tna1?.staffReviewed) ||
+                    (a.currentModule === "tna2" && !md?.tna2Document?.published)
+                  );
+                }).length,
+              )}
+              sub="Staff action required"
               icon={Banknote}
               color="bg-amber-500"
-              trend="₱4.1M this month"
+              trend="Open Clients hub"
             />
           </>
         )}
@@ -1113,6 +1137,17 @@ export function Dashboard({
               <SectionTitle sub="Track your SETUP application progress">
                 Application Progress
               </SectionTitle>
+              {routedToMpex && (
+                <div className="mt-4 mb-2 flex items-start gap-3 p-4 rounded-xl border border-purple-200 bg-purple-50">
+                  <AlertCircle className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-purple-900">
+                    <p className="font-semibold">Routed to MPEX pre-requisite program</p>
+                    <p className="mt-0.5">
+                      {provincialOffice?.name ?? "Your provincial office"} will guide you through the MPEX capacity-building track before SETUP enrollment continues.
+                    </p>
+                  </div>
+                </div>
+              )}
               {awaitingReview && (
                 <div className="mt-4 mb-2 flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
                   <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1886,6 +1921,7 @@ export function Dashboard({
             </div>
           )}
           <ApplicantListView
+            user={user}
             module="prescreening"
             title="All Applicants"
           />

@@ -113,6 +113,31 @@ export function notifyTna1Submitted(applicant: Applicant) {
   });
 }
 
+export function notifyTna1Reviewed(applicant: Applicant) {
+  notificationStore.add({
+    id: `tna1-reviewed-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "TNA Form 01 approved",
+    message: "DOST staff verified your TNA Form 01. AI analysis and reports will follow.",
+    view: "tna1",
+  });
+}
+
+export function notifyTna1Resubmission(applicant: Applicant) {
+  notificationStore.add({
+    id: `tna1-resubmit-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "warning",
+    title: "TNA Form 01 resubmission requested",
+    message: "DOST staff requested corrections to your TNA Form 01. Please update and resubmit.",
+    urgent: true,
+    view: "tna1",
+  });
+}
+
 export function notifyTna2Published(applicant: Applicant) {
   notificationStore.add({
     id: `tna2-published-${applicant.id}-${Date.now()}`,
@@ -122,6 +147,28 @@ export function notifyTna2Published(applicant: Applicant) {
     title: "TNA Form 02 published",
     message: "Your technical report is now available. Review it and continue your application.",
     view: "tna2",
+  });
+}
+
+export function notifyProjectProposalSubmitted(applicant: Applicant) {
+  notificationStore.add({
+    id: `pp-staff-${applicant.id}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "action",
+    title: "Project Proposal submitted",
+    message: `${applicant.enterpriseName} submitted SETUP Form 001 (Project Proposal) for review.`,
+    view: "project-proposal",
+  });
+  notificationStore.add({
+    id: `pp-applicant-${applicant.id}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "Project Proposal submitted",
+    message: "Your project proposal was submitted. Proceed to the next application step when advised.",
+    view: "project-proposal",
   });
 }
 

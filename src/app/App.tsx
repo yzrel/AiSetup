@@ -30,7 +30,7 @@ import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
 import { applicantStore } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
-import { moduleToApplicantView } from "./utils/applicantProgress";
+import { moduleToApplicantView, canApplicantAccessView } from "./utils/applicantProgress";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -302,6 +302,7 @@ function SidebarNav({
   onToggleGroup,
   userRole,
   onOpenSettings,
+  applicant,
 }: {
   currentView: ViewType;
   onNavigate: (v: ViewType) => void;
@@ -309,6 +310,7 @@ function SidebarNav({
   onToggleGroup: (label: string) => void;
   userRole: AuthUser["role"];
   onOpenSettings?: () => void;
+  applicant?: ReturnType<typeof resolveApplicantForUser>;
 }) {
   const canManageAccounts = authStore.canAccessView(
     userRole,
@@ -348,14 +350,25 @@ function SidebarNav({
               group.items.map((item) => {
                 const Icon = item.icon;
                 const active = currentView === item.id;
+                const locked =
+                  authStore.isClientRole(userRole) &&
+                  !canApplicantAccessView(applicant ?? null, item.id);
                 return (
                   <button
                     key={item.id}
-                    onClick={() => onNavigate(item.id)}
+                    onClick={() => !locked && onNavigate(item.id)}
+                    disabled={locked}
+                    title={
+                      locked
+                        ? "Complete earlier application steps to unlock this module"
+                        : undefined
+                    }
                     className={`w-full flex items-center gap-3 px-3 py-[10px] rounded-lg transition-all mb-0.5 group text-left ${
-                      active
-                        ? "bg-white/15 text-white shadow-sm"
-                        : "text-white/55 hover:bg-white/10 hover:text-white/85"
+                      locked
+                        ? "opacity-40 cursor-not-allowed text-white/35"
+                        : active
+                          ? "bg-white/15 text-white shadow-sm"
+                          : "text-white/55 hover:bg-white/10 hover:text-white/85"
                     }`}
                   >
                     <div
@@ -540,9 +553,20 @@ export default function App() {
 
   const navigate = (view: ViewType) => {
     if (user && !authStore.canAccessView(user.role, view)) return;
+    if (
+      user &&
+      authStore.isClientRole(user.role) &&
+      !canApplicantAccessView(resolveApplicantForUser(user), view)
+    ) {
+      return;
+    }
     setCurrentView(view);
     setDrawerOpen(false);
   };
+
+  const activeApplicant = user
+    ? resolveApplicantForUser(user)
+    : null;
 
   // Community client portal — disabled; applicants use aiSETUP application workflow
   // if (authStore.usesClientPortal(user)) {
@@ -577,6 +601,7 @@ export default function App() {
           onToggleGroup={toggleGroup}
           userRole={user.role}
           onOpenSettings={() => navigate("account-management")}
+          applicant={activeApplicant}
         />
       </aside>
 
@@ -611,6 +636,7 @@ export default function App() {
           onToggleGroup={toggleGroup}
           userRole={user.role}
           onOpenSettings={() => navigate("account-management")}
+          applicant={activeApplicant}
         />
       </aside>
 
@@ -795,12 +821,19 @@ export default function App() {
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (!app) return;
-                    const nextView =
-                      app.moduleData?.routingDecision === "project-proposal"
+                    const routing = app.moduleData?.routingDecision;
+                    if (routing === "mpex") {
+                      navigate("dashboard");
+                      return;
+                    }
+                    const nextModule =
+                      routing === "project-proposal"
                         ? "project-proposal"
                         : "tna1";
-                    applicantStore.update(app.id, { currentModule: nextView });
-                    navigate(nextView);
+                    applicantStore.update(app.id, {
+                      currentModule: nextModule,
+                    });
+                    navigate(nextModule);
                   }}
                 />
               )}
@@ -832,6 +865,7 @@ export default function App() {
               )}
               {currentView === "project-proposal" && (
                 <ProjectProposal
+                  user={user}
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (app) {

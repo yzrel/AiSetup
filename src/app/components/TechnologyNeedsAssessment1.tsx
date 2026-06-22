@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { authStore, AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import {
@@ -22,9 +22,11 @@ import {
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyTna1Submitted } from "../utils/notificationHelpers";
+import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
+import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
+import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
 const DOST_BLUE = "#0C2461";
@@ -307,6 +309,39 @@ export function TechnologyNeedsAssessment1({
   const [tnaGenerating, setTnaGenerating] = useState(false);
   const [tnaGenerateError, setTnaGenerateError] = useState<string | null>(null);
   const [tnaAiGenerated, setTnaAiGenerated] = useState<boolean | null>(null);
+  const [staffNotes, setStaffNotes] = useState("");
+  const [staffApproved, setStaffApproved] = useState(false);
+
+  const { bind: bindTnaAi, notice: tnaAiNotice } = useAiFieldSuggest("tna1");
+  const tnaAiContext = useMemo(
+    () => ({
+      ...applicantAiContext(applicant),
+      form,
+      tables,
+      mainProduct: form.mainProduct,
+      sector: form.sector,
+      commodity: form.commodity,
+    }),
+    [applicant, form, tables],
+  );
+
+  const tnaAi = (field: string, apply: (value: string) => void) => {
+    const bound = bindTnaAi(
+      field,
+      tnaAiContext,
+      (value) => apply(Array.isArray(value) ? value.join("\n") : value),
+      () => {
+        if (!applicant) return "";
+        const payload = buildTna1GenerationPayload(applicant, form, tables);
+        const doc = buildLocalTna1Document(payload);
+        return String(doc.form[field] ?? "");
+      },
+    );
+    return {
+      ...bound,
+      onAiSuggest: applicant ? bound.onAiSuggest : undefined,
+    };
+  };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setT = (key, rows) => setTables(t => ({ ...t, [key]: rows }));
@@ -325,6 +360,63 @@ export function TechnologyNeedsAssessment1({
   useEffect(() => {
     loadApplicantData(applicant);
   }, [applicant?.id, loadApplicantData]);
+
+  const persistStaffReview = useCallback(
+    (decision: "approved" | "needs-revision") => {
+      if (!applicant || !user) return;
+      if (decision === "needs-revision") {
+        const assessmentUpdate = appendStaffAssessment(applicant, {
+          stage: "tna1",
+          decision: "needs-revision",
+          assessedBy: user.email,
+          assessedAt: new Date().toISOString(),
+          remarks: staffNotes,
+        });
+        applicantStore.update(applicant.id, {
+          ...assessmentUpdate,
+          moduleData: {
+            ...assessmentUpdate.moduleData,
+            tna1: {
+              ...(applicant.moduleData?.tna1 ?? {}),
+              form,
+              tables,
+              submitted: false,
+              staffReviewed: false,
+            },
+          },
+        });
+        notifyTna1Resubmission(applicant);
+        setApplicantSubmitted(false);
+        setStep("identification");
+        return;
+      }
+
+      const assessmentUpdate = appendStaffAssessment(applicant, {
+        stage: "tna1",
+        decision: "approved",
+        assessedBy: user.email,
+        assessedAt: new Date().toISOString(),
+        remarks: staffNotes,
+      });
+      applicantStore.update(applicant.id, {
+        ...assessmentUpdate,
+        moduleData: {
+          ...assessmentUpdate.moduleData,
+          tna1: {
+            ...(applicant.moduleData?.tna1 ?? {}),
+            form,
+            tables,
+            staffReviewed: true,
+            staffReviewedAt: new Date().toISOString(),
+          },
+        },
+      });
+      notifyTna1Reviewed(applicant);
+      setStaffApproved(true);
+      setStep("analysis");
+    },
+    [applicant, user, staffNotes, form, tables],
+  );
 
   const saveTnaDraft = useCallback(
     (submitted = false) => {
@@ -427,9 +519,6 @@ export function TechnologyNeedsAssessment1({
     { name: "Marketing",                 required: true,  uploaded: false, verified: false, flagged: false, file: null },
     { name: "Finance / Other Concerns",  required: false, uploaded: false, verified: false, flagged: false, file: null },
   ]);
-
-  const [staffNotes, setStaffNotes] = useState("");
-  const [staffApproved, setStaffApproved] = useState(false);
 
   // ── AI state ─────────────────────────────────────────────────────────────────
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -600,6 +689,9 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
           <StaffApplicantPicker user={user} label="Review applicant TNA Form 01" />
         </div>
         <StaffApplicantBanner user={user} />
+        <div className="px-6 pt-4">
+          <AiAssistNotice message={tnaAiNotice} />
+        </div>
 
         {/* ══════════════════════════════════════════════════════════════════
             STEP 1 — Enterprise Identification
@@ -769,10 +861,15 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                     <input type="number" value={form.yearRegistered} onChange={e => set("yearRegistered", e.target.value)} className={inputCls} />
                   </div>
                 </div>
-                <div>
-                  <label className={labelCls}>Brief Enterprise Background</label>
-                  <textarea rows={3} value={form.enterpriseBackground} onChange={e => set("enterpriseBackground", e.target.value)} className={inputCls} />
-                </div>
+                <AiAssistTextarea
+                  label="Brief Enterprise Background"
+                  value={form.enterpriseBackground}
+                  onChange={(enterpriseBackground) => set("enterpriseBackground", enterpriseBackground)}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[80px]"
+                  {...tnaAi("enterpriseBackground", (v) => set("enterpriseBackground", v))}
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className={labelCls}>Year Established</label>
@@ -867,10 +964,15 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   <label className={labelCls}>Specific Product / Service Offered <span className="text-red-500">*</span></label>
                   <textarea rows={2} value={form.mainProduct} onChange={e => set("mainProduct", e.target.value)} className={inputCls} />
                 </div>
-                <div>
-                  <label className={labelCls}>Reasons Why Assistance is Being Sought <span className="text-red-500">*</span></label>
-                  <textarea rows={3} value={form.reasonsForAssistance} onChange={e => set("reasonsForAssistance", e.target.value)} className={inputCls} />
-                </div>
+                <AiAssistTextarea
+                  label="Reasons Why Assistance is Being Sought *"
+                  value={form.reasonsForAssistance}
+                  onChange={(reasonsForAssistance) => set("reasonsForAssistance", reasonsForAssistance)}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[80px]"
+                  {...tnaAi("reasonsForAssistance", (v) => set("reasonsForAssistance", v))}
+                />
 
                 {/* Consultations */}
                 <div>
@@ -971,13 +1073,15 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
             <div>
               <h2 className={sectionTitle}>🔧 Production Problems and Concerns</h2>
-              <p className="text-xs text-gray-500 mb-3">Summarize key production issues identified during benchmarking (per TNA Form 01).</p>
-              <textarea
-                rows={3}
+              <AiAssistTextarea
+                label="Production Problems and Concerns"
                 value={form.productionProblemsConcerns}
-                onChange={e => set("productionProblemsConcerns", e.target.value)}
-                className={inputCls}
-                placeholder="Describe overall production problems, bottlenecks, quality issues, capacity constraints…"
+                onChange={(productionProblemsConcerns) => set("productionProblemsConcerns", productionProblemsConcerns)}
+                inputClassName={inputCls}
+                labelClassName={labelCls}
+                minHeight="min-h-[80px]"
+                hint="Summarize key production issues identified during benchmarking (per TNA Form 01)."
+                {...tnaAi("productionProblemsConcerns", (v) => set("productionProblemsConcerns", v))}
               />
               <div className="space-y-3 mt-4">
                 {[
@@ -1008,7 +1112,6 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 hint="Upload floor plan or plant layout diagram (required attachment per TNA Form 01)."
               />
               <div>
-                <label className={labelCls}>Process Flow</label>
                 <p className="text-xs text-gray-400 mb-2">Enter as text description or upload a diagram.</p>
                 <div className="flex gap-4 mb-3">
                   {(["text", "attachment"] as const).map((mode) => (
@@ -1025,8 +1128,16 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   ))}
                 </div>
                 {form.processFlowMode === "text" ? (
-                  <textarea rows={4} value={form.processFlow} onChange={e => set("processFlow", e.target.value)}
-                    className={inputCls} placeholder="Describe the production process flow step by step…" />
+                  <AiAssistTextarea
+                    label="Process Flow"
+                    value={form.processFlow}
+                    onChange={(processFlow) => set("processFlow", processFlow)}
+                    inputClassName={inputCls}
+                    labelClassName={labelCls}
+                    minHeight="min-h-[100px]"
+                    hint="Describe the production process flow step by step"
+                    {...tnaAi("processFlow", (v) => set("processFlow", v))}
+                  />
                 ) : (
                   <FileAttachmentField
                     label=""
@@ -1182,8 +1293,16 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
             <div>
               <h2 className={sectionTitle}>📝 Other Concerns</h2>
-              <textarea rows={3} value={form.otherConcerns} onChange={e => set("otherConcerns", e.target.value)}
-                className={inputCls} placeholder="Any other concerns or relevant information…" />
+              <AiAssistTextarea
+                label="Other Concerns"
+                value={form.otherConcerns}
+                onChange={(otherConcerns) => set("otherConcerns", otherConcerns)}
+                inputClassName={inputCls}
+                labelClassName={labelCls}
+                minHeight="min-h-[80px]"
+                hint="Any other concerns or relevant information"
+                {...tnaAi("otherConcerns", (v) => set("otherConcerns", v))}
+              />
             </div>
 
             {/* Signatures */}
@@ -1520,13 +1639,13 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={() => { setStaffApproved(true); setStep("analysis"); }}
+                  <button onClick={() => persistStaffReview("approved")}
                     disabled={!allDocReviewed}
                     className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                     style={{ background: "#059669" }}>
                     ✅ Approve & Proceed to AI Analysis →
                   </button>
-                  <button onClick={() => alert("Resubmission request sent.")}
+                  <button onClick={() => persistStaffReview("needs-revision")}
                     className="px-5 py-3 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition-all">
                     🔄 Request Resubmission
                   </button>
@@ -1711,7 +1830,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                     <p className="text-sm text-green-600">All reports generated. Proceed to TNA2 Technical Report.</p>
                   </div>
                 </div>
-                <button onClick={() => alert("Navigating to TNA2 Technical Report…")}
+                <button onClick={() => onSubmitSuccess?.()}
                   className="px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
                   style={{ background: "#059669" }}>
                   ▶ Proceed to TNA2

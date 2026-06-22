@@ -76,4 +76,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  generateProjectProposal: (
+    payload: import("./types").ProjectProposalGenerationRequest,
+  ) =>
+    apiFetch<import("./types").ProjectProposalDocumentResponse>(
+      "/project-proposal/generate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  suggestAiField: (payload: import("./types").AiFieldSuggestionRequest) =>
+    apiFetch<import("./types").AiFieldSuggestionResponse>("/ai/suggest-field", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

@@ -33,6 +33,8 @@ import {
 } from "../store/applicantStore";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { SETUP_PRIORITY_SECTORS } from "../constants/setupBrochure";
+import { AuthUser } from "../store/authStore";
+import { getApplicantsForStaff } from "../utils/provincialOffice";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -530,10 +532,12 @@ export function ApplicantListView({
   module,
   title,
   onNewApplicant,
+  user,
 }: {
   module?: ModuleStatus;
   title: string;
   onNewApplicant?: () => void;
+  user?: AuthUser | null;
 }) {
   const [, forceUpdate] = useState(0);
   const [search, setSearch] = useState("");
@@ -550,7 +554,9 @@ export function ApplicantListView({
     [],
   );
 
-  const allApplicants = applicantStore.getAll();
+  const allApplicants = user
+    ? getApplicantsForStaff(user)
+    : applicantStore.getAll();
   const filtered = allApplicants.filter((a) => {
     const matchModule =
       filterModule === "all" ||
