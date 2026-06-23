@@ -26,6 +26,7 @@ export type AdminView =
   | "landbank-withdrawal"
   | "procurement-liquidation"
   | "refund-delinquent"
+  | "project-closeout"
   | "clients"
   | "account-management"
   | "my-account";
@@ -66,6 +67,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "landbank-withdrawal": ["admin", "agent", "client", "applicant"],
   "procurement-liquidation": ["admin", "agent", "client", "applicant"],
   "refund-delinquent": ["admin", "agent", "client", "applicant"],
+  "project-closeout": ["admin", "agent", "client", "applicant"],
   clients: ["admin", "agent"],
   "account-management": ["admin", "agent"],
   "my-account": ["client", "applicant"],

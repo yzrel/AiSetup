@@ -129,14 +129,23 @@ function emptyComplianceItems(): RtecComplianceItem[] {
   }));
 }
 
+function docUploaded(
+  applicant: Applicant,
+  id: string,
+): boolean {
+  const md = applicant.moduleData ?? {};
+  const uploads = md.requirementUploads as { id: string; uploaded?: boolean }[] | undefined;
+  if (uploads?.some((d) => d.id === id && d.uploaded)) return true;
+  const legacy = md.documents as { id: string; uploaded?: boolean }[] | undefined;
+  return legacy?.some((d) => d.id === id && d.uploaded) ?? false;
+}
+
 function suggestComplianceStatus(
   applicant: Applicant,
   itemId: string,
 ): RtecComplianceStatus {
   const md = applicant.moduleData ?? {};
   const pp = getProjectProposalStored(applicant);
-  const docs = md.documents as { id: string; uploaded?: boolean }[] | undefined;
-  const docUploaded = (id: string) => docs?.some((d) => d.id === id && d.uploaded);
 
   switch (itemId) {
     case "loi":
@@ -148,12 +157,28 @@ function suggestComplianceStatus(
     case "form001":
       return pp?.submitted || pp?.form?.projectTitle ? "complied" : "";
     case "permits":
-      return docUploaded("permit") || docUploaded("mayor") ? "complied" : "";
+      return docUploaded(applicant, "permits") ? "complied" : "";
     case "financial":
-      return docUploaded("financial") ||
+      return docUploaded(applicant, "financial") ||
         pp?.attachments?.some((a) => a.kind === "financialReports")
         ? "complied"
         : "";
+    case "projected":
+      return docUploaded(applicant, "projected") ? "complied" : "";
+    case "official-receipt":
+      return docUploaded(applicant, "official-receipt") ? "complied" : "";
+    case "registration":
+      return docUploaded(applicant, "registration") ? "complied" : "";
+    case "articles":
+      return docUploaded(applicant, "articles") ? "complied" : "na";
+    case "affidavit":
+      return docUploaded(applicant, "affidavit") ? "complied" : "";
+    case "resolution":
+      return docUploaded(applicant, "resolution") ? "complied" : "na";
+    case "quotations":
+      return docUploaded(applicant, "quotations") ? "complied" : "";
+    case "drawings":
+      return docUploaded(applicant, "drawings") ? "complied" : "";
     default:
       return "";
   }
@@ -268,9 +293,24 @@ export function hasProjectProposalPrerequisite(
 ): boolean {
   if (!applicant) return false;
   const pp = getProjectProposalStored(applicant);
+  if (pp?.submitted) return true;
   if (pp?.form?.projectTitle?.trim()) return true;
   const form = getProjectProposalForm(applicant);
   return !!form.projectTitle?.trim();
+}
+
+export function hasRequirementsApprovedPrerequisite(
+  applicant: Applicant | null,
+): boolean {
+  if (!applicant) return false;
+  return applicant.moduleData?.staffDecision === "approved";
+}
+
+export function hasRtecPrerequisites(applicant: Applicant | null): boolean {
+  return (
+    hasProjectProposalPrerequisite(applicant) &&
+    hasRequirementsApprovedPrerequisite(applicant)
+  );
 }
 
 export function buildRtecReportDraft(applicant: Applicant | null): RtecReportForm {

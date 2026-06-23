@@ -104,7 +104,13 @@ export const api = {
       `/fund-release/refund-schedule/${applicationId}`,
     ),
 
-  generateLbpIntroduction: (payload: { applicationId: string }) =>
+  saveApplicantRecord: (payload: import("./types").ApiApplicantRecord) =>
+    apiFetch<import("./types").ApiApplicantRecord>(`/applicants/${payload.id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  generateLbpIntroduction: (payload: Record<string, unknown>) =>
     apiFetch<{ applicationId: string; status: string; message: string }>(
       "/fund-release/lbp-introduction/generate",
       {

@@ -16,6 +16,13 @@ import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { getPublishedTna2 } from "./tnaForm02";
 import { isDemoModeActive } from "./demoMode";
+import { formatFormMention } from "../constants/setupForms";
+import {
+  hasPdcsRecordedForDisbursement,
+  initRefundScheduleAtMoa,
+  recordPdcs,
+  getRefundForm,
+} from "./refundDelinquent";
 
 const DOST_BLUE = "#0C2461";
 
@@ -281,9 +288,25 @@ export function validateSignedPrePisUpload(
   return { errors, warnings };
 }
 
-export function completeSigningDay(applicantId: string, completedBy: string): void {
+export function hasForm008Signed(applicant: Applicant | null): boolean {
+  if (!applicant) return false;
+  const stored = getProjectInformationSheetStored(applicant);
+  return !!stored?.signedPrePis?.fileName?.trim();
+}
+
+export function completeSigningDay(applicantId: string, completedBy: string): string[] {
   const applicant = applicantStore.getById(applicantId);
-  if (!applicant) return;
+  if (!applicant) return ["Applicant not found."];
+  if (!getSignedMoa(applicant)) {
+    return ["Signed MOA must be on file before completing MOA signing day."];
+  }
+  if (!hasForm008Signed(applicant) && !isDemoModeActive()) {
+    return [`Upload signed ${formatFormMention("008", "both")} before fund release.`];
+  }
+  if (!hasPdcsRecordedForDisbursement(applicant) && !isDemoModeActive()) {
+    return ["Record post-dated checks (PDCs) covering the refund schedule before fund release."];
+  }
+
   const existing = getPisStoredOrEmpty(applicant);
   const now = new Date().toISOString();
   applicantStore.update(applicantId, {
@@ -299,6 +322,25 @@ export function completeSigningDay(applicantId: string, completedBy: string): vo
       } satisfies ProjectInformationSheetStored,
     },
   });
+  return [];
+}
+
+export function preparePdcsForDisbursement(applicantId: string): void {
+  initRefundScheduleAtMoa(applicantId);
+  recordPdcs(applicantId);
+}
+
+export function getDisbursementPdcSummary(applicant: Applicant | null): {
+  count: number;
+  ttf: string;
+  recorded: boolean;
+} {
+  const form = getRefundForm(applicant);
+  return {
+    count: form.pdcs.length,
+    ttf: form.technologyTransferFee ?? "—",
+    recorded: form.pdcsRecorded,
+  };
 }
 
 export function isSigningDayComplete(applicant: Applicant | null): boolean {
@@ -310,7 +352,12 @@ export function isSigningDayComplete(applicant: Applicant | null): boolean {
 export function canCompleteSigningDay(applicant: Applicant | null): boolean {
   if (!applicant) return false;
   const stored = getProjectInformationSheetStored(applicant);
-  return !!getSignedMoa(applicant) && !stored?.signingDayComplete;
+  return (
+    !!getSignedMoa(applicant) &&
+    !stored?.signingDayComplete &&
+    (hasForm008Signed(applicant) || isDemoModeActive()) &&
+    (hasPdcsRecordedForDisbursement(applicant) || isDemoModeActive())
+  );
 }
 
 export function getCurrentReportingSemester(date = new Date()): {
@@ -453,8 +500,8 @@ export function getPrePisPrintStyles(): string {
 export function printPrePisPdf(applicationId?: string) {
   const el = document.getElementById("pre-pis-preview");
   const title = applicationId
-    ? `SETUP-Pre-PIS-${applicationId}`
-    : "SETUP-Pre-PIS";
+    ? `SETUP-Form-008-PrePIS-${applicationId}`
+    : "SETUP-Form-008-PrePIS";
   if (!el) return;
   const win = window.open("", "_blank");
   if (!win) return;

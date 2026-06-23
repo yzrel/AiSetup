@@ -37,6 +37,8 @@ import {
   validateProcurementSubmit,
 } from "../utils/procurementLiquidation";
 import { allowWhenDemo } from "../utils/demoMode";
+import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { SubmittedFileActions } from "./SubmittedFileActions";
 
 const STEPS: ModuleStep[] = [
   { id: "procurement", label: "Procurement", icon: <Package className="w-4 h-4" /> },
@@ -96,16 +98,22 @@ export function ProcurementAndLiquidation({
           ? 0
           : 0;
 
-  const handleFileUpload = (
+  const handleFileUpload = async (
     kind: "procurement" | "liquidation",
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (!file || !applicant) return;
-    if (kind === "procurement") {
-      addProcurementDocument(applicant.id, file.name);
-    } else {
-      addLiquidationDocument(applicant.id, file.name);
+    try {
+      const moduleDoc = await readFileAsModuleDocument(file, uploadedBy);
+      if (kind === "procurement") {
+        addProcurementDocument(applicant.id, moduleDoc);
+      } else {
+        addLiquidationDocument(applicant.id, moduleDoc);
+      }
+      setTick((n) => n + 1);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed.");
     }
     e.target.value = "";
   };
@@ -201,11 +209,17 @@ export function ProcurementAndLiquidation({
               {form.documents.map((d) => (
                 <div
                   key={d.id}
-                  className="flex items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+                  className="flex flex-wrap items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
                 >
-                  <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-                  <span className="flex-1 font-medium">{d.fileName}</span>
-                  <span className="text-gray-400">{d.uploadedAt}</span>
+                  <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                  <span className="flex-1 min-w-0 font-medium truncate">{d.fileName}</span>
+                  <span className="text-gray-400 shrink-0">{d.uploadedAt}</span>
+                  <SubmittedFileActions
+                    fileName={d.fileName}
+                    mimeType={d.mimeType}
+                    dataUrl={d.dataUrl}
+                    compact
+                  />
                 </div>
               ))}
             </div>
@@ -356,10 +370,16 @@ export function ProcurementAndLiquidation({
               {form.liquidationDocuments.map((d) => (
                 <div
                   key={d.id}
-                  className="flex items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+                  className="flex flex-wrap items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
                 >
-                  <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-                  <span className="flex-1 font-medium">{d.fileName}</span>
+                  <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                  <span className="flex-1 min-w-0 font-medium truncate">{d.fileName}</span>
+                  <SubmittedFileActions
+                    fileName={d.fileName}
+                    mimeType={d.mimeType}
+                    dataUrl={d.dataUrl}
+                    compact
+                  />
                 </div>
               ))}
             </div>

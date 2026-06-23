@@ -6,7 +6,9 @@ import { hasLandBankComplete } from "./landBankWithdrawal";
 import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
 import { hasProcurementComplete } from "./procurementLiquidation";
 import { hasRefundComplete } from "./refundDelinquent";
+import { hasCloseOutComplete } from "./projectCloseOut";
 import { AdminView } from "../store/authStore";
+import type { Applicant, ModuleStatus } from "../store/applicantStore";
 
 export type AssessmentStage =
   | "prescreening"
@@ -16,7 +18,8 @@ export type AssessmentStage =
   | "post-proposal"
   | "landbank-withdrawal"
   | "procurement-liquidation"
-  | "refund-delinquent";
+  | "refund-delinquent"
+  | "project-closeout";
 
 export type AssessmentStatus = "pending" | "in_progress" | "completed";
 
@@ -129,20 +132,31 @@ function refundStatus(applicant: Applicant): AssessmentStatus {
   return "completed";
 }
 
+function closeoutStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "project-closeout")) return "completed";
+  if (hasCloseOutComplete(applicant) || applicant.currentModule === "completed") {
+    return "completed";
+  }
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("project-closeout")) return "pending";
+  return "completed";
+}
+
 const MODULE_ORDER: ModuleStatus[] = [
   "prescreening",
   "registration",
   "letter-of-intent",
-  "requirements",
   "tna1",
   "tna2",
   "project-proposal",
+  "requirements",
   "conduct-rtec",
   "approval-letter",
   "project-information-sheet",
   "landbank-withdrawal",
   "procurement-liquidation",
   "refund-delinquent",
+  "project-closeout",
   "completed",
 ];
 
@@ -211,6 +225,13 @@ export function getAssessmentTasks(applicant: Applicant): AssessmentTask[] {
       status: refundStatus(applicant),
       view: "refund-delinquent",
       description: "Monitor refund compliance and delinquent accounts.",
+    },
+    {
+      stage: "project-closeout",
+      label: "Project Close-Out",
+      status: closeoutStatus(applicant),
+      view: "project-closeout",
+      description: "Terminal report, equipment inventory, and ownership transfer.",
     },
   ];
 

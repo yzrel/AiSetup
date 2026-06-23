@@ -4,14 +4,57 @@
 
 import { useState, useEffect } from "react";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
-import { applicantStore } from "../store/applicantStore";
+import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
-import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { normalizeRegistrationType } from "../utils/applicantPrefill";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
+import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
+import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
+
+function loadEnterpriseFormFromApplicant(app: Applicant | null) {
+  if (!app) {
+    return {
+      contactInfo: { email: "", phone: "" },
+      formData: {
+        enterpriseName: "",
+        businessSector: "",
+        dtiSec: "DTI" as const,
+        registrationNumber: "",
+        tinNumber: "",
+        enterpriseAddress: "",
+        province: "",
+        postalCode: "",
+        companyStartDate: "",
+        companyDescription: "",
+      },
+    };
+  }
+  const md = app.moduleData ?? {};
+  return {
+    contactInfo: {
+      email: app.emailAddress,
+      phone: app.contactNumber,
+    },
+    formData: {
+      enterpriseName: app.enterpriseName,
+      businessSector: app.businessSector,
+      dtiSec: normalizeRegistrationType(
+        String(md.registrationType ?? app.businessType ?? "DTI"),
+      ) as "DTI" | "SEC" | "CDA",
+      registrationNumber: String(md.registrationNumber ?? ""),
+      tinNumber: String(md.tinNumber ?? ""),
+      enterpriseAddress: app.address,
+      province: String(md.province ?? ""),
+      postalCode: String(md.postalCode ?? md.zipCode ?? ""),
+      companyStartDate: String(md.companyStartDate ?? md.dateEstablished ?? ""),
+      companyDescription: String(md.companyDescription ?? ""),
+    },
+  };
+}
 
 export function EnterpriseRegistration({
   user,
@@ -22,6 +65,7 @@ export function EnterpriseRegistration({
   onOpenAccount?: () => void;
   onSubmitSuccess?: () => void;
 }) {
+  const { applicant, isStaff } = useStaffApplicant(user);
   const [saved, setSaved] = useState(false);
   const [contactInfo, setContactInfo] = useState({
     email: "",
@@ -30,7 +74,7 @@ export function EnterpriseRegistration({
   const [formData, setFormData] = useState({
     enterpriseName: "",
     businessSector: "",
-    dtiSec: "DTI",
+    dtiSec: "DTI" as "DTI" | "SEC" | "CDA",
     registrationNumber: "",
     tinNumber: "",
     enterpriseAddress: "",
@@ -40,34 +84,24 @@ export function EnterpriseRegistration({
     companyDescription: "",
   });
 
-  const loadFromStore = () => {
-    const app = resolveApplicantForUser(user);
-    if (!app) return;
-    const md = app.moduleData ?? {};
-    setContactInfo({
-      email: app.emailAddress,
-      phone: app.contactNumber,
-    });
-    setFormData({
-      enterpriseName: app.enterpriseName,
-      businessSector: app.businessSector,
-      dtiSec: normalizeRegistrationType(
-        String(md.registrationType ?? app.businessType ?? "DTI"),
-      ),
-      registrationNumber: String(md.registrationNumber ?? ""),
-      tinNumber: String(md.tinNumber ?? ""),
-      enterpriseAddress: app.address,
-      province: String(md.province ?? ""),
-      postalCode: String(md.postalCode ?? md.zipCode ?? ""),
-      companyStartDate: String(md.companyStartDate ?? md.dateEstablished ?? ""),
-      companyDescription: String(md.companyDescription ?? ""),
-    });
-  };
+  useEffect(() => {
+    const loaded = loadEnterpriseFormFromApplicant(applicant);
+    setContactInfo(loaded.contactInfo);
+    setFormData(loaded.formData);
+    setSaved(false);
+  }, [applicant?.id]);
 
   useEffect(() => {
-    loadFromStore();
-    return applicantStore.subscribe(loadFromStore);
-  }, [user?.id, user?.email]);
+    if (!applicant) return;
+    const reload = () => {
+      const app = applicantStore.getById(applicant.id);
+      if (!app) return;
+      const loaded = loadEnterpriseFormFromApplicant(app);
+      setContactInfo(loaded.contactInfo);
+      setFormData(loaded.formData);
+    };
+    return applicantStore.subscribe(reload);
+  }, [applicant?.id]);
 
   const setField = <K extends keyof typeof formData>(
     key: K,
@@ -76,18 +110,17 @@ export function EnterpriseRegistration({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const existing = resolveApplicantForUser(user);
-    if (!existing) return;
+    if (!applicant) return;
 
-    applicantStore.update(existing.id, {
+    applicantStore.update(applicant.id, {
       enterpriseName: formData.enterpriseName,
       businessSector: formData.businessSector,
       address: formData.enterpriseAddress,
       businessType: formData.dtiSec,
-      region: formData.province || existing.region,
+      region: formData.province || applicant.region,
       currentModule: "registration",
       moduleData: {
-        ...existing.moduleData,
+        ...applicant.moduleData,
         registrationType: formData.dtiSec,
         registrationNumber: formData.registrationNumber,
         tinNumber: formData.tinNumber,
@@ -122,7 +155,15 @@ export function EnterpriseRegistration({
               </p>
             </div>
           </div>
+          {isStaff && (
+            <StaffApplicantPicker
+              user={user}
+              label="Review applicant registration"
+              className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20"
+            />
+          )}
         </div>
+        <StaffApplicantBanner user={user} />
 
         {saved && (
           <div className="mx-6 mt-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm">
@@ -131,7 +172,18 @@ export function EnterpriseRegistration({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {isDemoModeActive() && !saved && (
+          <div className="mx-6 mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+            Demo mode: you can continue to Letter of Intent without saving, or
+            save with partial fields.
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-4"
+          noValidate={isDemoModeActive()}
+        >
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
             <p className="font-semibold mb-1">Contact information</p>
             <p>
@@ -189,7 +241,9 @@ export function EnterpriseRegistration({
                     name="registration"
                     value={type}
                     checked={formData.dtiSec === type}
-                    onChange={(e) => setField("dtiSec", e.target.value)}
+                    onChange={(e) =>
+                      setField("dtiSec", e.target.value as typeof formData.dtiSec)
+                    }
                     className="w-4 h-4 text-blue-600"
                   />
                   <span>{type}</span>
@@ -317,7 +371,7 @@ export function EnterpriseRegistration({
             >
               Save Enterprise Details
             </button>
-            {saved && onSubmitSuccess && (
+            {allowWhenDemo(saved) && onSubmitSuccess && (
               <button
                 type="button"
                 onClick={onSubmitSuccess}

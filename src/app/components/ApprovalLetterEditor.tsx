@@ -4,6 +4,7 @@
 
 import type { ReactNode } from "react";
 import type { ApprovalLetterForm } from "../api/types";
+import { formatFormMention } from "../constants/setupForms";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 
 interface ApprovalLetterEditorProps {
@@ -65,7 +66,7 @@ export function ApprovalLetterEditor({ form, onChange }: ApprovalLetterEditorPro
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-600">
-        Edit SETUP Form 003 variable fields. Body paragraphs are generated from the
+        Edit {formatFormMention("003")} variable fields. Body paragraphs are generated from the
         official template; sync from RTEC to refresh project and PSTO details.
       </p>
 

@@ -26,12 +26,17 @@ import {
 } from "lucide-react";
 import { DataPrivacyModal } from "./DataPrivacyModal";
 import { applicantStore } from "../store/applicantStore";
+import type { RegistrationAgency } from "../utils/proprietorTrack";
 import {
   REGION_12_ADDRESS_PLACEHOLDER,
   REGION_12_LABEL,
   REGION_12_PROVINCES,
 } from "../constants/region12";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
+import { DemoModeBanner } from "./DemoModeBanner";
+import { DemoModeLogoTrigger } from "./DemoModeLogoTrigger";
+import { DOSTMark } from "./DOSTLogos";
+import { isDemoModeActive } from "../utils/demoMode";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -457,14 +462,15 @@ interface RegisterPageProps {
   onLogin: () => void;
   onSuccess: () => void;
   onHome?: () => void;
-  applicationType?: "single-proprietor" | "non-single-proprietor";
+  /** Pre-fill DTI (single) or SEC (non-single) from landing page CTA */
+  initialRegistrationType?: RegistrationAgency;
 }
 
 export function RegisterPage({
   onLogin,
   onSuccess,
   onHome,
-  applicationType,
+  initialRegistrationType,
 }: RegisterPageProps) {
   const [step, setStep] = useState(1);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -501,12 +507,7 @@ export function RegisterPage({
     province: "",
     companyAddress: "",
     tinNumber: "",
-    registrationType:
-      applicationType === "single-proprietor"
-        ? "DTI"
-        : applicationType === "non-single-proprietor"
-          ? "SEC"
-          : "",
+    registrationType: initialRegistrationType ?? "",
     registrationNumber: "",
     companyStartDate: "",
     companyDescription: "",
@@ -527,6 +528,10 @@ export function RegisterPage({
 
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (): boolean => {
+    if (isDemoModeActive()) {
+      setErrors({});
+      return true;
+    }
     const errs: Record<string, string> = {};
     if (step === 1) {
       if (!form.firstName.trim())
@@ -705,17 +710,25 @@ export function RegisterPage({
                 {STEPS[step - 1].label}
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-[#00AEEF] font-black text-lg">
-                ai
-              </span>
-              <span className="text-white font-black text-lg">
-                SETUP
-              </span>
-            </div>
+            <DemoModeLogoTrigger>
+              <div className="inline-flex items-center gap-2">
+                <DOSTMark size={28} />
+                <div>
+                  <span className="text-[#00AEEF] font-black text-lg">
+                    ai
+                  </span>
+                  <span className="text-white font-black text-lg">
+                    SETUP
+                  </span>
+                </div>
+              </div>
+            </DemoModeLogoTrigger>
           </div>
 
           <div className="px-6 sm:px-10 py-8">
+            <div className="mb-4">
+              <DemoModeBanner compact />
+            </div>
             <StepIndicator current={step} />
 
             {/* ── STEP 1: Personal Info ─────────────────────────────── */}

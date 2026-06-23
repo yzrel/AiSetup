@@ -71,7 +71,6 @@ import {
   getPaymentMonitorRecords,
 } from "../utils/refundDelinquent";
 import { staffContextStore } from "../store/staffContextStore";
-import { isDemoModeActive } from "../utils/demoMode";
 
 // ── Payment Monitoring Data ───────────────────────────────────────────────────
 
@@ -983,6 +982,7 @@ export function Dashboard({
     const unsubs = [
       applicantStore.subscribe(() => bump((n) => n + 1)),
       notificationStore.subscribe(() => bump((n) => n + 1)),
+      staffContextStore.subscribe(() => bump((n) => n + 1)),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
@@ -1200,7 +1200,7 @@ export function Dashboard({
                   const stepNavigable =
                     !!item.view &&
                     !!onNavigate &&
-                    (item.status !== "upcoming" || isDemoModeActive());
+                    item.status !== "upcoming";
                   return (
                   <button
                     key={item.module}
@@ -1230,7 +1230,7 @@ export function Dashboard({
                           : item.status}
                       </p>
                     </div>
-                    {stepNavigable && (item.status !== "upcoming" || isDemoModeActive()) && (
+                    {stepNavigable && item.status !== "upcoming" && (
                       <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                     )}
                   </button>

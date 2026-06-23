@@ -26,10 +26,12 @@ import {
   canCompleteSigningDay,
   completeSigningDay,
   downloadPrePisPdf,
+  getDisbursementPdcSummary,
   getPisStoredOrEmpty,
   getPrePisDraft,
   hasApprovalLetterAcknowledged,
   isSigningDayComplete,
+  preparePdcsForDisbursement,
   printPisOngoingPdf,
   removeSignedPrePis,
   savePisOngoingFiling,
@@ -41,18 +43,20 @@ import {
   sortPisOngoingFilings,
   normalizePisOngoingFiling,
 } from "../utils/projectInformationSheet";
+import { MoaAnnexDEditor } from "./MoaAnnexDEditor";
 import { PrePisEditor } from "./PrePisEditor";
 import { PrePisPreview } from "./PrePisPreview";
 import { PisOngoingEditor } from "./PisOngoingEditor";
 import { PisOngoingPreview } from "./PisOngoingPreview";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
-import { allowWhenDemo, gateOpen, isDemoModeActive } from "../utils/demoMode";
+import { allowWhenDemo, gateOpen } from "../utils/demoMode";
+import { formatFormMention } from "../constants/setupForms";
 
 const STAFF_STEPS: ModuleStep[] = [
   { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
-  { id: "prep", label: "Prepare Pre-PIS", icon: <FileText className="w-4 h-4" /> },
-  { id: "upload", label: "Upload signed Pre-PIS", icon: <Upload className="w-4 h-4" /> },
+  { id: "prep", label: "Prepare Pre-Implementation PIS", icon: <FileText className="w-4 h-4" /> },
+  { id: "upload", label: "Upload signed Pre-Implementation PIS", icon: <Upload className="w-4 h-4" /> },
   { id: "complete", label: "Unlock LandBank", icon: <Banknote className="w-4 h-4" /> },
 ];
 
@@ -172,12 +176,18 @@ export function ProjectInformationSheet({
   const handleCompleteSigningDay = () => {
     if (!applicant || !user) return;
     if (!allowWhenDemo(canComplete)) return;
-    completeSigningDay(applicant.id, user.email);
+    const errs = completeSigningDay(applicant.id, user.email);
+    if (errs.length) {
+      setCompleteNotice(errs.join(" "));
+      return;
+    }
     notifySigningDayComplete(applicant);
     setCompleteNotice("MOA signing complete. LandBank is now unlocked.");
     setTimeout(() => setCompleteNotice(""), 5000);
     onSubmitSuccess?.();
   };
+
+  const pdcSummary = getDisbursementPdcSummary(applicant);
 
   const startOngoingFiling = () => {
     const filing = buildPisOngoingDraft(applicant);
@@ -212,14 +222,19 @@ export function ProjectInformationSheet({
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
-  const demoStaffSteps = isStaff || isDemoModeActive();
+  const demoStaffSteps = isStaff;
 
   const stepIndex = STAFF_STEPS.findIndex((s) => s.id === step);
 
   return (
     <ModuleWorkflowLayout
-      title="Project Information Sheet — MOA Signing Day"
-      subtitle="Pre-PIS may be prepared and uploaded before or after MOA signing. LandBank is unlocked when the signed MOA is on file and staff complete MOA signing. Form 009 ongoing PIS is filed once per semester during implementation."
+      formKey={tab === "signing-day" ? "008" : "009"}
+      title={tab === "signing-day" ? "MOA Signing Day" : undefined}
+      subtitle={
+        tab === "signing-day"
+          ? "Prepare and upload Pre-Implementation PIS before fund release. LandBank unlocks when the signed MOA is on file, PDCs are recorded, and staff complete signing day."
+          : "File one Project Information Sheet per semester during implementation (1st Semester: Jan–Jun; 2nd Semester: Jul–Dec)."
+      }
       user={user}
       steps={demoStaffSteps && tab === "signing-day" ? STAFF_STEPS : undefined}
       currentStep={demoStaffSteps && tab === "signing-day" ? step : undefined}
@@ -242,8 +257,8 @@ export function ProjectInformationSheet({
               <div>
                 <p className="font-semibold">Notice of Approval required</p>
                 <p className="mt-1">
-                  The applicant must acknowledge the SETUP Form 003 Notice of Approval
-                  before MOA signing day workflow begins.
+                  The applicant must acknowledge the {formatFormMention("003")} before MOA
+                  signing day workflow begins.
                 </p>
               </div>
             </div>
@@ -289,7 +304,7 @@ export function ProjectInformationSheet({
               }`}
               style={tab === "ongoing" ? { background: DOST_BLUE } : undefined}
             >
-              Form 009 Ongoing
+              Project Information Sheet (Ongoing)
             </button>
           </div>
 
@@ -431,10 +446,38 @@ export function ProjectInformationSheet({
 
                 {demoStaffSteps && step === "complete" && (
                   <div className="space-y-4">
+                    <MoaAnnexDEditor applicantId={applicant.id} />
+                    <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
+                      <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <Banknote className="w-4 h-4" /> Pre-disbursement PDCs
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Record post-dated checks covering the refund schedule (term + 1 for
+                        technology transfer fee at 0.5%) before fund release.
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        Scheduled PDCs: <strong>{pdcSummary.count || "—"}</strong>
+                        {pdcSummary.ttf !== "—" && (
+                          <> · TTF: <strong>{pdcSummary.ttf}</strong></>
+                        )}
+                        {pdcSummary.recorded && (
+                          <span className="ml-2 text-green-700 font-semibold">Recorded</span>
+                        )}
+                      </p>
+                      {!pdcSummary.recorded && (
+                        <button
+                          type="button"
+                          onClick={() => preparePdcsForDisbursement(applicant.id)}
+                          className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
+                          style={{ background: DOST_BLUE }}
+                        >
+                          Generate &amp; record PDC schedule
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">
-                      Confirm the signed MOA is on file, then complete MOA signing to unlock
-                      LandBank for the applicant. Signed Pre-PIS is optional and may be
-                      uploaded before or after MOA signing.
+                      Confirm signed MOA and {formatFormMention("008")} are on file, then
+                      complete MOA signing to unlock LandBank.
                     </p>
                     {!moa && (
                       <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -532,7 +575,7 @@ export function ProjectInformationSheet({
             {tab === "ongoing" && (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">
-                  Submit one Form 009 PIS per semester: <strong>1st Semester</strong>{" "}
+                  Submit one {formatFormMention("009")} per semester: <strong>1st Semester</strong>{" "}
                   (January–June) and <strong>2nd Semester</strong> (July–December).
                 </p>
                 {!signingComplete && (

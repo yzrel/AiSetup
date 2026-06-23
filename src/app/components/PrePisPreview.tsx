@@ -154,7 +154,7 @@ export function PrePisPreview({
         </table>
 
         <div className="pis-footer">
-          Regional Guidelines on SETUP (Revision 3.0) Annex E: SETUP Form 009 PIS — Page 1 of 2
+          Regional Guidelines on SETUP (Revision 3.0) Annex E: SETUP Form 008 — Pre-Implementation PIS — Page 1 of 2
           {applicationId && ` · ${applicationId}`}
         </div>
 
@@ -179,7 +179,7 @@ export function PrePisPreview({
             </tbody>
           </table>
           <div className="pis-footer">
-            Regional Guidelines on SETUP (Revision 3.0) Annex E: SETUP Form 009 PIS — Page 2 of 2
+            Regional Guidelines on SETUP (Revision 3.0) Annex E: SETUP Form 008 — Pre-Implementation PIS — Page 2 of 2
           </div>
         </div>
       </div>

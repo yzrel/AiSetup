@@ -14,31 +14,36 @@ import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { moduleStepPillClass } from "./moduleTheme";
+import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
+import {
+  buildRequirementUploadList,
+  countRequiredUploads,
+  persistRequirementUploads,
+  type StoredRequirementUpload,
+} from "../utils/submissionRequirements";
+import {
+  getProprietorTrackLabel,
+  isNonSingleProprietor,
+} from "../utils/proprietorTrack";
+import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { SubmittedFileActions } from "./SubmittedFileActions";
 
 interface SubmissionRequirementsProps {
   user?: AuthUser | null;
   onSubmitSuccess?: () => void;
 }
 
-interface DocumentUpload {
-  id: string;
-  name: string;
-  required: boolean;
-  uploaded: boolean;
+interface DocumentUpload extends StoredRequirementUpload {
   file?: File;
-  remarks?: string;
-  staffVerified?: "ok" | "flagged" | null;
-  staffRemark?: string;
 }
 
 type StepId =
   | "documents"
   | "staff-review"
   | "changes-requested"
-  | "rtec"
   | "routing";
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
@@ -55,7 +60,6 @@ const STEPS: { id: StepId; label: string; icon: React.ReactNode }[] = [
   { id: "documents",        label: "Submit Documents",   icon: <Upload className="w-4 h-4" /> },
   { id: "staff-review",     label: "Staff Verification", icon: <ShieldCheck className="w-4 h-4" /> },
   { id: "changes-requested",label: "Revision",           icon: <Pencil className="w-4 h-4" /> },
-  { id: "rtec",             label: "RTEC Report",        icon: <ClipboardCheck className="w-4 h-4" /> },
   { id: "routing",          label: "Routing",            icon: <ArrowRight className="w-4 h-4" /> },
 ];
 
@@ -129,37 +133,11 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const [declarationChecked, setDeclarationChecked] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
 
-  // RTEC state
-  const [rtec, setRtec] = useState({
-    evaluatorName: "",
-    evaluationDate: new Date().toISOString().split("T")[0],
-    overallScore: "",
-    technicalScore: "",
-    financialScore: "",
-    marketScore: "",
-    managementScore: "",
-    findings: "",
-    recommendations: "",
-    rtecQualified: null as boolean | null,
-  });
+  // Routing decision (staff — after TNA, before project proposal)
+  const [routingDecision, setRoutingDecision] = useState<"conduct-rtec" | "mpex" | null>(null);
+  const [routeToMpex, setRouteToMpex] = useState(false);
 
-  // Routing decision
-  const [routingDecision, setRoutingDecision] = useState<"project-proposal" | "mpex" | null>(null);
-
-  const [documents, setDocuments] = useState<DocumentUpload[]>([
-    { id: "dti",      name: "DTI/SEC/CDA Registration Certificate", required: true,  uploaded: false },
-    { id: "permit",   name: "Business Permit",                       required: true,  uploaded: false },
-    { id: "tin",      name: "TIN Certificate",                       required: true,  uploaded: false },
-    { id: "mayor",    name: "Mayor's Permit",                        required: true,  uploaded: false },
-    { id: "proposal", name: "Project Proposal",                      required: true,  uploaded: false },
-    { id: "financial",name: "Financial Statements (Latest)",          required: true,  uploaded: false },
-    { id: "profile",  name: "Company Profile",                       required: true,  uploaded: false },
-    { id: "catalog",  name: "Product/Service Catalog",               required: false, uploaded: false },
-    { id: "market",   name: "Market Study/Analysis",                 required: false, uploaded: false },
-    { id: "drawings", name: "Technical Drawings/Specifications",     required: false, uploaded: false },
-    { id: "certif",   name: "Quality Certifications (if any)",       required: false, uploaded: false },
-    { id: "endorsement", name: "Letter of Endorsement (if any)",     required: false, uploaded: false },
-  ]);
+  const [documents, setDocuments] = useState<DocumentUpload[]>([]);
 
   // Staff remarks per document
   const [staffRemarks, setStaffRemarks] = useState<Record<string, { status: "ok" | "flagged" | ""; remark: string }>>({});
@@ -182,9 +160,15 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     } else if (isStaff && applicant?.moduleData?.documentsSubmitted) {
       setStep("staff-review");
     }
+    if (applicant) {
+      setDocuments(buildRequirementUploadList(applicant));
+    }
+    if (applicant?.moduleData?.routingDecision === "mpex") {
+      setRouteToMpex(true);
+    }
 
     const init: Record<string, { status: "ok" | "flagged" | ""; remark: string }> = {};
-    documents.forEach(d => { init[d.id] = { status: "", remark: "" }; });
+    (applicant ? buildRequirementUploadList(applicant) : []).forEach(d => { init[d.id] = { status: "", remark: "" }; });
     setStaffRemarks(init);
   }, [applicant?.id, isStaff]);
 
@@ -195,38 +179,77 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   };
 
   // ── Document helpers ───────────────────────────────────────────────────────
-  const uploadDoc = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadDoc = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setDocuments(docs => docs.map(d => d.id === id ? { ...d, uploaded: true, file } : d));
+    if (!file || !applicant) return;
+    try {
+      const moduleDoc = await readFileAsModuleDocument(
+        file,
+        applicant.emailAddress || applicant.applicantName,
+      );
+      setDocuments((docs) => {
+        const next = docs.map((d) =>
+          d.id === id
+            ? {
+                ...d,
+                uploaded: true,
+                file,
+                fileName: moduleDoc.fileName,
+                mimeType: moduleDoc.mimeType,
+                dataUrl: moduleDoc.dataUrl,
+                fileSizeBytes: file.size,
+                uploadedAt: moduleDoc.uploadedAt,
+              }
+            : d,
+        );
+        persistRequirementUploads(applicant.id, next, applicantStore);
+        return next;
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed.");
+      if (fileRefs.current[id]) fileRefs.current[id]!.value = "";
+    }
   };
   const removeDoc = (id: string) => {
-    setDocuments(docs => docs.map(d => d.id === id ? { ...d, uploaded: false, file: undefined } : d));
+    setDocuments((docs) => {
+      const next = docs.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              uploaded: false,
+              file: undefined,
+              fileName: undefined,
+              mimeType: undefined,
+              dataUrl: undefined,
+              fileSizeBytes: undefined,
+              uploadedAt: undefined,
+            }
+          : d,
+      );
+      if (applicant) persistRequirementUploads(applicant.id, next, applicantStore);
+      return next;
+    });
     if (fileRefs.current[id]) fileRefs.current[id]!.value = "";
   };
 
-  const requiredDocs   = documents.filter(d => d.required);
-  const uploadedReq    = requiredDocs.filter(d => d.uploaded).length;
-  const pct            = Math.round((uploadedReq / requiredDocs.length) * 100);
-  const allRequiredUp  = uploadedReq === requiredDocs.length;
+  const { required: requiredCount, uploaded: uploadedReq } = countRequiredUploads(documents);
+  const pct            = requiredCount ? Math.round((uploadedReq / requiredCount) * 100) : 0;
+  const allRequiredUp  = uploadedReq === requiredCount && requiredCount > 0;
 
   // Staff flagged docs
   const flaggedDocs = Object.entries(staffRemarks).filter(([, v]) => v.status === "flagged");
   const allStaffMarked = documents.filter(d => d.uploaded).every(d => staffRemarks[d.id]?.status !== "");
   const staffDecisionReady = allStaffMarked && staffDecision !== "" && staffName.trim().length > 2;
 
-  // RTEC score
-  const rtecReady =
-    rtec.evaluatorName && rtec.evaluationDate && rtec.overallScore &&
-    rtec.findings && rtec.recommendations && rtec.rtecQualified !== null;
-
   const handleApplicantSubmit = () => {
     if (!applicant) return;
+    persistRequirementUploads(applicant.id, documents, applicantStore);
     applicantStore.update(applicant.id, {
       moduleData: {
         ...applicant.moduleData,
         documentsSubmitted: true,
         documentsSubmittedList: documents.filter(d => d.uploaded).map(d => d.name),
+        requirementUploads: documents,
         requirementsSubmittedAt: new Date().toISOString(),
       },
     });
@@ -250,22 +273,20 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   // Final submit — persist routing and advance applicant to the next module
   const handleFinalSubmit = () => {
     if (!applicant) return;
+    const decision = routeToMpex ? "mpex" : "conduct-rtec";
     const nextModule =
-      routingDecision === "project-proposal"
-        ? ("project-proposal" as const)
-        : routingDecision === "mpex"
-          ? ("requirements" as const)
-          : ("tna1" as const);
+      decision === "mpex"
+        ? ("requirements" as const)
+        : ("conduct-rtec" as const);
     applicantStore.update(applicant.id, {
       currentModule: nextModule,
       moduleData: {
         ...applicant.moduleData,
         documentsSubmitted: documents.filter((d) => d.uploaded).map((d) => d.name),
+        requirementUploads: documents,
         staffVerifiedBy: staffName,
         staffDecision,
-        rtecScore: rtec.overallScore,
-        rtecQualified: rtec.rtecQualified,
-        routingDecision,
+        routingDecision: decision,
         requirementsSubmittedAt: new Date().toISOString(),
       },
     });
@@ -336,6 +357,19 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               </div>
             </div>
 
+            {applicant && isNonSingleProprietor(applicant) && (
+              <div className="flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-xl p-4">
+                <Building className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-sky-900">
+                  <p className="font-semibold mb-0.5">{getProprietorTrackLabel(applicant)} checklist</p>
+                  <p>
+                    Based on your SEC/CDA registration, Board Resolution and Articles of
+                    Incorporation are required in addition to the single proprietor documents.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Auto-filled applicant info */}
             {applicant ? (
               <div>
@@ -376,7 +410,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-sm text-gray-800">Upload Progress</h3>
-                <span className="text-sm font-bold text-gray-600">{uploadedReq} / {requiredDocs.length} Required</span>
+                <span className="text-sm font-bold text-gray-600">{uploadedReq} / {requiredCount} Required</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-3">
                 <div className="h-3 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: `linear-gradient(90deg,${DOST_LIGHT},${DOST_BLUE})` }} />
@@ -548,7 +582,26 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                           <p className="font-semibold text-sm text-gray-800">
                             {doc.name} {doc.required && <span className="text-red-400">*</span>}
                           </p>
-                          {doc.file && <p className="text-xs text-gray-400 mt-0.5">{doc.file.name} · {(doc.file.size / 1024).toFixed(1)} KB</p>}
+                          {doc.uploaded && (
+                            <p className="text-xs text-gray-400 mt-0.5 truncate">
+                              {doc.fileName}
+                              {doc.fileSizeBytes
+                                ? ` · ${(doc.fileSizeBytes / 1024).toFixed(1)} KB`
+                                : doc.file
+                                  ? ` · ${(doc.file.size / 1024).toFixed(1)} KB`
+                                  : ""}
+                            </p>
+                          )}
+                          {doc.uploaded && (doc.dataUrl || doc.fileName) && (
+                            <div className="mt-2">
+                              <SubmittedFileActions
+                                fileName={doc.fileName ?? "document"}
+                                mimeType={doc.mimeType}
+                                dataUrl={doc.dataUrl}
+                                compact
+                              />
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           <button
@@ -596,7 +649,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                   <input type="radio" name="staffDecision" value="approved" checked={staffDecision === "approved"} onChange={() => setStaffDecision("approved")} className="w-4 h-4 mt-0.5 text-green-600" />
                   <div>
                     <p className="font-bold text-sm text-gray-800">✓ Approve Submission</p>
-                    <p className="text-xs text-gray-500 mt-0.5">All documents are complete and verified. Proceed to RTEC evaluation.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">All documents are complete and verified. Proceed to application routing.</p>
                   </div>
                 </label>
                 <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${staffDecision === "needs-revision" ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-red-200"}`}>
@@ -653,7 +706,6 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                   );
                   if (staffDecision === "approved") {
                     applicantStore.update(applicant!.id, {
-                      currentModule: "tna1",
                       moduleData: {
                         ...applicant!.moduleData,
                         staffVerifiedBy: staffName,
@@ -662,13 +714,13 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                       },
                     });
                   }
-                  advanceStep(staffDecision === "approved" ? "rtec" : "changes-requested");
+                  advanceStep(staffDecision === "approved" ? "routing" : "changes-requested");
                 }}
                 disabled={!allowWhenDemo(staffDecisionReady)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: staffDecision === "approved" ? "#059669" : "#dc2626" }}
               >
-                {staffDecision === "approved" ? "Approve & Proceed to RTEC →" : staffDecision === "needs-revision" ? "Send for Revision →" : "Submit Decision →"}
+                {staffDecision === "approved" ? "Approve & Proceed to Routing →" : staffDecision === "needs-revision" ? "Send for Revision →" : "Submit Decision →"}
               </button>
             </div>
           </div>
@@ -762,284 +814,84 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 4 — RTEC GENERATION REPORT
-        ══════════════════════════════════════════════════════════════════ */}
-        {step === "rtec" && isStaff && (
-          <div className="p-6 space-y-6">
-            <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <ClipboardCheck className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-700">
-                <p className="font-semibold mb-0.5">RTEC Evaluation Report Generation</p>
-                <p>The Regional Technology Expert Committee (RTEC) evaluates the applicant's technology readiness, financial capacity, and market viability. Complete the assessment scores and findings below.</p>
-              </div>
-            </div>
-
-            {/* Applicant info for evaluator */}
-            {applicant && (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                {[
-                  ["Enterprise",  applicant.enterpriseName],
-                  ["Applicant",   applicant.applicantName],
-                  ["MSME Size",   applicant.msmeSize],
-                  ["Application", applicant.applicationId],
-                ].map(([k, v]) => (
-                  <div key={k}>
-                    <p className="text-gray-400 font-semibold uppercase tracking-wide text-[10px]">{k}</p>
-                    <p className="text-gray-800 font-semibold mt-0.5">{v}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Evaluator info */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-blue-500" /> Evaluator Information
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>RTEC Evaluator Name *</label>
-                  <input type="text" className={inputCls} placeholder="Full name of evaluator" value={rtec.evaluatorName} onChange={e => setRtec(r => ({ ...r, evaluatorName: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>Evaluation Date *</label>
-                  <input type="date" className={inputCls} value={rtec.evaluationDate} onChange={e => setRtec(r => ({ ...r, evaluationDate: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-
-            {/* Scoring */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
-                <BadgeCheck className="w-4 h-4 text-blue-500" /> Assessment Scores (0–100)
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { key: "technicalScore",   label: "Technical Readiness" },
-                  { key: "financialScore",   label: "Financial Capacity" },
-                  { key: "marketScore",      label: "Market Viability" },
-                  { key: "managementScore",  label: "Management Capability" },
-                ].map(f => {
-                  const val = parseInt(rtec[f.key as keyof typeof rtec] as string) || 0;
-                  const color = val >= 75 ? "text-green-600" : val >= 50 ? "text-amber-600" : "text-red-500";
-                  return (
-                    <div key={f.key}>
-                      <label className={labelCls}>{f.label}</label>
-                      <input
-                        type="number" min="0" max="100"
-                        className={`${inputCls} font-bold text-center text-lg ${color}`}
-                        placeholder="0"
-                        value={rtec[f.key as keyof typeof rtec] as string}
-                        onChange={e => {
-                          const scores = { ...rtec, [f.key]: e.target.value };
-                          const vals = [scores.technicalScore, scores.financialScore, scores.marketScore, scores.managementScore].map(Number).filter(Boolean);
-                          const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / 4) : 0;
-                          setRtec({ ...scores, overallScore: String(avg) });
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Overall score computed */}
-              <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Overall Average Score</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Auto-computed from the four criteria above</p>
-                </div>
-                <div className={`text-4xl font-black ${parseInt(rtec.overallScore) >= 75 ? "text-green-600" : parseInt(rtec.overallScore) >= 50 ? "text-amber-500" : "text-red-500"}`}>
-                  {rtec.overallScore || "—"}
-                  <span className="text-base font-normal text-gray-400"> / 100</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Findings & Recommendations */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-500" /> Report Narrative
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className={labelCls}>Findings *</label>
-                  <textarea rows={4} className={inputCls} placeholder="Summarize the findings from the RTEC evaluation. Include observed technology gaps, existing capabilities, and notable factors." value={rtec.findings} onChange={e => setRtec(r => ({ ...r, findings: e.target.value }))} />
-                </div>
-                <div>
-                  <label className={labelCls}>Recommendations *</label>
-                  <textarea rows={4} className={inputCls} placeholder="Provide specific recommendations for the applicant. Mention priority technology interventions, training needs, or areas requiring attention." value={rtec.recommendations} onChange={e => setRtec(r => ({ ...r, recommendations: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-
-            {/* RTEC qualification decision */}
-            <div>
-              <label className={labelCls}>RTEC Qualification Decision *</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${rtec.rtecQualified === true ? "border-green-400 bg-green-50" : "border-gray-200 hover:border-green-200"}`}>
-                  <input type="radio" name="rtecQual" checked={rtec.rtecQualified === true} onChange={() => setRtec(r => ({ ...r, rtecQualified: true }))} className="w-4 h-4 mt-0.5 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-sm text-gray-800 flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-green-500" /> Qualified</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Enterprise meets RTEC criteria. Proceed to Project Proposal stage.</p>
-                  </div>
-                </label>
-                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${rtec.rtecQualified === false ? "border-orange-400 bg-orange-50" : "border-gray-200 hover:border-orange-200"}`}>
-                  <input type="radio" name="rtecQual" checked={rtec.rtecQualified === false} onChange={() => setRtec(r => ({ ...r, rtecQualified: false }))} className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-sm text-gray-800 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-orange-500" /> Not Yet Qualified</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Enterprise needs capacity building. Route to MPEX Pre-requisite.</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button onClick={() => advanceStep("staff-review")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
-              <button
-                onClick={() => {
-                  setRoutingDecision(rtec.rtecQualified ? "project-proposal" : "mpex");
-                  advanceStep("routing");
-                }}
-                disabled={!allowWhenDemo(rtecReady)}
-                className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
-                style={{ background: DOST_BLUE }}
-              >
-                Generate RTEC Report & Route →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            STEP 5 — ROUTING DECISION
+            STEP 4 — ROUTING DECISION (post-TNA document review)
         ══════════════════════════════════════════════════════════════════ */}
         {step === "routing" && isStaff && (
           <div className="p-6 space-y-6">
-
-            {/* RTEC report summary */}
-            <div className={`rounded-2xl p-6 border-2 ${rtec.rtecQualified ? "bg-green-50 border-green-400" : "bg-orange-50 border-orange-400"}`}>
-              <div className="flex items-start gap-4">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white text-xl flex-shrink-0 ${rtec.rtecQualified ? "bg-green-500" : "bg-orange-500"}`}>
-                  {rtec.rtecQualified ? "✓" : "!"}
-                </div>
-                <div className="flex-1">
-                  <h3 className={`text-lg font-black ${rtec.rtecQualified ? "text-green-800" : "text-orange-800"}`}>
-                    RTEC Result: {rtec.rtecQualified ? "Qualified" : "Not Yet Qualified"}
-                  </h3>
-                  <p className={`text-sm mt-0.5 ${rtec.rtecQualified ? "text-green-600" : "text-orange-600"}`}>
-                    {rtec.rtecQualified
-                      ? `${applicant?.enterpriseName} has passed the RTEC evaluation with an overall score of ${rtec.overallScore}/100.`
-                      : `${applicant?.enterpriseName} requires capacity building before proceeding. Score: ${rtec.overallScore}/100.`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Score breakdown */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                {[
-                  ["Technical",   rtec.technicalScore],
-                  ["Financial",   rtec.financialScore],
-                  ["Market",      rtec.marketScore],
-                  ["Management",  rtec.managementScore],
-                ].map(([k, v]) => (
-                  <div key={k} className="bg-white/70 rounded-xl p-3 text-center border border-white">
-                    <p className="text-xs text-gray-500">{k}</p>
-                    <p className={`text-2xl font-black ${parseInt(v) >= 75 ? "text-green-600" : parseInt(v) >= 50 ? "text-amber-500" : "text-red-500"}`}>{v || "—"}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Routing cards */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
-                <ArrowRight className="w-4 h-4 text-blue-500" /> Application Routing
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Project Proposal */}
-                <div className={`rounded-2xl border-2 p-5 transition-all ${rtec.rtecQualified ? "border-green-400 bg-green-50 shadow-md" : "border-gray-200 bg-gray-50 opacity-50"}`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rtec.rtecQualified ? "bg-green-500" : "bg-gray-300"}`}>
-                      <FileText className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm text-gray-800">Project Proposal</p>
-                      <p className="text-xs text-gray-500">Module 7</p>
-                    </div>
-                    {rtec.rtecQualified && <span className="ml-auto text-xs bg-green-600 text-white px-2.5 py-1 rounded-full font-bold">SELECTED</span>}
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    The enterprise is ready to develop a full DOST SETUP project proposal for technology adoption and fund utilization planning.
-                  </p>
-                </div>
-
-                {/* MPEX Pre-requisite */}
-                <div className={`rounded-2xl border-2 p-5 transition-all ${!rtec.rtecQualified ? "border-orange-400 bg-orange-50 shadow-md" : "border-gray-200 bg-gray-50 opacity-50"}`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!rtec.rtecQualified ? "bg-orange-500" : "bg-gray-300"}`}>
-                      <Banknote className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm text-gray-800">MPEX Pre-requisite</p>
-                      <p className="text-xs text-gray-500">Capacity Building Track</p>
-                    </div>
-                    {!rtec.rtecQualified && <span className="ml-auto text-xs bg-orange-500 text-white px-2.5 py-1 rounded-full font-bold">SELECTED</span>}
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    The enterprise will undergo the MPEX (MSME Productivity Extension) pre-requisite training and capacity-building program before re-applying for SETUP.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* RTEC report preview */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
-                <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-500" /> RTEC Evaluation Report
+            <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <ArrowRight className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-700">
+                <p className="font-semibold mb-0.5">Application Routing</p>
+                <p>
+                  TNA is complete and supporting documents are verified. Route the enterprise to{" "}
+                  {formatFormMention("001", "both")} or to the MPEX capacity-building track.
+                  Formal {formatFormMention("002")} evaluation occurs after the project proposal is submitted.
                 </p>
-                <button className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
-                  Print / Download
-                </button>
-              </div>
-              <div className="p-6 space-y-4 text-sm text-gray-700 leading-relaxed font-serif max-h-72 overflow-y-auto">
-                <div className="text-center space-y-1">
-                  <p className="text-xs text-gray-400 uppercase tracking-widest">Republic of the Philippines</p>
-                  <p className="font-black text-base text-gray-800">Department of Science and Technology</p>
-                  <p className="text-xs text-gray-500">Regional Technology Expert Committee (RTEC) Evaluation Report</p>
-                  <div className="border-t border-b border-gray-200 py-2 mt-3">
-                    <p className="font-black">RTEC EVALUATION REPORT</p>
-                  </div>
-                </div>
-                <p>Date: {rtec.evaluationDate} &nbsp;|&nbsp; Evaluator: {rtec.evaluatorName}</p>
-                <p><strong>Enterprise:</strong> {applicant?.enterpriseName} &nbsp;|&nbsp; <strong>App ID:</strong> {applicant?.applicationId}</p>
-                <p><strong>MSME Size:</strong> {applicant?.msmeSize} &nbsp;|&nbsp; <strong>Sector:</strong> {applicant?.businessSector}</p>
-                <p><strong>Overall Score:</strong> {rtec.overallScore}/100 ({rtec.rtecQualified ? "QUALIFIED" : "NOT YET QUALIFIED"})</p>
-                <p><strong>Findings:</strong> {rtec.findings}</p>
-                <p><strong>Recommendations:</strong> {rtec.recommendations}</p>
-                <p><strong>Routing Decision:</strong> {rtec.rtecQualified ? "Proceed to Project Proposal (Module 7)" : "Route to MPEX Pre-requisite Program"}</p>
-                <p className="text-xs text-gray-400 border-t pt-3">Generated by DOST aiSETUP Portal · {new Date().toLocaleString("en-PH")}</p>
               </div>
             </div>
 
-            {/* Confirm button */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <label className={`rounded-2xl border-2 p-5 cursor-pointer transition-all ${!routeToMpex ? "border-green-400 bg-green-50 shadow-md" : "border-gray-200 bg-gray-50"}`}>
+                <input
+                  type="radio"
+                  name="routeTrack"
+                  className="sr-only"
+                  checked={!routeToMpex}
+                  onChange={() => setRouteToMpex(false)}
+                />
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!routeToMpex ? "bg-green-500" : "bg-gray-300"}`}>
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-black text-sm text-gray-800">{formatFormMention("002")}</p>
+                    <p className="text-xs text-gray-500">Module 8</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Proceed to {formatFormMention("002")} evaluation. Requirements and {formatFormMention("001")} are on file.
+                </p>
+              </label>
+
+              <label className={`rounded-2xl border-2 p-5 cursor-pointer transition-all ${routeToMpex ? "border-orange-400 bg-orange-50 shadow-md" : "border-gray-200 bg-gray-50"}`}>
+                <input
+                  type="radio"
+                  name="routeTrack"
+                  className="sr-only"
+                  checked={routeToMpex}
+                  onChange={() => setRouteToMpex(true)}
+                />
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${routeToMpex ? "bg-orange-500" : "bg-gray-300"}`}>
+                    <Banknote className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-black text-sm text-gray-800">MPEX Pre-requisite</p>
+                    <p className="text-xs text-gray-500">Capacity building track</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Enterprise requires MPEX training before re-applying for SETUP assistance.
+                </p>
+              </label>
+            </div>
+
             <button
               onClick={() => {
+                setRoutingDecision(routeToMpex ? "mpex" : "conduct-rtec");
                 handleFinalSubmit();
                 onSubmitSuccess?.();
               }}
               className="w-full py-4 rounded-xl text-white font-black text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
-              style={{ background: rtec.rtecQualified ? "#059669" : "#d97706" }}
+              style={{ background: routeToMpex ? "#d97706" : "#059669" }}
             >
-              {rtec.rtecQualified
-                ? <><CheckCircle className="w-5 h-5" /> Confirm & Proceed to Project Proposal</>
-                : <><ArrowRight className="w-5 h-5" /> Confirm & Route to MPEX Pre-requisite</>}
+              {routeToMpex
+                ? <><ArrowRight className="w-5 h-5" /> Confirm & Route to MPEX</>
+                : <><CheckCircle className="w-5 h-5" /> Confirm & Proceed to RTEC Evaluation</>}
             </button>
 
-            {/* Back */}
-            <button onClick={() => advanceStep("rtec")} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-              ← Back to RTEC Evaluation
+            <button onClick={() => advanceStep("staff-review")} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              ← Back to Staff Verification
             </button>
           </div>
         )}

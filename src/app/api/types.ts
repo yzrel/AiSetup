@@ -697,6 +697,10 @@ export interface ProcurementDocument {
   fileName: string;
   uploadedAt: string;
   amount?: string;
+  mimeType?: string;
+  dataUrl?: string;
+  fileSizeBytes?: number;
+  uploadedBy?: string;
 }
 
 export interface ProcurementStaffReview {
@@ -741,6 +745,7 @@ export interface PDCEntry {
   accountNumber: string;
   amount: string;
   status: PDCStatus;
+  note?: string;
 }
 
 export interface RefundScheduleRow {
@@ -757,6 +762,9 @@ export interface RefundDelinquentForm {
   delinquencyStatus: DelinquencyStatus;
   soaIssued: boolean;
   lastPaymentDate?: string;
+  technologyTransferFee?: string;
+  totalRefundWithTtf?: string;
+  refundGraceMonths?: number;
 }
 
 export interface RefundDelinquentStored {
@@ -764,5 +772,76 @@ export interface RefundDelinquentStored {
   submitted?: boolean;
   submittedAt?: string;
   submittedBy?: string;
+  updatedAt?: string;
+}
+
+// ── Annex D — Pro-forma MOA ───────────────────────────────────────────────────
+
+export interface MoaAnnexDForm {
+  projectTitle: string;
+  enterpriseName: string;
+  enterpriseAddress: string;
+  approvedAmount: string;
+  refundTermYears: string;
+  projectDurationMonths: string;
+  insuranceRatePercent: string;
+  pstoOfficeName: string;
+  regionalDirector: string;
+  effectivityDate: string;
+  specialProvisions: string;
+}
+
+export interface MoaAnnexDStored {
+  form: MoaAnnexDForm;
+  finalized?: boolean;
+  finalizedAt?: string;
+  updatedAt?: string;
+}
+
+// ── Form 008 — Pre-Implementation PIS (Annex E) ───────────────────────────────
+
+export interface Form008Stored {
+  draft: PrePisDraftForm;
+  signedFileName?: string;
+  signedDate?: string;
+  submitted?: boolean;
+}
+
+// ── Module 18 — Project Close-Out ─────────────────────────────────────────────
+
+export interface EquipmentInventoryRow {
+  id: string;
+  description: string;
+  serialNumber: string;
+  acquisitionCost: string;
+  location: string;
+}
+
+export interface ProjectCloseOutForm {
+  terminalReportFileName?: string;
+  auditedFinancialFileName?: string;
+  equipmentAcknowledgementFileName?: string;
+  equipmentInventory: EquipmentInventoryRow[];
+  certificateOfOwnershipIssued: boolean;
+  certificateIssuedDate?: string;
+  notes?: string;
+}
+
+export interface ProjectCloseOutStored {
+  form: ProjectCloseOutForm;
+  submitted?: boolean;
+  submittedAt?: string;
+  submittedBy?: string;
+  updatedAt?: string;
+}
+
+// ── Backend persistence DTOs ──────────────────────────────────────────────────
+
+export interface ApiApplicantRecord {
+  id: string;
+  applicationId: string;
+  enterpriseName: string;
+  currentModule: string;
+  moduleData: Record<string, unknown>;
   updatedAt?: string;
 }

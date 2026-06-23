@@ -31,20 +31,32 @@ function notify() {
   listeners.forEach((l) => l());
 }
 
+function alertIfEnabled(wasEnabled: boolean) {
+  if (enabled && !wasEnabled) {
+    window.alert(
+      "Demo mode enabled. Workflow restrictions are bypassed for this session.",
+    );
+  }
+}
+
 loadFromSession();
 
 export const demoModeStore = {
   isEnabled: () => enabled,
 
   setEnabled: (value: boolean) => {
+    const wasEnabled = enabled;
     enabled = value;
     persist();
+    alertIfEnabled(wasEnabled);
     notify();
   },
 
   toggle: () => {
+    const wasEnabled = enabled;
     enabled = !enabled;
     persist();
+    alertIfEnabled(wasEnabled);
     notify();
   },
 

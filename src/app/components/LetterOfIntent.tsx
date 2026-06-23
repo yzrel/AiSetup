@@ -25,6 +25,8 @@ import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { moduleStepPillClass } from "./moduleTheme";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
+import type { ModuleDocument } from "../api/types";
+import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
@@ -152,6 +154,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   });
 
   const [productionPlanFile, setProductionPlanFile] = useState<File | null>(null);
+  const [productionPlanDocument, setProductionPlanDocument] =
+    useState<ModuleDocument | null>(null);
   const [productionPlanNotes, setProductionPlanNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,6 +166,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     startDate: "",
     agreeRefundTerms: false,
     agreeInterestFree: false,
+    agreeInsurance: false,
     agreePDC: false,
     agreePenalty: false,
     commitSignature: "",
@@ -223,9 +228,19 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
           commitSignature: saved.signature?.typedName || prev.commitSignature,
         }));
       }
+      const savedPlan = md.productionPlanDocument as ModuleDocument | undefined;
+      if (savedPlan?.fileName) {
+        setProductionPlanDocument(savedPlan);
+      }
     } else {
       setLoiDocument(null);
       setStep("review");
+      const savedPlan = app.moduleData?.productionPlanDocument as ModuleDocument | undefined;
+      if (savedPlan?.fileName) {
+        setProductionPlanDocument(savedPlan);
+      } else {
+        setProductionPlanDocument(null);
+      }
     }
   };
 
@@ -267,11 +282,14 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     generalAgreement.signature.trim().length > 2;
 
   const productionPlanComplete =
-    !!productionPlanFile || !!(applicant?.moduleData?.productionPlanFile);
+    !!productionPlanFile ||
+    !!productionPlanDocument?.fileName ||
+    !!(applicant?.moduleData?.productionPlanFile);
 
   const commitmentComplete =
     commitmentRefund.agreeRefundTerms &&
     commitmentRefund.agreeInterestFree &&
+    commitmentRefund.agreeInsurance &&
     commitmentRefund.agreePDC &&
     commitmentRefund.agreePenalty &&
     commitmentRefund.commitSignature.trim().length > 2 &&
@@ -279,9 +297,54 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     !!(commitmentRefund.repaymentTerm) &&
     !!(commitmentRefund.startDate);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setProductionPlanFile(file);
+    if (!file || !applicant) return;
+    try {
+      const moduleDoc = await readFileAsModuleDocument(
+        file,
+        applicant.emailAddress || applicant.applicantName,
+      );
+      setProductionPlanFile(file);
+      setProductionPlanDocument(moduleDoc);
+      applicantStore.update(applicant.id, {
+        moduleData: {
+          ...applicant.moduleData,
+          productionPlanDocument: moduleDoc,
+          productionPlanFile: moduleDoc.fileName,
+        },
+      });
+      setApplicant(
+        applicantStore.getById(applicant.id) ?? {
+          ...applicant,
+          moduleData: {
+            ...applicant.moduleData,
+            productionPlanDocument: moduleDoc,
+            productionPlanFile: moduleDoc.fileName,
+          },
+        },
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const clearProductionPlan = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProductionPlanFile(null);
+    setProductionPlanDocument(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!applicant) return;
+    const { productionPlanDocument: _removed, productionPlanFile: _name, ...rest } =
+      applicant.moduleData ?? {};
+    applicantStore.update(applicant.id, { moduleData: rest });
+    setApplicant(
+      applicantStore.getById(applicant.id) ?? {
+        ...applicant,
+        moduleData: rest,
+      },
+    );
   };
 
   const buildCurrentPayload = () => {
@@ -297,7 +360,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         signature: generalAgreement.signature,
         signedDate: generalAgreement.signedDate,
       },
-      productionPlanFile?.name ?? String(applicant.moduleData?.productionPlanFile ?? ""),
+      productionPlanFile?.name ??
+        productionPlanDocument?.fileName ??
+        String(applicant.moduleData?.productionPlanFile ?? ""),
     );
   };
 
@@ -351,7 +416,13 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         registrationType: additional.registrationType,
         registrationNumber: additional.registrationNumber,
         expectedOutcome: additional.expectedOutcome,
-        productionPlanFile: productionPlanFile?.name ?? applicant.moduleData?.productionPlanFile,
+        productionPlanFile:
+          productionPlanFile?.name ??
+          productionPlanDocument?.fileName ??
+          applicant.moduleData?.productionPlanFile,
+        productionPlanDocument:
+          productionPlanDocument ??
+          (applicant.moduleData?.productionPlanDocument as ModuleDocument | undefined),
         commitmentAmount: commitmentRefund.approvedAmount,
         repaymentTerm: commitmentRefund.repaymentTerm,
         loiSubmittedAt: new Date().toISOString(),
@@ -812,23 +883,29 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
-                  productionPlanFile
+                  productionPlanFile || productionPlanDocument
                     ? "border-green-400 bg-green-50"
                     : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
                 }`}
               >
                 <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={handleFileChange} />
-                {productionPlanFile ? (
+                {productionPlanFile || productionPlanDocument ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
                       <CheckCircle className="w-7 h-7 text-green-600" />
                     </div>
                     <div>
-                      <p className="font-bold text-green-800">{productionPlanFile.name}</p>
-                      <p className="text-xs text-green-600 mt-1">{(productionPlanFile.size / 1024).toFixed(1)} KB</p>
+                      <p className="font-bold text-green-800">
+                        {productionPlanFile?.name ?? productionPlanDocument?.fileName}
+                      </p>
+                      {productionPlanFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {(productionPlanFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      )}
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setProductionPlanFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      onClick={clearProductionPlan}
                       className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 transition-colors"
                     >
                       <X className="w-3 h-3" /> Remove file
@@ -928,9 +1005,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                   <label className={labelCls}>Repayment Term *</label>
                   <select className={inputCls} value={commitmentRefund.repaymentTerm} onChange={(e) => setCR("repaymentTerm", e.target.value)}>
                     <option value="">Select term</option>
-                    <option value="5 years">5 years (Micro Enterprise)</option>
-                    <option value="7 years">7 years (Small Enterprise)</option>
-                    <option value="10 years">10 years (Medium Enterprise)</option>
+                    <option value="3 years">3 years</option>
+                    <option value="4 years">4 years</option>
+                    <option value="5 years">5 years</option>
                   </select>
                 </div>
                 <div>
@@ -968,8 +1045,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 {[
                   { key: "agreeRefundTerms", text: "1. I/We agree to repay the full approved SETUP seed fund amount within the agreed repayment period as specified above." },
                   { key: "agreeInterestFree", text: "2. I/We understand that the fund is interest-free (0%) for the duration of the repayment term, provided repayment is made on schedule. Late payments may incur applicable penalties." },
-                  { key: "agreePDC", text: "3. I/We commit to submit Post-Dated Checks (PDCs) covering the full repayment period to the DOST Region XII Office in Koronadal City prior to the official release of funds." },
-                  { key: "agreePenalty", text: "4. I/We acknowledge that failure to repay on time or bouncing of PDCs may result in penalty charges, legal proceedings, and inclusion in the Delinquent Enterprises registry, which shall disqualify the enterprise from all future DOST programs." },
+                  { key: "agreeInsurance", text: "3. I/We commit to cover the insurance cost for acquired equipment as our enterprise counterpart, not exceeding the rate prescribed in the Notice of Approval." },
+                  { key: "agreePDC", text: "4. I/We commit to submit Post-Dated Checks (PDCs) covering the full refund period plus technology transfer fee (0.5%) prior to official release of funds." },
+                  { key: "agreePenalty", text: "5. I/We acknowledge that failure to repay on time or bouncing of PDCs may result in penalty charges, legal proceedings, and inclusion in the Delinquent Enterprises registry, which shall disqualify the enterprise from all future DOST programs." },
                 ].map((clause) => (
                   <label
                     key={clause.key}
@@ -1015,7 +1093,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             {/* Commitment progress */}
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span className={`font-bold ${commitmentComplete ? "text-green-600" : "text-gray-400"}`}>
-                {[commitmentRefund.agreeRefundTerms, commitmentRefund.agreeInterestFree, commitmentRefund.agreePDC, commitmentRefund.agreePenalty].filter(Boolean).length}/4 clauses agreed
+                {[commitmentRefund.agreeRefundTerms, commitmentRefund.agreeInterestFree, commitmentRefund.agreeInsurance, commitmentRefund.agreePDC, commitmentRefund.agreePenalty].filter(Boolean).length}/5 clauses agreed
               </span>
               {commitmentRefund.commitSignature.trim().length > 2
                 ? <span className="text-green-600">· Commitment signed ✓</span>
@@ -1080,7 +1158,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 <Paperclip className="w-6 h-6 text-blue-600 mx-auto mb-1" />
                 <p className="text-xs font-bold text-blue-700">Production Plan</p>
                 <p className="text-xs text-blue-500 mt-0.5 truncate px-2">
-                  {productionPlanFile?.name ?? String(applicant?.moduleData?.productionPlanFile ?? "Uploaded")}
+                  {productionPlanFile?.name ??
+                    productionPlanDocument?.fileName ??
+                    String(applicant?.moduleData?.productionPlanFile ?? "Uploaded")}
                 </p>
               </div>
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">

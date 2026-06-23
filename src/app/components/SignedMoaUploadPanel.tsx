@@ -11,7 +11,7 @@ import {
   validateSignedMoaUpload,
 } from "../utils/approvalLetter";
 import { notifyMoaUploaded } from "../utils/notificationHelpers";
-import { isDemoModeActive } from "../utils/demoMode";
+import { formatFormMention } from "../constants/setupForms";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
 
 interface SignedMoaUploadPanelProps {
@@ -74,10 +74,10 @@ export function SignedMoaUploadPanel({
 
   const ackBlocked = requireAcknowledged && !isAcknowledged;
 
-  if (ackBlocked && !isDemoModeActive()) {
+  if (ackBlocked) {
     return (
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-        The applicant must acknowledge Form 003 conforme before staff can upload the
+        The applicant must acknowledge {formatFormMention("003")} conforme before staff can upload the
         signed MOA.
       </div>
     );
@@ -110,7 +110,7 @@ export function SignedMoaUploadPanel({
     <div className="space-y-3">
       {ackBlocked && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-          The applicant must acknowledge Form 003 conforme before staff can upload the
+          The applicant must acknowledge {formatFormMention("003")} conforme before staff can upload the
           signed MOA. Demo mode allows upload for presentation purposes.
         </div>
       )}

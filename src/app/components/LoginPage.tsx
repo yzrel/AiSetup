@@ -12,6 +12,9 @@ import { authStore } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
 import { getApplicantsForStaff } from '../utils/provincialOffice';
 import { staffContextStore } from '../store/staffContextStore';
+import { DemoModeBanner } from './DemoModeBanner';
+import { DemoModeLogoTrigger } from './DemoModeLogoTrigger';
+import { DOSTMark } from './DOSTLogos';
 
 function autoSelectStaffApplicant() {
   const user = authStore.getUser();
@@ -150,16 +153,21 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className={`bg-gradient-to-br ${headerGrad} px-8 py-7 text-center transition-all duration-300`}>
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                {isStaff
-                  ? <Shield className="w-5 h-5 text-white" />
-                  : <Building2 className="w-5 h-5 text-white" />}
+            <DemoModeLogoTrigger className="inline-block mx-auto">
+              <div className="flex flex-col items-center gap-2 mb-2">
+                <DOSTMark size={40} />
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                    {isStaff
+                      ? <Shield className="w-5 h-5 text-white" />
+                      : <Building2 className="w-5 h-5 text-white" />}
+                  </div>
+                  <span className="text-white font-bold text-sm">
+                    {isStaff ? 'DOST Staff Portal' : 'aiSETUP Application'}
+                  </span>
+                </div>
               </div>
-              <span className="text-white font-bold text-sm">
-                {isStaff ? 'DOST Staff Portal' : 'aiSETUP Application'}
-              </span>
-            </div>
+            </DemoModeLogoTrigger>
             <p className="text-white/60 text-[10px] font-semibold uppercase tracking-[0.2em] mb-0.5">Republic of the Philippines</p>
             <p className="text-white font-bold text-sm tracking-wide">Department of Science &amp; Technology</p>
           </div>
@@ -193,6 +201,9 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           </div>
 
           <div className="px-8 py-7">
+            <div className="mb-4">
+              <DemoModeBanner compact />
+            </div>
             <h2 className="text-lg font-bold text-gray-800 mb-1">
               {registeredNotice && !isStaff
                 ? 'Registration complete'
@@ -307,14 +318,14 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 <>
                   <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-                  <p className="text-[11px] text-gray-500 mt-2">Presenters: 5× click the DOST logo after sign-in to unlock all modules.</p>
+                  <p className="text-[11px] text-gray-500 mt-2">Presenters: 5× click the DOST logo to unlock all modules (works on login and registration too).</p>
                 </>
               ) : (
                 <>
                   <p className="text-[11px] text-gray-500">Use your registered email and password</p>
                   <p className="text-[11px] text-gray-500 mt-1">Demo: <span className="font-mono">juan@abcfood.com</span> / <span className="font-mono">Demo@1234</span></p>
-                  <p className="text-[11px] text-gray-500 mt-2">Presenters: 5× click the DOST logo after sign-in to unlock all modules.</p>
-                </>
+                  <p className="text-[11px] text-gray-500 mt-2">Presenters: 5× click the DOST logo to unlock all modules (works on login and registration too).</p>
+                 </>
               )}
             </div>
           </div>

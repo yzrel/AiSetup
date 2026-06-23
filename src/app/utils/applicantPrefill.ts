@@ -3,14 +3,9 @@
  */
 
 import { Applicant } from "../store/applicantStore";
+import { normalizeRegistrationType } from "./proprietorTrack";
 
-export function normalizeRegistrationType(value: string): string {
-  const t = value.toUpperCase();
-  if (t === "DTI" || t.includes("SOLE") || t.includes("PROPRIETOR")) return "DTI";
-  if (t === "CDA" || t.includes("COOP")) return "CDA";
-  if (t === "SEC" || t.includes("CORP") || t.includes("PARTNER")) return "SEC";
-  return value;
-}
+export { normalizeRegistrationType };
 
 export function yearFromDateEstablished(dateEstablished: string): string {
   if (!dateEstablished) return "";

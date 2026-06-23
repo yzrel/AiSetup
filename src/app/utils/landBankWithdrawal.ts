@@ -9,6 +9,8 @@ import { getProjectProposalForm } from "./projectProposal";
 import { isSigningDayComplete } from "./projectInformationSheet";
 import { isDemoModeActive } from "./demoMode";
 import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
+import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
+import { formatFormMention } from "../constants/setupForms";
 
 const MODULE_KEY = "landBank";
 
@@ -66,7 +68,7 @@ export function getLandBankOverview(applicant: Applicant | null): LandBankOvervi
 }
 
 export function hasLandBankPrerequisite(applicant: Applicant | null): boolean {
-  return isSigningDayComplete(applicant);
+  return isSigningDayComplete(applicant) && hasPdcsRecordedForDisbursement(applicant);
 }
 
 export function hasLandBankComplete(applicant: Applicant | null): boolean {
@@ -97,7 +99,7 @@ export function validateLandBankSubmit(applicant: Applicant | null): string[] {
   const errors: string[] = [];
   if (!hasLandBankPrerequisite(applicant)) {
     errors.push(
-      "Complete MOA signing day (Project Information Sheet) before LandBank enrollment.",
+      `Complete MOA signing day, ${formatFormMention("008")}, and post-dated check (PDC) recording before LandBank enrollment.`,
     );
   }
   if (!hasLbpIntroductionPublished(applicant)) {

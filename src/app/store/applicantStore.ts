@@ -11,6 +11,7 @@ import {
   greenValleyLateStageModuleData,
   techInnovationsProjectProposal,
 } from "../data/demoSeedModuleData";
+import { syncApplicantToBackend } from "../utils/applicantPersistence";
 // Simple in-memory store using a singleton + event-based reactivity
 
 export type ModuleStatus =
@@ -27,6 +28,7 @@ export type ModuleStatus =
   | 'landbank-withdrawal'
   | 'procurement-liquidation'
   | 'refund-delinquent'
+  | 'project-closeout'
   | 'completed';
 
 export interface Applicant {
@@ -460,6 +462,8 @@ export const applicantStore = {
     applicants = applicants.map(a =>
       a.id === id ? { ...a, ...updates, lastUpdated: now } : a
     );
+    const updated = applicants.find(a => a.id === id);
+    if (updated) syncApplicantToBackend(updated);
     listeners.forEach(l => l());
   },
 
@@ -474,9 +478,9 @@ export const applicantStore = {
 };
 
 export const MODULE_ORDER: ModuleStatus[] = [
-  'prescreening', 'registration', 'letter-of-intent', 'requirements',
-  'tna1', 'tna2', 'project-proposal', 'conduct-rtec', 'approval-letter',
-  'project-information-sheet', 'landbank-withdrawal', 'procurement-liquidation', 'refund-delinquent', 'completed',
+  'prescreening', 'registration', 'letter-of-intent', 'tna1', 'tna2', 'project-proposal', 'requirements',
+  'conduct-rtec', 'approval-letter',
+  'project-information-sheet', 'landbank-withdrawal', 'procurement-liquidation', 'refund-delinquent', 'project-closeout', 'completed',
 ];
 
 export const MODULE_LABELS: Record<ModuleStatus, string> = {
@@ -493,5 +497,6 @@ export const MODULE_LABELS: Record<ModuleStatus, string> = {
   'landbank-withdrawal': 'LandBank & Withdrawal',
   'procurement-liquidation': 'Procurement & Liquidation',
   'refund-delinquent': 'Refund & Delinquent',
+  'project-closeout': 'Project Close-Out',
   'completed': 'Completed',
 };

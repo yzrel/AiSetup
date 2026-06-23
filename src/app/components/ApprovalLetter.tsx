@@ -36,14 +36,17 @@ import {
   validateApprovalLetterAcknowledge,
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
-import { allowWhenDemo, gateOpen, isDemoModeActive } from "../utils/demoMode";
+import { allowWhenDemo, gateOpen } from "../utils/demoMode";
 import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
+import { MoaAnnexDEditor } from "./MoaAnnexDEditor";
+import { getApprovalRoutingNote } from "../utils/moaAnnexD";
+import { formatFormMention } from "../constants/setupForms";
 
 const STEPS: ModuleStep[] = [
   { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
-  { id: "details", label: "Form 003 details", icon: <FileText className="w-4 h-4" /> },
+  { id: "details", label: "Notice of Approval details", icon: <FileText className="w-4 h-4" /> },
   { id: "preview", label: "Preview & PDF", icon: <Eye className="w-4 h-4" /> },
   { id: "publish", label: "Publish", icon: <Send className="w-4 h-4" /> },
   { id: "moa", label: "Signed MOA", icon: <Upload className="w-4 h-4" /> },
@@ -164,12 +167,12 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const showStaffWorkflow = isStaff;
-  const demoStaffSteps = showStaffWorkflow || isDemoModeActive();
+  const demoStaffSteps = showStaffWorkflow;
 
   return (
     <ModuleWorkflowLayout
-      title="SETUP Form 003 — Notice of Approval (Annex A-3)"
-      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme before MOA signing day and Pre-PIS."
+      formKey="003"
+      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme before MOA signing day and Pre-Implementation PIS."
       user={user}
       steps={demoStaffSteps ? STEPS : undefined}
       currentStep={demoStaffSteps ? step : undefined}
@@ -189,7 +192,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               <div>
                 <p className="font-semibold">RTEC Report required</p>
                 <p className="mt-1">
-                  Complete and mark the RTEC Report (Form 002) before issuing the Notice of
+                  Complete and mark the {formatFormMention("002")} before issuing the Notice of
                   Approval.
                 </p>
               </div>
@@ -237,6 +240,8 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     </div>
                   ) : (
                     applicant && (
+                      <>
+                      <MoaAnnexDEditor key={applicant.id} applicantId={applicant.id} />
                       <SignedMoaUploadPanel
                         applicant={applicant}
                         uploadedBy={uploadedBy}
@@ -244,6 +249,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                         requireAcknowledged={false}
                         onSaved={() => setMoaRefresh((n) => n + 1)}
                       />
+                      </>
                     )
                   )}
 
@@ -313,7 +319,14 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               )}
 
               {showStaffWorkflow && step === "details" && (
-                <ApprovalLetterEditor form={form} onChange={setForm} />
+                <>
+                  {getApprovalRoutingNote(form) && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900 mb-4">
+                      {getApprovalRoutingNote(form)}
+                    </div>
+                  )}
+                  <ApprovalLetterEditor form={form} onChange={setForm} />
+                </>
               )}
 
               {(step === "preview" || !showStaffWorkflow || step === "publish") && (

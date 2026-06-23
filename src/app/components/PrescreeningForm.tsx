@@ -7,7 +7,9 @@ import { REGION_12_LABEL } from "../constants/region12";
 import { Check, X } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
-import { resolveApplicantForUser } from "../utils/resolveApplicant";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { Applicant } from "../store/applicantStore";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { notifyPrescreeningResult } from "../utils/notificationHelpers";
 import {
@@ -33,6 +35,7 @@ export function PrescreeningForm({
   user?: AuthUser | null;
   onSubmitSuccess?: () => void;
 }) {
+  const { applicant, isStaff } = useStaffApplicant(user);
   const [activeTab, setActiveTab] = useState<
     "form" | "registry"
   >("form");
@@ -67,9 +70,12 @@ export function PrescreeningForm({
     value: (typeof formData)[K],
   ) => setFormData((prev) => ({ ...prev, [key]: value }));
 
-  useEffect(() => {
-    const app = resolveApplicantForUser(user);
-    if (!app) return;
+  const loadApplicantPrescreening = (app: Applicant | null) => {
+    if (!app) {
+      setQualified(null);
+      setEvaluation(null);
+      return;
+    }
     setFormData({
       applicantName: app.applicantName,
       designation: app.designation,
@@ -92,7 +98,7 @@ export function PrescreeningForm({
     if (app.qualified) {
       setQualified(true);
       setEvaluation(null);
-    } else if (app.qualified === false) {
+    } else {
       setQualified(false);
       const storedIds = (app.moduleData?.prescreening?.recommendedProgramIds ??
         []) as string[];
@@ -121,7 +127,11 @@ export function PrescreeningForm({
         recommendedProgramIds: programs.map((p) => p.id),
       });
     }
-  }, [user?.id, user?.email]);
+  };
+
+  useEffect(() => {
+    loadApplicantPrescreening(applicant);
+  }, [applicant?.id, applicant?.lastUpdated]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +144,7 @@ export function PrescreeningForm({
     });
     setQualified(result.qualified);
     setEvaluation(result);
-    const existing = resolveApplicantForUser(user);
+    const existing = applicant;
     const payload = {
       applicantName: formData.applicantName,
       designation: formData.designation,
@@ -177,11 +187,9 @@ export function PrescreeningForm({
     }
   };
 
-  const contactEmail = (() => {
-    const app = resolveApplicantForUser(user);
-    if (!app) return undefined;
-    return getOfficeContact(resolveApplicantOfficeId(app)).email;
-  })();
+  const contactEmail = applicant
+    ? getOfficeContact(resolveApplicantOfficeId(applicant)).email
+    : undefined;
 
   const recommendedPrograms: DostProgram[] =
     evaluation?.recommendedPrograms ?? [];
@@ -207,7 +215,15 @@ export function PrescreeningForm({
                 </p>
               </div>
             </div>
+            {isStaff && (
+              <StaffApplicantPicker
+                user={user}
+                label="Review applicant pre-screening"
+                className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20"
+              />
+            )}
           </div>
+          <StaffApplicantBanner user={user} />
 
           <form onSubmit={handleSubmit} className="p-6 space-y-8">
               {qualified !== null && (

@@ -10,8 +10,20 @@ import {
 } from "../store/applicantStore";
 import { AdminView } from "../store/authStore";
 import { isDemoModeActive } from "./demoMode";
+import { formatFormMention } from "../constants/setupForms";
+import {
+  buildRequirementUploadList,
+  countRequiredUploads,
+} from "./submissionRequirements";
+import {
+  getOfficialChecklistStepCount,
+  getProprietorTrackLabel,
+} from "./proprietorTrack";
 
-const REQUIRED_DOCUMENT_COUNT = 8;
+function countRequiredDocuments(applicant: Applicant | null): number {
+  const uploads = buildRequirementUploadList(applicant);
+  return countRequiredUploads(uploads).required;
+}
 
 const MODULE_TO_VIEW: Record<ModuleStatus, AdminView | null> = {
   prescreening: "prescreening",
@@ -27,6 +39,7 @@ const MODULE_TO_VIEW: Record<ModuleStatus, AdminView | null> = {
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
   "refund-delinquent": "refund-delinquent",
+  "project-closeout": "project-closeout",
   completed: null,
 };
 
@@ -44,6 +57,7 @@ const VIEW_TO_MODULE: Partial<Record<AdminView, ModuleStatus>> = {
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
   "refund-delinquent": "refund-delinquent",
+  "project-closeout": "project-closeout",
 };
 
 export type ProgressStatus = "completed" | "current" | "upcoming";
@@ -55,14 +69,8 @@ export interface ApplicantProgressStep {
   status: ProgressStatus;
 }
 
-function stepsAfterRequirements(applicant: Applicant | null): ModuleStatus[] {
-  if (applicant?.moduleData?.routingDecision === "mpex") {
-    return [];
-  }
-  if (applicant?.moduleData?.routingDecision === "project-proposal") {
-    return ["project-proposal"];
-  }
-  return ["tna1", "tna2", "project-proposal"];
+function stepsAfterTna(_applicant: Applicant | null): ModuleStatus[] {
+  return ["project-proposal", "requirements"];
 }
 
 function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
@@ -72,6 +80,8 @@ function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
   const pisIdx = MODULE_ORDER.indexOf("project-information-sheet");
   const landbankIdx = MODULE_ORDER.indexOf("landbank-withdrawal");
   const procurementIdx = MODULE_ORDER.indexOf("procurement-liquidation");
+  const refundIdx = MODULE_ORDER.indexOf("refund-delinquent");
+  const closeoutIdx = MODULE_ORDER.indexOf("project-closeout");
   const steps: ModuleStatus[] = [];
   if (currentIdx >= approvalIdx) {
     steps.push("approval-letter");
@@ -84,6 +94,9 @@ function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
   }
   if (currentIdx >= procurementIdx) {
     steps.push("refund-delinquent");
+  }
+  if (currentIdx >= closeoutIdx) {
+    steps.push("project-closeout");
   }
   return steps;
 }
@@ -105,8 +118,9 @@ export function getApplicantDashboardSteps(
     "prescreening",
     "registration",
     "letter-of-intent",
-    "requirements",
-    ...stepsAfterRequirements(applicant),
+    "tna1",
+    "tna2",
+    ...stepsAfterTna(applicant),
     ...evaluationSteps(applicant),
     ...postApprovalSteps(applicant),
   ];
@@ -168,7 +182,7 @@ export function getAwaitingStaffReviewMessage(
   if (applicant.currentModule === "conduct-rtec") {
     return {
       title: "RTEC evaluation in progress",
-      body: "DOST is preparing your Regional Technical Evaluation Committee (RTEC) review. You will be notified when the approval letter is ready for your conforme.",
+      body: `DOST is preparing your ${formatFormMention("002")} review. You will be notified when the approval letter is ready for your conforme.`,
     };
   }
   if (applicant.currentModule === "approval-letter") {
@@ -180,7 +194,7 @@ export function getAwaitingStaffReviewMessage(
   if (applicant.currentModule === "project-information-sheet") {
     return {
       title: "MOA signing in progress",
-      body: "DOST is coordinating MOA signing and project information requirements. LandBank enrollment unlocks after signing is complete.",
+      body: `DOST is coordinating MOA signing, ${formatFormMention("008")}, and PDC requirements. LandBank enrollment unlocks after signing is complete.`,
     };
   }
   return {
@@ -198,7 +212,6 @@ export function getModuleIndex(module: ModuleStatus): number {
   return idx === -1 ? 0 : idx;
 }
 
-/** Whether this view is locked for the applicant based on real workflow progress (ignores demo mode). */
 export function isApplicantViewLocked(
   applicant: Applicant | null,
   view: AdminView,
@@ -215,18 +228,9 @@ export function isApplicantViewLocked(
   const currentIdx = getModuleIndex(applicant?.currentModule ?? "prescreening");
   const viewIdx = getModuleIndex(viewModule);
 
-  if (
-    view === "tna1" &&
-    applicant?.moduleData?.staffDecision === "approved" &&
-    currentIdx <= getModuleIndex("requirements")
-  ) {
-    return false;
-  }
-
   return viewIdx > currentIdx;
 }
 
-/** Applicants may open dashboard, my-account, and modules up to their current step. Staff bypass this in App.tsx. */
 export function canApplicantAccessView(
   applicant: Applicant | null,
   view: AdminView,
@@ -239,6 +243,8 @@ export interface ApplicantDashboardStats {
   statusLabel: string;
   stageLabel: string;
   stepTrend: string;
+  proprietorTrackLabel: string;
+  officialChecklistSteps: number;
   documentsSubmitted: number;
   documentsRequired: number;
   documentsSub: string;
@@ -269,11 +275,15 @@ export function getApplicantDashboardStats(
     statusLabel = "Revisions Needed";
   }
 
-  const documentsRequired = REQUIRED_DOCUMENT_COUNT;
-  const documentsSubmitted = applicant?.moduleData?.documentsSubmitted
-    ? (applicant.moduleData.documentsSubmittedList?.length ??
-      documentsRequired)
-    : 0;
+  const documentsRequired = countRequiredDocuments(applicant);
+  const uploads = applicant?.moduleData?.requirementUploads as
+    | { uploaded?: boolean }[]
+    | undefined;
+  const documentsSubmitted = uploads
+    ? uploads.filter((u) => u.uploaded).length
+    : applicant?.moduleData?.documentsSubmitted
+      ? (applicant.moduleData.documentsSubmittedList?.length ?? documentsRequired)
+      : 0;
   const remaining = Math.max(0, documentsRequired - documentsSubmitted);
 
   let documentsSub = "Requirements pending";
@@ -288,7 +298,9 @@ export function getApplicantDashboardStats(
   return {
     statusLabel,
     stageLabel,
-    stepTrend: `Step ${currentIdx + 1} of ${totalSteps}`,
+    stepTrend: `Module ${currentIdx + 1} of ${totalSteps} · ${getOfficialChecklistStepCount(applicant)}-step ${getProprietorTrackLabel(applicant)} track`,
+    proprietorTrackLabel: getProprietorTrackLabel(applicant),
+    officialChecklistSteps: getOfficialChecklistStepCount(applicant),
     documentsSubmitted,
     documentsRequired,
     documentsSub,

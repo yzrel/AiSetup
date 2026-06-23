@@ -8,7 +8,7 @@ import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { DOST_BLUE, ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
-import { appendStaffAssessment } from "../utils/clientAssessment";
+import { formatFormMention } from "../constants/setupForms";
 import { notifyTna2Published } from "../utils/notificationHelpers";
 import { api, ApiError } from "../api/client";
 import type { Tna2DocumentResponse } from "../api/types";
@@ -129,16 +129,16 @@ export function TNA2TechnicalReport({
 
   return (
     <ModuleWorkflowLayout
-      title="TNA Form 02 — Technical Report"
-      subtitle="Official DOST Technology Needs Assessment report based on TNA Form 01 and site validation findings. Staff prepare and publish; applicants receive read-only access."
+      formKey="tna02"
+      subtitle={`Official DOST Technology Needs Assessment report based on ${formatFormMention("tna01")} and site validation findings. Staff prepare and publish; applicants receive read-only access.`}
       user={user}
-      staffPickerLabel="Review applicant TNA Form 02"
+      staffPickerLabel={`Review applicant ${formatFormMention("tna02")}`}
       showStaffPicker={isStaff}
       alerts={
         <>
           {isStaff && !applicant?.moduleData?.tna1 && !applicant?.moduleData?.tna1Document && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              This applicant has no TNA Form 01 data. Complete TNA 1 first for best results.
+              This applicant has no {formatFormMention("tna01")} data. Complete TNA 1 first for best results.
             </p>
           )}
           {!isStaff && !published && (
@@ -147,8 +147,8 @@ export function TNA2TechnicalReport({
               <div>
                 <p className="font-semibold text-amber-900">Awaiting DOST preparation</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  DOST Region XII is preparing your TNA Form 02 technical report based on your TNA
-                  Form 01 and site validation. You will be able to view and download it here once
+                  DOST Region XII is preparing your {formatFormMention("tna02")} based on your{" "}
+                  {formatFormMention("tna01")} and site validation. You will be able to view and download it here once
                   published.
                 </p>
                 {applicant && (

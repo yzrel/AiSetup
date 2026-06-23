@@ -4,9 +4,9 @@
 
 import { applicantStore, Applicant } from "../store/applicantStore";
 import type {
+  ModuleDocument,
   ProcurementDocument,
   ProcurementForm,
-  ProcurementLineItem,
   ProcurementStored,
 } from "../api/types";
 import { getLandBankOverview, hasLandBankComplete } from "./landBankWithdrawal";
@@ -91,7 +91,7 @@ export function saveProcurementDraft(applicantId: string, form: ProcurementForm)
 
 export function addProcurementDocument(
   applicantId: string,
-  fileName: string,
+  moduleDoc: ModuleDocument,
   amount?: string,
 ): void {
   const applicant = applicantStore.getById(applicantId);
@@ -99,8 +99,11 @@ export function addProcurementDocument(
   const form = getProcurementForm(applicant);
   const doc: ProcurementDocument = {
     id: uid(),
-    fileName,
-    uploadedAt: new Date().toISOString().split("T")[0],
+    fileName: moduleDoc.fileName,
+    mimeType: moduleDoc.mimeType,
+    dataUrl: moduleDoc.dataUrl,
+    uploadedBy: moduleDoc.uploadedBy,
+    uploadedAt: moduleDoc.uploadedAt.split("T")[0],
     amount,
   };
   saveProcurementDraft(applicantId, {
@@ -153,14 +156,20 @@ export function removeProcurementItem(applicantId: string, itemId: string): void
   });
 }
 
-export function addLiquidationDocument(applicantId: string, fileName: string): void {
+export function addLiquidationDocument(
+  applicantId: string,
+  moduleDoc: ModuleDocument,
+): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
   const form = getProcurementForm(applicant);
   const doc: ProcurementDocument = {
     id: uid(),
-    fileName,
-    uploadedAt: new Date().toISOString().split("T")[0],
+    fileName: moduleDoc.fileName,
+    mimeType: moduleDoc.mimeType,
+    dataUrl: moduleDoc.dataUrl,
+    uploadedBy: moduleDoc.uploadedBy,
+    uploadedAt: moduleDoc.uploadedAt.split("T")[0],
   };
   saveProcurementDraft(applicantId, {
     ...form,

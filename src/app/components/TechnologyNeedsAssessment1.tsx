@@ -21,6 +21,8 @@ import {
 } from "../utils/tnaForm01";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { ModuleFormHeader } from "./ModuleFormHeader";
+import { formatFormMention } from "../constants/setupForms";
 import { moduleStepPillClass } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
@@ -308,6 +310,8 @@ export function TechnologyNeedsAssessment1({
   const [tnaGenerateError, setTnaGenerateError] = useState<string | null>(null);
   const [tnaAiGenerated, setTnaAiGenerated] = useState<boolean | null>(null);
   const [staffNotes, setStaffNotes] = useState("");
+  const [siteVisitDate, setSiteVisitDate] = useState("");
+  const [siteVisitNotes, setSiteVisitNotes] = useState("");
   const [staffApproved, setStaffApproved] = useState(false);
 
   const { bind: bindTnaAi, notice: tnaAiNotice } = useAiFieldSuggest("tna1");
@@ -406,6 +410,9 @@ export function TechnologyNeedsAssessment1({
             tables,
             staffReviewed: true,
             staffReviewedAt: new Date().toISOString(),
+            siteVisitDate: siteVisitDate || undefined,
+            siteVisitNotes: siteVisitNotes || undefined,
+            siteVisitCompleted: !!siteVisitDate,
           },
         },
       });
@@ -413,7 +420,7 @@ export function TechnologyNeedsAssessment1({
       setStaffApproved(true);
       setStep("analysis");
     },
-    [applicant, user, staffNotes, form, tables],
+    [applicant, user, staffNotes, siteVisitDate, siteVisitNotes, form, tables],
   );
 
   const saveTnaDraft = useCallback(
@@ -662,10 +669,11 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
                 <span className="text-blue-800 font-black text-sm">TNA</span>
               </div>
-              <div>
-                <h1 className="text-xl font-black">Technology Needs Assessment 1</h1>
-                <p className="text-white/60 text-sm">DOST SETUP Program · Module 5 · DOST TNA Form 01</p>
-              </div>
+              <ModuleFormHeader
+                formKey="tna01"
+                title="Technology Needs Assessment 1"
+                subtitle="DOST SETUP Program · Module 5"
+              />
             </div>
             {isStaff && (
             <button
@@ -684,7 +692,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
           {saveNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{saveNotice}</p>
           )}
-          <StaffApplicantPicker user={user} label="Review applicant TNA Form 01" />
+          <StaffApplicantPicker user={user} label={`Review applicant ${formatFormMention("tna01")}`} />
         </div>
         <StaffApplicantBanner user={user} />
         <div className="px-6 pt-4">
@@ -697,7 +705,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
         {step === "identification" && (
           <div className="p-6 space-y-6">
             <InfoBanner icon="📋" color="blue"
-              title="DOST TNA Form 01 — Application for Technology Needs Assessment"
+              title={formatFormMention("tna01")}
               text="Please fill out all sections accurately. Your registration data is pre-filled where available. Progress is saved automatically as you continue." />
 
             {!applicant && user && !isStaff && (
@@ -1626,9 +1634,21 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
                 {/* Staff remarks */}
                 <div>
-                  <label className={labelCls}>📝 Staff Remarks / Verification Notes</label>
+                  <label className={labelCls}>📅 TNA Site Visit Date</label>
+                  <input
+                    type="date"
+                    value={siteVisitDate}
+                    onChange={(e) => setSiteVisitDate(e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>📝 Staff Remarks / Site Visit Notes</label>
                   <textarea rows={3} value={staffNotes} onChange={e => setStaffNotes(e.target.value)}
-                    className={inputCls} placeholder="Enter observations, verification notes, or concerns…" />
+                    className={inputCls} placeholder="Enter site visit observations, verification notes, or concerns…" />
+                  <textarea rows={2} value={siteVisitNotes} onChange={e => setSiteVisitNotes(e.target.value)}
+                    className={`${inputCls} mt-2`} placeholder="Optional: field validation summary for TNA Form 02…" />
                 </div>
 
                 {!allDocReviewed && (

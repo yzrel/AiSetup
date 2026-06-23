@@ -6,6 +6,8 @@ import { CheckCircle, ChevronRight } from "lucide-react";
 import { AuthUser } from "../store/authStore";
 import { isDemoModeActive } from "../utils/demoMode";
 import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
+import type { SetupFormKey } from "../constants/setupForms";
+import { ModuleFormHeader } from "./ModuleFormHeader";
 import {
   DOST_BLUE,
   DOST_MID,
@@ -95,8 +97,11 @@ export function ModuleStepHeader({
 }
 
 interface ModuleWorkflowLayoutProps {
-  title: string;
+  title?: string;
   subtitle: string;
+  /** When set, header shows official form title with muted form number below */
+  formKey?: SetupFormKey;
+  showFormRef?: boolean;
   user?: AuthUser | null;
   steps?: ModuleStep[];
   currentStep?: string;
@@ -131,6 +136,8 @@ export function ModuleWorkflowBody({
 export function ModuleWorkflowLayout({
   title,
   subtitle,
+  formKey,
+  showFormRef = true,
   user,
   steps,
   currentStep,
@@ -159,10 +166,12 @@ export function ModuleWorkflowLayout({
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
               <span className="text-blue-800 font-black text-sm">ai</span>
             </div>
-            <div>
-              <h1 className="text-xl font-black">{title}</h1>
-              <p className="text-white/60 text-sm">{subtitle}</p>
-            </div>
+            <ModuleFormHeader
+              title={title}
+              subtitle={subtitle}
+              formKey={formKey}
+              showFormRef={showFormRef}
+            />
           </div>
 
           {steps && steps.length > 0 && currentStep && (

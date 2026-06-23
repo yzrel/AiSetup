@@ -29,12 +29,15 @@ import {
   getRtecReportForm,
   getRtecReportStored,
   hasProjectProposalPrerequisite,
+  hasRtecPrerequisites,
+  hasRequirementsApprovedPrerequisite,
   saveRtecReportDraft,
   submitRtecReport,
   syncRtecFromProjectProposal,
   validateRtecReportSubmit,
 } from "../utils/rtecReport";
 import { allowWhenDemo } from "../utils/demoMode";
+import { formatFormMention } from "../constants/setupForms";
 import { RtecReportEditor } from "./RtecReportEditor";
 import { RtecReportPreview } from "./RtecReportPreview";
 
@@ -86,7 +89,9 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
     });
   }, [applicant?.id]);
 
+  const rtecReady = hasRtecPrerequisites(applicant);
   const ppReady = hasProjectProposalPrerequisite(applicant);
+  const requirementsReady = hasRequirementsApprovedPrerequisite(applicant);
   const stored = applicant ? getRtecReportStored(applicant) : null;
   const isComplete = !!stored?.submitted;
 
@@ -152,8 +157,8 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
 
   return (
     <ModuleWorkflowLayout
-      title="Form 002 — RTEC Report (Annex A-2)"
-      subtitle="Staff prepare SETUP Form 002 from the Project Proposal snapshot. Section I and most of Section III render from the proposal; compliance, recommendation, and signatures are completed here before PDF download."
+      formKey="002"
+      subtitle="Staff prepare the RTEC Report from the Project Proposal snapshot. Section I and most of Section III render from the proposal; compliance, recommendation, and signatures are completed here before PDF download."
       user={user}
       steps={STEPS}
       currentStep={step}
@@ -166,14 +171,17 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               Select an applicant to prepare the RTEC Report.
             </div>
           )}
-          {applicant && !ppReady && (
+          {applicant && !rtecReady && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-sm text-red-800">
               <AlertTriangle className="w-5 h-5 shrink-0" />
               <div>
-                <p className="font-semibold">Project Proposal required</p>
+                <p className="font-semibold">RTEC prerequisites incomplete</p>
                 <p className="mt-1">
-                  A saved Project Proposal (Form 001) is required before generating the RTEC
-                  Report PDF. Complete the Project Proposal module first.
+                  {!ppReady
+                    ? `A submitted ${formatFormMention("001")} is required before RTEC evaluation.`
+                    : !requirementsReady
+                      ? "Documentary requirements must be verified and approved by staff before RTEC evaluation."
+                      : "Complete all RTEC prerequisites before generating the report."}
                 </p>
               </div>
             </div>
@@ -212,7 +220,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   </div>
                   <p className="text-sm text-gray-600">
                     Use <strong>Sync from Project Proposal</strong> to refresh Section I and III
-                    data from the latest Form 001 without losing RTEC-only edits (compliance,
+                    data from the latest {formatFormMention("001")} without losing RTEC-only edits (compliance,
                     recommendation, signatures).
                   </p>
                   {isComplete && (
@@ -284,7 +292,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 <button
                   type="button"
                   onClick={handleSync}
-                  disabled={!allowWhenDemo(ppReady)}
+                  disabled={!allowWhenDemo(rtecReady)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-semibold hover:bg-blue-50 disabled:opacity-40"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -301,7 +309,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 <button
                   type="button"
                   onClick={handleDownload}
-                  disabled={!allowWhenDemo(ppReady)}
+                  disabled={!allowWhenDemo(rtecReady)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
                   style={{ background: DOST_BLUE }}
                 >
@@ -311,7 +319,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 <button
                   type="button"
                   onClick={handleComplete}
-                  disabled={!allowWhenDemo(ppReady) || isComplete}
+                  disabled={!allowWhenDemo(rtecReady) || isComplete}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
                 >
                   <CheckCircle className="w-4 h-4" />

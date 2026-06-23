@@ -25,6 +25,8 @@ import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { ModuleFormHeader } from "./ModuleFormHeader";
+import { formatFormMention } from "../constants/setupForms";
 import { moduleStepPillClass } from "./moduleTheme";
 import { api, ApiError } from "../api/client";
 import type {
@@ -682,7 +684,7 @@ export function ProjectProposal({
                 Expected Output & Measured Results
               </h2>
               <p className="text-xs text-gray-600 -mt-2">
-                Per SETUP Form 001 — list measurable outcomes after the intervention (e.g. productivity increase, quality improvement, reject rate, additional clients served).
+                Per {formatFormMention("001")} — list measurable outcomes after the intervention (e.g. productivity increase, quality improvement, reject rate, additional clients served).
               </p>
               <AiAssistStringList
                 label="Expected Output / Impact"
@@ -750,7 +752,7 @@ export function ProjectProposal({
       case "risk":
         return (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Three-column risk management table per SETUP Form 001.</p>
+            <p className="text-xs text-gray-500">Three-column risk management table per {formatFormMention("001")}.</p>
             {form.riskRows.map((row) => (
               <div key={row.id} className="grid sm:grid-cols-3 gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
                 <div><label className={labelCls}>Risk</label><textarea className={inputClsExtra("min-h-[60px]")} value={row.risk} onChange={(e) => updateRiskRow(row.id, { risk: e.target.value })} /></div>
@@ -816,15 +818,12 @@ export function ProjectProposal({
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0">
               <span className="text-blue-800 font-black text-sm">ai</span>
             </div>
-            <div>
-              <h1 className="text-xl font-black">Project Proposal</h1>
-              <p className="text-white/60 text-sm">
-                SETUP Form 001 — Module 7
-                {applicant
-                  ? ` · ${applicant.enterpriseName} · ${applicant.applicationId}`
-                  : ""}
-              </p>
-            </div>
+            <ModuleFormHeader
+              formKey="001"
+              subtitle={
+                `Module 7${applicant ? ` · ${applicant.enterpriseName} · ${applicant.applicationId}` : ""}`
+              }
+            />
           </div>
           <StepHeader current={step} />
           <StaffApplicantPicker user={user} label="Review applicant proposal" />
@@ -836,7 +835,7 @@ export function ProjectProposal({
           <div className="mx-6 mt-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
             <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-sm text-amber-800">
-              TNA Form 02 is not yet published. Prefill uses TNA Form 01 and registration data.
+              TNA Form 02 is not yet published. Prefill uses {formatFormMention("tna01")} and registration data.
             </p>
           </div>
         )}

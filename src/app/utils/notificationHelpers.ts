@@ -7,6 +7,7 @@ import { Applicant } from "../store/applicantStore";
 import { notificationStore } from "../store/notificationStore";
 import { resolveApplicantOfficeId } from "./provincialOffice";
 import { staffContextStore } from "../store/staffContextStore";
+import { formatFormMention } from "../constants/setupForms";
 
 function staffOffice(applicant: Applicant) {
   return resolveApplicantOfficeId(applicant);
@@ -98,8 +99,8 @@ export function notifyTna1Submitted(applicant: Applicant) {
     applicantId: applicant.id,
     officeId: staffOffice(applicant),
     kind: "action",
-    title: "TNA Form 01 submitted",
-    message: `${applicant.enterpriseName} submitted TNA Form 01 for staff review.`,
+    title: `${formatFormMention("tna01")} submitted`,
+    message: `${applicant.enterpriseName} submitted ${formatFormMention("tna01", "both")} for staff review.`,
     view: "tna1",
   });
   notificationStore.add({
@@ -107,8 +108,8 @@ export function notifyTna1Submitted(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "info",
-    title: "TNA Form 01 submitted",
-    message: "Your assessment was submitted. DOST staff will review your TNA Form 01.",
+    title: `${formatFormMention("tna01")} submitted`,
+    message: `Your assessment was submitted. DOST staff will review your ${formatFormMention("tna01")}.`,
     view: "tna1",
   });
 }
@@ -119,8 +120,8 @@ export function notifyTna1Reviewed(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "success",
-    title: "TNA Form 01 approved",
-    message: "DOST staff verified your TNA Form 01. AI analysis and reports will follow.",
+    title: `${formatFormMention("tna01")} approved`,
+    message: `DOST staff verified your ${formatFormMention("tna01")}. AI analysis and reports will follow.`,
     view: "tna1",
   });
 }
@@ -131,8 +132,8 @@ export function notifyTna1Resubmission(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "warning",
-    title: "TNA Form 01 resubmission requested",
-    message: "DOST staff requested corrections to your TNA Form 01. Please update and resubmit.",
+    title: `${formatFormMention("tna01")} resubmission requested`,
+    message: `DOST staff requested corrections to your ${formatFormMention("tna01")}. Please update and resubmit.`,
     urgent: true,
     view: "tna1",
   });
@@ -144,7 +145,7 @@ export function notifyTna2Published(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "success",
-    title: "TNA Form 02 published",
+    title: `${formatFormMention("tna02")} published`,
     message: "Your technical report is now available. Review it and continue your application.",
     view: "tna2",
   });
@@ -156,9 +157,9 @@ export function notifyApprovalLetterPublished(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "success",
-    title: "SETUP Notice of Approval published",
+    title: `${formatFormMention("003")} published`,
     message:
-      "Your SETUP Form 003 Notice of Approval is ready. Review the letter and acknowledge conforme to proceed.",
+      `Your ${formatFormMention("003", "both")} is ready. Review the letter and acknowledge conforme to proceed.`,
     urgent: true,
     view: "approval-letter",
   });
@@ -272,7 +273,7 @@ export function notifyProjectProposalSubmitted(applicant: Applicant) {
     officeId: staffOffice(applicant),
     kind: "action",
     title: "Project Proposal submitted",
-    message: `${applicant.enterpriseName} submitted SETUP Form 001 (Project Proposal) for review.`,
+    message: `${applicant.enterpriseName} submitted ${formatFormMention("001", "both")} for review.`,
     view: "project-proposal",
   });
   notificationStore.add({

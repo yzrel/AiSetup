@@ -207,7 +207,7 @@ export function buildTemplateLoiBody(
   }
 
   paragraphs.push(
-    `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
+    `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
   );
 
   if (payload.productionPlanFile?.trim()) {

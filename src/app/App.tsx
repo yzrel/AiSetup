@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { PrescreeningForm } from "./components/PrescreeningForm";
 import { EnterpriseRegistration } from "./components/EnterpriseRegistration";
@@ -17,6 +17,7 @@ import { ProjectInformationSheet } from "./components/ProjectInformationSheet";
 import { LandBankAndWithdrawal } from "./components/LandBankAndWithdrawal";
 import { ProcurementAndLiquidation } from "./components/ProcurementAndLiquidation";
 import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
+import { ProjectCloseOut } from "./components/ProjectCloseOut";
 import { AccountManagement } from "./components/AccountManagement";
 import { ClientManagement } from "./components/ClientManagement";
 import { StaffClientBar } from "./components/StaffClientBar";
@@ -56,72 +57,27 @@ import {
 type ViewType = AdminView;
 
 import { DOSTMark } from "./components/DOSTLogos";
-
-interface LoginPageProps {
-  onRegister: () => void;
-  onHome?: () => void;
-}
-
-const DEMO_CLICKS_REQUIRED = 5;
-const DEMO_CLICK_WINDOW_MS = 1500;
-
-function DemoModeLogoTrigger({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const clickTimestamps = useRef<number[]>([]);
-  const [, setTick] = useState(0);
-
-  const handleClick = () => {
-    const now = Date.now();
-    clickTimestamps.current.push(now);
-    while (
-      clickTimestamps.current.length > 0 &&
-      now - clickTimestamps.current[0] > DEMO_CLICK_WINDOW_MS
-    ) {
-      clickTimestamps.current.shift();
-    }
-    if (clickTimestamps.current.length >= DEMO_CLICKS_REQUIRED) {
-      clickTimestamps.current = [];
-      demoModeStore.toggle();
-    }
-    setTick((t) => t + 1);
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={`border-0 bg-transparent p-0 cursor-default text-left ${className}`}
-      aria-label="DOST logo"
-    >
-      {children}
-    </button>
-  );
-}
+import { DemoModeLogoTrigger } from "./components/DemoModeLogoTrigger";
 
 function SidebarLogo() {
   return (
     <DemoModeLogoTrigger>
       <div className="flex items-center gap-3">
         <DOSTMark size={36} />
-        <div>
-          <div className="flex items-center gap-1 leading-none">
-            <span className="text-white font-black text-[15px] tracking-tight">
-              ai
-            </span>
-            <span className="text-[#00AEEF] font-black text-[15px] tracking-tight">
-              SETUP
-            </span>
-          </div>
-          <p className="text-white/35 text-[9px] tracking-wide mt-0.5">
-            DOST Region XII · SETUP 4.0
-          </p>
+      <div>
+        <div className="flex items-center gap-1 leading-none">
+          <span className="text-white font-black text-[15px] tracking-tight">
+            ai
+          </span>
+          <span className="text-[#00AEEF] font-black text-[15px] tracking-tight">
+            SETUP
+          </span>
         </div>
+        <p className="text-white/35 text-[9px] tracking-wide mt-0.5">
+          DOST Region XII · SETUP 4.0
+        </p>
       </div>
+    </div>
     </DemoModeLogoTrigger>
   );
 }
@@ -131,15 +87,15 @@ function TopbarLogo() {
     <DemoModeLogoTrigger>
       <div className="flex items-center gap-2.5 shrink-0">
         <DOSTMark size={36} />
-        <div className="flex flex-col leading-none hidden sm:flex">
-          <span className="text-[8px] font-semibold tracking-[0.18em] text-gray-400 uppercase">
-            Republic of the Philippines
-          </span>
-          <span className="text-[12px] font-bold text-gray-800 tracking-wide">
-            Dept. of Science &amp; Technology
-          </span>
-        </div>
+      <div className="flex flex-col leading-none hidden sm:flex">
+        <span className="text-[8px] font-semibold tracking-[0.18em] text-gray-400 uppercase">
+          Republic of the Philippines
+        </span>
+        <span className="text-[12px] font-bold text-gray-800 tracking-wide">
+          Dept. of Science &amp; Technology
+        </span>
       </div>
+    </div>
     </DemoModeLogoTrigger>
   );
 }
@@ -176,12 +132,6 @@ const menuGroups = [
         icon: FileText,
         module: "Step 3",
       },
-      {
-        id: "requirements" as ViewType,
-        label: "Submit Requirements",
-        icon: Upload,
-        module: "Step 4",
-      },
     ],
   },
   {
@@ -199,17 +149,23 @@ const menuGroups = [
         icon: FileText,
         module: "Module 6",
       },
-    ],
-  },
-  {
-    label: "Evaluation & Approval",
-    items: [
       {
         id: "project-proposal" as ViewType,
         label: "Project Proposal",
         icon: ClipboardCheck,
         module: "Module 7",
       },
+      {
+        id: "requirements" as ViewType,
+        label: "Submit Requirements",
+        icon: Upload,
+        module: "Step 4",
+      },
+    ],
+  },
+  {
+    label: "Evaluation & Approval",
+    items: [
       {
         id: "conduct-rtec" as ViewType,
         label: "Conduct of RTEC",
@@ -255,6 +211,12 @@ const menuGroups = [
         label: "Refund & Delinquent Mgmt",
         icon: BarChart2,
         module: "Mod 17",
+      },
+      {
+        id: "project-closeout" as ViewType,
+        label: "Project Close-Out",
+        icon: ClipboardCheck,
+        module: "Mod 18",
       },
     ],
   },
@@ -315,15 +277,15 @@ const viewTitles: Record<
   },
   "conduct-rtec": {
     title: "Conduct of RTEC",
-    subtitle: "Module 8 — Regional Technical Evaluation",
+    subtitle: "Module 8 — RTEC Report",
   },
   "approval-letter": {
     title: "Approval Letter",
-    subtitle: "Module 9 — Official DOST Approval",
+    subtitle: "Module 9 — Notice of Approval",
   },
   "project-information-sheet": {
     title: "Project Information Sheet",
-    subtitle: "Module 10 — MOA Signing Day & Form 009 PIS",
+    subtitle: "Module 10 — Pre-Implementation PIS, MOA Signing & Semester PIS",
   },
   "landbank-withdrawal": {
     title: "LandBank & Withdrawal",
@@ -336,6 +298,10 @@ const viewTitles: Record<
   "refund-delinquent": {
     title: "Refund & Delinquent Management",
     subtitle: "Module 17 — Repayment Monitoring",
+  },
+  "project-closeout": {
+    title: "Project Close-Out",
+    subtitle: "Module 18 — Terminal Report, Equipment Inventory & Ownership",
   },
   clients: {
     title: "Clients",
@@ -369,7 +335,6 @@ function SidebarNav({
   applicant?: ReturnType<typeof resolveApplicantForUser>;
   demoMode: boolean;
 }) {
-  void demoMode;
   const visibleGroups = menuGroups
     .map((group) => ({
       ...group,
@@ -486,9 +451,9 @@ export default function App() {
   const [authPage, setAuthPage] = useState<
     "landing" | "login" | "register"
   >("landing");
-  const [registrationType, setRegistrationType] = useState<
-    "single-proprietor" | "non-single-proprietor"
-  >("single-proprietor");
+  const [registrationPrefill, setRegistrationPrefill] = useState<
+    "DTI" | "SEC" | "CDA"
+  >("DTI");
   const [loginPortal, setLoginPortal] = useState<
     "applicant" | "staff" | null
   >(null);
@@ -565,7 +530,9 @@ export default function App() {
             setAuthPage("login");
           }}
           onRegister={(type) => {
-            setRegistrationType(type);
+            setRegistrationPrefill(
+              type === "non-single-proprietor" ? "SEC" : "DTI",
+            );
             setAuthPage("register");
           }}
         />
@@ -574,7 +541,7 @@ export default function App() {
     if (authPage === "register") {
       return (
         <RegisterPage
-          applicationType={registrationType}
+          initialRegistrationType={registrationPrefill}
           onLogin={() => {
             setLoginPortal("applicant");
             setAuthPage("login");
@@ -880,31 +847,9 @@ export default function App() {
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (app) {
-                      applicantStore.update(app.id, { currentModule: "requirements" });
+                      applicantStore.update(app.id, { currentModule: "tna1" });
                     }
-                    navigate("requirements");
-                  }}
-                />
-              )}
-              {currentView === "requirements" && (
-                <SubmissionRequirements
-                  user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (!app) return;
-                    const routing = app.moduleData?.routingDecision;
-                    if (routing === "mpex") {
-                      navigate("dashboard");
-                      return;
-                    }
-                    const nextModule =
-                      routing === "project-proposal"
-                        ? "project-proposal"
-                        : "tna1";
-                    applicantStore.update(app.id, {
-                      currentModule: nextModule,
-                    });
-                    navigate(nextModule);
+                    navigate("tna1");
                   }}
                 />
               )}
@@ -941,9 +886,27 @@ export default function App() {
                     const app = resolveApplicantForUser(user);
                     if (app) {
                       applicantStore.update(app.id, {
-                        currentModule: "conduct-rtec",
+                        currentModule: "requirements",
                       });
                     }
+                    navigate("requirements");
+                  }}
+                />
+              )}
+              {currentView === "requirements" && (
+                <SubmissionRequirements
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (!app) return;
+                    const routing = app.moduleData?.routingDecision;
+                    if (routing === "mpex") {
+                      navigate("dashboard");
+                      return;
+                    }
+                    applicantStore.update(app.id, {
+                      currentModule: "conduct-rtec",
+                    });
                     navigate("dashboard");
                   }}
                 />
@@ -1025,9 +988,17 @@ export default function App() {
                     const app = resolveApplicantForUser(user);
                     if (app) {
                       applicantStore.update(app.id, {
-                        currentModule: "completed",
+                        currentModule: "project-closeout",
                       });
                     }
+                    navigate("project-closeout");
+                  }}
+                />
+              )}
+              {currentView === "project-closeout" && (
+                <ProjectCloseOut
+                  user={user}
+                  onSubmitSuccess={() => {
                     navigate("dashboard");
                   }}
                 />

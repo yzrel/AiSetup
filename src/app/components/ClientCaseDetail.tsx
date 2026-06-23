@@ -38,6 +38,7 @@ import {
 } from "../utils/provincialOffice";
 import { getProgramsByIds } from "../constants/dostProgramRecommendations";
 import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
+import { ClientSubmittedFilesPanel } from "./ClientSubmittedFilesPanel";
 
 const moduleBadgeColors: Partial<Record<ModuleStatus, string>> = {
   prescreening: "bg-gray-100 text-gray-600",
@@ -223,6 +224,19 @@ export function ClientCaseDetail({
               </div>
             </div>
           </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
+            Submitted documents
+          </h3>
+          <ClientSubmittedFilesPanel
+            applicant={applicant}
+            onNavigate={(view) => {
+              staffContextStore.setSelectedApplicant(applicant.id);
+              onNavigate(view);
+            }}
+          />
         </section>
 
         {!applicant.qualified && recommendedPrograms.length > 0 && (
