@@ -47,6 +47,7 @@ import { PisOngoingEditor } from "./PisOngoingEditor";
 import { PisOngoingPreview } from "./PisOngoingPreview";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
+import { allowWhenDemo, gateOpen, isDemoModeActive } from "../utils/demoMode";
 
 const STAFF_STEPS: ModuleStep[] = [
   { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
@@ -170,7 +171,7 @@ export function ProjectInformationSheet({
 
   const handleCompleteSigningDay = () => {
     if (!applicant || !user) return;
-    if (!canComplete) return;
+    if (!allowWhenDemo(canComplete)) return;
     completeSigningDay(applicant.id, user.email);
     notifySigningDayComplete(applicant);
     setCompleteNotice("MOA signing complete. LandBank is now unlocked.");
@@ -211,6 +212,8 @@ export function ProjectInformationSheet({
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
+  const demoStaffSteps = isStaff || isDemoModeActive();
+
   const stepIndex = STAFF_STEPS.findIndex((s) => s.id === step);
 
   return (
@@ -218,10 +221,10 @@ export function ProjectInformationSheet({
       title="Project Information Sheet — MOA Signing Day"
       subtitle="Pre-PIS may be prepared and uploaded before or after MOA signing. LandBank is unlocked when the signed MOA is on file and staff complete MOA signing. Form 009 ongoing PIS is filed once per semester during implementation."
       user={user}
-      steps={isStaff && tab === "signing-day" ? STAFF_STEPS : undefined}
-      currentStep={isStaff && tab === "signing-day" ? step : undefined}
+      steps={demoStaffSteps && tab === "signing-day" ? STAFF_STEPS : undefined}
+      currentStep={demoStaffSteps && tab === "signing-day" ? step : undefined}
       onStepClick={
-        isStaff && tab === "signing-day"
+        demoStaffSteps && tab === "signing-day"
           ? (id) => setStep(id as StaffStepId)
           : undefined
       }
@@ -261,7 +264,7 @@ export function ProjectInformationSheet({
         </>
       }
     >
-      {applicant && ackReady && draft && (
+      {applicant && draft && gateOpen(ackReady) && (
         <>
           <div className="flex gap-2 border-b border-gray-100 pb-3">
             <button
@@ -361,7 +364,7 @@ export function ProjectInformationSheet({
                   </div>
                 )}
 
-                {isStaff && step === "prep" && (
+                {demoStaffSteps && step === "prep" && (
                   <>
                     <PrePisEditor draft={draft} onChange={setDraft} />
                     <PrePisPreview
@@ -426,7 +429,7 @@ export function ProjectInformationSheet({
                   </div>
                 )}
 
-                {isStaff && step === "complete" && (
+                {demoStaffSteps && step === "complete" && (
                   <div className="space-y-4">
                     <p className="text-sm text-gray-600">
                       Confirm the signed MOA is on file, then complete MOA signing to unlock
@@ -442,7 +445,7 @@ export function ProjectInformationSheet({
                     <button
                       type="button"
                       onClick={handleCompleteSigningDay}
-                      disabled={!canComplete}
+                      disabled={!allowWhenDemo(canComplete)}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold disabled:opacity-40"
                     >
                       <CheckCircle className="w-4 h-4" />

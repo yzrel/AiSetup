@@ -36,6 +36,7 @@ import {
   validateApprovalLetterAcknowledge,
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
+import { allowWhenDemo, gateOpen, isDemoModeActive } from "../utils/demoMode";
 import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
@@ -163,15 +164,16 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const showStaffWorkflow = isStaff;
+  const demoStaffSteps = showStaffWorkflow || isDemoModeActive();
 
   return (
     <ModuleWorkflowLayout
       title="SETUP Form 003 — Notice of Approval (Annex A-3)"
       subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme before MOA signing day and Pre-PIS."
       user={user}
-      steps={showStaffWorkflow ? STEPS : undefined}
-      currentStep={showStaffWorkflow ? step : undefined}
-      onStepClick={showStaffWorkflow ? (id) => setStep(id as StepId) : undefined}
+      steps={demoStaffSteps ? STEPS : undefined}
+      currentStep={demoStaffSteps ? step : undefined}
+      onStepClick={demoStaffSteps ? (id) => setStep(id as StepId) : undefined}
       staffPickerLabel="Review applicant approval letter"
       showStaffPicker={showStaffWorkflow}
       alerts={
@@ -202,7 +204,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
         </>
       }
     >
-      {applicant && form && (showStaffWorkflow || isPublished) && (
+      {applicant && form && (showStaffWorkflow || gateOpen(isPublished)) && (
         <div className="space-y-4">
               {showStaffWorkflow && step === "moa" && (
                 <div className="space-y-4">
@@ -219,7 +221,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     </div>
                   </div>
 
-                  {!isPublished ? (
+                  {!gateOpen(isPublished) ? (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 space-y-3">
                       <p>
                         Publish the Notice of Approval (step 4) before uploading the signed
@@ -323,7 +325,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                 />
               )}
 
-              {!showStaffWorkflow && isPublished && !isAcknowledged && (
+              {!showStaffWorkflow && gateOpen(isPublished) && !isAcknowledged && (
                 <div className="border-t border-gray-100 pt-4 space-y-3">
                   <p className="text-sm font-semibold text-gray-800">Conforme acknowledgment</p>
                   <p className="text-sm text-gray-600">
@@ -390,7 +392,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   <button
                     type="button"
                     onClick={handleSync}
-                    disabled={!rtecReady}
+                    disabled={!allowWhenDemo(rtecReady)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-semibold hover:bg-blue-50 disabled:opacity-40"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -407,7 +409,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   <button
                     type="button"
                     onClick={handleDownload}
-                    disabled={!rtecReady}
+                    disabled={!allowWhenDemo(rtecReady)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
                     style={{ background: DOST_BLUE }}
                   >
@@ -418,7 +420,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     <button
                       type="button"
                       onClick={handlePublish}
-                      disabled={!rtecReady}
+                      disabled={!allowWhenDemo(rtecReady)}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
                     >
                       <Send className="w-4 h-4" />

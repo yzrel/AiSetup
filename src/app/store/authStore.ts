@@ -5,6 +5,7 @@
 // ── Auth Store ─────────────────────────────────────────────────────────────────
 
 import { staffContextStore } from "./staffContextStore";
+import { isDemoModeActive } from "../utils/demoMode";
 
 export type UserRole = "applicant" | "client" | "agent" | "admin";
 
@@ -64,7 +65,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "project-information-sheet": ["admin", "agent", "client", "applicant"],
   "landbank-withdrawal": ["admin", "agent", "client", "applicant"],
   "procurement-liquidation": ["admin", "agent", "client", "applicant"],
-  "refund-delinquent": ["admin"],
+  "refund-delinquent": ["admin", "agent", "client", "applicant"],
   clients: ["admin", "agent"],
   "account-management": ["admin", "agent"],
   "my-account": ["client", "applicant"],
@@ -131,10 +132,10 @@ export const authStore = {
   isClientRole: (role: UserRole) => role === "client" || role === "applicant",
 
   canAccessView: (role: UserRole, view: AdminView) =>
-    VIEW_PERMISSIONS[view]?.includes(role) ?? false,
+    isDemoModeActive() || (VIEW_PERMISSIONS[view]?.includes(role) ?? false),
 
   canAccessDashboardTab: (role: UserRole, tab: DashboardTab) =>
-    DASHBOARD_TAB_PERMISSIONS[tab]?.includes(role) ?? false,
+    isDemoModeActive() || (DASHBOARD_TAB_PERMISSIONS[tab]?.includes(role) ?? false),
 
   getAllowedViews: (role: UserRole): AdminView[] =>
     (Object.keys(VIEW_PERMISSIONS) as AdminView[]).filter((view) =>

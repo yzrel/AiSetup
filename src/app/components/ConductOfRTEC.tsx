@@ -34,6 +34,7 @@ import {
   syncRtecFromProjectProposal,
   validateRtecReportSubmit,
 } from "../utils/rtecReport";
+import { allowWhenDemo } from "../utils/demoMode";
 import { RtecReportEditor } from "./RtecReportEditor";
 import { RtecReportPreview } from "./RtecReportPreview";
 
@@ -283,7 +284,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 <button
                   type="button"
                   onClick={handleSync}
-                  disabled={!ppReady}
+                  disabled={!allowWhenDemo(ppReady)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-semibold hover:bg-blue-50 disabled:opacity-40"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -300,7 +301,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 <button
                   type="button"
                   onClick={handleDownload}
-                  disabled={!ppReady}
+                  disabled={!allowWhenDemo(ppReady)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
                   style={{ background: DOST_BLUE }}
                 >
@@ -310,7 +311,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 <button
                   type="button"
                   onClick={handleComplete}
-                  disabled={!ppReady || isComplete}
+                  disabled={!allowWhenDemo(ppReady) || isComplete}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
                 >
                   <CheckCircle className="w-4 h-4" />

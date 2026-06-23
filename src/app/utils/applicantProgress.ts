@@ -9,6 +9,7 @@ import {
   ModuleStatus,
 } from "../store/applicantStore";
 import { AdminView } from "../store/authStore";
+import { isDemoModeActive } from "./demoMode";
 
 const REQUIRED_DOCUMENT_COUNT = 8;
 
@@ -25,7 +26,7 @@ const MODULE_TO_VIEW: Record<ModuleStatus, AdminView | null> = {
   "project-information-sheet": "project-information-sheet",
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
-  "refund-delinquent": null,
+  "refund-delinquent": "refund-delinquent",
   completed: null,
 };
 
@@ -131,11 +132,7 @@ export function getApplicantDashboardSteps(
 export function moduleToApplicantView(
   module: ModuleStatus,
 ): AdminView | "dashboard" {
-  if (
-    module === "conduct-rtec" ||
-    module === "refund-delinquent" ||
-    module === "completed"
-  ) {
+  if (module === "conduct-rtec" || module === "completed") {
     return "dashboard";
   }
   return MODULE_TO_VIEW[module] ?? "prescreening";
@@ -201,33 +198,41 @@ export function getModuleIndex(module: ModuleStatus): number {
   return idx === -1 ? 0 : idx;
 }
 
-/** Applicants may open dashboard, my-account, and modules up to their current step. Staff bypass this in App.tsx. */
-export function canApplicantAccessView(
+/** Whether this view is locked for the applicant based on real workflow progress (ignores demo mode). */
+export function isApplicantViewLocked(
   applicant: Applicant | null,
   view: AdminView,
 ): boolean {
-  if (view === "dashboard" || view === "my-account") return true;
+  if (view === "dashboard" || view === "my-account") return false;
 
   if (isRoutedToMpex(applicant)) {
-    return view === "requirements";
+    return view !== "requirements";
   }
 
   const viewModule = VIEW_TO_MODULE[view];
-  if (!viewModule) return false;
+  if (!viewModule) return true;
 
   const currentIdx = getModuleIndex(applicant?.currentModule ?? "prescreening");
   const viewIdx = getModuleIndex(viewModule);
 
-  // Requirements approved but currentModule not yet advanced — unlock TNA1
   if (
     view === "tna1" &&
     applicant?.moduleData?.staffDecision === "approved" &&
     currentIdx <= getModuleIndex("requirements")
   ) {
-    return true;
+    return false;
   }
 
-  return viewIdx <= currentIdx;
+  return viewIdx > currentIdx;
+}
+
+/** Applicants may open dashboard, my-account, and modules up to their current step. Staff bypass this in App.tsx. */
+export function canApplicantAccessView(
+  applicant: Applicant | null,
+  view: AdminView,
+): boolean {
+  if (isDemoModeActive()) return true;
+  return !isApplicantViewLocked(applicant, view);
 }
 
 export interface ApplicantDashboardStats {

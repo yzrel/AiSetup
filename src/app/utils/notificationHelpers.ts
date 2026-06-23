@@ -191,6 +191,20 @@ export function notifySigningDayComplete(applicant: Applicant) {
   });
 }
 
+export function notifyLbpIntroductionPublished(applicant: Applicant) {
+  notificationStore.add({
+    id: `lbp-intro-published-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: "Letter of Introduction to LBP published",
+    message:
+      "Your DOST Letter of Introduction to Land Bank of the Philippines is ready. Download and present it at your LandBank branch to open your SETUP savings passbook account.",
+    urgent: true,
+    view: "landbank-withdrawal",
+  });
+}
+
 export function notifyLandBankComplete(applicant: Applicant) {
   notificationStore.add({
     id: `landbank-complete-${applicant.id}-${Date.now()}`,

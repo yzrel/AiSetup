@@ -3,7 +3,9 @@
  */
 
 // ── Client Portal Store ────────────────────────────────────────────────────────
-// Purely client-to-client. DOST has NO relation to this module.
+// DEPRECATED: Tranche-based fund release UI is superseded by the official
+// module flow (LandBank Modules 11–13, Procurement 14–16, Monitoring 17)
+// in the main aiSETUP applicant workflow. Retained for reference only.
 
 export interface Notification {
   id: string;

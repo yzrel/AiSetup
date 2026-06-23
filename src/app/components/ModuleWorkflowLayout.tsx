@@ -4,6 +4,7 @@
 
 import { CheckCircle, ChevronRight } from "lucide-react";
 import { AuthUser } from "../store/authStore";
+import { isDemoModeActive } from "../utils/demoMode";
 import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
 import {
   DOST_BLUE,
@@ -48,6 +49,7 @@ export function ModuleStepHeader({
   onStepClick,
 }: ModuleStepHeaderProps) {
   const currentIdx = steps.findIndex((s) => s.id === current);
+  const demoMode = isDemoModeActive();
 
   return (
     <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
@@ -55,7 +57,7 @@ export function ModuleStepHeader({
         const done = i < currentIdx;
         const active = i === currentIdx;
         const locked = i > maxReached;
-        const clickable = !!onStepClick && !locked;
+        const clickable = !!onStepClick && (!locked || demoMode);
 
         const pill = (
           <div
@@ -176,7 +178,9 @@ export function ModuleWorkflowLayout({
             <StaffApplicantPicker user={user} label={staffPickerLabel} />
           )}
 
-          {headerExtra}
+          {headerExtra && (
+            <div className="mt-5 pt-4 border-t border-white/15">{headerExtra}</div>
+          )}
         </div>
 
         <StaffApplicantBanner user={user} />

@@ -16,6 +16,7 @@ import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPick
 import { moduleStepPillClass } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
+import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 
 interface SubmissionRequirementsProps {
   user?: AuthUser | null;
@@ -69,21 +70,46 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StepHeader({ current, steps, maxReached }: { current: StepId; steps: typeof STEPS; maxReached: number }) {
+function StepHeader({
+  current,
+  steps,
+  maxReached,
+  onStepClick,
+}: {
+  current: StepId;
+  steps: typeof STEPS;
+  maxReached: number;
+  onStepClick?: (id: StepId) => void;
+}) {
   const currentIdx = steps.findIndex(s => s.id === current);
+  const demoMode = isDemoModeActive();
   return (
     <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
       {steps.map((s, i) => {
         const done   = i < currentIdx;
         const active = i === currentIdx;
         const locked = i > maxReached;
+        const clickable = !!onStepClick && (!locked || demoMode);
+        const pill = (
+          <div className={moduleStepPillClass({ active, done, locked })}>
+            {done ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : s.icon}
+            <span className="hidden sm:inline">{s.label}</span>
+            <span className="sm:hidden">{i + 1}</span>
+          </div>
+        );
         return (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div className={moduleStepPillClass({ active, done, locked })}>
-              {done ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : s.icon}
-              <span className="hidden sm:inline">{s.label}</span>
-              <span className="sm:hidden">{i + 1}</span>
-            </div>
+            {clickable ? (
+              <button
+                type="button"
+                onClick={() => onStepClick(s.id)}
+                className="border-0 bg-transparent p-0 cursor-pointer"
+              >
+                {pill}
+              </button>
+            ) : (
+              pill
+            )}
             {i < steps.length - 1 && <ChevronRight className="w-3 h-3 text-white/25 shrink-0" />}
           </div>
         );
@@ -95,6 +121,7 @@ function StepHeader({ current, steps, maxReached }: { current: StepId; steps: ty
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequirementsProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
+  const showStaffSteps = isStaff || isDemoModeActive();
   const [step, setStep]         = useState<StepId>("documents");
   const [maxReached, setMaxReached] = useState(0);
   const [awaitingStaffReview, setAwaitingStaffReview] = useState(false);
@@ -260,7 +287,20 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               <p className="text-white/60 text-sm">Step 4 — Documentary Submission & Verification</p>
             </div>
           </div>
-          <StepHeader current={step} steps={isStaff ? STEPS : STEPS.filter(s => s.id === "documents" || s.id === "changes-requested")} maxReached={maxReached} />
+          <StepHeader
+            current={step}
+            steps={
+              showStaffSteps
+                ? STEPS
+                : STEPS.filter(
+                    (s) => s.id === "documents" || s.id === "changes-requested",
+                  )
+            }
+            maxReached={maxReached}
+            onStepClick={
+              showStaffSteps ? (id) => setStep(id as StepId) : undefined
+            }
+          />
           {isStaff && (
             <StaffApplicantPicker
               user={user}
@@ -442,7 +482,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                   if (isStaff) advanceStep("staff-review");
                   else handleApplicantSubmit();
                 }}
-                disabled={!allRequiredUp || !declarationChecked || (awaitingStaffReview && !isStaff)}
+                disabled={!allowWhenDemo(allRequiredUp && declarationChecked && (!awaitingStaffReview || isStaff))}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
                 style={{ background: "#059669" }}
               >
@@ -624,7 +664,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                   }
                   advanceStep(staffDecision === "approved" ? "rtec" : "changes-requested");
                 }}
-                disabled={!staffDecisionReady}
+                disabled={!allowWhenDemo(staffDecisionReady)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: staffDecision === "approved" ? "#059669" : "#dc2626" }}
               >
@@ -860,7 +900,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                   setRoutingDecision(rtec.rtecQualified ? "project-proposal" : "mpex");
                   advanceStep("routing");
                 }}
-                disabled={!rtecReady}
+                disabled={!allowWhenDemo(rtecReady)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >

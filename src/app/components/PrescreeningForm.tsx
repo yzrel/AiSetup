@@ -21,6 +21,7 @@ import {
 } from "../constants/dostProgramRecommendations";
 import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
 import { getOfficeContact, resolveApplicantOfficeId } from "../utils/provincialOffice";
+import { allowWhenDemo } from "../utils/demoMode";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -591,7 +592,7 @@ export function PrescreeningForm({
                 >
                   Submit
                 </button>
-                {qualified && onSubmitSuccess && (
+                {allowWhenDemo(!!qualified) && onSubmitSuccess && (
                   <button
                     type="button"
                     onClick={onSubmitSuccess}

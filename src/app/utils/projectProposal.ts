@@ -17,6 +17,7 @@ import type {
 } from "../api/types";
 import { getPublishedTna2 } from "./tnaForm02";
 import { yearFromDateEstablished } from "./applicantPrefill";
+import { isDemoModeActive } from "./demoMode";
 
 export const PROPOSAL_ATTACHMENT_LABELS: Record<
   ProjectProposalAttachmentKind,
@@ -750,6 +751,7 @@ export function validateProjectProposalSubmit(
   form: ProjectProposalForm,
   attachments: ProjectProposalAttachment[],
 ): string[] {
+  if (isDemoModeActive()) return [];
   const errors: string[] = [];
   if (!form.projectTitle.trim()) errors.push("Project title is required.");
   if (!form.proponentName.trim()) errors.push("Proponent name is required.");

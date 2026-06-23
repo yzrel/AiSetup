@@ -2,7 +2,10 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { Applicant, ModuleStatus } from "../store/applicantStore";
+import { hasLandBankComplete } from "./landBankWithdrawal";
+import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
+import { hasProcurementComplete } from "./procurementLiquidation";
+import { hasRefundComplete } from "./refundDelinquent";
 import { AdminView } from "../store/authStore";
 
 export type AssessmentStage =
@@ -10,7 +13,10 @@ export type AssessmentStage =
   | "requirements"
   | "tna1"
   | "tna2"
-  | "post-proposal";
+  | "post-proposal"
+  | "landbank-withdrawal"
+  | "procurement-liquidation"
+  | "refund-delinquent";
 
 export type AssessmentStatus = "pending" | "in_progress" | "completed";
 
@@ -81,13 +87,45 @@ function tna2Status(applicant: Applicant): AssessmentStatus {
 
 function postProposalStatus(applicant: Applicant): AssessmentStatus {
   if (hasAssessment(applicant, "post-proposal")) return "completed";
-  if (
-    applicant.currentModule === "conduct-rtec" ||
-    applicant.currentModule === "approval-letter" ||
-    applicant.currentModule === "project-information-sheet"
-  ) {
+  const idx = moduleIndex(applicant.currentModule);
+  const pisIdx = moduleIndex("project-information-sheet");
+  if (idx <= pisIdx) {
+    if (
+      applicant.currentModule === "conduct-rtec" ||
+      applicant.currentModule === "approval-letter" ||
+      applicant.currentModule === "project-information-sheet"
+    ) {
+      return "pending";
+    }
+  }
+  if (idx > pisIdx) return "completed";
+  return "completed";
+}
+
+function landbankStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "landbank-withdrawal")) return "completed";
+  if (hasLandBankComplete(applicant)) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("landbank-withdrawal")) {
+    if (!hasLbpIntroductionPublished(applicant)) return "pending";
     return "pending";
   }
+  return "completed";
+}
+
+function procurementStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "procurement-liquidation")) return "completed";
+  if (hasProcurementComplete(applicant)) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("procurement-liquidation")) return "pending";
+  return "completed";
+}
+
+function refundStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "refund-delinquent")) return "completed";
+  if (hasRefundComplete(applicant)) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("refund-delinquent")) return "pending";
   return "completed";
 }
 
@@ -152,6 +190,27 @@ export function getAssessmentTasks(applicant: Applicant): AssessmentTask[] {
           ? "approval-letter"
           : "conduct-rtec",
       description: "Conduct evaluation and issue approval.",
+    },
+    {
+      stage: "landbank-withdrawal",
+      label: "LandBank & Withdrawal",
+      status: landbankStatus(applicant),
+      view: "landbank-withdrawal",
+      description: "Review withdrawal documents and authority letter.",
+    },
+    {
+      stage: "procurement-liquidation",
+      label: "Procurement & Liquidation",
+      status: procurementStatus(applicant),
+      view: "procurement-liquidation",
+      description: "Verify procurement receipts and liquidation reports.",
+    },
+    {
+      stage: "refund-delinquent",
+      label: "Refund Monitoring",
+      status: refundStatus(applicant),
+      view: "refund-delinquent",
+      description: "Monitor refund compliance and delinquent accounts.",
     },
   ];
 

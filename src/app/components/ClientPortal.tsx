@@ -5,6 +5,8 @@
 // Client community portal — currently disabled.
 // Applicants use Register → Login → aiSETUP application workflow instead.
 // See App.tsx (ClientPortal import/routing commented out).
+// NOTE: WithdrawalViewer tranche model is deprecated in favor of Modules 11–17
+// in LandBankAndWithdrawal, ProcurementAndLiquidation, and RefundAndDelinquent.
 
 import { useState, useEffect, useRef } from "react";
 import {

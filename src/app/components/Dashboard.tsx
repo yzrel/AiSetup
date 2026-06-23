@@ -66,6 +66,12 @@ import { notificationStore } from "../store/notificationStore";
 import { getApplicantsForStaff } from "../utils/provincialOffice";
 import { timeAgo } from "../utils/timeAgo";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
+import {
+  getFundDisbursementChartData,
+  getPaymentMonitorRecords,
+} from "../utils/refundDelinquent";
+import { staffContextStore } from "../store/staffContextStore";
+import { isDemoModeActive } from "../utils/demoMode";
 
 // ── Payment Monitoring Data ───────────────────────────────────────────────────
 
@@ -77,6 +83,7 @@ type PaymentStatus =
 
 interface PaymentRecord {
   id: string;
+  applicantId?: string;
   enterprise: string;
   region: string;
   type: string;
@@ -93,7 +100,7 @@ interface PaymentRecord {
   monthlyAmortization: string;
 }
 
-const paymentRecords: PaymentRecord[] = [
+const FALLBACK_PAYMENT_RECORDS: PaymentRecord[] = [
   {
     id: "LOI-2024-000012",
     enterprise: "XYZ Manufacturing Co.",
@@ -384,14 +391,20 @@ const pdcConfig: Record<
 
 // ── Payment Monitoring Panel ──────────────────────────────────────────────────
 
-function PaymentMonitor() {
+function PaymentMonitor({
+  records,
+  onViewAccount,
+}: {
+  records: PaymentRecord[];
+  onViewAccount?: (applicantId: string) => void;
+}) {
   const [filter, setFilter] = useState<"all" | PaymentStatus>(
     "all",
   );
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const filtered = paymentRecords.filter((r) => {
+  const filtered = records.filter((r) => {
     const matchFilter = filter === "all" || r.status === filter;
     const matchSearch =
       r.enterprise
@@ -403,21 +416,21 @@ function PaymentMonitor() {
   });
 
   const counts = {
-    all: paymentRecords.length,
-    delinquent: paymentRecords.filter(
+    all: records.length,
+    delinquent: records.filter(
       (r) => r.status === "delinquent",
     ).length,
-    overdue: paymentRecords.filter(
+    overdue: records.filter(
       (r) => r.status === "overdue",
     ).length,
-    late: paymentRecords.filter((r) => r.status === "late")
+    late: records.filter((r) => r.status === "late")
       .length,
-    current: paymentRecords.filter(
+    current: records.filter(
       (r) => r.status === "current",
     ).length,
   };
 
-  const totalOverdueBalance = paymentRecords
+  const totalOverdueBalance = records
     .filter((r) => r.status !== "current")
     .reduce((sum, r) => {
       const val = parseFloat(
@@ -808,7 +821,15 @@ function PaymentMonitor() {
                                 <CreditCard className="w-3 h-3" />{" "}
                                 Record PDC / Payment
                               </button>
-                              <button className="w-full flex items-center gap-2 border border-gray-200 text-gray-600 text-xs font-semibold py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  record.applicantId &&
+                                  onViewAccount?.(record.applicantId)
+                                }
+                                disabled={!record.applicantId || !onViewAccount}
+                                className="w-full flex items-center gap-2 border border-gray-200 text-gray-600 text-xs font-semibold py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                              >
                                 <Eye className="w-3 h-3" /> View
                                 Full Account
                               </button>
@@ -834,7 +855,7 @@ function PaymentMonitor() {
           </span>{" "}
           of{" "}
           <span className="font-bold text-gray-600">
-            {paymentRecords.length}
+            {records.length}
           </span>{" "}
           monitored accounts
         </p>
@@ -973,6 +994,10 @@ export function Dashboard({
   const awaitingReviewMessage = getAwaitingStaffReviewMessage(application);
   const routedToMpex = isRoutedToMpex(application);
   const scopedApplicants = isClientView ? [] : getApplicantsForStaff(user);
+  const livePaymentRecords = getPaymentMonitorRecords(scopedApplicants);
+  const paymentMonitorRecords =
+    livePaymentRecords.length > 0 ? livePaymentRecords : FALLBACK_PAYMENT_RECORDS;
+  const fundChartData = getFundDisbursementChartData(scopedApplicants);
   const staffActiveCount = scopedApplicants.filter(
     (a) => a.currentModule !== "completed",
   ).length;
@@ -1171,11 +1196,16 @@ export function Dashboard({
                 </div>
               )}
               <div className="mt-4 space-y-3">
-                {progressSteps.map((item) => (
+                {progressSteps.map((item) => {
+                  const stepNavigable =
+                    !!item.view &&
+                    !!onNavigate &&
+                    (item.status !== "upcoming" || isDemoModeActive());
+                  return (
                   <button
                     key={item.module}
                     type="button"
-                    disabled={!item.view || !onNavigate}
+                    disabled={!stepNavigable}
                     onClick={() => item.view && onNavigate?.(item.view)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
                       item.status === "current"
@@ -1183,7 +1213,7 @@ export function Dashboard({
                         : item.status === "completed"
                           ? "border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50"
                           : "border-gray-100 bg-gray-50"
-                    } ${item.view && onNavigate ? "cursor-pointer" : "cursor-default"}`}
+                    } ${stepNavigable ? "cursor-pointer" : "cursor-default"}`}
                   >
                     {item.status === "current" ? (
                       <Clock className="w-5 h-5 text-[#0C2461] shrink-0" />
@@ -1200,11 +1230,12 @@ export function Dashboard({
                           : item.status}
                       </p>
                     </div>
-                    {item.view && onNavigate && item.status !== "upcoming" && (
+                    {stepNavigable && (item.status !== "upcoming" || isDemoModeActive()) && (
                       <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                     )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
               <p className="text-xs text-gray-400 mt-4">
                 {application?.applicationId
@@ -1585,7 +1616,13 @@ export function Dashboard({
           </div>
 
           {/* ── Payment Monitoring ── */}
-          <PaymentMonitor />
+          <PaymentMonitor
+            records={paymentMonitorRecords}
+            onViewAccount={(applicantId) => {
+              staffContextStore.setSelectedApplicant(applicantId);
+              onNavigate?.("refund-delinquent");
+            }}
+          />
             </>
           )}
         </>
@@ -1678,7 +1715,7 @@ export function Dashboard({
                 Fund Disbursement
               </SectionTitle>
               <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={fundData}>
+                <AreaChart data={fundChartData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="#f3f4f6"

@@ -2,111 +2,52 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  CheckCircle,
-  Download,
-  FileText,
-  ChevronRight,
+  AlertCircle,
   AlertTriangle,
+  BarChart2,
+  CheckCircle,
   Clock,
   CreditCard,
-  Calendar,
-  BarChart2,
-  Shield,
-  User,
-  RefreshCw,
+  Download,
   Eye,
-  AlertCircle,
-  TrendingDown,
-  Bell,
-  ClipboardList,
+  FileText,
+  RefreshCw,
+  User,
 } from "lucide-react";
-import { ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
+import { AuthUser } from "../store/authStore";
+import { applicantStore } from "../store/applicantStore";
+import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
+import type { DelinquencyStatus, PDCEntry } from "../api/types";
+import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
+import { appendStaffAssessment } from "../utils/clientAssessment";
+import { getApprovalLetterForm } from "../utils/approvalLetter";
+import { notifyRefundMonitoringComplete } from "../utils/notificationHelpers";
+import {
+  getRefundForm,
+  getRefundStored,
+  hasRefundPrerequisite,
+  isRefundReadOnly,
+  isRefundStaff,
+  recordPdcs,
+  saveRefundDraft,
+  setDelinquencyStatus,
+  submitRefund,
+  syncRefundFromProposal,
+  validateRefundSubmit,
+} from "../utils/refundDelinquent";
+import { allowWhenDemo } from "../utils/demoMode";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+const STEPS: ModuleStep[] = [
+  { id: "record-pdcs", label: "Record PDCs", icon: <CreditCard className="w-4 h-4" /> },
+  { id: "refund-schedule", label: "Refund Schedule", icon: <RefreshCw className="w-4 h-4" /> },
+  { id: "payments", label: "Payments", icon: <CheckCircle className="w-4 h-4" /> },
+  { id: "monitoring", label: "Monitoring", icon: <Eye className="w-4 h-4" /> },
+];
 
-type PaymentStatus =
-  | "monitoring-required"
-  | "current"
-  | "delayed"
-  | "delinquent"
-  | "under-evaluation";
-
-interface PDCEntry {
-  id: string;
-  checkNumber: string;
-  dueDate: string;
-  accountNumber: string;
-  amount: string;
-  status: "pending" | "cleared" | "bounced";
-}
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-function StepFlow({
-  steps,
-  activeIndex,
-}: {
-  steps: {
-    label: string;
-    icon: React.ReactNode;
-    color: string;
-  }[];
-  activeIndex: number;
-}) {
-  return (
-    <div className="flex items-center gap-1 flex-wrap mb-5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 overflow-x-auto">
-      {steps.map((step, i) => (
-        <div key={i} className="flex items-center gap-1">
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-              i === activeIndex
-                ? `${step.color} text-white`
-                : i < activeIndex
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-100 text-gray-400"
-            }`}
-          >
-            {i < activeIndex ? (
-              <CheckCircle className="w-3 h-3" />
-            ) : (
-              step.icon
-            )}
-            {step.label}
-          </div>
-          {i < steps.length - 1 && (
-            <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SectionHeader({
-  number,
-  title,
-  collapsible = false,
-}: {
-  number: number;
-  title: string;
-  collapsible?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-        {number}
-      </span>
-      <h3 className="font-bold text-sm text-gray-800">
-        {title}
-      </h3>
-      {collapsible && (
-        <ChevronRight className="w-4 h-4 text-gray-400 ml-auto rotate-90" />
-      )}
-    </div>
-  );
-}
+type StepId = "record-pdcs" | "refund-schedule" | "payments" | "monitoring";
 
 function StatusBadge({
   label,
@@ -123,50 +64,11 @@ function StatusBadge({
     gray: "bg-gray-100 text-gray-600 border-gray-200",
   }[color];
   return (
-    <span
-      className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${c}`}
-    >
+    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${c}`}>
       {label}
     </span>
   );
 }
-
-// ── PDC Schedule Table ────────────────────────────────────────────────────────
-
-const SAMPLE_PDCS: PDCEntry[] = [
-  {
-    id: "1",
-    checkNumber: "33210-1J9",
-    dueDate: "01/03/24",
-    accountNumber: "PHUECOS4816",
-    amount: "₱4,610.1M",
-    status: "pending",
-  },
-  {
-    id: "2",
-    checkNumber: "33230-1J4",
-    dueDate: "01/03/25",
-    accountNumber: "PACHOCE5946",
-    amount: "₱4,610.1M",
-    status: "cleared",
-  },
-  {
-    id: "3",
-    checkNumber: "34519-C9t",
-    dueDate: "01/03/26",
-    accountNumber: "ACOCCHU875",
-    amount: "₱3,610.1M",
-    status: "pending",
-  },
-  {
-    id: "4",
-    checkNumber: "KPCAM-1J5.4",
-    dueDate: "01/03/27",
-    accountNumber: "AC/P/CHOS575",
-    amount: "₱3,610.1M",
-    status: "bounced",
-  },
-];
 
 function PDCTable({ rows }: { rows: PDCEntry[] }) {
   const statusColor = {
@@ -181,14 +83,11 @@ function PDCTable({ rows }: { rows: PDCEntry[] }) {
   };
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
-      <div className="bg-blue-600 text-white grid grid-cols-5 px-3 py-2 font-semibold gap-2">
-        {[
-          "Check Number",
-          "Due Date",
-          "Account Number",
-          "Amount",
-          "Status",
-        ].map((h) => (
+      <div
+        className="text-white grid grid-cols-5 px-3 py-2 font-semibold gap-2"
+        style={{ background: DOST_BLUE }}
+      >
+        {["Check Number", "Due Date", "Account Number", "Amount", "Status"].map((h) => (
           <span key={h}>{h}</span>
         ))}
       </div>
@@ -197,527 +96,387 @@ function PDCTable({ rows }: { rows: PDCEntry[] }) {
           key={r.id}
           className="grid grid-cols-5 gap-2 px-3 py-2 border-t border-gray-100 hover:bg-gray-50"
         >
-          <span className="font-medium text-gray-800">
-            {r.checkNumber}
-          </span>
+          <span className="font-medium text-gray-800">{r.checkNumber}</span>
           <span className="text-gray-600">{r.dueDate}</span>
-          <span className="text-gray-600">
-            {r.accountNumber}
-          </span>
-          <span className="font-semibold text-gray-800">
-            {r.amount}
-          </span>
-          <StatusBadge
-            label={statusLabel[r.status]}
-            color={statusColor[r.status]}
-          />
+          <span className="text-gray-600">{r.accountNumber}</span>
+          <span className="font-semibold text-gray-800">{r.amount}</span>
+          <StatusBadge label={statusLabel[r.status]} color={statusColor[r.status]} />
         </div>
       ))}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MODULE 15: Refund Schedule Management
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function Module15Refund() {
-  const [pdcsRecorded, setPdcsRecorded] = useState(false);
-
-  const steps = [
-    {
-      label: "Record PDCs",
-      icon: <CreditCard className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-    {
-      label: "Generate Refund Schedule",
-      icon: <RefreshCw className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-    {
-      label: "Issue SOA",
-      icon: <FileText className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-    {
-      label: "Record Payments",
-      icon: <CheckCircle className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-    {
-      label: "Monitor Status",
-      icon: <Eye className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-  ];
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="bg-blue-600 text-white px-5 py-3 font-semibold text-sm flex items-center gap-2">
-        <RefreshCw className="w-4 h-4" />
-        Refund Schedule Management
-      </div>
-
-      <div className="p-5">
-        {/* Progress indicator */}
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-5">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <span className="text-sm font-semibold text-amber-800">
-              Withdraw Grace Period
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-32 h-2 bg-amber-200 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full w-4/5" />
-            </div>
-            <span className="text-xs font-semibold text-amber-700">
-              Checks, May 2024
-            </span>
-          </div>
-        </div>
-
-        {/* Step flow */}
-        <StepFlow steps={steps} activeIndex={0} />
-
-        {/* Two-column sections */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Section 1: Recording PDCs */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <SectionHeader
-              number={1}
-              title="Recording of Post-Dated Checks (PDCs)"
-            />
-
-            <div className="bg-blue-50 rounded-lg p-3 mb-3">
-              <div className="flex items-center justify-between text-xs font-semibold text-blue-700 mb-2 border-b border-blue-200 pb-1">
-                <span>Dost Listed Refund Schedule</span>
-                <span>Balance: Full Refunds</span>
-              </div>
-              <PDCTable rows={SAMPLE_PDCS} />
-            </div>
-
-            <button
-              onClick={() => setPdcsRecorded(true)}
-              className={`flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-lg transition-colors ${
-                pdcsRecorded
-                  ? "bg-green-700 text-white"
-                  : "bg-green-600 hover:bg-green-700 text-white"
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              {pdcsRecorded ? "PDCs Recorded ✓" : "Record PDCs"}
-            </button>
-          </div>
-
-          {/* Section 2: Generate Refund Schedule */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <SectionHeader
-              number={2}
-              title="Generate Refund Schedule"
-            />
-
-            <div className="bg-gray-50 rounded-lg p-3 mb-3 text-xs text-gray-600 leading-relaxed space-y-1">
-              <p>Generated refund schedule:</p>
-              <p>
-                The potential returns ...
-              </p>
-              <p className="text-blue-500 underline cursor-pointer">
-                With meter refund status...
-              </p>
-
-              {/* Mock schedule table */}
-              <div className="mt-3 border border-gray-200 rounded overflow-hidden">
-                <div className="bg-blue-600 text-white grid grid-cols-4 text-[10px] px-2 py-1 font-semibold gap-1">
-                  {["Date", "Amount", "Balance", "Status"].map(
-                    (h) => (
-                      <span key={h}>{h}</span>
-                    ),
-                  )}
-                </div>
-                {[
-                  ["Jan 2025", "₱15,000", "₱1,985,000", "—"],
-                  ["Feb 2025", "₱15,000", "₱1,970,000", "—"],
-                  ["Mar 2025", "₱15,000", "₱1,955,000", "—"],
-                  ["Apr 2025", "₱15,000", "₱1,940,000", "—"],
-                ].map(([d, a, b, s], i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-4 gap-1 px-2 py-1 text-[10px] text-gray-700 border-t border-gray-100"
-                  >
-                    <span>{d}</span>
-                    <span>{a}</span>
-                    <span>{b}</span>
-                    <span>{s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">
-              <Download className="w-4 h-4" />
-              Download Refund Schedule
-            </button>
-          </div>
-        </div>
-
-        {/* Footer info bar */}
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
-          <span className="flex items-center gap-1">
-            <User className="w-3.5 h-3.5 text-blue-400" />{" "}
-            n&amp;6 hS;Od Accoment RDCIs
-          </span>
-          <span className="flex items-center gap-1">
-            <ChevronRight className="w-3 h-3" /> Send by
-            PSTO-Officer who update PDCs
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-green-500" />{" "}
-            Check date: a0J
-          </span>
-          <span className="flex items-center gap-1">
-            <CreditCard className="w-3.5 h-3.5 text-blue-500" />{" "}
-            Payment receipts
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MODULE 17: Delinquent Account Management — State A (Payment Current)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function Module17StateA() {
-  const steps = [
-    {
-      label: "Payment Monitoring Required",
-      icon: <Bell className="w-3 h-3" />,
-      color: "bg-red-500",
-    },
-    {
-      label: "Payment Current",
-      icon: <CheckCircle className="w-3 h-3" />,
-      color: "bg-green-600",
-    },
-    {
-      label: "Payment Delayed",
-      icon: <Clock className="w-3 h-3" />,
-      color: "bg-amber-500",
-    },
-    {
-      label: "Delinquent",
-      icon: <AlertTriangle className="w-3 h-3" />,
-      color: "bg-red-600",
-    },
-    {
-      label: "Under Evaluation",
-      icon: <Eye className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-  ];
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="bg-blue-600 text-white px-5 py-3 font-semibold text-sm flex items-center gap-2">
-        <TrendingDown className="w-4 h-4" />
-        Delinquent Account Management
-        <StatusBadge label="Payment Current" color="green" />
-      </div>
-
-      <div className="p-5">
-        <StepFlow steps={steps} activeIndex={1} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Section 1: Detection */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <SectionHeader
-              number={1}
-              title="Detection of Delinquent Accounts"
-              collapsible
-            />
-            <p className="text-sm text-gray-600 mb-4">
-              After the MOA signing the cooperator will submit
-              Post Dated Checks (PDCs) corresponding to the
-              agreed refund schedule.
-            </p>
-            <button className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">
-              <CreditCard className="w-4 h-4" />
-              Record PDCs
-            </button>
-          </div>
-
-          {/* Right: mock dashboard */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <p className="text-xs font-semibold text-gray-600 mb-2">
-              Stoon Danten
-            </p>
-            <div className="bg-blue-50 rounded-lg p-3 space-y-1.5 text-xs mb-3">
-              <p className="font-semibold text-blue-700 border-b border-blue-200 pb-1">
-                Ewentouam Rletent !
-              </p>
-              {[
-                ["CLAMM", "Chiannociana"],
-                ["Dinum Channopame", "CONDOSIOM"],
-                ["ZMF EUROSUM, VULGOUS", "CAN 08"],
-              ].map(([a, b], i) => (
-                <div
-                  key={i}
-                  className="flex justify-between text-gray-700"
-                >
-                  <span>{a}</span>
-                  <span className="text-gray-500">{b}</span>
-                </div>
-              ))}
-              <div className="text-right font-bold text-blue-700 pt-1 border-t border-blue-200">
-                + dl 3001
-              </div>
-            </div>
-            <button className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">
-              <Download className="w-4 h-4" />
-              Download Refund Schedule
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
-          <User className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-          <span className="font-semibold text-gray-700">
-            PSTO-Officer
-          </span>
-          <span>
-            gegerate this coalt;- tineatte -a09-payments.
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MODULE 17: Delinquent Account Management — State B (Delayed / Delinquent)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function Module17StateB() {
-  const steps = [
-    {
-      label: "Payment Monitoring Required",
-      icon: <Bell className="w-3 h-3" />,
-      color: "bg-red-500",
-    },
-    {
-      label: "Payment Delayed",
-      icon: <Clock className="w-3 h-3" />,
-      color: "bg-amber-500",
-    },
-    {
-      label: "Delinquent Account",
-      icon: <AlertTriangle className="w-3 h-3" />,
-      color: "bg-red-600",
-    },
-    {
-      label: "Under Evaluation",
-      icon: <Eye className="w-3 h-3" />,
-      color: "bg-blue-600",
-    },
-  ];
-
-  const pdcStatuses = [
-    {
-      icon: <CheckCircle className="w-4 h-4 text-green-500" />,
-      label: "Payment Current",
-      color: "text-green-600",
-    },
-    {
-      icon: (
-        <AlertTriangle className="w-4 h-4 text-amber-500" />
-      ),
-      label: "Payment Delayed",
-      color: "text-amber-600",
-    },
-    {
-      icon: <AlertCircle className="w-4 h-4 text-red-500" />,
-      label: "Delinquent Account",
-      color: "text-red-600",
-    },
-  ];
-
-  const monitoringItems = [
-    "Pecortaling Rectired",
-    "Ehvum - P/leomy gstovt",
-    "Inroatoal 1, Lalev",
-    "Drosapost, Uleov",
-    "Bivum Satoalm",
-  ];
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="bg-red-600 text-white px-5 py-3 font-semibold text-sm flex items-center gap-2">
-        <AlertTriangle className="w-4 h-4" />
-        Delinquent Account Management
-        <StatusBadge label="Under Evaluation" color="amber" />
-      </div>
-
-      <div className="p-5">
-        <StepFlow steps={steps} activeIndex={3} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Section 1: Detection (expanded with states) */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <SectionHeader
-              number={1}
-              title="Detection of Delinquent Accounts"
-              collapsible
-            />
-
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 mb-4 flex flex-col gap-3">
-              {/* Illustration placeholder */}
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow mx-auto">
-                <User className="w-6 h-6 text-blue-600" />
-              </div>
-              {pdcStatuses.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm"
-                >
-                  {s.icon}
-                  <span
-                    className={`text-sm font-semibold ${s.color}`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <button className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">
-              <Eye className="w-4 h-4" />
-              Monitor Payment PDCs
-            </button>
-          </div>
-
-          {/* Section 3: Monitoring of PDCs */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <SectionHeader
-              number={3}
-              title="Monitoring of Post-Dated Checks (PDCs)"
-            />
-
-            <div className="bg-blue-50 rounded-lg p-3 mb-4 space-y-1.5">
-              <p className="text-xs font-semibold text-blue-700 border-b border-blue-200 pb-1">
-                Fecortoling Rectired
-              </p>
-              {monitoringItems.slice(1).map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 text-xs text-gray-700"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                  {item}
-                </div>
-              ))}
-            </div>
-
-            {/* Right-side person illustration */}
-            <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg h-20 flex items-center justify-center mb-4">
-              <div className="text-center">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto shadow">
-                  <ClipboardList className="w-5 h-5 text-blue-600" />
-                </div>
-                <p className="text-[10px] text-blue-600 mt-1 font-medium">
-                  PDC Monitoring
-                </p>
-              </div>
-            </div>
-
-            <button className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors">
-              <Eye className="w-4 h-4" />
-              Monitor Payment PDCs
-            </button>
-          </div>
-        </div>
-
-        {/* Alert banner */}
-        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-red-700">
-            <span className="font-semibold">
-              Delinquency Notice:
-            </span>{" "}
-            This account has been flagged for delayed payments.
-            The PSTO Officer has been notified for evaluation.
-            Please ensure all Post-Dated Checks are updated and
-            coordinate with your DOST provincial office
-            immediately.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN EXPORT
-// ═══════════════════════════════════════════════════════════════════════════════
+const DELINQUENCY_LABELS: Record<DelinquencyStatus, { label: string; color: "green" | "amber" | "red" | "blue" | "gray" }> = {
+  "monitoring-required": { label: "Monitoring Required", color: "blue" },
+  current: { label: "Payment Current", color: "green" },
+  delayed: { label: "Payment Delayed", color: "amber" },
+  delinquent: { label: "Delinquent", color: "red" },
+  "under-evaluation": { label: "Under Evaluation", color: "amber" },
+};
 
 interface RefundAndDelinquentProps {
+  user?: AuthUser | null;
   onSubmitSuccess?: () => void;
 }
 
-export function RefundAndDelinquent({ onSubmitSuccess }: RefundAndDelinquentProps = {}) {
+export function RefundAndDelinquent({
+  user,
+  onSubmitSuccess,
+}: RefundAndDelinquentProps = {}) {
+  const { applicant, isStaff } = useStaffApplicant(user);
+  const readOnly = user ? isRefundReadOnly(user.role) : false;
+  const staffMode = user ? isRefundStaff(user.role) : isStaff;
+  const [step, setStep] = useState<StepId>("record-pdcs");
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+  const [, setTick] = useState(0);
+
+  const reload = useCallback(() => setTick((t) => t + 1), []);
+
+  useEffect(() => {
+    const unsub = applicantStore.subscribe(reload);
+    return unsub;
+  }, [reload, applicant?.id]);
+
+  useEffect(() => {
+    if (applicant && !getRefundStored(applicant)) {
+      const synced = syncRefundFromProposal(applicant);
+      saveRefundDraft(applicant.id, synced);
+    }
+  }, [applicant?.id]);
+
+  const form = applicant ? getRefundForm(applicant) : null;
+  const stored = applicant ? getRefundStored(applicant) : null;
+  const prerequisiteOk = hasRefundPrerequisite(applicant);
+  const refundTerm = applicant ? getApprovalLetterForm(applicant).refundTermYears : "";
+  const delinquency = form ? DELINQUENCY_LABELS[form.delinquencyStatus] : DELINQUENCY_LABELS.current;
+  const uploadedBy = user?.email ?? "staff";
+
+  const maxReached = stored?.submitted
+    ? 3
+    : form?.pdcsRecorded
+      ? 2
+      : form?.pdcs.length
+        ? 1
+        : 0;
+
+  const handleRecordPdcs = () => {
+    if (!applicant || readOnly) return;
+    recordPdcs(applicant.id);
+  };
+
+  const handleSubmit = () => {
+    if (!applicant) {
+      setSubmitErrors(["Select an applicant to continue."]);
+      return;
+    }
+    if (readOnly) return;
+    const errors = validateRefundSubmit(applicant);
+    if (errors.length) {
+      setSubmitErrors(errors);
+      return;
+    }
+    const submitErrs = submitRefund(applicant.id, uploadedBy);
+    if (submitErrs.length) {
+      setSubmitErrors(submitErrs);
+      return;
+    }
+    applicantStore.update(applicant.id, {
+      currentModule: "completed",
+      ...appendStaffAssessment(applicant, {
+        stage: "refund-delinquent",
+        decision: "submitted",
+        assessedBy: uploadedBy,
+        assessedAt: new Date().toISOString(),
+        remarks: "Refund monitoring setup complete.",
+      }),
+    });
+    notifyRefundMonitoringComplete(applicant);
+    setSubmitErrors([]);
+    onSubmitSuccess?.();
+  };
+
+  const alerts = (
+    <>
+      {readOnly && (
+        <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+          <Eye className="w-4 h-4 shrink-0 mt-0.5" />
+          <p>Read-only view of your refund schedule and payment status.</p>
+        </div>
+      )}
+      {!prerequisiteOk && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p>Complete Procurement &amp; Liquidation (Modules 14–16) before refund monitoring.</p>
+        </div>
+      )}
+      {submitErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 space-y-1">
+          {submitErrors.map((e) => (
+            <p key={e}>• {e}</p>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <ModuleWorkflowLayout
       title="Refund & Delinquent Accounts"
-      subtitle="Manage SETUP refund schedules, post-dated checks, and delinquent account status after project implementation."
-      showStaffPicker={false}
+      subtitle="Module 17 — Repayment Monitoring"
+      user={user}
+      steps={STEPS}
+      currentStep={step}
+      maxReached={maxReached}
+      onStepClick={(id) => setStep(id as StepId)}
+      showStaffPicker={staffMode}
+      staffPickerLabel="Monitor applicant"
+      alerts={alerts}
       insetBody={false}
-      contentClassName="p-6 space-y-8"
+      contentClassName="p-6 space-y-6"
+      maxWidth="5xl"
     >
-        <div>
-          <h2 className="text-lg font-bold text-gray-800 mb-2">Refund Schedule Management</h2>
-          <p className="text-gray-500 text-sm max-w-3xl mb-1">
-            After the project has been implemented and
-            monitored, the cooperator must begin the repayment
-            of the SETUP assistance based on the agreed refund
-            schedule.
-          </p>
-          <p className="text-gray-500 text-sm max-w-3xl mb-1">
-            SETUP operates under a revolving fund mechanism,
-            wherein the financial assistance provided to
-            enterprises must be refunded to allow DOST to
-            support additional enterprises in the future.
-          </p>
-          <p className="text-gray-500 text-sm max-w-3xl mb-4">
-            Upon MOA signing, the cooperator shall provide Post
-            Ibadal Datons (PDCs) corresponding to the scheduled
-            payments that will take effect after the one-year
-            grace period.
-          </p>
-          <Module15Refund />
-        </div>
+      <div className="text-sm text-gray-500 max-w-3xl space-y-2">
+        <p>
+          After project implementation, the cooperator repays SETUP assistance per the agreed
+          refund schedule. Upon MOA signing, post-dated checks (PDCs) are provided for payments
+          after the one-year grace period.
+        </p>
+        {refundTerm && (
+          <p className="text-xs text-gray-400">Refund term: {refundTerm}</p>
+        )}
+      </div>
 
-        <div>
-          <h2 className="text-lg font-bold text-gray-800 mb-2">
-            Delinquent Account Management
-            <span className="ml-2 text-base font-normal text-green-600">
-              — Payment Current
-            </span>
-          </h2>
-          <Module17StateA />
+      {step === "record-pdcs" && form && (
+        <div className={`${MODULE_SHELL} border border-gray-200`}>
+          <div
+            className="text-white px-5 py-3 font-semibold text-sm flex items-center gap-2"
+            style={{ background: DOST_BLUE }}
+          >
+            <RefreshCw className="w-4 h-4" />
+            Module 17 — Refund Schedule Management
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+                <Clock className="w-4 h-4" />
+                Withdrawal Grace Period
+              </div>
+              <span className="text-xs text-amber-700">One-year grace before PDCs take effect</span>
+            </div>
+            <PDCTable rows={form.pdcs} />
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={handleRecordPdcs}
+                className={`flex items-center justify-center gap-2 w-full max-w-sm py-2.5 text-sm font-semibold rounded-lg text-white ${
+                  form.pdcsRecorded ? "bg-green-700" : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                <CreditCard className="w-4 h-4" />
+                {form.pdcsRecorded ? "PDCs Recorded ✓" : "Record PDCs"}
+              </button>
+            )}
+          </div>
         </div>
+      )}
 
-        <div>
-          <h2 className="text-lg font-bold text-gray-800 mb-2">
-            Delinquent Account Management
-            <span className="ml-2 text-base font-normal text-red-500">
-              — Delinquent / Under Evaluation
-            </span>
-          </h2>
-          <Module17StateB />
+      {step === "refund-schedule" && form && (
+        <div className={`${MODULE_SHELL} border border-gray-200`}>
+          <div
+            className="text-white px-5 py-3 font-semibold text-sm flex items-center gap-2"
+            style={{ background: DOST_BLUE }}
+          >
+            <FileText className="w-4 h-4" />
+            Generated Refund Schedule
+          </div>
+          <div className="p-5">
+            <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
+              <div
+                className="text-white grid grid-cols-4 px-3 py-2 font-semibold gap-2"
+                style={{ background: DOST_BLUE }}
+              >
+                {["Date", "Amount", "Balance", "Status"].map((h) => (
+                  <span key={h}>{h}</span>
+                ))}
+              </div>
+              {form.refundSchedule.map((row, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-4 gap-2 px-3 py-2 border-t border-gray-100 text-gray-700"
+                >
+                  <span>{row.date}</span>
+                  <span>{row.amount}</span>
+                  <span>{row.balance}</span>
+                  <span>{row.status}</span>
+                </div>
+              ))}
+            </div>
+            {!readOnly && (
+              <button
+                type="button"
+                className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg"
+              >
+                <Download className="w-4 h-4" />
+                Download Refund Schedule
+              </button>
+            )}
+          </div>
         </div>
+      )}
+
+      {step === "payments" && form && (
+        <div className={`${MODULE_SHELL} border border-gray-200`}>
+          <div
+            className="text-white px-5 py-3 font-semibold text-sm flex items-center gap-2"
+            style={{ background: DOST_BLUE }}
+          >
+            <CheckCircle className="w-4 h-4" />
+            Payment Recording
+          </div>
+          <div className="p-5 text-sm text-gray-600">
+            <p>
+              {form.lastPaymentDate
+                ? `Last payment recorded: ${form.lastPaymentDate}`
+                : "No payments recorded yet. PDCs will be cleared as scheduled payments are received."}
+            </p>
+            {staffMode && !readOnly && (
+              <p className="mt-2 text-xs text-gray-500">
+                PSTO officers record payments against issued statements of account (SOA).
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {step === "monitoring" && form && applicant && (
+        <div className={`${MODULE_SHELL} border border-gray-200`}>
+          <div
+            className={`text-white px-5 py-3 font-semibold text-sm flex items-center gap-2 ${
+              form.delinquencyStatus === "delinquent" ||
+              form.delinquencyStatus === "under-evaluation"
+                ? "bg-red-600"
+                : ""
+            }`}
+            style={
+              form.delinquencyStatus !== "delinquent" &&
+              form.delinquencyStatus !== "under-evaluation"
+                ? { background: DOST_BLUE }
+                : undefined
+            }
+          >
+            <BarChart2 className="w-4 h-4" />
+            Delinquent Account Management
+            <StatusBadge label={delinquency.label} color={delinquency.color} />
+          </div>
+          <div className="p-5 space-y-4">
+            <p className="text-sm text-gray-600">
+              After MOA signing, cooperators submit post-dated checks (PDCs) per the agreed refund
+              schedule. DOST monitors payment status and flags delinquent accounts for evaluation.
+            </p>
+
+            {staffMode && !readOnly && (
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    "current",
+                    "delayed",
+                    "delinquent",
+                    "under-evaluation",
+                  ] as DelinquencyStatus[]
+                ).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setDelinquencyStatus(applicant.id, status)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
+                  >
+                    Set: {DELINQUENCY_LABELS[status].label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h3 className="font-bold text-sm text-gray-800 mb-2">
+                  Enterprise Summary
+                </h3>
+                <div className="text-xs space-y-1 text-gray-700">
+                  <div className="flex justify-between">
+                    <span>Enterprise</span>
+                    <span className="font-medium">{applicant.enterpriseName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Contact</span>
+                    <span>{applicant.applicantName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>PDCs on file</span>
+                    <span>{form.pdcs.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Bounced checks</span>
+                    <span>
+                      {form.pdcs.filter((p) => p.status === "bounced").length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h3 className="font-bold text-sm text-gray-800 mb-2">
+                  Monitoring Checklist
+                </h3>
+                <ul className="text-xs space-y-1.5 text-gray-700">
+                  {[
+                    "PDC schedule recorded",
+                    "Refund schedule generated",
+                    "Payment monitoring active",
+                    "Delinquency status tracked",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {(form.delinquencyStatus === "delinquent" ||
+              form.delinquencyStatus === "under-evaluation") && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700">
+                  <span className="font-semibold">Delinquency Notice:</span> This account has been
+                  flagged for delayed payments. Coordinate with your DOST provincial office
+                  immediately.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
+              <User className="w-3.5 h-3.5 text-blue-500" />
+              <span className="font-semibold text-gray-700">PSTO Officer</span>
+              <span>— monitors PDC status and generates collection notices when needed.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!stored?.submitted && onSubmitSuccess && staffMode && !readOnly && (
+        <div className="print:hidden pt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!allowWhenDemo(prerequisiteOk)}
+            className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: DOST_BLUE }}
+          >
+            Complete Monitoring Setup →
+          </button>
+        </div>
+      )}
     </ModuleWorkflowLayout>
   );
 }

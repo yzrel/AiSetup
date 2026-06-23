@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { PrescreeningForm } from "./components/PrescreeningForm";
 import { EnterpriseRegistration } from "./components/EnterpriseRegistration";
@@ -30,8 +30,9 @@ import { LandingPage } from "./components/LandingPage";
 import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
 import { applicantStore } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
+import { demoModeStore } from "./store/demoModeStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
-import { moduleToApplicantView, canApplicantAccessView } from "./utils/applicantProgress";
+import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked } from "./utils/applicantProgress";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -61,40 +62,85 @@ interface LoginPageProps {
   onHome?: () => void;
 }
 
+const DEMO_CLICKS_REQUIRED = 5;
+const DEMO_CLICK_WINDOW_MS = 1500;
+
+function DemoModeLogoTrigger({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const clickTimestamps = useRef<number[]>([]);
+  const [, setTick] = useState(0);
+
+  const handleClick = () => {
+    const now = Date.now();
+    clickTimestamps.current.push(now);
+    while (
+      clickTimestamps.current.length > 0 &&
+      now - clickTimestamps.current[0] > DEMO_CLICK_WINDOW_MS
+    ) {
+      clickTimestamps.current.shift();
+    }
+    if (clickTimestamps.current.length >= DEMO_CLICKS_REQUIRED) {
+      clickTimestamps.current = [];
+      demoModeStore.toggle();
+    }
+    setTick((t) => t + 1);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`border-0 bg-transparent p-0 cursor-default text-left ${className}`}
+      aria-label="DOST logo"
+    >
+      {children}
+    </button>
+  );
+}
+
 function SidebarLogo() {
   return (
-    <div className="flex items-center gap-3">
-      <DOSTMark size={36} />
-      <div>
-        <div className="flex items-center gap-1 leading-none">
-          <span className="text-white font-black text-[15px] tracking-tight">
-            ai
-          </span>
-          <span className="text-[#00AEEF] font-black text-[15px] tracking-tight">
-            SETUP
-          </span>
+    <DemoModeLogoTrigger>
+      <div className="flex items-center gap-3">
+        <DOSTMark size={36} />
+        <div>
+          <div className="flex items-center gap-1 leading-none">
+            <span className="text-white font-black text-[15px] tracking-tight">
+              ai
+            </span>
+            <span className="text-[#00AEEF] font-black text-[15px] tracking-tight">
+              SETUP
+            </span>
+          </div>
+          <p className="text-white/35 text-[9px] tracking-wide mt-0.5">
+            DOST Region XII · SETUP 4.0
+          </p>
         </div>
-        <p className="text-white/35 text-[9px] tracking-wide mt-0.5">
-          DOST Region XII · SETUP 4.0
-        </p>
       </div>
-    </div>
+    </DemoModeLogoTrigger>
   );
 }
 
 function TopbarLogo() {
   return (
-    <div className="flex items-center gap-2.5 shrink-0">
-      <DOSTMark size={36} />
-      <div className="flex flex-col leading-none hidden sm:flex">
-        <span className="text-[8px] font-semibold tracking-[0.18em] text-gray-400 uppercase">
-          Republic of the Philippines
-        </span>
-        <span className="text-[12px] font-bold text-gray-800 tracking-wide">
-          Dept. of Science &amp; Technology
-        </span>
+    <DemoModeLogoTrigger>
+      <div className="flex items-center gap-2.5 shrink-0">
+        <DOSTMark size={36} />
+        <div className="flex flex-col leading-none hidden sm:flex">
+          <span className="text-[8px] font-semibold tracking-[0.18em] text-gray-400 uppercase">
+            Republic of the Philippines
+          </span>
+          <span className="text-[12px] font-bold text-gray-800 tracking-wide">
+            Dept. of Science &amp; Technology
+          </span>
+        </div>
       </div>
-    </div>
+    </DemoModeLogoTrigger>
   );
 }
 
@@ -208,7 +254,7 @@ const menuGroups = [
         id: "refund-delinquent" as ViewType,
         label: "Refund & Delinquent Mgmt",
         icon: BarChart2,
-        module: "Mod 15&17",
+        module: "Mod 17",
       },
     ],
   },
@@ -289,7 +335,7 @@ const viewTitles: Record<
   },
   "refund-delinquent": {
     title: "Refund & Delinquent Management",
-    subtitle: "Modules 15 & 17 — Repayment Monitoring",
+    subtitle: "Module 17 — Repayment Monitoring",
   },
   clients: {
     title: "Clients",
@@ -313,6 +359,7 @@ function SidebarNav({
   onToggleGroup,
   userRole,
   applicant,
+  demoMode,
 }: {
   currentView: ViewType;
   onNavigate: (v: ViewType) => void;
@@ -320,7 +367,9 @@ function SidebarNav({
   onToggleGroup: (label: string) => void;
   userRole: AuthUser["role"];
   applicant?: ReturnType<typeof resolveApplicantForUser>;
+  demoMode: boolean;
 }) {
+  void demoMode;
   const visibleGroups = menuGroups
     .map((group) => ({
       ...group,
@@ -357,20 +406,25 @@ function SidebarNav({
                 const active = currentView === item.id;
                 const locked =
                   authStore.isClientRole(userRole) &&
-                  !canApplicantAccessView(applicant ?? null, item.id);
+                  isApplicantViewLocked(applicant ?? null, item.id);
+                const navigable = !locked || demoMode;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => !locked && onNavigate(item.id)}
-                    disabled={locked}
+                    onClick={() => navigable && onNavigate(item.id)}
+                    disabled={!navigable}
                     title={
                       locked
-                        ? "Complete earlier application steps to unlock this module"
+                        ? demoMode
+                          ? "Normally locked — demo mode lets you open this module"
+                          : "Complete earlier application steps to unlock this module"
                         : undefined
                     }
                     className={`w-full flex items-center gap-3 px-3 py-[10px] rounded-lg transition-all mb-0.5 group text-left ${
                       locked
-                        ? "opacity-40 cursor-not-allowed text-white/35"
+                        ? demoMode
+                          ? "opacity-70 text-white/50 hover:bg-white/10 hover:text-white/75"
+                          : "opacity-40 cursor-not-allowed text-white/35"
                         : active
                           ? "bg-white/15 text-white shadow-sm"
                           : "text-white/55 hover:bg-white/10 hover:text-white/85"
@@ -441,11 +495,17 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(
     authStore.getUser(),
   );
+  const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
 
   // Subscribe to auth changes
   useEffect(
     () =>
       authStore.subscribe(() => setUser(authStore.getUser())),
+    [],
+  );
+
+  useEffect(
+    () => demoModeStore.subscribe(() => setDemoMode(demoModeStore.isEnabled())),
     [],
   );
 
@@ -592,6 +652,7 @@ export default function App() {
           onToggleGroup={toggleGroup}
           userRole={user.role}
           applicant={activeApplicant}
+          demoMode={demoMode}
         />
       </aside>
 
@@ -626,6 +687,7 @@ export default function App() {
           onToggleGroup={toggleGroup}
           userRole={user.role}
           applicant={activeApplicant}
+          demoMode={demoMode}
         />
       </aside>
 
@@ -741,6 +803,26 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {demoMode && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div>
+              <p className="text-xs font-semibold text-amber-900">
+                Demo mode: restrictions bypassed (warnings still shown)
+              </p>
+              <p className="text-[11px] text-amber-700">
+                Toggle: 5× click DOST logo
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => demoModeStore.setEnabled(false)}
+              className="text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Turn off
+            </button>
+          </div>
+        )}
 
         {isRestrictedClient && (
           <div className="bg-teal-50 border-b border-teal-200 px-4 sm:px-6 py-2 flex items-center gap-2 shrink-0">
@@ -910,6 +992,7 @@ export default function App() {
               )}
               {currentView === "landbank-withdrawal" && (
                 <LandBankAndWithdrawal
+                  user={user}
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (app) {
@@ -923,6 +1006,7 @@ export default function App() {
               )}
               {currentView === "procurement-liquidation" && (
                 <ProcurementAndLiquidation
+                  user={user}
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (app) {
@@ -930,16 +1014,23 @@ export default function App() {
                         currentModule: "refund-delinquent",
                       });
                     }
-                    if (user?.role === "admin") {
-                      navigate("refund-delinquent");
-                    } else {
-                      navigate("dashboard");
-                    }
+                    navigate("refund-delinquent");
                   }}
                 />
               )}
               {currentView === "refund-delinquent" && (
-                <RefundAndDelinquent />
+                <RefundAndDelinquent
+                  user={user}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    if (app) {
+                      applicantStore.update(app.id, {
+                        currentModule: "completed",
+                      });
+                    }
+                    navigate("dashboard");
+                  }}
+                />
               )}
               {currentView === "clients" && (
                 <ClientManagement user={user} onNavigate={navigate} />

@@ -28,6 +28,7 @@ import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
+import { allowWhenDemo } from "../utils/demoMode";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
 import type { LoiDocumentResponse } from "../api/types";
 import {
@@ -515,7 +516,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
 
                 <button
                   onClick={() => setStep("additional")}
-                  disabled={!additional.dateEstablished || !additional.tinNumber || !additional.registrationType || !additional.registrationNumber || !additional.productServices}
+                  disabled={!allowWhenDemo(!!additional.dateEstablished && !!additional.tinNumber && !!additional.registrationType && !!additional.registrationNumber && !!additional.productServices)}
                   className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                   style={{ background: DOST_BLUE }}
                 >
@@ -597,7 +598,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </button>
               <button
                 onClick={() => setStep("validation")}
-                disabled={!additional.projectDescription || !additional.expectedOutcome || !additional.budget || !additional.timeline}
+                disabled={!allowWhenDemo(!!additional.projectDescription && !!additional.expectedOutcome && !!additional.budget && !!additional.timeline)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >
@@ -661,7 +662,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </button>
               <button
                 onClick={() => setStep("general-agreement")}
-                disabled={!allValidationPassed}
+                disabled={!allowWhenDemo(allValidationPassed)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >
@@ -778,7 +779,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </button>
               <button
                 onClick={() => setStep("production-plan")}
-                disabled={!generalAgreementComplete}
+                disabled={!allowWhenDemo(generalAgreementComplete)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >
@@ -889,7 +890,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </button>
               <button
                 onClick={() => setStep("commitment-refund")}
-                disabled={!productionPlanComplete}
+                disabled={!allowWhenDemo(productionPlanComplete)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >
@@ -1035,7 +1036,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </button>
               <button
                 onClick={handleFinalSubmit}
-                disabled={!commitmentComplete || generating}
+                disabled={!allowWhenDemo(commitmentComplete) || generating}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: "#059669" }}
               >

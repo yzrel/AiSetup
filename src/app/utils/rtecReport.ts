@@ -21,6 +21,7 @@ import {
 } from "./projectProposal";
 import { getPublishedTna2 } from "./tnaForm02";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
+import { isDemoModeActive } from "./demoMode";
 
 const DOST_BLUE = "#0C2461";
 
@@ -396,6 +397,7 @@ export function submitRtecReport(applicantId: string, form: RtecReportForm): voi
 }
 
 export function validateRtecReportSubmit(form: RtecReportForm): string[] {
+  if (isDemoModeActive()) return [];
   const errors: string[] = [];
   if (!form.proposalSnapshot.projectTitle?.trim()) {
     errors.push("Project Proposal data is required before completing RTEC.");

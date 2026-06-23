@@ -15,6 +15,7 @@ import { getApprovalLetterForm, getApprovalLetterStored, getSignedMoa } from "./
 import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { getPublishedTna2 } from "./tnaForm02";
+import { isDemoModeActive } from "./demoMode";
 
 const DOST_BLUE = "#0C2461";
 
@@ -269,6 +270,7 @@ export function validateSignedPrePisUpload(
   fileName: string,
   moaSignedDate?: string,
 ): { errors: string[]; warnings: string[] } {
+  if (isDemoModeActive()) return { errors: [], warnings: [] };
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!prePisSignedDate?.trim()) errors.push("Pre-PIS signed date is required.");
@@ -348,6 +350,7 @@ export function validatePisOngoingFiling(
   filing: PisOngoingFiling,
   existingFilings: PisOngoingFiling[],
 ): string[] {
+  if (isDemoModeActive()) return [];
   const errors: string[] = [];
   const normalized = normalizePisOngoingFiling(filing);
   if (!normalized.reportingYear?.trim()) {

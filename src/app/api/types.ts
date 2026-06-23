@@ -629,3 +629,140 @@ export interface ProjectInformationSheetStored {
   ongoingFilings: PisOngoingFiling[];
   updatedAt?: string;
 }
+
+// ── Modules 11–13 — LandBank & Withdrawal ─────────────────────────────────────
+
+export interface LbpIntroductionLetterForm {
+  letterDate: string;
+  branchManagerName: string;
+  branchManagerTitle: string;
+  landbankBranch: string;
+  branchCityProvince: string;
+  proponentName: string;
+  enterpriseName: string;
+  projectTitle: string;
+  approvedAmount: string;
+  approvedAmountWords: string;
+  signatoryName: string;
+  signatoryTitle: string;
+  regionalOfficeName: string;
+}
+
+export interface LbpIntroductionLetterStored {
+  form: LbpIntroductionLetterForm;
+  published: boolean;
+  publishedAt?: string;
+  publishedBy?: string;
+  updatedAt?: string;
+}
+
+export interface ModuleDocument {
+  fileName: string;
+  mimeType: string;
+  dataUrl: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  notes?: string;
+}
+
+export interface LandBankForm {
+  accountSnapshot: ModuleDocument | null;
+  withdrawalLetter: ModuleDocument | null;
+  withdrawalRemarks: string;
+  authorityLetterGenerated: boolean;
+}
+
+export interface LandBankStored {
+  form: LandBankForm;
+  introductionLetter?: LbpIntroductionLetterStored;
+  submitted?: boolean;
+  submittedAt?: string;
+  submittedBy?: string;
+  updatedAt?: string;
+}
+
+// ── Modules 14–16 — Procurement & Liquidation ─────────────────────────────────
+
+export interface ProcurementLineItem {
+  id: string;
+  description: string;
+  supplier: string;
+  purchaseDate: string;
+  quantity: number;
+  totalCost: string;
+}
+
+export interface ProcurementDocument {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+  amount?: string;
+}
+
+export interface ProcurementStaffReview {
+  reviewerName: string;
+  reviewedAt: string;
+  remarks: string;
+  verified: boolean;
+}
+
+export interface ProcurementForm {
+  documents: ProcurementDocument[];
+  items: ProcurementLineItem[];
+  liquidationDocuments: ProcurementDocument[];
+  staffReview?: ProcurementStaffReview;
+  untagged: boolean;
+  untaggedAt?: string;
+}
+
+export interface ProcurementStored {
+  form: ProcurementForm;
+  submitted?: boolean;
+  submittedAt?: string;
+  submittedBy?: string;
+  updatedAt?: string;
+}
+
+// ── Module 17 — Refund & Delinquent Monitoring ────────────────────────────────
+
+export type PDCStatus = "pending" | "cleared" | "bounced";
+
+export type DelinquencyStatus =
+  | "monitoring-required"
+  | "current"
+  | "delayed"
+  | "delinquent"
+  | "under-evaluation";
+
+export interface PDCEntry {
+  id: string;
+  checkNumber: string;
+  dueDate: string;
+  accountNumber: string;
+  amount: string;
+  status: PDCStatus;
+}
+
+export interface RefundScheduleRow {
+  date: string;
+  amount: string;
+  balance: string;
+  status: string;
+}
+
+export interface RefundDelinquentForm {
+  pdcs: PDCEntry[];
+  pdcsRecorded: boolean;
+  refundSchedule: RefundScheduleRow[];
+  delinquencyStatus: DelinquencyStatus;
+  soaIssued: boolean;
+  lastPaymentDate?: string;
+}
+
+export interface RefundDelinquentStored {
+  form: RefundDelinquentForm;
+  submitted?: boolean;
+  submittedAt?: string;
+  submittedBy?: string;
+  updatedAt?: string;
+}

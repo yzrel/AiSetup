@@ -28,6 +28,7 @@ import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
+import { allowWhenDemo } from "../utils/demoMode";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
 const DOST_BLUE = "#0C2461";
@@ -819,7 +820,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               </div>
             </div>
 
-            <button onClick={() => goToStep("attachment-a")} disabled={!allGA || !form.enterpriseName || !form.contactPerson}
+            <button onClick={() => goToStep("attachment-a")} disabled={!allowWhenDemo(allGA && !!form.enterpriseName && !!form.contactPerson)}
               className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
               style={{ background: DOST_BLUE }}>
               Continue to Enterprise Profile →
@@ -1023,7 +1024,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
             <div className="flex gap-3">
               <button onClick={() => setStep("identification")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
-              <button onClick={() => goToStep("benchmark")} disabled={!form.sector || !form.commodity || !form.mainProduct || !form.reasonsForAssistance || !form.organizationType || !form.capitalClassification}
+              <button onClick={() => goToStep("benchmark")} disabled={!allowWhenDemo(!!form.sector && !!form.commodity && !!form.mainProduct && !!form.reasonsForAssistance && !!form.organizationType && !!form.capitalClassification)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}>
                 Continue to Benchmark Information →
@@ -1434,7 +1435,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                     goToStep("complete");
                   }
                 }}
-                disabled={!allValid}
+                disabled={!allowWhenDemo(allValid)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}>
                 {isStaff ? "Submit for Staff Review →" : "Submit TNA Form 01 ✓"}
@@ -1637,7 +1638,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
                 <div className="flex gap-3">
                   <button onClick={() => persistStaffReview("approved")}
-                    disabled={!allDocReviewed}
+                    disabled={!allowWhenDemo(allDocReviewed)}
                     className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                     style={{ background: "#059669" }}>
                     ✅ Approve & Proceed to AI Analysis →
@@ -1741,7 +1742,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
                 <div className="flex gap-3">
                   <button onClick={() => setStep("staff-review")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
-                  <button onClick={() => setStep("reports")} disabled={!qualification}
+                  <button onClick={() => setStep("reports")} disabled={!allowWhenDemo(!!qualification)}
                     className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                     style={{ background: DOST_BLUE }}>
                     Proceed to Reports →
@@ -1784,7 +1785,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 <p className="text-sm text-gray-500">Auto-generated from TNA1 enterprise data and AI analysis. Review the analysis result first, then generate.</p>
                 {proposalLoading
                   ? <AILoader label="Generating Project Proposal" />
-                  : <button onClick={handleGenerateProposal} disabled={!analysisResult}
+                  : <button onClick={handleGenerateProposal} disabled={!allowWhenDemo(!!analysisResult)}
                       className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                       style={{ background: DOST_BLUE }}>
                       📋 Generate Project Proposal

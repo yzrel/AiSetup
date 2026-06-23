@@ -11,6 +11,7 @@ import {
 import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { getRtecReportForm, getRtecReportStored } from "./rtecReport";
+import { isDemoModeActive } from "./demoMode";
 
 const DOST_BLUE = "#0C2461";
 
@@ -301,6 +302,7 @@ export function acknowledgeApprovalLetter(
 }
 
 export function validateApprovalLetterPublish(form: ApprovalLetterForm): string[] {
+  if (isDemoModeActive()) return [];
   const errors: string[] = [];
   if (!form.projectTitle?.trim()) errors.push("Project title is required.");
   if (!form.referenceNumber?.trim()) errors.push("Reference number is required.");
@@ -315,6 +317,7 @@ export function validateApprovalLetterPublish(form: ApprovalLetterForm): string[
 export function validateApprovalLetterAcknowledge(
   conformeSignedName: string,
 ): string[] {
+  if (isDemoModeActive()) return [];
   const errors: string[] = [];
   if (!conformeSignedName?.trim()) {
     errors.push("Please type your full name to acknowledge the Notice of Approval.");
@@ -414,6 +417,7 @@ export function validateSignedMoaUpload(
   moaSignedDate: string,
   fileName: string,
 ): string[] {
+  if (isDemoModeActive()) return [];
   const errors: string[] = [];
   if (!moaSignedDate?.trim()) errors.push("MOA signed date is required.");
   if (!fileName?.trim()) errors.push("Signed MOA file is required.");

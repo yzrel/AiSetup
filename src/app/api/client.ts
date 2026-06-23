@@ -93,4 +93,23 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  getAuthorityLetter: (applicationId: string) =>
+    apiFetch<{ applicationId: string; status: string; message: string }>(
+      `/fund-release/authority-letter/${applicationId}`,
+    ),
+
+  getRefundSchedule: (applicationId: string) =>
+    apiFetch<{ applicationId: string; status: string; message: string }>(
+      `/fund-release/refund-schedule/${applicationId}`,
+    ),
+
+  generateLbpIntroduction: (payload: { applicationId: string }) =>
+    apiFetch<{ applicationId: string; status: string; message: string }>(
+      "/fund-release/lbp-introduction/generate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
 };
