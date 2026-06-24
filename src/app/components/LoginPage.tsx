@@ -318,13 +318,11 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 <>
                   <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-                  <p className="text-[11px] text-gray-500 mt-2">Presenters: 5× click the DOST logo to unlock all modules (works on login and registration too).</p>
-                </>
+                 </>
               ) : (
                 <>
                   <p className="text-[11px] text-gray-500">Use your registered email and password</p>
                   <p className="text-[11px] text-gray-500 mt-1">Demo: <span className="font-mono">juan@abcfood.com</span> / <span className="font-mono">Demo@1234</span></p>
-                  <p className="text-[11px] text-gray-500 mt-2">Presenters: 5× click the DOST logo to unlock all modules (works on login and registration too).</p>
                  </>
               )}
             </div>
