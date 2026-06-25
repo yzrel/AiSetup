@@ -47,6 +47,7 @@ import {
   Eye,
 } from "lucide-react";
 import { ApplicantListView } from "./ApplicantListView";
+import { ResponsiveDataView, type ResponsiveColumn } from "./ui/responsive-data-view";
 import { authStore, AdminView, AuthUser, DashboardTab } from "../store/authStore";
 import { applicantStore } from "../store/applicantStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
@@ -580,9 +581,91 @@ function PaymentMonitor({
         ))}
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[700px]">
+      {/* Mobile cards */}
+      <div className="md:hidden px-4 py-3 space-y-3 border-b border-gray-100">
+        {filtered.length === 0 && (
+          <p className="py-6 text-center text-sm text-gray-400">
+            No records match your filter.
+          </p>
+        )}
+        {filtered.map((record) => {
+          const sc = paymentStatusConfig[record.status];
+          const pdc = pdcConfig[record.pdcStatus];
+          const isExpanded = expanded === record.id;
+          const Icon = sc.icon;
+
+          return (
+            <div
+              key={record.id}
+              className={`rounded-xl border border-gray-200 p-4 space-y-3 ${sc.rowBg}`}
+            >
+              <button
+                type="button"
+                onClick={() => setExpanded(isExpanded ? null : record.id)}
+                className="w-full text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-9 h-9 ${sc.bg} rounded-lg flex items-center justify-center shrink-0`}
+                  >
+                    <Icon className={`w-4 h-4 ${sc.text}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-800 text-sm">
+                      {record.enterprise}
+                    </p>
+                    <p className="text-[10px] text-gray-400">{record.type} Enterprise</p>
+                    <p className="text-[11px] font-mono text-gray-500 mt-1">{record.id}</p>
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-gray-400">Balance</span>
+                    <p className="font-bold text-gray-800">{record.totalBalance}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-gray-400">Due</span>
+                    <p className="font-medium text-gray-700">{record.dueDate}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-gray-400">Overdue</span>
+                    <p className="font-bold text-red-600">{record.daysOverdue} days</p>
+                  </div>
+                  <div>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${sc.bg} ${sc.text} ${sc.border}`}
+                    >
+                      {sc.label}
+                    </span>
+                  </div>
+                </div>
+              </button>
+              {isExpanded && (
+                <div className="pt-3 border-t border-gray-200 space-y-2 text-xs text-gray-600">
+                  <p>
+                    <span className="font-semibold text-gray-500">Contact:</span>{" "}
+                    {record.contactPerson} · {record.phone}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-gray-500">Monthly:</span>{" "}
+                    {record.monthlyAmortization}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-gray-500">PDC:</span> {pdc.label}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               {[
@@ -897,6 +980,88 @@ const statusConfig: Record<
   },
 };
 
+type RecentApp = (typeof recentApps)[number];
+
+function RecentAppStatusBadge({ status }: { status: string }) {
+  const sc = statusConfig[status] || statusConfig["Pre-Screening"];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${sc.bg} ${sc.text}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+      {status}
+    </span>
+  );
+}
+
+const recentAppColumns: ResponsiveColumn<RecentApp>[] = [
+  {
+    key: "name",
+    header: "Enterprise",
+    mobileLabel: "Enterprise",
+    className: "px-5 py-3.5",
+    cell: (app) => (
+      <div className="flex items-center gap-2.5">
+        <div className="w-7 h-7 bg-[#0C2461]/10 rounded-lg flex items-center justify-center shrink-0">
+          <FileText className="w-3.5 h-3.5 text-[#0C2461]" />
+        </div>
+        <span className="font-semibold text-gray-800 text-xs">{app.name}</span>
+      </div>
+    ),
+  },
+  {
+    key: "region",
+    header: "Region",
+    mobileLabel: "Region",
+    className: "px-5 py-3.5",
+    cell: (app) => (
+      <div className="flex items-center gap-1 text-xs text-gray-500">
+        <MapPin className="w-3 h-3 shrink-0" />
+        {app.region}
+      </div>
+    ),
+  },
+  {
+    key: "type",
+    header: "Type",
+    mobileLabel: "Type",
+    className: "px-5 py-3.5 text-xs text-gray-500",
+    cell: (app) => app.type,
+  },
+  {
+    key: "amount",
+    header: "Amount",
+    mobileLabel: "Amount",
+    className: "px-5 py-3.5 text-xs font-bold text-gray-800",
+    cell: (app) => app.amount,
+  },
+  {
+    key: "module",
+    header: "Current Stage",
+    mobileLabel: "Stage",
+    className: "px-5 py-3.5",
+    cell: (app) => (
+      <span className="text-[10px] bg-[#0C2461]/8 text-[#0C2461] font-semibold px-2 py-0.5 rounded">
+        {app.module}
+      </span>
+    ),
+  },
+  {
+    key: "date",
+    header: "Date",
+    mobileLabel: "Date",
+    className: "px-5 py-3.5 text-[11px] text-gray-400 whitespace-nowrap",
+    cell: (app) => app.date,
+  },
+  {
+    key: "status",
+    header: "Status",
+    mobileLabel: "Status",
+    className: "px-5 py-3.5",
+    cell: (app) => <RecentAppStatusBadge status={app.status} />,
+  },
+];
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatCard({
@@ -1023,7 +1188,7 @@ export function Dashboard({
   );
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
+    <div className="max-w-7xl mx-auto space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
@@ -1276,7 +1441,8 @@ export function Dashboard({
               <SectionTitle sub="Number of applicants at each stage">
                 Application Pipeline
               </SectionTitle>
-              <ResponsiveContainer width="100%" height={210}>
+              <div className="h-48 sm:h-[210px]">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={pipelineData} barSize={30}>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -1314,6 +1480,7 @@ export function Dashboard({
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             </div>
 
             {/* Regional breakdown */}
@@ -1321,7 +1488,8 @@ export function Dashboard({
               <SectionTitle sub="Applications by province in Region XII">
                 Region XII Breakdown
               </SectionTitle>
-              <ResponsiveContainer width="100%" height={130}>
+              <div className="h-36 sm:h-[130px]">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={regionData}
@@ -1346,6 +1514,7 @@ export function Dashboard({
                   />
                 </PieChart>
               </ResponsiveContainer>
+              </div>
               <div className="space-y-1.5 mt-1">
                 {regionData.map((r) => (
                   <div
@@ -1535,84 +1704,52 @@ export function Dashboard({
                 View all <ArrowUpRight className="w-3 h-3" />
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-left">
-                    {[
-                      "Enterprise",
-                      "Region",
-                      "Type",
-                      "Amount",
-                      "Current Stage",
-                      "Date",
-                      "Status",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentApps.map((app, i) => {
-                    const sc =
-                      statusConfig[app.status] ||
-                      statusConfig["Pre-Screening"];
-                    return (
-                      <tr
-                        key={i}
-                        className="border-t border-gray-50 hover:bg-[#0C2461]/[0.02] transition-colors cursor-pointer"
-                      >
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 bg-[#0C2461]/10 rounded-lg flex items-center justify-center shrink-0">
-                              <FileText className="w-3.5 h-3.5 text-[#0C2461]" />
-                            </div>
-                            <span className="font-semibold text-gray-800 text-xs">
-                              {app.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <MapPin className="w-3 h-3 shrink-0" />
-                            {app.region}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5 text-xs text-gray-500">
-                          {app.type}
-                        </td>
-                        <td className="px-5 py-3.5 text-xs font-bold text-gray-800">
-                          {app.amount}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-[10px] bg-[#0C2461]/8 text-[#0C2461] font-semibold px-2 py-0.5 rounded">
-                            {app.module}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-[11px] text-gray-400 whitespace-nowrap">
-                          {app.date}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${sc.bg} ${sc.text}`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${sc.dot}`}
-                            />
-                            {app.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveDataView
+              columns={recentAppColumns}
+              rows={recentApps}
+              getRowKey={(app, i) => `${app.name}-${i}`}
+              mobileClassName="px-4 pb-4"
+              desktopClassName="overflow-x-auto [&_th]:px-5 [&_th]:py-3 [&_th]:text-[11px] [&_th]:font-bold [&_th]:text-gray-400 [&_th]:uppercase [&_th]:tracking-wider [&_tr]:border-t [&_tr]:border-gray-50 [&_tr:hover]:bg-[#0C2461]/[0.02] [&_thead_tr]:bg-gray-50"
+              renderMobileCard={(app) => (
+                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 bg-[#0C2461]/10 rounded-lg flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4 text-[#0C2461]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-800 text-sm">{app.name}</p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        {app.region}
+                      </p>
+                    </div>
+                    <RecentAppStatusBadge status={app.status} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400">Type</span>
+                      <p className="text-gray-700">{app.type}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400">Amount</span>
+                      <p className="font-bold text-gray-800">{app.amount}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400">Stage</span>
+                      <p>
+                        <span className="text-[10px] bg-[#0C2461]/8 text-[#0C2461] font-semibold px-2 py-0.5 rounded">
+                          {app.module}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400">Date</span>
+                      <p className="text-gray-500">{app.date}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
           </div>
 
           {/* ── Payment Monitoring ── */}
@@ -1637,7 +1774,8 @@ export function Dashboard({
               <SectionTitle sub="Applications, approvals, and releases per month">
                 Monthly Trends
               </SectionTitle>
-              <ResponsiveContainer width="100%" height={240}>
+              <div className="h-48 sm:h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -1689,6 +1827,7 @@ export function Dashboard({
                   />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
               <div className="flex gap-4 mt-2 justify-center">
                 {[
                   ["#0C2461", "Applications"],
@@ -1714,7 +1853,8 @@ export function Dashboard({
               <SectionTitle sub="Monthly fund disbursement in millions ₱">
                 Fund Disbursement
               </SectionTitle>
-              <ResponsiveContainer width="100%" height={240}>
+              <div className="h-48 sm:h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={fundChartData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -1755,6 +1895,7 @@ export function Dashboard({
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
@@ -1763,7 +1904,7 @@ export function Dashboard({
             <SectionTitle sub="Current vs previous quarter">
               Quarter Comparison
             </SectionTitle>
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[
                 {
                   label: "New Applications",
@@ -1866,7 +2007,7 @@ export function Dashboard({
       {/* ── Alerts Tab ── */}
       {activeTab === "alerts" && authStore.canAccessDashboardTab(user.role, "alerts") && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-4 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
             {[
               {
                 label: "Warnings",

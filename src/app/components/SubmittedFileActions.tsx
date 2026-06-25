@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { Download, Eye, X } from "lucide-react";
+import { ACTION_ROW } from "./moduleTheme";
 
 export interface SubmittedFileActionsProps {
   fileName: string;
@@ -49,7 +50,7 @@ export function SubmittedFileActions({
 
   return (
     <>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className={`${ACTION_ROW} flex-shrink-0`}>
         <button type="button" onClick={() => setPreviewOpen(true)} className={btnClass}>
           <Eye className="w-3.5 h-3.5" />
           View

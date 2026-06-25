@@ -142,7 +142,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
     : 'from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a]';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a] flex items-center justify-center px-4 sm:px-6 py-4">
       <div className="w-full max-w-md relative z-10">
         {onHome && (
           <button onClick={onHome} className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4 transition-colors">
@@ -152,7 +152,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
         )}
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className={`bg-gradient-to-br ${headerGrad} px-8 py-7 text-center transition-all duration-300`}>
+          <div className={`bg-gradient-to-br ${headerGrad} px-4 sm:px-8 py-6 sm:py-7 text-center transition-all duration-300`}>
             <DemoModeLogoTrigger className="inline-block mx-auto">
               <div className="flex flex-col items-center gap-2 mb-2">
                 <DOSTMark size={40} />
@@ -200,7 +200,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
             </button>
           </div>
 
-          <div className="px-8 py-7">
+          <div className="px-4 sm:px-8 py-6 sm:py-7">
             <div className="mb-4">
               <DemoModeBanner compact />
             </div>

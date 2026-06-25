@@ -4,6 +4,7 @@
 
 import { Printer } from "lucide-react";
 import type { ApprovalLetterForm } from "../api/types";
+import { PreviewToolbar } from "./PreviewLayout";
 import {
   APPROVAL_LETTER_ADDRESS,
   buildApprovalLetterBody,
@@ -31,21 +32,21 @@ export function ApprovalLetterPreview({
   return (
     <div className={compact ? "" : "space-y-4"}>
       {showToolbar && onPrint && (
-        <div className="flex justify-end print:hidden">
+        <PreviewToolbar className="justify-end">
           <button
             type="button"
             onClick={onPrint}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
           >
             <Printer className="w-4 h-4" />
             Download PDF
           </button>
-        </div>
+        </PreviewToolbar>
       )}
 
       <div
         id="approval-letter-preview"
-        className="bg-white border border-gray-200 rounded-xl p-6 sm:p-10 text-gray-800 font-serif"
+        className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-10 text-gray-800 font-serif"
       >
         {/* Letterhead */}
         <div className="al-letterhead text-center mb-6">

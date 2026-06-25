@@ -29,6 +29,7 @@ import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
 // import { ClientPortal } from "./components/ClientPortal";
 import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
+import { loadCurrentView, saveCurrentView } from "./store/navigationStore";
 import { applicantStore } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
@@ -55,6 +56,32 @@ import {
 } from "lucide-react";
 
 type ViewType = AdminView;
+
+function resolveViewForUser(user: AuthUser | null): ViewType {
+  if (!user) return "dashboard";
+
+  const saved = loadCurrentView();
+  if (saved && authStore.canAccessView(user.role, saved)) {
+    if (
+      authStore.isClientRole(user.role) &&
+      !canApplicantAccessView(resolveApplicantForUser(user), saved)
+    ) {
+      /* saved view no longer accessible for this applicant */
+    } else {
+      return saved;
+    }
+  }
+
+  if (authStore.isClientRole(user.role)) {
+    const app = resolveApplicantForUser(user);
+    const target = app
+      ? moduleToApplicantView(app.currentModule)
+      : "prescreening";
+    return target === "dashboard" ? "dashboard" : target;
+  }
+
+  return authStore.getDefaultView(user.role);
+}
 
 import { DOSTMark } from "./components/DOSTLogos";
 import { DemoModeLogoTrigger } from "./components/DemoModeLogoTrigger";
@@ -442,8 +469,8 @@ function SidebarNav({
 }
 
 export default function App() {
-  const [currentView, setCurrentView] =
-    useState<ViewType>("dashboard");
+  const [currentView, setCurrentViewState] =
+    useState<ViewType>(() => resolveViewForUser(authStore.getUser()));
   const [collapsed, setCollapsed] = useState<
     Record<string, boolean>
   >({});
@@ -491,30 +518,33 @@ export default function App() {
     };
   }, [drawerOpen]);
 
-  // Applicants resume at their last saved module after sign-in
+  // Restore or assign view after sign-in (fresh login has no saved view)
   useEffect(() => {
     if (!user) return;
-    if (authStore.isClientRole(user.role)) {
-      const app = resolveApplicantForUser(user);
-      const target = app
-        ? moduleToApplicantView(app.currentModule)
-        : "prescreening";
-      const view = target === "dashboard" ? "dashboard" : target;
-      if (authStore.canAccessView(user.role, view)) {
-        setCurrentView(view);
-      } else {
-        setCurrentView("dashboard");
-      }
-    }
+    setCurrentViewState(resolveViewForUser(user));
   }, [user?.id]);
 
   // Redirect to an allowed view if the current one is restricted for this role
   useEffect(() => {
     if (!user || authStore.usesClientPortal(user)) return;
     if (!authStore.canAccessView(user.role, currentView)) {
-      setCurrentView(authStore.getDefaultView(user.role));
+      const fallback = authStore.getDefaultView(user.role);
+      setCurrentViewState(fallback);
+      saveCurrentView(fallback);
+    } else if (
+      authStore.isClientRole(user.role) &&
+      !canApplicantAccessView(resolveApplicantForUser(user), currentView)
+    ) {
+      const fallback = resolveViewForUser(user);
+      setCurrentViewState(fallback);
+      saveCurrentView(fallback);
     }
   }, [user, currentView]);
+
+  const setCurrentView = (view: ViewType) => {
+    setCurrentViewState(view);
+    saveCurrentView(view);
+  };
 
   // Show landing / login / register if not logged in
   if (!user) {
@@ -810,7 +840,7 @@ export default function App() {
         )}
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 pb-20 sm:pb-6">
           {authStore.canAccessView(user.role, currentView) ? (
             <>
               {currentView === "dashboard" && (

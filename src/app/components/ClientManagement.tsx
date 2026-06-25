@@ -107,7 +107,7 @@ export function ClientManagement({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Clients in scope", value: scoped.length, icon: Users },
           {
@@ -152,8 +152,8 @@ export function ClientManagement({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
-        <div className={`xl:col-span-2 space-y-4 ${selected ? "hidden xl:block" : ""}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className={`lg:col-span-2 space-y-4 ${selected ? "hidden lg:block" : ""}`}>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -266,7 +266,7 @@ export function ClientManagement({
           </div>
         </div>
 
-        <div className="xl:col-span-3">
+        <div className="lg:col-span-3">
           {selected ? (
             <ClientCaseDetail
               applicant={selected}

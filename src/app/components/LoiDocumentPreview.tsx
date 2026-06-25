@@ -5,6 +5,7 @@
 import { useRef } from "react";
 import { Printer } from "lucide-react";
 import type { LoiDocumentResponse } from "../api/types";
+import { PreviewToolbar } from "./PreviewLayout";
 
 interface LoiDocumentPreviewProps {
   document: LoiDocumentResponse;
@@ -26,9 +27,9 @@ export function LoiDocumentPreview({
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       {showToolbar && (
-        <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200 print:hidden">
+        <PreviewToolbar className="justify-between items-start sm:items-center px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200">
           <p className="text-sm font-bold text-gray-700">Letter of Intent — Document Preview</p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             {!doc.aiGenerated && (
               <span className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg">
                 Template draft (AI unavailable)
@@ -47,13 +48,13 @@ export function LoiDocumentPreview({
               <Printer className="w-3.5 h-3.5" /> Print / Download
             </button>
           </div>
-        </div>
+        </PreviewToolbar>
       )}
 
       <div
         ref={printRef}
         id="loi-document-print"
-        className="p-8 sm:p-10 space-y-5 text-sm text-gray-800 leading-relaxed font-serif bg-white max-h-[520px] overflow-y-auto print:max-h-none print:overflow-visible print:p-12"
+        className="p-4 sm:p-8 md:p-10 space-y-5 text-sm text-gray-800 leading-relaxed font-serif bg-white max-h-[70vh] sm:max-h-[520px] overflow-y-auto print:max-h-none print:overflow-visible print:p-12"
       >
         {/* Enterprise letterhead */}
         <div className="space-y-0.5">

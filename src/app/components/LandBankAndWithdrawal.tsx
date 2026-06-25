@@ -358,7 +358,6 @@ export function LandBankAndWithdrawal({
       headerExtra={sectionNav}
       alerts={alerts}
       insetBody={false}
-      contentClassName="p-6 space-y-10"
       maxWidth="5xl"
     >
       {/* Letter of Introduction */}

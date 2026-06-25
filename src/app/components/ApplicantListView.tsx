@@ -187,8 +187,8 @@ function ApplicantDetail({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
-      <div className="bg-[#0C2461] px-5 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="bg-[#0C2461] px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onBack}
             className="text-white/70 hover:text-white transition-colors"
@@ -204,7 +204,7 @@ function ApplicantDetail({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:justify-end">
           {saved && (
             <span className="text-emerald-300 text-xs font-semibold flex items-center gap-1">
               <CheckCircle className="w-3.5 h-3.5" /> Saved
@@ -237,7 +237,7 @@ function ApplicantDetail({
       </div>
 
       {/* Progress bar */}
-      <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+      <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-100">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-semibold text-gray-600">
             Application Progress
@@ -263,7 +263,7 @@ function ApplicantDetail({
         </div>
       </div>
 
-      <div className="p-5 space-y-6">
+      <div className="p-4 sm:p-5 space-y-6 pb-24 sm:pb-5">
         {/* Applicant Information */}
         <section>
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -599,7 +599,7 @@ export function ApplicantListView({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
-      <div className="bg-[#0C2461] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#0C2461] px-4 sm:px-5 py-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-white font-bold text-sm">
             {title} — Applicant Registry
@@ -621,9 +621,9 @@ export function ApplicantListView({
       </div>
 
       {/* Filters */}
-      <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
+      <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
         {/* Search */}
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200 flex-1 min-w-[180px]">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200 flex-1 w-full sm:min-w-[180px] min-w-0">
           <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <input
             value={search}
@@ -669,9 +669,52 @@ export function ApplicantListView({
         </select>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px]">
+      {/* Mobile cards */}
+      <div className="md:hidden px-4 py-3 space-y-3">
+        {filtered.length === 0 && (
+          <p className="py-8 text-center text-sm text-gray-400">
+            {search
+              ? "No applicants match your search."
+              : "No applicants found for this module."}
+          </p>
+        )}
+        {filtered.map((app) => (
+          <button
+            key={app.id}
+            type="button"
+            onClick={() => setSelectedId(app.id)}
+            className="w-full text-left rounded-xl border border-gray-200 p-4 hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-[#0C2461]/10 rounded-lg flex items-center justify-center shrink-0">
+                <span className="text-[#0C2461] font-black text-xs">
+                  {app.applicantName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join("")}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800 truncate">
+                  {app.applicantName}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{app.enterpriseName}</p>
+                <p className="text-[11px] font-mono text-gray-400 mt-1">{app.applicationId}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <ModuleBadge module={app.currentModule} />
+                  <span className="text-[10px] text-gray-400">{app.region}</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 mt-1" />
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-left">
               {[
@@ -804,7 +847,7 @@ export function ApplicantListView({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+      <div className="px-4 sm:px-5 py-3 border-t border-gray-100 bg-gray-50">
         <p className="text-[11px] text-gray-400">
           Showing{" "}
           <span className="font-bold text-gray-600">

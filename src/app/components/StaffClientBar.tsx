@@ -39,8 +39,8 @@ export function StaffClientBar({
     : "";
 
   return (
-    <div className="bg-[#0C2461]/95 text-white px-4 py-2 flex flex-wrap items-center gap-3 text-sm border-b border-white/10">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="bg-[#0C2461]/95 text-white px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 text-sm border-b border-white/10">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <Building2 className="w-4 h-4 shrink-0 text-[#00AEEF]" />
         <span className="font-semibold text-white/80">Active client:</span>
         {hasSelection && applicant ? (
@@ -53,14 +53,14 @@ export function StaffClientBar({
       </div>
 
       {applicant && (
-        <span className="text-[11px] text-white/50 hidden sm:inline">
+        <span className="text-[11px] text-white/50 hidden md:inline">
           {applicant.applicationId}
           {province ? ` · ${province}` : ""}
           {office ? ` · ${office.replace(" Provincial Office", " PSTO")}` : ""}
         </span>
       )}
 
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
         <div className="relative">
           <select
             value={applicant?.id ?? ""}
@@ -68,7 +68,7 @@ export function StaffClientBar({
               const id = e.target.value || null;
               setSelectedApplicantId(id);
             }}
-            className="appearance-none bg-white/10 hover:bg-white/15 border border-white/20 text-white text-xs font-medium pl-3 pr-8 py-1.5 rounded-lg focus:outline-none max-w-[220px]"
+            className="appearance-none bg-white/10 hover:bg-white/15 border border-white/20 text-white text-xs font-medium pl-3 pr-8 py-1.5 rounded-lg focus:outline-none w-full sm:max-w-[220px]"
           >
             <option value="" className="text-gray-900">
               Switch client...

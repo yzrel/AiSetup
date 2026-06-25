@@ -8,6 +8,33 @@ export const DOST_LIGHT = "#00AEEF";
 export const MODULE_SHELL =
   "bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden";
 
+/** Outer page padding for module screens */
+export const MODULE_PAGE =
+  "px-3 sm:px-4 md:px-6 py-4 sm:py-6";
+
+/** Blue gradient header padding */
+export const MODULE_HEADER = "p-4 sm:p-6";
+
+/** Inner body panel padding */
+export const MODULE_BODY = "p-4 sm:p-6 space-y-4 sm:space-y-6";
+
+/** Two-column form field grid */
+export const FORM_GRID_2 = "grid grid-cols-1 sm:grid-cols-2 gap-4";
+
+/** Three-column form field grid */
+export const FORM_GRID_3 =
+  "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
+
+/** Action button toolbars */
+export const ACTION_ROW =
+  "flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center";
+
+/** Alerts strip below header */
+export const MODULE_ALERTS = "mx-4 sm:mx-6 mt-4 space-y-3";
+
+/** Inset body wrapper */
+export const MODULE_INSET = "px-4 sm:px-6 pb-4 sm:pb-6";
+
 /** Bordered inner content panel below the blue header */
 export const MODULE_INNER_BODY =
   "border border-gray-200 rounded-xl overflow-hidden bg-white";
