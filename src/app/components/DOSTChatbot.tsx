@@ -586,7 +586,7 @@ export function DOSTChatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-5 right-5 z-50 w-14 h-14 bg-[#0C2461] text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-800 transition-all hover:scale-110 group"
+          className="fixed z-50 w-14 h-14 bg-[#0C2461] text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-800 transition-all hover:scale-110 group bottom-[max(1rem,env(safe-area-inset-bottom,1rem))] right-[max(1rem,env(safe-area-inset-right,1rem))] sm:bottom-5 sm:right-5"
         >
           <MessageCircle className="w-6 h-6" />
           <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white animate-pulse" />
@@ -600,8 +600,7 @@ export function DOSTChatbot() {
       {isOpen && (
         <div
           className={`fixed z-50 bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-200 transition-all duration-200
-            /* Mobile: full-width near bottom */
-            bottom-4 right-4 left-4
+            bottom-[max(1rem,env(safe-area-inset-bottom,1rem))] right-[max(1rem,env(safe-area-inset-right,1rem))] left-[max(1rem,env(safe-area-inset-left,1rem))]
             sm:left-auto sm:w-[380px] sm:bottom-5 sm:right-5
             ${isMinimized ? "h-14" : "h-[580px] sm:h-[600px]"}`}
           style={{ maxHeight: "calc(100vh - 32px)" }}

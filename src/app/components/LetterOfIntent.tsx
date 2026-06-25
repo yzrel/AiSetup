@@ -23,7 +23,7 @@ import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
-import { moduleStepPillClass } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import type { ModuleDocument } from "../api/types";
 import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
@@ -458,7 +458,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     <div className="max-w-4xl mx-auto space-y-5">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {/* ── Header ── */}
-        <div className="p-6 text-white" style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}>
+        <div className={`${MODULE_HEADER} text-white`} style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
               <span className="text-blue-800 font-black text-sm">ai</span>
@@ -480,7 +480,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 1 — Review Auto-filled Info
         ──────────────────────────────────────────────────────────────────── */}
         {step === "review" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
@@ -595,7 +595,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 </button>
               </>
             ) : (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-6 text-center">
                 <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
                 <h3 className="font-bold text-amber-800 mb-1">No Pre-Screening Data Found</h3>
                 <p className="text-sm text-amber-600">
@@ -610,7 +610,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 2 — Project Details
         ──────────────────────────────────────────────────────────────────── */}
         {step === "additional" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-blue-700">
@@ -683,7 +683,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 3 — Validation
         ──────────────────────────────────────────────────────────────────── */}
         {step === "validation" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <ClipboardCheck className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
@@ -747,7 +747,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 4 — General Agreement
         ──────────────────────────────────────────────────────────────────── */}
         {step === "general-agreement" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
               <Shield className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800">
@@ -756,7 +756,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </div>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 space-y-5 text-sm text-gray-700 leading-relaxed">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 space-y-5 text-sm text-gray-700 leading-relaxed">
               <div className="text-center border-b border-gray-200 pb-4">
                 <p className="font-black text-base text-gray-800">GENERAL AGREEMENT</p>
                 <p className="text-gray-500 text-xs mt-1">DOST SETUP 4.0 — Small Enterprise Technology Upgrading Program</p>
@@ -864,7 +864,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 5 — Production Plan Upload
         ──────────────────────────────────────────────────────────────────── */}
         {step === "production-plan" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <Paperclip className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
@@ -981,7 +981,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 6 — Commitment of Refund
         ──────────────────────────────────────────────────────────────────── */}
         {step === "commitment-refund" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
               <Banknote className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800">
@@ -1022,7 +1022,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             </div>
 
             {/* Commitment letter body */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 space-y-5 text-sm text-gray-700 leading-relaxed">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 space-y-5 text-sm text-gray-700 leading-relaxed">
               <div className="text-center border-b border-gray-200 pb-4">
                 <p className="font-black text-base text-gray-800">COMMITMENT OF REFUND</p>
                 <p className="text-gray-500 text-xs mt-1">Letter of Agreement — DOST SETUP Seed Fund Repayment</p>
@@ -1032,7 +1032,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 I, <strong>{applicant?.applicantName ?? "[Applicant Name]"}</strong>, {applicant?.designation ?? "[Designation]"} of <strong>{applicant?.enterpriseName ?? "[Enterprise Name]"}</strong>, hereby commit and bind myself/our enterprise to the following repayment obligations in connection with the SETUP seed fund assistance:
               </p>
 
-              <div className="bg-white border border-gray-200 rounded-lg p-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <p><span className="font-semibold text-gray-600">Enterprise:</span> {applicant?.enterpriseName ?? "—"}</p>
                 <p><span className="font-semibold text-gray-600">MSME Size:</span> {applicant?.msmeSize ?? "—"}</p>
                 <p><span className="font-semibold text-gray-600">Approved Amount:</span> ₱{commitmentRefund.approvedAmount || "___________"}</p>
@@ -1128,7 +1128,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             STEP 7 — Generated LOI Preview
         ──────────────────────────────────────────────────────────────────── */}
         {step === "complete" && loiDocument && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <div className="bg-green-50 border-2 border-green-400 rounded-xl p-5 text-center">
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
               <h3 className="font-black text-green-800 text-lg">Letter of Intent Generated!</h3>

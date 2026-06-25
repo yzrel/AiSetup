@@ -13,7 +13,7 @@ import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
-import { moduleStepPillClass } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
@@ -298,7 +298,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
         {/* ── HEADER ── */}
-        <div className="p-6 text-white" style={{ background: `linear-gradient(135deg,${DOST_BLUE},${DOST_MID})` }}>
+        <div className={`${MODULE_HEADER} text-white`} style={{ background: `linear-gradient(135deg,${DOST_BLUE},${DOST_MID})` }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
               <span className="text-blue-800 font-black text-sm">ai</span>
@@ -336,7 +336,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             STEP 1 — DOCUMENT SUBMISSION
         ══════════════════════════════════════════════════════════════════ */}
         {step === "documents" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
 
             {awaitingStaffReview && !isStaff && (
               <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -531,7 +531,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             STEP 2 — STAFF VERIFICATION
         ══════════════════════════════════════════════════════════════════ */}
         {step === "staff-review" && isStaff && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-xl p-4">
               <ShieldCheck className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-indigo-800">
@@ -546,7 +546,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 <h3 className="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">
                   <Building className="w-4 h-4 text-blue-500" /> Applicant Summary
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                   {[
                     ["Enterprise", applicant.enterpriseName],
                     ["Applicant", applicant.applicantName],
@@ -730,7 +730,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             STEP 3 — CHANGES REQUESTED (client revision)
         ══════════════════════════════════════════════════════════════════ */}
         {step === "changes-requested" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
               <RefreshCw className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-red-800">
@@ -817,7 +817,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             STEP 4 — ROUTING DECISION (post-TNA document review)
         ══════════════════════════════════════════════════════════════════ */}
         {step === "routing" && isStaff && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <ArrowRight className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">

@@ -21,13 +21,14 @@ import {
   Eye,
   Info,
 } from "lucide-react";
+import { EditableTableResponsive } from "./ui/editable-table-responsive";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
-import { moduleStepPillClass } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, ACTION_ROW } from "./moduleTheme";
 import { api, ApiError } from "../api/client";
 import type {
   ProjectProposalAttachment,
@@ -222,61 +223,18 @@ function TableEditor({
   rows: string[][];
   onChange: (rows: string[][]) => void;
 }) {
-  const updateCell = (ri: number, ci: number, value: string) => {
-    const next = rows.map((r) => [...r]);
-    while (next[ri].length < headers.length) next[ri].push("");
-    next[ri][ci] = value;
-    onChange(next);
-  };
-
   return (
     <div>
       <label className={labelCls}>{label}</label>
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-gray-50">
-              {headers.map((h) => (
-                <th key={h} className="px-2 py-2 text-left font-semibold text-gray-600 border-b">
-                  {h}
-                </th>
-              ))}
-              <th className="w-8" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, ri) => (
-              <tr key={ri}>
-                {headers.map((_, ci) => (
-                  <td key={ci} className="px-1 py-1 border-b">
-                    <input
-                      className="w-full px-2 py-1 border border-gray-100 rounded"
-                      value={row[ci] ?? ""}
-                      onChange={(e) => updateCell(ri, ci, e.target.value)}
-                    />
-                  </td>
-                ))}
-                <td className="px-1">
-                  <button
-                    type="button"
-                    onClick={() => onChange(rows.filter((_, j) => j !== ri))}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange([...rows, Array(headers.length).fill("")])}
-        className="mt-2 flex items-center gap-1 text-xs text-[#0C2461] font-semibold hover:underline"
-      >
-        <Plus className="w-3 h-3" /> Add row
-      </button>
+      <EditableTableResponsive
+        columns={headers}
+        rows={rows}
+        onChange={onChange}
+        onAddRow={() => onChange([...rows, Array(headers.length).fill("")])}
+        addLabel="Add row"
+        deletable
+        headerVariant="gray"
+      />
     </div>
   );
 }
@@ -730,14 +688,45 @@ export function ProjectProposal({
               <label className={labelCls}>Budgetary Requirement</label>
               <div className="space-y-2">
                 {form.budgetItems.map((item) => (
-                  <div key={item.id} className="grid grid-cols-6 gap-2 items-center">
-                    <input className={inputClsExtra("col-span-2")} placeholder="Item" value={item.item} onChange={(e) => updateBudgetItem(item.id, { item: e.target.value })} />
-                    <input className={inputCls} placeholder="Qty" value={item.qty} onChange={(e) => updateBudgetItem(item.id, { qty: e.target.value })} />
-                    <input className={inputCls} placeholder="Unit cost" value={item.unitCost} onChange={(e) => updateBudgetItem(item.id, { unitCost: e.target.value })} />
-                    <input className={inputCls} placeholder="SETUP share" value={item.setupShare} onChange={(e) => updateBudgetItem(item.id, { setupShare: e.target.value })} />
-                    <div className="flex gap-1">
-                      <input className={inputCls} placeholder="Total" value={item.total} onChange={(e) => updateBudgetItem(item.id, { total: e.target.value })} />
-                      <button type="button" onClick={() => patchForm({ budgetItems: form.budgetItems.filter((b) => b.id !== item.id) })} className="text-red-400"><Trash2 className="w-4 h-4" /></button>
+                  <div key={item.id}>
+                    <div className="md:hidden rounded-lg border border-gray-200 bg-gray-50/50 p-3 space-y-2">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">Item</label>
+                        <input className={inputCls} placeholder="Item" value={item.item} onChange={(e) => updateBudgetItem(item.id, { item: e.target.value })} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">Qty</label>
+                          <input className={inputCls} placeholder="Qty" value={item.qty} onChange={(e) => updateBudgetItem(item.id, { qty: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">Unit cost</label>
+                          <input className={inputCls} placeholder="Unit cost" value={item.unitCost} onChange={(e) => updateBudgetItem(item.id, { unitCost: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">SETUP share</label>
+                          <input className={inputCls} placeholder="SETUP share" value={item.setupShare} onChange={(e) => updateBudgetItem(item.id, { setupShare: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">Total</label>
+                          <input className={inputCls} placeholder="Total" value={item.total} onChange={(e) => updateBudgetItem(item.id, { total: e.target.value })} />
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => patchForm({ budgetItems: form.budgetItems.filter((b) => b.id !== item.id) })} className="text-xs text-red-500 font-semibold flex items-center gap-1">
+                        <Trash2 className="w-3 h-3" /> Remove line
+                      </button>
+                    </div>
+                    <div className="hidden md:grid grid-cols-6 gap-2 items-center">
+                      <input className={inputClsExtra("col-span-2")} placeholder="Item" value={item.item} onChange={(e) => updateBudgetItem(item.id, { item: e.target.value })} />
+                      <input className={inputCls} placeholder="Qty" value={item.qty} onChange={(e) => updateBudgetItem(item.id, { qty: e.target.value })} />
+                      <input className={inputCls} placeholder="Unit cost" value={item.unitCost} onChange={(e) => updateBudgetItem(item.id, { unitCost: e.target.value })} />
+                      <input className={inputCls} placeholder="SETUP share" value={item.setupShare} onChange={(e) => updateBudgetItem(item.id, { setupShare: e.target.value })} />
+                      <div className="flex gap-1">
+                        <input className={inputCls} placeholder="Total" value={item.total} onChange={(e) => updateBudgetItem(item.id, { total: e.target.value })} />
+                        <button type="button" onClick={() => patchForm({ budgetItems: form.budgetItems.filter((b) => b.id !== item.id) })} className="text-red-400"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -811,7 +800,7 @@ export function ProjectProposal({
     <div className="max-w-4xl mx-auto space-y-5">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div
-          className="p-6 text-white"
+          className={`${MODULE_HEADER} text-white`}
           style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}
         >
           <div className="flex items-center gap-3 mb-4">
@@ -851,7 +840,7 @@ export function ProjectProposal({
           </div>
         )}
 
-        <div className="p-6 space-y-6">
+        <div className={MODULE_BODY}>
           {step === "cover" && (
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
@@ -881,12 +870,12 @@ export function ProjectProposal({
 
           {renderStep()}
 
-          <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
+          <div className={`${ACTION_ROW} pt-4 border-t border-gray-100`}>
             {!isFirstStep && (
               <button
                 type="button"
                 onClick={goBack}
-                className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm"
+                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm"
               >
                 ← Back
               </button>
@@ -899,7 +888,7 @@ export function ProjectProposal({
                   goNext();
                 }}
                 disabled={!applicant}
-                className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
+                className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >
                 Continue →
@@ -919,7 +908,7 @@ export function ProjectProposal({
                     type="button"
                     onClick={handleSubmit}
                     disabled={!applicant}
-                    className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                    className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
                     style={{ background: "#059669" }}
                   >
                     <CheckCircle className="w-4 h-4" /> Submit proposal

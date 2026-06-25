@@ -83,6 +83,36 @@ function PDCTable({ rows }: { rows: PDCEntry[] }) {
   };
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
+      {/* Mobile cards */}
+      <div className="md:hidden p-3 space-y-3">
+        {rows.map((r) => (
+          <div
+            key={r.id}
+            className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 space-y-2"
+          >
+            <div className="flex justify-between items-start gap-2">
+              <span className="font-semibold text-gray-800">{r.checkNumber}</span>
+              <StatusBadge label={statusLabel[r.status]} color={statusColor[r.status]} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-gray-600">
+              <div>
+                <span className="text-[10px] font-bold uppercase text-gray-400 block">Due</span>
+                {r.dueDate}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase text-gray-400 block">Amount</span>
+                <span className="font-semibold text-gray-800">{r.amount}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-[10px] font-bold uppercase text-gray-400 block">Account</span>
+                {r.accountNumber}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Desktop table */}
+      <div className="hidden md:block">
       <div
         className="text-white grid grid-cols-5 px-3 py-2 font-semibold gap-2"
         style={{ background: DOST_BLUE }}
@@ -103,6 +133,7 @@ function PDCTable({ rows }: { rows: PDCEntry[] }) {
           <StatusBadge label={statusLabel[r.status]} color={statusColor[r.status]} />
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -233,7 +264,6 @@ export function RefundAndDelinquent({
       staffPickerLabel="Monitor applicant"
       alerts={alerts}
       insetBody={false}
-      contentClassName="p-6 space-y-6"
       maxWidth="5xl"
     >
       <div className="text-sm text-gray-500 max-w-3xl space-y-2">
@@ -290,8 +320,34 @@ export function RefundAndDelinquent({
             <FileText className="w-4 h-4" />
             Generated Refund Schedule
           </div>
-          <div className="p-5">
+          <div className="p-4 sm:p-5">
             <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
+              <div className="md:hidden p-3 space-y-3">
+                {form.refundSchedule.map((row, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 grid grid-cols-2 gap-2 text-gray-700"
+                  >
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400 block">Date</span>
+                      {row.date}
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400 block">Status</span>
+                      {row.status}
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400 block">Amount</span>
+                      {row.amount}
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-gray-400 block">Balance</span>
+                      {row.balance}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block">
               <div
                 className="text-white grid grid-cols-4 px-3 py-2 font-semibold gap-2"
                 style={{ background: DOST_BLUE }}
@@ -311,6 +367,7 @@ export function RefundAndDelinquent({
                   <span>{row.status}</span>
                 </div>
               ))}
+              </div>
             </div>
             {!readOnly && (
               <button

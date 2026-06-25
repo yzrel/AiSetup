@@ -24,6 +24,7 @@ import {
 import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
 import { getOfficeContact, resolveApplicantOfficeId } from "../utils/provincialOffice";
 import { allowWhenDemo } from "../utils/demoMode";
+import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -199,7 +200,7 @@ export function PrescreeningForm({
       {activeTab === "form" && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div
-            className="p-6 text-white"
+            className={`${MODULE_HEADER} text-white`}
             style={{
               background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)`,
             }}
@@ -225,10 +226,10 @@ export function PrescreeningForm({
           </div>
           <StaffApplicantBanner user={user} />
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          <form onSubmit={handleSubmit} className={`${MODULE_BODY} space-y-8`}>
               {qualified !== null && (
                 <div
-                  className={`p-6 rounded-lg ${qualified ? "bg-green-50 border-2 border-green-500" : "bg-red-50 border-2 border-red-500"}`}
+                  className={`p-4 sm:p-6 rounded-lg ${qualified ? "bg-green-50 border-2 border-green-500" : "bg-red-50 border-2 border-red-500"}`}
                 >
                   <div className="flex items-start gap-4">
                     {qualified ? (

@@ -292,7 +292,7 @@ export function AccountManagement({ user }: AccountManagementProps) {
                 </div>
               </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-gray-400 font-semibold uppercase tracking-wide mb-1">
                     Application stage

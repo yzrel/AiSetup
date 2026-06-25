@@ -177,7 +177,6 @@ export function ProcurementAndLiquidation({
       showStaffPicker={isStaff}
       alerts={alerts}
       insetBody={false}
-      contentClassName="p-6 space-y-6"
       maxWidth="5xl"
     >
       {step === "procurement" && form && applicant && (
@@ -224,7 +223,7 @@ export function ProcurementAndLiquidation({
               ))}
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h3 className="font-bold text-sm text-gray-800">Procurement Line Items</h3>
               {!stored?.submitted && (
                 <button
@@ -240,7 +239,75 @@ export function ProcurementAndLiquidation({
               )}
             </div>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full text-xs">
+              {/* Mobile cards */}
+              <div className="md:hidden p-3 space-y-3">
+                {form.items.map((item) =>
+                  editingId === item.id && !stored?.submitted ? (
+                    <div key={item.id} className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2 text-xs">
+                      {(["description", "supplier", "purchaseDate"] as const).map((f) => (
+                        <div key={f}>
+                          <label className="text-[10px] font-bold uppercase text-gray-500 capitalize">{f}</label>
+                          <input
+                            value={item[f]}
+                            onChange={(e) =>
+                              updateProcurementItem(applicant.id, item.id, { [f]: e.target.value })
+                            }
+                            className="w-full mt-0.5 border border-blue-300 rounded px-2 py-1.5 text-xs"
+                          />
+                        </div>
+                      ))}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-gray-500">Qty</label>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              updateProcurementItem(applicant.id, item.id, {
+                                quantity: parseInt(e.target.value, 10) || 1,
+                              })
+                            }
+                            className="w-full mt-0.5 border border-blue-300 rounded px-2 py-1.5 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-gray-500">Cost</label>
+                          <input
+                            value={item.totalCost}
+                            onChange={(e) =>
+                              updateProcurementItem(applicant.id, item.id, { totalCost: e.target.value })
+                            }
+                            className="w-full mt-0.5 border border-blue-300 rounded px-2 py-1.5 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button type="button" onClick={() => setEditingId(null)} className="flex-1 text-xs bg-green-600 text-white rounded-lg py-2">Save</button>
+                        <button type="button" onClick={() => removeProcurementItem(applicant.id, item.id)} className="text-xs bg-red-100 text-red-600 rounded-lg px-3 py-2">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 space-y-2 text-xs">
+                      <p className="font-semibold text-gray-800">{item.description || "—"}</p>
+                      <div className="grid grid-cols-2 gap-2 text-gray-600">
+                        <div><span className="text-[10px] font-bold uppercase text-gray-400 block">Supplier</span>{item.supplier || "—"}</div>
+                        <div><span className="text-[10px] font-bold uppercase text-gray-400 block">Date</span>{item.purchaseDate || "—"}</div>
+                        <div><span className="text-[10px] font-bold uppercase text-gray-400 block">Qty</span>{item.quantity}</div>
+                        <div><span className="text-[10px] font-bold uppercase text-gray-400 block">Cost</span><span className="font-semibold">{item.totalCost || "—"}</span></div>
+                      </div>
+                      {!stored?.submitted && (
+                        <button type="button" onClick={() => setEditingId(item.id)} className="w-full text-xs bg-blue-600 text-white rounded-lg py-2 flex items-center justify-center gap-1">
+                          <Edit2 className="w-3 h-3" /> Edit
+                        </button>
+                      )}
+                    </div>
+                  ),
+                )}
+              </div>
+              {/* Desktop table */}
+              <table className="hidden md:table w-full text-xs">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {["Description", "Supplier", "Date", "Qty", "Cost", ""].map((h) => (

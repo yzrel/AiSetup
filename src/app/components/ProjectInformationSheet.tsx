@@ -17,7 +17,7 @@ import {
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
-import { DOST_BLUE, ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
+import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import type { PisOngoingFiling, PrePisDraftForm, SignedPrePisDocument } from "../api/types";
 import { getSignedMoa } from "../utils/approvalLetter";
 import { notifySigningDayComplete } from "../utils/notificationHelpers";
@@ -281,7 +281,7 @@ export function ProjectInformationSheet({
     >
       {applicant && draft && gateOpen(ackReady) && (
         <>
-          <div className="flex gap-2 border-b border-gray-100 pb-3">
+          <div className="flex gap-2 border-b border-gray-100 pb-3 overflow-x-auto scrollbar-hide">
             <button
               type="button"
               onClick={() => setTab("signing-day")}
@@ -498,7 +498,7 @@ export function ProjectInformationSheet({
                 )}
 
                 {isStaff && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <div className={`${ACTION_ROW} flex-wrap pt-2 border-t border-gray-100`}>
                     <button
                       type="button"
                       onClick={() => setStep(STAFF_STEP_IDS[Math.max(0, stepIndex - 1)])}
@@ -585,7 +585,7 @@ export function ProjectInformationSheet({
                   </p>
                 )}
                 {isStaff && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className={`${ACTION_ROW} flex-wrap`}>
                     <button
                       type="button"
                       onClick={startOngoingFiling}

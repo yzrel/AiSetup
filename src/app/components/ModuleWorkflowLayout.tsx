@@ -11,21 +11,33 @@ import { ModuleFormHeader } from "./ModuleFormHeader";
 import {
   DOST_BLUE,
   DOST_MID,
+  MODULE_ALERTS,
+  MODULE_BODY,
+  MODULE_HEADER,
   MODULE_INNER_BODY,
+  MODULE_INSET,
   MODULE_SHELL,
   moduleStepPillClass,
 } from "./moduleTheme";
 
 export {
+  ACTION_ROW,
   DOST_BLUE,
   DOST_LIGHT,
   DOST_MID,
+  FORM_GRID_2,
+  FORM_GRID_3,
+  MODULE_ALERTS,
+  MODULE_BODY,
   MODULE_BODY_MUTED,
   MODULE_BODY_TEXT,
   MODULE_BODY_TITLE,
+  MODULE_HEADER,
   MODULE_HEADER_PICKER,
   MODULE_HEADER_SELECT,
   MODULE_INNER_BODY,
+  MODULE_INSET,
+  MODULE_PAGE,
   MODULE_SECTION_TITLE,
   MODULE_SHELL,
   moduleStepPillClass,
@@ -121,7 +133,7 @@ interface ModuleWorkflowLayoutProps {
 
 export function ModuleWorkflowBody({
   children,
-  className = "p-6 space-y-6",
+  className = MODULE_BODY,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -149,7 +161,7 @@ export function ModuleWorkflowLayout({
   headerExtra,
   alerts,
   insetBody = false,
-  contentClassName = "p-6 space-y-6",
+  contentClassName = MODULE_BODY,
   children,
 }: ModuleWorkflowLayoutProps) {
   const widthClass = maxWidth === "5xl" ? "max-w-5xl" : "max-w-4xl";
@@ -159,7 +171,7 @@ export function ModuleWorkflowLayout({
     <div className={`${widthClass} mx-auto space-y-5`}>
       <div className={MODULE_SHELL}>
         <div
-          className="p-6 text-white"
+          className={`${MODULE_HEADER} text-white`}
           style={{ background: `linear-gradient(135deg,${DOST_BLUE},${DOST_MID})` }}
         >
           <div className="flex items-center gap-3 mb-4">
@@ -194,13 +206,11 @@ export function ModuleWorkflowLayout({
 
         <StaffApplicantBanner user={user} />
 
-        {alerts && (
-          <div className="mx-6 mt-4 space-y-3">{alerts}</div>
-        )}
+        {alerts && <div className={MODULE_ALERTS}>{alerts}</div>}
 
         {hasBody &&
           (insetBody ? (
-            <div className="px-6 pb-6">
+            <div className={MODULE_INSET}>
               <ModuleWorkflowBody className={contentClassName}>{children}</ModuleWorkflowBody>
             </div>
           ) : (
