@@ -61,6 +61,22 @@ public class AnthropicClient {
         }
     }
 
+    public String generateText(String prompt) {
+        return generateText(prompt, properties.getMaxTokens());
+    }
+
+    public String generateText(String prompt, int maxTokens) {
+        try {
+            return callAnthropic(prompt, maxTokens).trim();
+        } catch (RestClientException e) {
+            log.warn("Anthropic API request failed: {}", e.getMessage());
+            throw new IllegalStateException("Anthropic API request failed", e);
+        } catch (Exception e) {
+            log.warn("Failed to parse Anthropic response: {}", e.getMessage());
+            throw new IllegalStateException("Failed to parse Anthropic response", e);
+        }
+    }
+
     private String callAnthropic(String prompt, int maxTokens) {
         if (!properties.isConfigured()) {
             throw new IllegalStateException("Anthropic API key is not configured");

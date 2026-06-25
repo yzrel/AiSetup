@@ -46,7 +46,7 @@ export function ApprovalLetterPreview({
 
       <div
         id="approval-letter-preview"
-        className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-10 text-gray-800 font-serif"
+        className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-10 text-gray-800 font-serif"
       >
         {/* Letterhead */}
         <div className="al-letterhead text-center mb-6">

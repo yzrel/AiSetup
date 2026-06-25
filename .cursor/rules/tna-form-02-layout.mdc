@@ -1,0 +1,35 @@
+---
+description: TNA Form 02 print-only official layout conventions
+globs: src/app/components/tnaForm02/**,src/styles/tnaForm02.css,src/app/constants/tnaForm02Layout.ts,src/app/utils/tnaForm02Print.tsx
+alwaysApply: false
+---
+
+# TNA Form 02 layout (approved)
+
+## Scope
+
+- **Print only** — on-screen preview in `TnaForm02Preview.tsx` stays modern/summary layout.
+- Official output via `TnaForm02Document` rendered at print time (`printTnaForm02Pdf`).
+
+## Document title
+
+`DOST TNA FORM 02 - TECHNOLOGY NEEDS ASSESSMENT REPORT`
+
+## Pagination
+
+- Physical page footers via CSS `@page @bottom-center` with `counter(page)` / `counter(pages)` — matches actual printed sheet count.
+- No per-section inline footers (avoid misleading "Page X of 6" when content fits fewer sheets).
+- `FormBlock` + `break-inside: avoid` — section titles stay with content.
+
+## Print path
+
+- In-page `window.print()` via `#tna-form-02-print-root` + `body.tna-form-02-printing`.
+- `createRoot` render (do not clone preview; do not use popup `document.write`).
+- Hide portal metadata in print: no Document Ref, Application ID, AI/draft badges.
+
+## Key files
+
+- `src/app/components/tnaForm02/TnaForm02Document.tsx`
+- `src/app/utils/tnaForm02Print.tsx`
+- `src/styles/tnaForm02.css`
+- `src/app/constants/tnaForm02Layout.ts`

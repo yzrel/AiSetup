@@ -57,6 +57,7 @@ import type { ProposalAiField } from "../utils/projectProposal";
 import { ProjectProposalPreview, printProjectProposal } from "./ProjectProposalPreview";
 import { notifyProjectProposalSubmitted } from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
+import { aiGenerateNotice } from "../utils/demoMode";
 import { getPublishedTna2 } from "../utils/tnaForm02";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import {
@@ -345,9 +346,8 @@ export function ProjectProposal({
     try {
       doc = await api.generateProjectProposal(payload);
       if (!doc.aiGenerated) {
-        setGenerateError(
-          "Proposal generated using template. Set ANTHROPIC_API_KEY on the backend for AI-drafted content.",
-        );
+        const notice = aiGenerateNotice(doc.aiGenerated, "Proposal");
+        if (notice) setGenerateError(notice);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status < 500) {
@@ -771,7 +771,7 @@ export function ProjectProposal({
                 <Sparkles className="w-4 h-4" />
                 {generating ? "Generating…" : "Generate with AI"}
               </button>
-              <button type="button" onClick={() => printProjectProposal()} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50">
+              <button type="button" onClick={() => printProjectProposal(form, document, attachments, applicant?.applicationId)} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50">
                 <FileText className="w-4 h-4" /> Print / PDF
               </button>
             </div>
@@ -785,7 +785,7 @@ export function ProjectProposal({
               applicationId={applicant?.applicationId}
               aiGenerated={document?.aiGenerated}
               submitted={submitted}
-              onPrint={printProjectProposal}
+              onPrint={() => printProjectProposal(form, document, attachments, applicant?.applicationId)}
               compact
             />
           </div>

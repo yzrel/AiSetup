@@ -360,7 +360,7 @@ export function AccountManagement({ user }: AccountManagementProps) {
                             equipment: [],
                           }
                         }
-                        onPrint={printTnaForm01}
+                        onPrint={() => printTnaForm01(selected.applicationId)}
                         compact
                       />
                     </div>
@@ -385,7 +385,12 @@ export function AccountManagement({ user }: AccountManagementProps) {
                         applicationId={selected.applicationId}
                         aiGenerated={(selected.moduleData.tna2Document as Tna2StoredDocument).aiGenerated}
                         published={(selected.moduleData.tna2Document as Tna2StoredDocument).published}
-                        onPrint={printTnaForm02}
+                        onPrint={() =>
+                          printTnaForm02(
+                            selected.moduleData.tna2Document as Tna2StoredDocument,
+                            selected.applicationId,
+                          )
+                        }
                         compact
                       />
                     </div>

@@ -12,6 +12,7 @@ import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { getRtecReportForm, getRtecReportStored } from "./rtecReport";
 import { isDemoModeActive } from "./demoMode";
+import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 
 const DOST_BLUE = "#0C2461";
 
@@ -327,7 +328,7 @@ export function validateApprovalLetterAcknowledge(
 
 export function getApprovalLetterPrintStyles(): string {
   return `
-    @page { size: A4 portrait; margin: 15mm 15mm 20mm 15mm; }
+    ${a4PageRule(A4_MARGIN_LETTER)}
     body { font-family: Georgia, 'Segoe UI', serif; padding: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
     .al-letterhead { text-align: center; margin-bottom: 16px; }
     .al-letterhead img { height: 56px; margin: 0 auto 8px; display: block; }

@@ -176,7 +176,7 @@ export function RtecReportPreview({
 
       <div
         id="rtec-report-preview"
-        className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800"
+        className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800"
       >
         {/* Page 1 — Cover + I.a */}
         <div className="text-center border-b border-gray-200 pb-4 mb-6">

@@ -54,7 +54,7 @@ export function LoiDocumentPreview({
       <div
         ref={printRef}
         id="loi-document-print"
-        className="p-4 sm:p-8 md:p-10 space-y-5 text-sm text-gray-800 leading-relaxed font-serif bg-white max-h-[70vh] sm:max-h-[520px] overflow-y-auto print:max-h-none print:overflow-visible print:p-12"
+        className="print-a4-sheet p-4 sm:p-8 md:p-10 space-y-5 text-sm text-gray-800 leading-relaxed font-serif bg-white max-h-[70vh] sm:max-h-[520px] overflow-y-auto print:max-h-none print:overflow-visible print:p-12"
       >
         {/* Enterprise letterhead */}
         <div className="space-y-0.5">

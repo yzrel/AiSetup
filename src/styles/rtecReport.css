@@ -1,0 +1,387 @@
+/* Author: Yzrel Jade B. Eborde — SETUP Form 002 RTEC Report official print layout (print-only) */
+
+#rtec-report-print-root {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #111827;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff;
+}
+
+#rtec-report-print-root .rtec-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10mm 0 8mm;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+#rtec-report-print-root .rtec-form-block,
+#rtec-report-print-root .rtec-print-section {
+  margin-bottom: 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#rtec-report-print-root .rtec-form-block .rtec-form-table {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+#rtec-report-print-root .rtec-form-table thead {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#rtec-report-print-root .rtec-form-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  margin: 0 0 14px;
+  color: #0c2461;
+}
+
+#rtec-report-print-root .rtec-form-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 12px 0 8px;
+  color: #111827;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+#rtec-report-print-root .rtec-form-subheading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 10px 0 6px;
+  color: #111827;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+#rtec-report-print-root .rtec-form-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+  color: #111827;
+}
+
+#rtec-report-print-root .rtec-form-cover-field {
+  margin-bottom: 6px;
+}
+
+#rtec-report-print-root .rtec-form-cover-label {
+  font-weight: 700;
+  font-size: 10.5px;
+  color: #374151;
+}
+
+#rtec-report-print-root .rtec-form-cover-value {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+#rtec-report-print-root .rtec-form-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 10px 0 14px;
+}
+
+#rtec-report-print-root .rtec-form-cost-value {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+#rtec-report-print-root .rtec-form-instruction {
+  font-size: 10px;
+  font-style: italic;
+  margin: 10px 0 6px;
+  color: #374151;
+}
+
+#rtec-report-print-root .rtec-form-narrative {
+  font-size: 11px;
+  margin: 4px 0 8px;
+  text-align: justify;
+  white-space: pre-wrap;
+}
+
+#rtec-report-print-root .rtec-form-narrative-cell {
+  white-space: pre-wrap;
+  vertical-align: top;
+}
+
+#rtec-report-print-root .rtec-form-empty {
+  margin: 4px 0;
+  color: #9ca3af;
+}
+
+#rtec-report-print-root .rtec-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 10px;
+  font-size: 10px;
+}
+
+#rtec-report-print-root .rtec-form-table th,
+#rtec-report-print-root .rtec-form-table td {
+  border: 1px solid #374151;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+#rtec-report-print-root .rtec-form-table th {
+  font-weight: 700;
+  background: #f3f4f6;
+  text-align: center;
+}
+
+#rtec-report-print-root .rtec-form-label {
+  font-weight: 600;
+  width: 32%;
+  background: #f9fafb;
+}
+
+#rtec-report-print-root .rtec-form-value {
+  width: 68%;
+}
+
+#rtec-report-print-root .rtec-form-center {
+  text-align: center;
+}
+
+#rtec-report-print-root .rtec-form-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 6px 0 10px;
+}
+
+#rtec-report-print-root .rtec-form-checkbox-option {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 10px;
+  max-width: 100%;
+}
+
+#rtec-report-print-root .rtec-form-checkbox {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+#rtec-report-print-root .rtec-form-activity-grid {
+  margin: 6px 0 10px;
+}
+
+#rtec-report-print-root .rtec-form-activity-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-bottom: 4px;
+}
+
+#rtec-report-print-root .rtec-form-activity-row .rtec-form-checkbox-option {
+  font-size: 9.5px;
+}
+
+#rtec-report-print-root .rtec-form-priority-specify {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 4px 0 10px;
+  padding-left: 16px;
+}
+
+#rtec-report-print-root .rtec-form-bullet-list,
+#rtec-report-print-root .rtec-form-check-bullet-list {
+  margin: 4px 0 10px;
+  padding-left: 18px;
+}
+
+#rtec-report-print-root .rtec-form-bullet-list li,
+#rtec-report-print-root .rtec-form-check-bullet-list li {
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-align: justify;
+}
+
+#rtec-report-print-root .rtec-form-check-bullet {
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+#rtec-report-print-root .rtec-form-compliance-table .rtec-form-check-cell {
+  text-align: center;
+  width: 72px;
+}
+
+#rtec-report-print-root .rtec-form-intervention-table td {
+  font-size: 9.5px;
+}
+
+#rtec-report-print-root .rtec-form-attachment,
+#rtec-report-print-root .rtec-form-attachment-placeholder {
+  margin: 8px 0 12px;
+  text-align: center;
+}
+
+#rtec-report-print-root .rtec-form-attachment img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border: 1px solid #d1d5db;
+}
+
+#rtec-report-print-root .rtec-form-attachment-label {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: #374151;
+}
+
+#rtec-report-print-root .rtec-form-attachment-placeholder {
+  border: 1px dashed #9ca3af;
+  min-height: 80px;
+  padding: 12px;
+}
+
+#rtec-report-print-root .rtec-form-expected-output {
+  margin-bottom: 10px;
+}
+
+#rtec-report-print-root .rtec-form-expected-heading {
+  font-weight: 700;
+  font-size: 10.5px;
+  margin: 0 0 4px;
+}
+
+#rtec-report-print-root .rtec-form-ratio-intro {
+  font-size: 10px;
+  font-style: italic;
+  margin: 4px 0 8px;
+}
+
+#rtec-report-print-root .rtec-form-note {
+  font-size: 9.5px;
+  font-style: italic;
+  margin: 6px 0 10px;
+}
+
+#rtec-report-print-root .rtec-form-risk-footnote {
+  margin-top: 10px;
+  font-size: 9px;
+  font-style: italic;
+  color: #4b5563;
+}
+
+#rtec-report-print-root .rtec-form-risk-footnote p {
+  margin: 2px 0;
+}
+
+#rtec-report-print-root .rtec-form-signatures {
+  margin-top: 16px;
+}
+
+#rtec-report-print-root .rtec-form-sig-title {
+  font-weight: 700;
+  font-size: 11px;
+  margin: 0 0 12px;
+}
+
+#rtec-report-print-root .rtec-form-sig-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+#rtec-report-print-root .rtec-form-sig-grid-secondary {
+  grid-template-columns: 1fr 1fr;
+}
+
+#rtec-report-print-root .rtec-form-sig-members {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+#rtec-report-print-root .rtec-form-sig-label {
+  font-size: 9.5px;
+  color: #4b5563;
+  margin: 0 0 4px;
+}
+
+#rtec-report-print-root .rtec-form-sig-line {
+  border-bottom: 1px solid #374151;
+  min-height: 36px;
+  margin-bottom: 4px;
+}
+
+#rtec-report-print-root .rtec-form-sig-name {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0;
+}
+
+#rtec-report-print-root .rtec-form-sig-date {
+  font-size: 10px;
+  color: #4b5563;
+  margin: 12px 0 0;
+}
+
+@media print {
+  body.rtec-report-printing,
+  body.rtec-report-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.rtec-report-printing > *:not(#rtec-report-print-root) {
+    display: none !important;
+  }
+
+  body.rtec-report-printing #rtec-report-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  @page rtec-report-sheet {
+    size: A4 portrait;
+    margin: 12mm 12mm 20mm;
+
+    @bottom-center {
+      content: "SETUP Guidelines (Revision 3.0) Annex A-2: SETUP Form 002 - RTEC Report Page "
+        counter(page) " of " counter(pages);
+      font-family: Arial, "Segoe UI", sans-serif;
+      font-size: 8.5px;
+      color: #6b7280;
+    }
+  }
+
+  body.rtec-report-printing #rtec-report-print-root {
+    page: rtec-report-sheet;
+  }
+
+  #rtec-report-print-root .rtec-form-document-root {
+    padding: 0;
+    margin: 0 auto;
+  }
+}

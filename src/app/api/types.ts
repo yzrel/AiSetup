@@ -401,6 +401,16 @@ export interface AiFieldSuggestionResponse {
   aiGenerated: boolean;
 }
 
+export interface AiCompletionRequest {
+  prompt: string;
+  maxTokens?: number;
+}
+
+export interface AiCompletionResponse {
+  text: string;
+  aiGenerated: boolean;
+}
+
 // ── SETUP Form 002 — RTEC Report (Annex A-2) ──────────────────────────────────
 
 export type RtecComplianceStatus = "complied" | "not_complied" | "na" | "";

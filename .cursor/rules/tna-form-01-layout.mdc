@@ -1,0 +1,46 @@
+---
+description: TNA Form 01 print/preview layout, pagination, and title conventions
+globs: src/app/components/tnaForm01/**,src/styles/tnaForm01.css,src/app/constants/tnaForm01Layout.ts,src/app/utils/tnaForm01Print.ts
+alwaysApply: false
+---
+
+# TNA Form 01 layout (approved)
+
+## Document title
+
+Use this exact title in `TNA_FORM_01_TITLE`:
+
+`DOST TNA FORM 01 - APPLICATION FOR TECHNOLOGY NEEDS ASSESSMENT`
+
+Rendered via `FormHeader` → `.tna-form-title` (uppercase via CSS).
+
+## Pagination goals
+
+- Section **titles stay with their content** — no orphaned headings (e.g. BENCHMARK INFORMATION split from its tables).
+- **Do not force one section per physical page** — short blocks may share a sheet.
+- **Comfortable spacing** — not full-A4 forced height, not cramped flush flow.
+- **Keep logical footers** — physical page footers via CSS `@page tna-form-01-sheet` with `counter(page)` / `counter(pages)`; no inline per-section footers.
+
+## Implementation pattern
+
+1. **`FormBlock`** — wraps atomic units with `tna-form-block tna-print-section`.
+2. **Primitives** — `FormTextBlock`, `FormAttachmentBlock`, and `FormBorderedPanel` already carry block classes so label + value stay together.
+3. **Benchmark** — heading + first bullet in one block; each `BenchmarkBullet` + table/text in its own block.
+4. **CSS** (`tnaForm01.css`):
+   - `break-inside: avoid` on `.tna-form-block` / `.tna-print-section`
+   - `break-after: avoid` on `.tna-form-section-heading`
+   - Tables inside blocks: `break-inside: auto` (rows may split if block exceeds one page); `thead` stays `break-inside: avoid`
+   - Screen: `12px` block gap, `16px` between logical pages
+   - Print: `5mm` block gap; `@page margin: 12mm`
+   - **Never** use `break-before: always` on sections (prevents short sections sharing a page).
+
+## Print path
+
+Use in-page print via `printTnaForm01Pdf` (clone to `#tna-form-01-print-root` on `body`). Do not revert to popup `document.write` (freezes on 14 pages).
+
+## Key files
+
+- `src/app/components/tnaForm01/TnaForm01Document.tsx`
+- `src/styles/tnaForm01.css`
+- `src/app/constants/tnaForm01Layout.ts`
+- `src/app/utils/tnaForm01Print.ts`

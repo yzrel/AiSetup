@@ -1,0 +1,325 @@
+/* Author: Yzrel Jade B. Eborde — DOST TNA Form 02 official print layout (print-only) */
+
+#tna-form-02-print-root {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #111827;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff;
+}
+
+#tna-form-02-print-root .tna2-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 12mm 0 8mm;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+#tna-form-02-print-root .tna2-form-page {
+  display: block;
+  width: 210mm;
+  height: auto;
+  min-height: auto;
+  max-width: 100%;
+  border: none;
+  margin: 0 auto;
+  padding: 0 12mm;
+  background: transparent;
+  position: relative;
+  box-sizing: border-box;
+}
+
+#tna-form-02-print-root .tna2-form-page + .tna2-form-page {
+  margin-top: 16px;
+}
+
+#tna-form-02-print-root .tna2-form-block,
+#tna-form-02-print-root .tna-print-section {
+  margin-bottom: 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#tna-form-02-print-root .tna2-form-block .tna2-form-table {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+#tna-form-02-print-root .tna2-form-table thead {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#tna-form-02-print-root .tna2-form-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 10px 0 8px;
+  color: #0c2461;
+  text-transform: uppercase;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+#tna-form-02-print-root .tna2-form-inner-frame {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#tna-form-02-print-root .tna2-form-page-body {
+  box-sizing: border-box;
+}
+
+#tna-form-02-print-root .tna2-form-footer {
+  margin-top: 8px;
+  margin-bottom: 10px;
+  padding-top: 0;
+  font-size: 9px;
+  text-align: center;
+  color: #6b7280;
+}
+
+#tna-form-02-print-root .tna2-form-page:last-child .tna2-form-footer {
+  margin-bottom: 0;
+}
+
+#tna-form-02-print-root .tna2-form-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+#tna-form-02-print-root .tna2-form-logo {
+  width: 42px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+#tna-form-02-print-root .tna2-form-republic {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+  color: #4b5563;
+}
+
+#tna-form-02-print-root .tna2-form-department {
+  font-size: 11.5px;
+  font-weight: 700;
+  margin: 2px 0 0;
+  color: #0c2461;
+}
+
+#tna-form-02-print-root .tna2-form-setup {
+  font-size: 9.5px;
+  margin: 2px 0 0;
+  color: #4b5563;
+}
+
+#tna-form-02-print-root .tna2-form-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  text-align: center;
+  margin: 10px 0 12px;
+  color: #0c2461;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+#tna-form-02-print-root .tna2-form-section-bar {
+  padding: 4px 0;
+  margin-bottom: 6px;
+}
+
+#tna-form-02-print-root .tna2-form-subheading {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+}
+
+#tna-form-02-print-root .tna2-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 8px;
+  font-size: 10.5px;
+}
+
+#tna-form-02-print-root .tna2-form-table th,
+#tna-form-02-print-root .tna2-form-table td {
+  border: 1px solid #374151;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+#tna-form-02-print-root .tna2-form-field-table {
+  margin: 4px 0 8px;
+}
+
+#tna-form-02-print-root .tna2-form-field-label {
+  border-bottom: 1px solid #374151;
+}
+
+#tna-form-02-print-root .tna2-form-field-value {
+  min-height: 22px;
+}
+
+#tna-form-02-print-root .tna2-form-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+}
+
+#tna-form-02-print-root .tna2-form-label {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+#tna-form-02-print-root .tna2-form-value {
+  min-height: 20px;
+}
+
+#tna-form-02-print-root .tna2-form-center {
+  text-align: center;
+}
+
+#tna-form-02-print-root .tna2-form-numbered-list {
+  margin: 0 0 8px 18px;
+  padding: 0;
+  font-size: 10.5px;
+}
+
+#tna-form-02-print-root .tna2-form-numbered-list li {
+  margin-bottom: 4px;
+}
+
+#tna-form-02-print-root .tna2-form-empty {
+  font-size: 10.5px;
+  color: #6b7280;
+  margin: 0 0 8px;
+}
+
+#tna-form-02-print-root .tna2-form-ruled-line {
+  display: block;
+  border-bottom: 1px solid #374151;
+  min-height: 16px;
+  margin-bottom: 4px;
+}
+
+#tna-form-02-print-root .tna2-form-signature-table {
+  margin-top: 16px;
+}
+
+#tna-form-02-print-root .tna2-form-signature-cell {
+  padding: 10px 12px;
+  vertical-align: top;
+  width: 50%;
+}
+
+#tna-form-02-print-root .tna2-form-signature-title {
+  font-weight: 700;
+  font-size: 10.5px;
+  margin: 0 0 10px;
+}
+
+#tna-form-02-print-root .tna2-form-signature-line {
+  border-bottom: 1px solid #374151;
+  min-height: 36px;
+  margin-bottom: 4px;
+}
+
+#tna-form-02-print-root .tna2-form-signature-label {
+  font-size: 9.5px;
+  color: #4b5563;
+  margin: 0 0 6px;
+}
+
+#tna-form-02-print-root .tna2-form-signature-name {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0;
+}
+
+#tna-form-02-print-root .tna2-form-signature-meta {
+  font-size: 10px;
+  color: #4b5563;
+  margin: 2px 0 0;
+}
+
+#tna-form-02-print-root .tna2-form-signature-date {
+  font-size: 10px;
+  color: #4b5563;
+  margin: 8px 0 0;
+}
+
+@media print {
+  body.tna-form-02-printing,
+  body.tna-form-02-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.tna-form-02-printing > *:not(#tna-form-02-print-root) {
+    display: none !important;
+  }
+
+  body.tna-form-02-printing #tna-form-02-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  @page tna-form-02-sheet {
+    size: A4 portrait;
+    margin: 12mm 12mm 20mm;
+
+    @bottom-center {
+      content: "SETUP Guidelines – Annex B-12 - DOST TNA Form 02 — Page " counter(page) " of "
+        counter(pages);
+      font-family: Arial, "Segoe UI", sans-serif;
+      font-size: 9px;
+      color: #6b7280;
+    }
+  }
+
+  body.tna-form-02-printing #tna-form-02-print-root {
+    page: tna-form-02-sheet;
+  }
+
+  #tna-form-02-print-root .tna2-form-document-root {
+    padding: 0;
+    margin: 0 auto;
+  }
+
+  #tna-form-02-print-root .tna2-form-page {
+    padding: 0;
+    margin: 0;
+    page-break-after: auto;
+    break-after: auto;
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  #tna-form-02-print-root .tna2-form-page + .tna2-form-page {
+    margin-top: 0;
+  }
+
+  #tna-form-02-print-root .tna2-form-block,
+  #tna-form-02-print-root .tna-print-section {
+    margin-bottom: 5mm;
+  }
+}

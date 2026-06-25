@@ -28,9 +28,9 @@ import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
-import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
+import { applicantAiContext, completeAiPrompt, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
-import { allowWhenDemo } from "../utils/demoMode";
+import { allowWhenDemo, aiGenerateNotice } from "../utils/demoMode";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
 const DOST_BLUE = "#0C2461";
@@ -207,18 +207,9 @@ function InfoBanner({ icon = "ℹ️", color = "blue", title, text }) {
 }
 
 // ─── AI call helper ───────────────────────────────────────────────────────────
-async function callAI(prompt) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  const data = await res.json();
-  return data.content?.map(b => b.text || "").join("") || "";
+async function callAI(prompt: string) {
+  const { text } = await completeAiPrompt(prompt, 2048);
+  return text;
 }
 
 // ─── AI Loading indicator ─────────────────────────────────────────────────────
@@ -461,9 +452,8 @@ export function TechnologyNeedsAssessment1({
     try {
       response = await api.generateTna1(payload);
       if (!response.aiGenerated) {
-        setTnaGenerateError(
-          "Suggestions generated using the standard template. Set ANTHROPIC_API_KEY on the backend for AI-drafted content.",
-        );
+        const notice = aiGenerateNotice(response.aiGenerated, "Suggestions");
+        if (notice) setTnaGenerateError(notice);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status < 500) {
@@ -1124,7 +1114,8 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h2 className={sectionTitle}>📐 Plant Lay-Out</h2>
               <FileAttachmentField
                 label="Plant Lay-Out"
                 fileName={form.plantLayoutFileName}
@@ -1134,44 +1125,46 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 }}
                 hint="Upload floor plan or plant layout diagram (required attachment per TNA Form 01)."
               />
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Enter as text description or upload a diagram.</p>
-                <div className="flex gap-4 mb-3">
-                  {(["text", "attachment"] as const).map((mode) => (
-                    <label key={mode} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="radio"
-                        name="processFlowMode"
-                        checked={form.processFlowMode === mode}
-                        onChange={() => set("processFlowMode", mode)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      {mode === "text" ? "Text description" : "File attachment"}
-                    </label>
-                  ))}
-                </div>
-                {form.processFlowMode === "text" ? (
-                  <AiAssistTextarea
-                    label="Process Flow"
-                    value={form.processFlow}
-                    onChange={(processFlow) => set("processFlow", processFlow)}
-                    inputClassName={inputCls}
-                    labelClassName={labelCls}
-                    minHeight="min-h-[100px]"
-                    hint="Describe the production process flow step by step"
-                    {...tnaAi("processFlow", (v) => set("processFlow", v))}
-                  />
-                ) : (
-                  <FileAttachmentField
-                    label=""
-                    fileName={form.processFlowFileName}
-                    onFile={(name, data) => {
-                      set("processFlowFileName", name);
-                      set("processFlowFileData", data);
-                    }}
-                  />
-                )}
+            </div>
+
+            <div>
+              <h2 className={sectionTitle}>🔄 Process Flow</h2>
+              <p className="text-xs text-gray-400 mb-2">Enter as text description or upload a diagram.</p>
+              <div className="flex gap-4 mb-3">
+                {(["text", "attachment"] as const).map((mode) => (
+                  <label key={mode} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="processFlowMode"
+                      checked={form.processFlowMode === mode}
+                      onChange={() => set("processFlowMode", mode)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    {mode === "text" ? "Text description" : "File attachment"}
+                  </label>
+                ))}
               </div>
+              {form.processFlowMode === "text" ? (
+                <AiAssistTextarea
+                  label="Process Flow"
+                  value={form.processFlow}
+                  onChange={(processFlow) => set("processFlow", processFlow)}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[100px]"
+                  hint="Describe the production process flow step by step"
+                  {...tnaAi("processFlow", (v) => set("processFlow", v))}
+                />
+              ) : (
+                <FileAttachmentField
+                  label=""
+                  fileName={form.processFlowFileName}
+                  onFile={(name, data) => {
+                    set("processFlowFileName", name);
+                    set("processFlowFileData", data);
+                  }}
+                />
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -1196,7 +1189,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             <div>
               <h2 className={sectionTitle}>🔧 Production Summary</h2>
               <ReadonlyField label="Production Problems and Concerns (from Benchmark)" value={form.productionProblemsConcerns || "—"} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+              <div className="mt-4 space-y-4">
                 <ReadonlyField label="Plant Lay-Out" value={form.plantLayoutFileName || "No file uploaded"} />
                 <ReadonlyField
                   label="Process Flow"
@@ -1329,20 +1322,87 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             </div>
 
             {/* Signatures */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 bg-gray-50 border border-gray-200 rounded-xl">
-              <div>
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">Prepared by:</p>
-                <div className="border-b-2 border-gray-400 min-h-8 mb-2" />
-                <p className="text-xs text-gray-400 mb-3">Printed Name and Signature of Owner / Chair / Representative</p>
+            <div className="p-5 bg-gray-50 border border-gray-200 rounded-xl">
+              <div className="hidden sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-2">
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Prepared by:</p>
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Validated by:</p>
+
+                <label className={`${labelCls} min-h-[3.25rem] flex items-end mb-1`}>
+                  Printed Name and Signature of Owner / Chair / Representative
+                </label>
+                <label className={`${labelCls} min-h-[3.25rem] flex items-end mb-1`}>
+                  Printed Name and Signature of PSTD / CASTD / CSTD
+                </label>
+
+                <input
+                  type="text"
+                  value={form.undertakingName}
+                  onChange={(e) => set("undertakingName", e.target.value)}
+                  className={inputCls}
+                  placeholder="Type printed name"
+                />
+                <input
+                  type="text"
+                  value={form.validatedByName}
+                  onChange={(e) => set("validatedByName", e.target.value)}
+                  className={inputCls}
+                  placeholder="Type printed name"
+                />
+
                 <label className={labelCls}>Date</label>
-                <input type="date" value={form.preparedDate} onChange={e => set("preparedDate", e.target.value)} className={inputCls} />
+                <label className={labelCls}>Date</label>
+
+                <input
+                  type="date"
+                  value={form.preparedDate}
+                  onChange={(e) => set("preparedDate", e.target.value)}
+                  className={inputCls}
+                />
+                <input
+                  type="date"
+                  value={form.validatedDate}
+                  onChange={(e) => set("validatedDate", e.target.value)}
+                  className={inputCls}
+                />
               </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">Validated by:</p>
-                <div className="border-b-2 border-gray-400 min-h-8 mb-2" />
-                <p className="text-xs text-gray-400 mb-3">Printed Name and Signature of PSTD / CASTD / CSTD</p>
-                <label className={labelCls}>Date</label>
-                <input type="date" value={form.validatedDate} onChange={e => set("validatedDate", e.target.value)} className={inputCls} />
+
+              <div className="sm:hidden space-y-6">
+                <div>
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">Prepared by:</p>
+                  <label className={labelCls}>Printed Name and Signature of Owner / Chair / Representative</label>
+                  <input
+                    type="text"
+                    value={form.undertakingName}
+                    onChange={(e) => set("undertakingName", e.target.value)}
+                    className={inputCls}
+                    placeholder="Type printed name"
+                  />
+                  <label className={`${labelCls} mt-3`}>Date</label>
+                  <input
+                    type="date"
+                    value={form.preparedDate}
+                    onChange={(e) => set("preparedDate", e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">Validated by:</p>
+                  <label className={labelCls}>Printed Name and Signature of PSTD / CASTD / CSTD</label>
+                  <input
+                    type="text"
+                    value={form.validatedByName}
+                    onChange={(e) => set("validatedByName", e.target.value)}
+                    className={inputCls}
+                    placeholder="Type printed name"
+                  />
+                  <label className={`${labelCls} mt-3`}>Date</label>
+                  <input
+                    type="date"
+                    value={form.validatedDate}
+                    onChange={(e) => set("validatedDate", e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1519,7 +1579,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 (applicant?.moduleData?.tna1Document?.tables as typeof tables) ?? tables
               }
               aiGenerated={tnaAiGenerated ?? undefined}
-              onPrint={printTnaForm01}
+              onPrint={() => printTnaForm01(applicant?.applicationId)}
             />
 
             <div className="flex flex-col sm:flex-row gap-3 print:hidden">
@@ -1531,7 +1591,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               </button>
               {!isStaff && (
                 <button
-                  onClick={printTnaForm01}
+                  onClick={() => printTnaForm01(applicant?.applicationId)}
                   className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
                   style={{ background: DOST_BLUE }}
                 >

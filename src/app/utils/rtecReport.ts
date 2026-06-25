@@ -22,6 +22,7 @@ import {
 import { getPublishedTna2 } from "./tnaForm02";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { isDemoModeActive } from "./demoMode";
+import { printRtecReportPdf } from "./rtecReportPrint";
 
 const DOST_BLUE = "#0C2461";
 
@@ -457,54 +458,12 @@ export function validateRtecReportSubmit(form: RtecReportForm): string[] {
   return errors;
 }
 
-export function getRtecPrintStyles(): string {
-  return `
-    @page { size: A4 portrait; margin: 15mm 15mm 22mm 15mm; }
-    body { font-family: 'Segoe UI', Georgia, serif; padding: 0; color: #1f2937; font-size: 11px; line-height: 1.45; }
-    h1 { font-size: 14px; font-weight: 800; color: ${DOST_BLUE}; margin: 0 0 8px; }
-    h2 { font-size: 12px; font-weight: 700; color: ${DOST_BLUE}; margin: 16px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-    h3 { font-size: 11px; font-weight: 700; margin: 12px 0 6px; }
-    p { margin: 4px 0; }
-    table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; }
-    th, td { border: 1px solid #d1d5db; padding: 5px 6px; vertical-align: top; }
-    th { background: ${DOST_BLUE}; color: white; font-weight: 600; text-align: left; }
-    .rtec-cover-row { display: grid; grid-template-columns: 140px 1fr; gap: 8px; margin: 4px 0; font-size: 11px; }
-    .rtec-cover-label { font-weight: 600; color: #4b5563; }
-    .rtec-page-break { page-break-before: always; break-before: page; }
-    .rtec-avoid-break { page-break-inside: avoid; break-inside: avoid; }
-    .rtec-footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #6b7280; text-align: center; }
-    .rtec-sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
-    .rtec-sig-line { border-bottom: 1px solid #374151; min-height: 32px; margin: 8px 0 4px; }
-    ul, ol { margin: 4px 0 4px 18px; padding: 0; }
-    li { margin: 2px 0; }
-    img { max-height: 240px; max-width: 100%; object-fit: contain; }
-    .rtec-check { text-align: center; width: 70px; }
-  `;
+export function printRtecReport(form: RtecReportForm, applicationId?: string) {
+  printRtecReportPdf(form, applicationId);
 }
 
-export function printRtecReport(applicationId?: string) {
-  const el = document.getElementById("rtec-report-preview");
-  const title = applicationId
-    ? `SETUP-Form-002-RTEC-${applicationId}`
-    : "SETUP-Form-002-RTEC-Report";
-  if (!el) {
-    window.print();
-    return;
-  }
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${getRtecPrintStyles()}</style></head>
-    <body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
-}
-
-export function downloadRtecReportPdf(applicationId?: string) {
-  printRtecReport(applicationId);
+export function downloadRtecReportPdf(form: RtecReportForm, applicationId?: string) {
+  printRtecReportPdf(form, applicationId);
 }
 
 export { DOST_BLUE as RTEC_DOST_BLUE };

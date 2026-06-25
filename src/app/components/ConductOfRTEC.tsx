@@ -122,7 +122,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
 
   const handleDownload = () => {
     if (!form) return;
-    downloadRtecReportPdf(applicant?.applicationId);
+    downloadRtecReportPdf(form, applicant?.applicationId);
   };
 
   const handleComplete = () => {

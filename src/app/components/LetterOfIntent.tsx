@@ -30,7 +30,7 @@ import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
-import { allowWhenDemo } from "../utils/demoMode";
+import { allowWhenDemo, aiGenerateNotice } from "../utils/demoMode";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
 import type { LoiDocumentResponse } from "../api/types";
 import {
@@ -314,16 +314,6 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
           productionPlanFile: moduleDoc.fileName,
         },
       });
-      setApplicant(
-        applicantStore.getById(applicant.id) ?? {
-          ...applicant,
-          moduleData: {
-            ...applicant.moduleData,
-            productionPlanDocument: moduleDoc,
-            productionPlanFile: moduleDoc.fileName,
-          },
-        },
-      );
     } catch (err) {
       alert(err instanceof Error ? err.message : "Upload failed.");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -339,12 +329,6 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     const { productionPlanDocument: _removed, productionPlanFile: _name, ...rest } =
       applicant.moduleData ?? {};
     applicantStore.update(applicant.id, { moduleData: rest });
-    setApplicant(
-      applicantStore.getById(applicant.id) ?? {
-        ...applicant,
-        moduleData: rest,
-      },
-    );
   };
 
   const buildCurrentPayload = () => {
@@ -377,9 +361,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     try {
       document = await api.generateLoi(payload);
       if (!document.aiGenerated) {
-        setGenerateError(
-          "Letter generated using the standard template. Set ANTHROPIC_API_KEY on the backend for AI-drafted paragraphs.",
-        );
+        const notice = aiGenerateNotice(document.aiGenerated, "Letter");
+        if (notice) setGenerateError(notice);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status < 500) {
@@ -429,12 +412,6 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         loiDocument: document,
       },
     });
-    setApplicant(
-      applicantStore.getById(applicant.id) ?? {
-        ...applicant,
-        moduleData: { ...applicant.moduleData, loiDocument: document },
-      },
-    );
   };
 
   const handleFinalSubmit = async () => {
@@ -1198,7 +1175,6 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                     delete md.loiDocument;
                     delete md.loiSubmittedAt;
                     applicantStore.update(applicant.id, { moduleData: md });
-                    setApplicant({ ...applicant, moduleData: md });
                   }
                 }}
                 className="text-sm text-gray-500 hover:text-blue-600 underline underline-offset-2 transition-colors"

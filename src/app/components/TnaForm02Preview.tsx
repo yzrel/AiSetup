@@ -10,6 +10,7 @@ import {
   PreviewTable,
   PreviewToolbar,
 } from "./PreviewLayout";
+import { printTnaForm02Pdf } from "../utils/tnaForm02Print";
 
 const DOST_BLUE = "#0C2461";
 
@@ -50,7 +51,7 @@ export function TnaForm02Preview({
 
       <div
         id="tna-form-02-preview"
-        className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-8 text-gray-800 tna-form-document"
+        className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-8 text-gray-800 tna-form-document"
       >
         <div className="text-center border-b border-gray-200 pb-4 mb-6 tna-print-section">
           <p className="text-[10px] uppercase tracking-widest text-gray-400">
@@ -209,26 +210,9 @@ export function TnaForm02Preview({
   );
 }
 
-export function printTnaForm02() {
-  const el = document.getElementById("tna-form-02-preview");
-  if (!el) {
-    window.print();
-    return;
-  }
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>TNA Form 02</title>
-    <style>
-      body { font-family: 'Segoe UI', sans-serif; padding: 24px; color: #1f2937; }
-      table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-      th, td { border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 11px; }
-      th { background: #0C2461; color: white; }
-      .tna-page-break { page-break-before: always; break-before: page; }
-      .tna-print-section { page-break-inside: avoid; break-inside: avoid; }
-    </style></head><body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+export function printTnaForm02(
+  document: Tna2DocumentResponse,
+  applicationId?: string,
+) {
+  printTnaForm02Pdf(document, applicationId);
 }

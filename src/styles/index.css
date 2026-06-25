@@ -2,6 +2,11 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './print.css';
+@import './tnaForm01.css';
+@import './tnaForm02.css';
+@import './projectProposal.css';
+@import './rtecReport.css';
 
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -25,49 +30,101 @@
 }
 
 @media print {
-  body * {
+  body.tna-form-01-printing * {
+    visibility: hidden !important;
+  }
+
+  body.tna-form-01-printing #tna-form-01-print-root,
+  body.tna-form-01-printing #tna-form-01-print-root * {
+    visibility: visible !important;
+  }
+
+  body.tna-form-02-printing * {
+    visibility: hidden !important;
+  }
+
+  body.tna-form-02-printing #tna-form-02-print-root,
+  body.tna-form-02-printing #tna-form-02-print-root * {
+    visibility: visible !important;
+  }
+
+  body.project-proposal-printing * {
+    visibility: hidden !important;
+  }
+
+  body.project-proposal-printing #project-proposal-print-root,
+  body.project-proposal-printing #project-proposal-print-root * {
+    visibility: visible !important;
+  }
+
+  body.rtec-report-printing * {
+    visibility: hidden !important;
+  }
+
+  body.rtec-report-printing #rtec-report-print-root,
+  body.rtec-report-printing #rtec-report-print-root * {
+    visibility: visible !important;
+  }
+
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing) * {
     visibility: hidden;
   }
 
   #loi-document-print,
   #loi-document-print *,
-  #tna-form-01-preview,
-  #tna-form-01-preview *,
   #tna-form-02-preview,
-  #tna-form-02-preview * {
+  #tna-form-02-preview *,
+  #approval-letter-preview,
+  #approval-letter-preview *,
+  #project-proposal-preview,
+  #project-proposal-preview *,
+  #rtec-report-preview,
+  #rtec-report-preview *,
+  #pre-pis-preview,
+  #pre-pis-preview *,
+  #lbp-introduction-preview,
+  #lbp-introduction-preview * {
     visibility: visible;
   }
 
-  #loi-document-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    max-height: none !important;
-    overflow: visible !important;
-    padding: 0.75in !important;
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing) #tna-form-01-preview,
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing) #tna-form-01-preview * {
+    visibility: visible;
   }
 
-  #tna-form-01-preview {
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing) #tna-form-01-preview {
     position: absolute;
     left: 0;
+    right: 0;
     top: 0;
-    width: 100%;
+    width: 210mm;
+    max-width: 100%;
     max-height: none !important;
     overflow: visible !important;
-    padding: 0.75in !important;
+    padding: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
     border: none !important;
     border-radius: 0 !important;
+    background: #fff !important;
   }
 
-  #tna-form-02-preview {
+  #loi-document-print,
+  #tna-form-02-preview,
+  #approval-letter-preview,
+  #project-proposal-preview,
+  #rtec-report-preview,
+  #pre-pis-preview,
+  #lbp-introduction-preview {
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 210mm;
+    max-width: 100%;
     max-height: none !important;
     overflow: visible !important;
-    padding: 0.75in !important;
+    padding: 0 !important;
+    margin: 0 auto;
     border: none !important;
     border-radius: 0 !important;
   }

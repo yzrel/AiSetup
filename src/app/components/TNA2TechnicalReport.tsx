@@ -23,6 +23,7 @@ import {
 import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
 import { TnaForm02Editor } from "./TnaForm02Editor";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
+import { aiGenerateNotice } from "../utils/demoMode";
 import { applicantAiContext } from "../utils/aiAssist";
 
 interface TNA2TechnicalReportProps {
@@ -74,9 +75,8 @@ export function TNA2TechnicalReport({
     try {
       document = await api.generateTna2(payload);
       if (!document.aiGenerated) {
-        setGenerateError(
-          "Report generated using template. Set ANTHROPIC_API_KEY on the backend for AI-drafted content.",
-        );
+        const notice = aiGenerateNotice(document.aiGenerated, "Report");
+        if (notice) setGenerateError(notice);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status < 500) {
@@ -244,7 +244,7 @@ export function TNA2TechnicalReport({
               applicationId={applicant?.applicationId}
               aiGenerated={displayDoc.aiGenerated}
               published={isStaff ? getTna2Draft(applicant)?.published : true}
-              onPrint={printTnaForm02}
+              onPrint={() => printTnaForm02(displayDoc, applicant?.applicationId)}
             />
           )}
 

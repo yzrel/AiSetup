@@ -5,7 +5,7 @@
 // ── Auth Store ─────────────────────────────────────────────────────────────────
 
 import { staffContextStore } from "./staffContextStore";
-import { clearCurrentView } from "./navigationStore";
+import { clearAuthUiState, clearCurrentView } from "./navigationStore";
 import { isDemoModeActive } from "../utils/demoMode";
 
 export type UserRole = "applicant" | "client" | "agent" | "admin";
@@ -93,10 +93,9 @@ let listeners: (() => void)[] = [];
 
 const AUTH_STORAGE_KEY = "aisetup.auth.user";
 
-function loadStoredUser(): AuthUser | null {
+function parseStoredUser(raw: string | null): AuthUser | null {
+  if (!raw) return null;
   try {
-    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthUser;
     if (!parsed?.id || !parsed?.role || !parsed?.email) return null;
     return parsed;
@@ -105,11 +104,25 @@ function loadStoredUser(): AuthUser | null {
   }
 }
 
+function loadStoredUser(): AuthUser | null {
+  try {
+    return (
+      parseStoredUser(localStorage.getItem(AUTH_STORAGE_KEY)) ??
+      parseStoredUser(sessionStorage.getItem(AUTH_STORAGE_KEY))
+    );
+  } catch {
+    return null;
+  }
+}
+
 function persistUser(user: AuthUser | null): void {
   try {
     if (user) {
-      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      const json = JSON.stringify(user);
+      localStorage.setItem(AUTH_STORAGE_KEY, json);
+      sessionStorage.setItem(AUTH_STORAGE_KEY, json);
     } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
     }
   } catch {
@@ -124,6 +137,11 @@ export const authStore = {
 
   isLoggedIn: () => currentUser !== null,
 
+  /** Re-read persisted session (e.g. after full page reload). */
+  hydrate: () => {
+    currentUser = loadStoredUser();
+  },
+
   login: (user: AuthUser) => {
     currentUser = user;
     persistUser(user);
@@ -134,6 +152,7 @@ export const authStore = {
     currentUser = null;
     persistUser(null);
     clearCurrentView();
+    clearAuthUiState();
     staffContextStore.clearSelection();
     notify();
   },

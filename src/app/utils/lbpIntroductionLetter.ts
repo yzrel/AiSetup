@@ -13,6 +13,7 @@ import {
 import { getApprovalLetterForm } from "./approvalLetter";
 import { formatApprovalDisplayDate } from "./approvalLetter";
 import { getProjectProposalForm } from "./projectProposal";
+import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { resolveApplicantOfficeId } from "./provincialOffice";
 import { getLandBankStored } from "./landBankWithdrawal";
 
@@ -325,7 +326,7 @@ export function publishLbpIntroduction(
 
 export function getLbpIntroductionPrintStyles(): string {
   return `
-    @page { size: A4 portrait; margin: 15mm 15mm 20mm 15mm; }
+    ${a4PageRule(A4_MARGIN_LETTER)}
     body { font-family: Georgia, 'Segoe UI', serif; padding: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
     .lbp-letterhead { text-align: center; margin-bottom: 16px; }
     .lbp-letterhead img { height: 56px; margin: 0 auto 8px; display: block; }

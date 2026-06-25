@@ -10,6 +10,7 @@ import {
   getMoaAnnexDForm,
   saveMoaAnnexDDraft,
 } from "../utils/moaAnnexD";
+import { a4PageRule, A4_MARGIN_DEFAULT } from "../utils/printPage";
 import type { MoaAnnexDForm } from "../api/types";
 
 interface MoaAnnexDEditorProps {
@@ -40,8 +41,12 @@ export function MoaAnnexDEditor({ applicantId, readOnly }: MoaAnnexDEditorProps)
     if (!win) return;
     win.document.write(`
       <html><head><title>SETUP Annex D — MOA</title>
-      <style>body{font-family:Georgia,serif;font-size:12px;line-height:1.6;padding:24px;max-width:720px;margin:0 auto}
-      h1{text-align:center;font-size:14px} p{margin:12px 0;text-align:justify}</style></head><body>
+      <style>
+        ${a4PageRule(A4_MARGIN_DEFAULT)}
+        body { font-family: Georgia, serif; font-size: 12px; line-height: 1.6; padding: 0; width: 210mm; margin: 0 auto; }
+        h1 { text-align: center; font-size: 14px; }
+        p { margin: 12px 0; text-align: justify; }
+      </style></head><body class="print-a4-sheet">
       <h1>MEMORANDUM OF AGREEMENT<br/>Regional Guidelines on SETUP (Revision 3.0) — Annex D</h1>
       ${body.map((p) => `<p>${p}</p>`).join("")}
       </body></html>

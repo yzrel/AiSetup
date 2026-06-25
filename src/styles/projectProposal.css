@@ -1,0 +1,340 @@
+/* Author: Yzrel Jade B. Eborde — SETUP Form 001 official print layout (print-only) */
+
+#project-proposal-print-root {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #111827;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff;
+}
+
+#project-proposal-print-root .pp-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10mm 0 8mm;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+#project-proposal-print-root .pp-form-block,
+#project-proposal-print-root .pp-print-section {
+  margin-bottom: 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#project-proposal-print-root .pp-form-block .pp-form-table {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+#project-proposal-print-root .pp-form-table thead {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#project-proposal-print-root .pp-form-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 14px;
+  color: #111827;
+}
+
+#project-proposal-print-root .pp-form-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 12px 0 8px;
+  color: #111827;
+  text-transform: uppercase;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+#project-proposal-print-root .pp-form-subheading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 10px 0 6px;
+  color: #111827;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+#project-proposal-print-root .pp-form-field-label,
+#project-proposal-print-root .pp-form-numbered-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+  color: #111827;
+}
+
+#project-proposal-print-root .pp-form-cover-field {
+  margin-bottom: 6px;
+}
+
+#project-proposal-print-root .pp-form-cover-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+#project-proposal-print-root .pp-form-cover-value {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+#project-proposal-print-root .pp-form-cover-address {
+  margin: 0 0 8px;
+  padding-left: 0;
+  font-size: 11px;
+}
+
+#project-proposal-print-root .pp-form-instruction {
+  font-size: 10px;
+  font-style: italic;
+  margin: 10px 0 6px;
+  color: #374151;
+}
+
+#project-proposal-print-root .pp-form-narrative,
+#project-proposal-print-root .pp-form-field-value {
+  font-size: 11px;
+  margin: 4px 0 8px;
+  text-align: justify;
+  white-space: pre-wrap;
+}
+
+#project-proposal-print-root .pp-form-narrative-cell {
+  white-space: pre-wrap;
+  vertical-align: top;
+}
+
+#project-proposal-print-root .pp-form-empty {
+  margin: 4px 0;
+  color: #9ca3af;
+}
+
+#project-proposal-print-root .pp-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 10px;
+  font-size: 10px;
+}
+
+#project-proposal-print-root .pp-form-table th,
+#project-proposal-print-root .pp-form-table td {
+  border: 1px solid #374151;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+#project-proposal-print-root .pp-form-table th {
+  font-weight: 700;
+  background: #f3f4f6;
+  text-align: center;
+}
+
+#project-proposal-print-root .pp-form-label {
+  font-weight: 600;
+  width: 32%;
+  background: #f9fafb;
+}
+
+#project-proposal-print-root .pp-form-value {
+  width: 68%;
+}
+
+#project-proposal-print-root .pp-form-center {
+  text-align: center;
+}
+
+#project-proposal-print-root .pp-form-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 6px 0 10px;
+}
+
+#project-proposal-print-root .pp-form-checkbox-option {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 10px;
+  max-width: 100%;
+}
+
+#project-proposal-print-root .pp-form-checkbox {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+#project-proposal-print-root .pp-form-activity-grid {
+  margin: 6px 0 10px;
+}
+
+#project-proposal-print-root .pp-form-activity-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-bottom: 4px;
+}
+
+#project-proposal-print-root .pp-form-activity-row .pp-form-checkbox-option {
+  font-size: 9.5px;
+}
+
+#project-proposal-print-root .pp-form-priority-specify {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 4px 0 10px;
+  padding-left: 16px;
+}
+
+#project-proposal-print-root .pp-form-bullet-list,
+#project-proposal-print-root .pp-form-check-bullet-list {
+  margin: 4px 0 10px;
+  padding-left: 18px;
+}
+
+#project-proposal-print-root .pp-form-bullet-list li,
+#project-proposal-print-root .pp-form-check-bullet-list li {
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-align: justify;
+}
+
+#project-proposal-print-root .pp-form-check-bullet {
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+#project-proposal-print-root .pp-form-intervention-table td {
+  font-size: 9.5px;
+}
+
+#project-proposal-print-root .pp-form-attachment,
+#project-proposal-print-root .pp-form-attachment-placeholder {
+  margin: 8px 0 12px;
+  text-align: center;
+}
+
+#project-proposal-print-root .pp-form-attachment img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border: 1px solid #d1d5db;
+}
+
+#project-proposal-print-root .pp-form-attachment-label {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: #374151;
+}
+
+#project-proposal-print-root .pp-form-attachment-placeholder {
+  border: 1px dashed #9ca3af;
+  min-height: 80px;
+  padding: 12px;
+}
+
+#project-proposal-print-root .pp-form-attachment-file {
+  font-size: 10px;
+  color: #4b5563;
+}
+
+#project-proposal-print-root .pp-form-expected-output {
+  margin-bottom: 10px;
+}
+
+#project-proposal-print-root .pp-form-expected-heading {
+  font-weight: 700;
+  font-size: 10.5px;
+  margin: 0 0 4px;
+}
+
+#project-proposal-print-root .pp-form-ratio-intro {
+  font-size: 10px;
+  font-style: italic;
+  margin: 4px 0 8px;
+}
+
+#project-proposal-print-root .pp-form-note {
+  font-size: 9.5px;
+  font-style: italic;
+  margin: 6px 0 10px;
+}
+
+#project-proposal-print-root .pp-form-risk-footnote {
+  margin-top: 10px;
+  font-size: 9px;
+  font-style: italic;
+  color: #4b5563;
+}
+
+#project-proposal-print-root .pp-form-risk-footnote p {
+  margin: 2px 0;
+}
+
+@media print {
+  body.project-proposal-printing,
+  body.project-proposal-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.project-proposal-printing > *:not(#project-proposal-print-root) {
+    display: none !important;
+  }
+
+  body.project-proposal-printing #project-proposal-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  @page project-proposal-sheet {
+    size: A4 portrait;
+    margin: 14mm 12mm 22mm;
+
+    @top-center {
+      content: "Effectivity: 2025";
+      font-family: Arial, "Segoe UI", sans-serif;
+      font-size: 9px;
+      color: #6b7280;
+    }
+
+    @bottom-center {
+      content: "SETUP Guidelines (Revision 3.0) Annex A – 1 - SETUP Form 001 (SETUP Project Proposal Format) Page "
+        counter(page) " of " counter(pages);
+      font-family: Arial, "Segoe UI", sans-serif;
+      font-size: 8.5px;
+      color: #6b7280;
+    }
+  }
+
+  body.project-proposal-printing #project-proposal-print-root {
+    page: project-proposal-sheet;
+  }
+
+  #project-proposal-print-root .pp-form-document-root {
+    padding: 0;
+    margin: 0 auto;
+  }
+}

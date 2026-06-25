@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { AiFieldSuggestionResponse, AiSuggestModule } from "../api/types";
 import { Applicant } from "../store/applicantStore";
+import { aiAssistNotice } from "./demoMode";
 
 export type AiSuggestResult = {
   value: string | string[];
@@ -73,6 +74,14 @@ export async function suggestAiField(
   throw new Error("Could not generate a suggestion for this field.");
 }
 
+export async function completeAiPrompt(
+  prompt: string,
+  maxTokens?: number,
+): Promise<{ text: string; aiGenerated: boolean }> {
+  const res = await api.completeAi({ prompt, maxTokens });
+  return { text: res.text, aiGenerated: res.aiGenerated };
+}
+
 export function aiGenerateErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     try {
@@ -107,11 +116,7 @@ export function useAiFieldSuggest(module: AiSuggestModule) {
           localFallback,
         );
         apply(value);
-        setNotice(
-          aiGenerated
-            ? "AI suggestion applied. Review and edit before saving."
-            : "Suggestion filled from template. Set ANTHROPIC_API_KEY on the backend for live AI output.",
-        );
+        setNotice(aiAssistNotice(aiGenerated));
       } catch (err) {
         setNotice(aiGenerateErrorMessage(err, "Could not generate suggestion."));
       } finally {

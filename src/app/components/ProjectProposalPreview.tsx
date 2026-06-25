@@ -10,6 +10,7 @@ import type {
   ProjectProposalDocumentResponse,
 } from "../api/types";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
+import { printProjectProposalPdf } from "../utils/projectProposalPrint";
 import {
   PreviewFieldRow,
   PreviewSection,
@@ -170,7 +171,7 @@ export function ProjectProposalPreview({
 
       <div
         id="project-proposal-preview"
-        className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800 pp-form-document"
+        className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800 pp-form-document"
       >
         <div className="text-center border-b border-gray-200 pb-4 mb-6 pp-print-section">
           <p className="text-[10px] uppercase tracking-widest text-gray-400">
@@ -453,27 +454,11 @@ export function ProjectProposalPreview({
   );
 }
 
-export function printProjectProposal() {
-  const el = document.getElementById("project-proposal-preview");
-  if (!el) {
-    window.print();
-    return;
-  }
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>SETUP Form 001 — Project Proposal</title>
-    <style>
-      body { font-family: 'Segoe UI', sans-serif; padding: 24px; color: #1f2937; }
-      table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-      th, td { border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 11px; }
-      th { background: #0C2461; color: white; }
-      img { max-height: 280px; max-width: 100%; }
-      .pp-page-break { page-break-before: always; break-before: page; }
-      .pp-print-section { page-break-inside: avoid; break-inside: avoid; }
-    </style></head><body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+export function printProjectProposal(
+  form: ProjectProposalForm,
+  document?: ProjectProposalDocumentResponse | null,
+  attachments?: ProjectProposalAttachment[],
+  applicationId?: string,
+) {
+  printProjectProposalPdf(form, document, attachments, applicationId);
 }

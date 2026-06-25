@@ -1,0 +1,48 @@
+---
+description: SETUP Form 002 RTEC Report print-only official layout conventions
+globs: src/app/components/rtecReport/**,src/styles/rtecReport.css,src/app/constants/rtecReportLayout.ts,src/app/utils/rtecReportPrint.tsx
+alwaysApply: false
+---
+
+# RTEC Report layout (SETUP Form 002)
+
+## Scope
+
+- **Print only** — on-screen preview in `RtecReportPreview.tsx` stays modern/summary layout.
+- Official output via `RtecReportDocument` rendered at print time (`printRtecReportPdf`).
+
+## Document title
+
+`SETUP Form 002 · RTEC Report`
+
+## Pagination
+
+- Physical page footers via named `@page rtec-report-sheet` with `counter(page)` / `counter(pages)` in `@bottom-center`.
+- No per-section inline footers (avoid cross-bleed with TNA / Project Proposal forms).
+- `FormBlock` + `break-inside: avoid` — section titles stay with content; long tables may break across pages.
+
+## Print path
+
+- In-page `window.print()` via `#rtec-report-print-root` + `body.rtec-report-printing`.
+- `createRoot` render (do not clone preview; do not use popup `document.write`).
+- Hide portal metadata in print: no Application ID from preview.
+
+## Official sections (order)
+
+Cover + cost split → I. Brief description (company profile with checkbox grids, objectives, expected outputs) → II. Compliance → III. Highlights (management, technical, marketing, financial, waste, risk) → IV. Recommendation + signatures.
+
+## Shared checkbox grids
+
+Company profile reuses `PP_ORGANIZATION_TYPES`, `PP_PROFIT_TYPES`, `PP_MSME_SIZES`, `PP_BUSINESS_ACTIVITY_PAIRS` from project proposal layout via `isOptionChecked()`. Registration offices include **LGU** (`RTEC_REGISTRATION_OFFICES`).
+
+## Attachments (print slots)
+
+- `orgChart` — III.a Management
+- `plantLayout` — III.b Technical constraints section
+
+## Key files
+
+- `src/app/components/rtecReport/RtecReportDocument.tsx`
+- `src/app/utils/rtecReportPrint.tsx`
+- `src/styles/rtecReport.css`
+- `src/app/constants/rtecReportLayout.ts`

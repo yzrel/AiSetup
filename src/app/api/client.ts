@@ -94,6 +94,12 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  completeAi: (payload: import("./types").AiCompletionRequest) =>
+    apiFetch<import("./types").AiCompletionResponse>("/ai/complete", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   getAuthorityLetter: (applicationId: string) =>
     apiFetch<{ applicationId: string; status: string; message: string }>(
       `/fund-release/authority-letter/${applicationId}`,

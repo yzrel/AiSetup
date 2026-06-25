@@ -163,6 +163,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     packExpiryRemarks: "",
     otherConcerns: String(md.exportClassification ?? ""),
     preparedDate: "",
+    validatedByName: "",
     validatedDate: "",
   };
 }

@@ -39,7 +39,7 @@ export function PrePisPreview({
         </PreviewToolbar>
       )}
 
-      <div id="pre-pis-preview" className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 text-xs">
+      <div id="pre-pis-preview" className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-4 sm:p-6 text-xs">
         <h1 className="text-center font-black text-sm mb-4" style={{ color: PIS_DOST_BLUE }}>
           PROJECT INFORMATION SHEET
           <br />

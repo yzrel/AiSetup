@@ -1,0 +1,53 @@
+---
+description: SETUP Form 001 Project Proposal print-only official layout conventions
+globs: src/app/components/projectProposal/**,src/styles/projectProposal.css,src/app/constants/projectProposalLayout.ts,src/app/utils/projectProposalPrint.tsx
+alwaysApply: false
+---
+
+# Project Proposal layout (SETUP Form 001)
+
+## Scope
+
+- **Print only** — on-screen preview in `ProjectProposalPreview.tsx` stays modern/summary layout.
+- Official output via `ProjectProposalDocument` rendered at print time (`printProjectProposalPdf`).
+
+## Document title
+
+`SETUP Form 001 - Project Proposal Format`
+
+## Pagination
+
+- Physical page footers via named `@page project-proposal-sheet`:
+  - `@top-center`: `Effectivity: 2025`
+  - `@bottom-center`: Annex A-1 footer with `counter(page)` / `counter(pages)`
+- No per-section inline footers (avoid cross-bleed with TNA forms or fixed "Page X of 20").
+- `FormBlock` + `break-inside: avoid` — section titles stay with content; long tables may break across pages.
+
+## Print path
+
+- In-page `window.print()` via `#project-proposal-print-root` + `body.project-proposal-printing`.
+- `createRoot` render (do not clone preview; do not use popup `document.write`).
+- Hide portal metadata in print: no Application ID, AI/draft badges, preview signature block.
+
+## Official sections (order)
+
+Cover → PROJECT BACKGROUND (Company Profile with checkbox grids) → Management → Plant site → Capacity/Raw materials → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT.
+
+## Checkbox grids
+
+- Organization type, profit/non-profit, MSME size: match via `isOptionChecked()` against free-text form fields.
+- Business activities: 2-column grid from `PP_BUSINESS_ACTIVITY_PAIRS`; RDC specify via `prioritySectorSpecify`.
+
+## Attachments (print slots)
+
+- `orgChart` — Management section
+- `vicinityMap` — Plant site section
+- `plantLayout` — S&T intervention section
+- Financial reports referenced by static note text only
+
+## Key files
+
+- `src/app/components/projectProposal/ProjectProposalDocument.tsx`
+- `src/app/utils/projectProposalPrint.tsx`
+- `src/styles/projectProposal.css`
+- `src/app/constants/projectProposalLayout.ts`

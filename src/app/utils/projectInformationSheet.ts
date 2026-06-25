@@ -16,6 +16,7 @@ import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { getPublishedTna2 } from "./tnaForm02";
 import { isDemoModeActive } from "./demoMode";
+import { a4PageRule, A4_MARGIN_DEFAULT, A4_MARGIN_PRE_PIS } from "./printPage";
 import { formatFormMention } from "../constants/setupForms";
 import {
   hasPdcsRecordedForDisbursement,
@@ -480,7 +481,7 @@ export function savePisOngoingFiling(applicantId: string, filing: PisOngoingFili
 
 export function getPrePisPrintStyles(): string {
   return `
-    @page { size: A4 portrait; margin: 12mm 12mm 18mm 12mm; }
+    ${a4PageRule(A4_MARGIN_PRE_PIS)}
     body { font-family: Georgia, 'Segoe UI', serif; font-size: 10px; line-height: 1.35; color: #1f2937; }
     h1 { font-size: 11px; font-weight: 800; text-align: center; margin: 0 0 8px; }
     h2 { font-size: 10px; font-weight: 700; color: ${DOST_BLUE}; margin: 12px 0 6px; }
@@ -521,7 +522,7 @@ export function downloadPrePisPdf(applicationId?: string) {
 
 export function getPisOngoingPrintStyles(): string {
   return `
-    @page { size: A4 portrait; margin: 12mm; }
+    ${a4PageRule(A4_MARGIN_DEFAULT)}
     body { font-family: Georgia, serif; font-size: 10px; line-height: 1.4; }
     h1 { font-size: 12px; font-weight: 800; text-align: center; }
     table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 9px; }

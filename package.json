@@ -4,11 +4,13 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-frontend.ps1",
     "build": "vite build",
     "preview": "vite preview",
     "backend:setup": "powershell -ExecutionPolicy Bypass -File backend/scripts/setup-jdk.ps1",
-    "backend": "cd backend && mvnw.cmd spring-boot:run"
+    "backend": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-backend.ps1",
+    "ai:setup": "powershell -ExecutionPolicy Bypass -File backend/scripts/ai-setup.ps1",
+    "start": "powershell -ExecutionPolicy Bypass -File backend/scripts/start-dev.ps1"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

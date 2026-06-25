@@ -11,6 +11,7 @@ import { isDemoModeActive } from "./demoMode";
 import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
 import { formatFormMention } from "../constants/setupForms";
+import { a4PageRule, A4_MARGIN_DEFAULT } from "./printPage";
 
 const MODULE_KEY = "landBank";
 
@@ -201,7 +202,7 @@ export function downloadAuthorityLetterPdf(
   if (!win) return;
   win.document.write(`
     <html><head><title>${title}</title>
-    <style>@page { size: A4 portrait; margin: 15mm; }</style></head>
+    <style>${a4PageRule(A4_MARGIN_DEFAULT)} body { font-family: Georgia, serif; }</style></head>
     <body>${html}</body></html>
   `);
   win.document.close();

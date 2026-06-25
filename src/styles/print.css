@@ -1,0 +1,24 @@
+/* Author: Yzrel Jade B. Eborde — global A4 print and preview sizing */
+
+.print-a4-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    width: 210mm;
+    margin: 0 auto;
+  }
+}

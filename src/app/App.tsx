@@ -29,7 +29,7 @@ import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
 // import { ClientPortal } from "./components/ClientPortal";
 import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
-import { loadCurrentView, saveCurrentView } from "./store/navigationStore";
+import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage, loadLoginPortal, saveLoginPortal } from "./store/navigationStore";
 import { applicantStore } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
@@ -353,6 +353,7 @@ function SidebarNav({
   userRole,
   applicant,
   demoMode,
+  onLogout,
 }: {
   currentView: ViewType;
   onNavigate: (v: ViewType) => void;
@@ -361,6 +362,7 @@ function SidebarNav({
   userRole: AuthUser["role"];
   applicant?: ReturnType<typeof resolveApplicantForUser>;
   demoMode: boolean;
+  onLogout: () => void;
 }) {
   const visibleGroups = menuGroups
     .map((group) => ({
@@ -452,7 +454,7 @@ function SidebarNav({
       {/* Bottom actions */}
       <div className="px-2 py-3 border-t border-white/10 space-y-0.5">
         <button
-          onClick={() => authStore.logout()}
+          onClick={onLogout}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/40 hover:bg-white/10 hover:text-red-300 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
@@ -469,25 +471,53 @@ function SidebarNav({
 }
 
 export default function App() {
+  const [authReady, setAuthReady] = useState(false);
   const [currentView, setCurrentViewState] =
     useState<ViewType>(() => resolveViewForUser(authStore.getUser()));
   const [collapsed, setCollapsed] = useState<
     Record<string, boolean>
   >({});
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [authPage, setAuthPage] = useState<
+  const [authPage, setAuthPageState] = useState<
     "landing" | "login" | "register"
-  >("landing");
+  >(() => loadAuthPage());
   const [registrationPrefill, setRegistrationPrefill] = useState<
     "DTI" | "SEC" | "CDA"
   >("DTI");
-  const [loginPortal, setLoginPortal] = useState<
+  const [loginPortal, setLoginPortalState] = useState<
     "applicant" | "staff" | null
-  >(null);
+  >(() => loadLoginPortal());
   const [user, setUser] = useState<AuthUser | null>(
     authStore.getUser(),
   );
   const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
+
+  const setAuthPage = (page: "landing" | "login" | "register") => {
+    setAuthPageState(page);
+    saveAuthPage(page);
+  };
+
+  const setLoginPortal = (portal: "applicant" | "staff" | null) => {
+    setLoginPortalState(portal);
+    saveLoginPortal(portal);
+  };
+
+  const handleLogout = () => {
+    setAuthPage("landing");
+    setLoginPortal(null);
+    authStore.logout();
+  };
+
+  // Restore persisted auth session before rendering public pages
+  useEffect(() => {
+    authStore.hydrate();
+    const restored = authStore.getUser();
+    setUser(restored);
+    if (restored) {
+      setCurrentViewState(resolveViewForUser(restored));
+    }
+    setAuthReady(true);
+  }, []);
 
   // Subscribe to auth changes
   useEffect(
@@ -521,7 +551,9 @@ export default function App() {
   // Restore or assign view after sign-in (fresh login has no saved view)
   useEffect(() => {
     if (!user) return;
-    setCurrentViewState(resolveViewForUser(user));
+    const view = resolveViewForUser(user);
+    setCurrentViewState(view);
+    saveCurrentView(view);
   }, [user?.id]);
 
   // Redirect to an allowed view if the current one is restricted for this role
@@ -545,6 +577,14 @@ export default function App() {
     setCurrentViewState(view);
     saveCurrentView(view);
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
+        <p className="text-sm text-gray-500">Loading session…</p>
+      </div>
+    );
+  }
 
   // Show landing / login / register if not logged in
   if (!user) {
@@ -650,6 +690,7 @@ export default function App() {
           userRole={user.role}
           applicant={activeApplicant}
           demoMode={demoMode}
+          onLogout={handleLogout}
         />
       </aside>
 
@@ -685,6 +726,7 @@ export default function App() {
           userRole={user.role}
           applicant={activeApplicant}
           demoMode={demoMode}
+          onLogout={handleLogout}
         />
       </aside>
 
@@ -791,7 +833,7 @@ export default function App() {
               )}
               <button
                 type="button"
-                onClick={() => authStore.logout()}
+                onClick={handleLogout}
                 title="Logout"
                 className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-400 transition-colors"
               >

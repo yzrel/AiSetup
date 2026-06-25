@@ -1,0 +1,443 @@
+/* Author: Yzrel Jade B. Eborde — DOST TNA Form 01 official print layout */
+
+#tna-form-01-preview {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #111827;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: transparent;
+}
+
+#tna-form-01-preview .tna-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 12mm 0 8mm;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+/* Content-height sections; vertical padding lives on the document root. */
+#tna-form-01-preview .tna-form-page {
+  display: block;
+  width: 210mm;
+  height: auto;
+  min-height: auto;
+  max-width: 100%;
+  border: none;
+  margin: 0 auto;
+  padding: 0 12mm;
+  background: transparent;
+  position: relative;
+  box-sizing: border-box;
+}
+
+#tna-form-01-preview .tna-form-page + .tna-form-page {
+  margin-top: 16px;
+}
+
+#tna-form-01-preview .tna-form-block,
+#tna-form-01-preview .tna-print-section {
+  margin-bottom: 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#tna-form-01-preview .tna-form-block .tna-form-table {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+#tna-form-01-preview .tna-form-table thead {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#tna-form-01-preview .tna-form-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 10px 0 8px;
+  color: #0c2461;
+  text-transform: uppercase;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+#tna-form-01-preview .tna-form-inner-frame {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#tna-form-01-preview .tna-form-page-body {
+  box-sizing: border-box;
+}
+
+#tna-form-01-preview .tna-form-footer {
+  margin-top: 8px;
+  margin-bottom: 10px;
+  padding-top: 0;
+  font-size: 9px;
+  text-align: center;
+  color: #6b7280;
+}
+
+#tna-form-01-preview .tna-form-page:last-child .tna-form-footer {
+  margin-bottom: 0;
+}
+
+#tna-form-01-preview .tna-form-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+#tna-form-01-preview .tna-form-logo {
+  width: 42px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+#tna-form-01-preview .tna-form-republic {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+  color: #4b5563;
+}
+
+#tna-form-01-preview .tna-form-department {
+  font-size: 11.5px;
+  font-weight: 700;
+  margin: 2px 0 0;
+  color: #0c2461;
+}
+
+#tna-form-01-preview .tna-form-setup {
+  font-size: 9.5px;
+  margin: 2px 0 0;
+  color: #4b5563;
+}
+
+#tna-form-01-preview .tna-form-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  text-align: center;
+  margin: 10px 0 12px;
+  color: #0c2461;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+#tna-form-01-preview .tna-form-section-bar {
+  padding: 4px 0;
+  margin-bottom: 6px;
+}
+
+#tna-form-01-preview .tna-form-bordered-panel {
+  padding: 6px 0 10px;
+  margin: 6px 0 10px;
+}
+
+#tna-form-01-preview .tna-form-panel-title {
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+}
+
+#tna-form-01-preview .tna-form-subheading {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+}
+
+#tna-form-01-preview .tna-form-benchmark-item {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin: 8px 0 6px;
+}
+
+#tna-form-01-preview .tna-form-benchmark-item::before {
+  content: "▪ ";
+}
+
+#tna-form-01-preview .tna-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 8px;
+  font-size: 10.5px;
+}
+
+#tna-form-01-preview .tna-form-table th,
+#tna-form-01-preview .tna-form-table td {
+  border: 1px solid #374151;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+#tna-form-01-preview .tna-form-field-table {
+  margin: 4px 0 8px;
+}
+
+#tna-form-01-preview .tna-form-field-label {
+  border-bottom: 1px solid #374151;
+}
+
+#tna-form-01-preview .tna-form-field-value {
+  min-height: 22px;
+}
+
+#tna-form-01-preview .tna-form-attachment-cell {
+  padding: 0 !important;
+}
+
+#tna-form-01-preview .tna-form-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+}
+
+#tna-form-01-preview .tna-form-label {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+#tna-form-01-preview .tna-form-value {
+  min-height: 20px;
+}
+
+#tna-form-01-preview .tna-form-center {
+  text-align: center;
+}
+
+#tna-form-01-preview .tna-form-checkbox {
+  font-family: "Segoe UI Symbol", sans-serif;
+  margin-right: 3px;
+}
+
+#tna-form-01-preview .tna-form-checkbox-row,
+#tna-form-01-preview .tna-form-checkbox-col {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 6px 0 8px;
+  padding-left: 4px;
+}
+
+#tna-form-01-preview .tna-form-checkbox-col {
+  flex-direction: column;
+  gap: 5px;
+}
+
+#tna-form-01-preview .tna-form-checkbox-label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 10.5px;
+}
+
+#tna-form-01-preview .tna-form-agreements {
+  margin: 0 0 8px 16px;
+  padding: 0;
+  font-size: 10.5px;
+}
+
+#tna-form-01-preview .tna-form-agreements li {
+  margin-bottom: 4px;
+}
+
+#tna-form-01-preview .tna-form-undertaking-text {
+  font-size: 10.5px;
+  margin: 0 0 10px;
+}
+
+#tna-form-01-preview .tna-form-ruled-line {
+  display: block;
+  border-bottom: 1px solid #374151;
+  min-height: 16px;
+  margin-bottom: 4px;
+}
+
+#tna-form-01-preview .tna-form-blank-box {
+  display: block;
+  border: 1px solid #374151;
+  min-height: 100px;
+  width: 100%;
+}
+
+#tna-form-01-preview .tna-form-attachment {
+  border: none;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+
+#tna-form-01-preview .tna-form-attachment-img {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+#tna-form-01-preview .tna-form-attachment-name {
+  font-size: 10.5px;
+  font-style: italic;
+  color: #4b5563;
+}
+
+#tna-form-01-preview .tna-form-activity-item {
+  margin-bottom: 6px;
+  font-size: 10.5px;
+}
+
+#tna-form-01-preview .tna-form-activity-hint {
+  color: #6b7280;
+  margin-left: 4px;
+}
+
+#tna-form-01-preview .tna-form-activity-spec {
+  display: block;
+  margin-left: 18px;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+#tna-form-01-preview .tna-form-signature-table {
+  margin-top: 16px;
+}
+
+#tna-form-01-preview .tna-form-signature-cell {
+  padding: 10px 12px;
+  vertical-align: top;
+  width: 50%;
+}
+
+#tna-form-01-preview .tna-form-signature-title {
+  font-weight: 700;
+  font-size: 10.5px;
+  margin: 0 0 10px;
+}
+
+#tna-form-01-preview .tna-form-signature-line {
+  border-bottom: 1px solid #374151;
+  min-height: 36px;
+  margin-bottom: 4px;
+}
+
+#tna-form-01-preview .tna-form-signature-label {
+  font-size: 9.5px;
+  color: #4b5563;
+  margin: 0 0 6px;
+}
+
+#tna-form-01-preview .tna-form-signature-name {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0;
+}
+
+#tna-form-01-preview .tna-form-signature-date {
+  font-size: 10px;
+  color: #4b5563;
+  margin: 8px 0 0;
+}
+
+#tna-form-01-preview .tna-form-page-break {
+  page-break-before: auto;
+  break-before: auto;
+}
+
+@media print {
+  body.tna-form-01-printing,
+  body.tna-form-01-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.tna-form-01-printing > *:not(#tna-form-01-print-root) {
+    display: none !important;
+  }
+
+  body.tna-form-01-printing #tna-form-01-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.tna-form-01-printing #tna-form-01-print-root .tna-form-01-print-surface,
+  body.tna-form-01-printing #tna-form-01-print-root #tna-form-01-preview {
+    display: block !important;
+    position: static !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  .tna-screen-only,
+  .tna-print-hidden {
+    display: none !important;
+  }
+
+  @page tna-form-01-sheet {
+    size: A4 portrait;
+    margin: 12mm 12mm 20mm;
+
+    @bottom-center {
+      content: "SETUP Guidelines – Annex B-11 - DOST TNA Form 01 — Page " counter(page) " of "
+        counter(pages);
+      font-family: Arial, "Segoe UI", sans-serif;
+      font-size: 9px;
+      color: #6b7280;
+    }
+  }
+
+  body.tna-form-01-printing #tna-form-01-print-root {
+    page: tna-form-01-sheet;
+  }
+
+  #tna-form-01-print-root #tna-form-01-preview .tna-form-document-root,
+  #tna-form-01-print-root .tna-form-01-print-surface .tna-form-document-root {
+    padding: 0;
+    margin: 0 auto;
+  }
+
+  #tna-form-01-print-root #tna-form-01-preview .tna-form-page,
+  #tna-form-01-print-root .tna-form-01-print-surface .tna-form-page {
+    padding: 0;
+    margin: 0;
+    page-break-after: auto;
+    break-after: auto;
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  #tna-form-01-print-root #tna-form-01-preview .tna-form-block,
+  #tna-form-01-print-root .tna-form-01-print-surface .tna-form-block,
+  #tna-form-01-print-root #tna-form-01-preview .tna-print-section,
+  #tna-form-01-print-root .tna-form-01-print-surface .tna-print-section {
+    margin-bottom: 5mm;
+  }
+
+  #tna-form-01-print-root #tna-form-01-preview .tna-form-page + .tna-form-page,
+  #tna-form-01-print-root .tna-form-01-print-surface .tna-form-page + .tna-form-page {
+    margin-top: 0;
+  }
+}
