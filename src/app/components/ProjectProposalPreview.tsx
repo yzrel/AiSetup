@@ -10,6 +10,12 @@ import type {
   ProjectProposalDocumentResponse,
 } from "../api/types";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
+import {
+  PreviewFieldRow,
+  PreviewSection,
+  PreviewTable,
+  PreviewToolbar,
+} from "./PreviewLayout";
 
 const DOST_BLUE = "#0C2461";
 
@@ -49,12 +55,7 @@ function Section({
 }
 
 function Row({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="grid grid-cols-[200px_1fr] gap-2 py-1.5 border-b border-gray-100 text-sm">
-      <span className="text-gray-500 font-medium">{label}</span>
-      <span className="text-gray-800 whitespace-pre-wrap">{value?.trim() ? value : "—"}</span>
-    </div>
-  );
+  return <PreviewFieldRow label={label} value={value} />;
 }
 
 function Narrative({ text }: { text?: string }) {
@@ -85,34 +86,10 @@ function Table({
   rows: string[][];
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr>
-            {headers.map((h, i) => (
-              <th
-                key={i}
-                className="border border-gray-200 px-2 py-1.5 text-left text-white"
-                style={{ background: DOST_BLUE }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri}>
-              {headers.map((_, ci) => (
-                <td key={ci} className="border border-gray-200 px-2 py-1.5 text-gray-700">
-                  {row[ci]?.trim() ? row[ci] : "—"}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <PreviewTable
+      columns={headers.map((h, i) => ({ key: String(i), header: h, mobileLabel: h }))}
+      rows={rows}
+    />
   );
 }
 
@@ -457,7 +434,7 @@ export function ProjectProposalPreview({
         </Section>
 
         <div className="mt-8 pt-6 border-t border-gray-200 pp-print-section">
-          <div className="grid grid-cols-2 gap-8 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-sm">
             <div>
               <p className="font-semibold text-gray-700">Prepared by:</p>
               <div className="border-b border-gray-300 min-h-10 mt-6 mb-1" />

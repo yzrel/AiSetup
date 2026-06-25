@@ -7,7 +7,7 @@ import { FileText, CheckCircle, Clock } from "lucide-react";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
-import { DOST_BLUE, ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
+import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW } from "./ModuleWorkflowLayout";
 import { formatFormMention } from "../constants/setupForms";
 import { notifyTna2Published } from "../utils/notificationHelpers";
 import { api, ApiError } from "../api/client";
@@ -166,7 +166,7 @@ export function TNA2TechnicalReport({
         <div className="space-y-4">
           {isStaff && (
             <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
+              <div className={`${ACTION_ROW} flex-wrap`}>
               <button
                 type="button"
                 onClick={() => void handleGenerate()}

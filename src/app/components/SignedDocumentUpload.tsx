@@ -4,6 +4,7 @@
 
 import { useRef } from "react";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
+import { FORM_GRID_2, ACTION_ROW } from "./moduleTheme";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -122,7 +123,7 @@ export function SignedDocumentUpload({
           </span>
         )}
       </div>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className={FORM_GRID_2}>
         <div>
           <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
             {dateLabel} *
@@ -172,7 +173,7 @@ export function SignedDocumentUpload({
         }}
       />
       {document ? (
-        <div className="flex flex-wrap items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+        <div className={`${ACTION_ROW} flex-wrap items-center bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2`}>
           <FileText className="w-4 h-4 text-emerald-700" />
           <span className="text-sm text-emerald-800 flex-1">{document.fileName}</span>
           <button

@@ -23,6 +23,7 @@ import {
 import type { EquipmentInventoryRow } from "../api/types";
 import { formatFormMention } from "../constants/setupForms";
 import { allowWhenDemo } from "../utils/demoMode";
+import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 
 interface ProjectCloseOutProps {
   user?: import("../store/authStore").AuthUser | null;
@@ -86,7 +87,7 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
     <div className="max-w-4xl mx-auto space-y-5">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div
-          className="p-6 text-white"
+          className={`${MODULE_HEADER} text-white`}
           style={{ background: `linear-gradient(135deg,${DOST_BLUE},#1a3a7a)` }}
         >
           <ModuleFormHeader
@@ -104,7 +105,7 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
         </div>
         <StaffApplicantBanner user={user} />
 
-        <div className="p-6 space-y-6">
+        <div className={MODULE_BODY}>
           {hasCloseOutComplete(applicant) && (
             <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl p-4 text-sm">
               <CheckCircle className="w-5 h-5" /> Project marked completed.

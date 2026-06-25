@@ -45,8 +45,8 @@ export function NotificationPanel({
   };
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-[min(24rem,calc(100vw-2rem))] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+    <div className="fixed z-50 left-3 right-3 top-[3.75rem] max-h-[calc(100vh-5rem)] flex flex-col sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(24rem,calc(100vw-2rem))] sm:max-h-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
         <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
           <Bell className="w-4 h-4 text-[#0C2461]" />
           Notifications
@@ -67,7 +67,7 @@ export function NotificationPanel({
         </div>
       </div>
 
-      <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-50">
         {notifs.length === 0 && (
           <p className="p-6 text-sm text-gray-400 text-center">No notifications yet.</p>
         )}

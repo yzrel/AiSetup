@@ -3,9 +3,14 @@
  */
 
 import { Printer } from "lucide-react";
-import type { ReactNode } from "react";
 import { Applicant } from "../store/applicantStore";
 import { MODULE_LABELS } from "../store/applicantStore";
+import {
+  PreviewFieldRow,
+  PreviewSection,
+  PreviewTable,
+  PreviewToolbar,
+} from "./PreviewLayout";
 
 const DOST_BLUE = "#0C2461";
 
@@ -31,41 +36,6 @@ interface TnaForm01PreviewProps {
   compact?: boolean;
 }
 
-function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
-  const display =
-    value === true ? "Yes" : value === false ? "No" : value ? String(value) : "—";
-  return (
-    <div className="grid grid-cols-[200px_1fr] gap-2 py-1.5 border-b border-gray-100 text-sm">
-      <span className="text-gray-500 font-medium">{label}</span>
-      <span className="text-gray-800">{display}</span>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-  pageBreak,
-}: {
-  title: string;
-  children: ReactNode;
-  pageBreak?: boolean;
-}) {
-  return (
-    <div className={`mb-6 tna-print-section ${pageBreak ? "tna-page-break" : ""}`}>
-      <h3
-        className="text-sm font-bold text-white px-3 py-2 rounded-t-lg"
-        style={{ background: DOST_BLUE }}
-      >
-        {title}
-      </h3>
-      <div className="border border-t-0 border-gray-200 rounded-b-lg p-4 bg-white">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function DataTable({
   columns,
   rows,
@@ -75,30 +45,10 @@ function DataTable({
 }) {
   if (!rows.length || !rows[0]?.some((c) => c)) return <p className="text-sm text-gray-400">—</p>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr style={{ background: DOST_BLUE }}>
-            {columns.map((col) => (
-              <th key={col} className="text-left text-white px-2 py-1.5 font-semibold">
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-              {row.map((cell, j) => (
-                <td key={j} className="border border-gray-100 px-2 py-1.5">
-                  {cell || "—"}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <PreviewTable
+      columns={columns.map((col) => ({ key: col, header: col, mobileLabel: col }))}
+      rows={rows}
+    />
   );
 }
 
@@ -137,21 +87,21 @@ export function TnaForm01Preview({
   return (
     <div className={compact ? "" : "space-y-4"}>
       {!compact && onPrint && (
-        <div className="flex justify-end print:hidden">
+        <PreviewToolbar className="justify-end">
           <button
             type="button"
             onClick={onPrint}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
           >
             <Printer className="w-4 h-4" />
             Print / Save as PDF
           </button>
-        </div>
+        </PreviewToolbar>
       )}
 
       <div
         id="tna-form-01-preview"
-        className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800 tna-form-document"
+        className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-8 text-gray-800 tna-form-document"
       >
         {/* Cover */}
         <div className="text-center border-b border-gray-200 pb-4 mb-6 tna-print-section">
@@ -176,22 +126,22 @@ export function TnaForm01Preview({
           </p>
         </div>
 
-        <Section title="I. Enterprise Identification" pageBreak>
-          <Row label="Enterprise Name" value={f.enterpriseName as string} />
-          <Row label="Contact Person" value={f.contactPerson as string} />
-          <Row label="Position" value={f.position as string} />
-          <Row label="Office Address" value={f.officeAddress as string} />
-          <Row label="Office Tel." value={f.officeTel as string} />
-          <Row label="Office Fax" value={f.officeFax as string} />
-          <Row label="Office Email" value={f.officeEmail as string} />
-          <Row label="Factory Address" value={f.factoryAddress as string} />
-          <Row label="Factory Tel." value={f.factoryTel as string} />
-          <Row label="Factory Fax" value={f.factoryFax as string} />
-          <Row label="Factory Email" value={f.factoryEmail as string} />
-          <Row label="Website" value={f.website as string} />
-        </Section>
+        <PreviewSection title="I. Enterprise Identification" pageBreak>
+          <PreviewFieldRow label="Enterprise Name" value={f.enterpriseName as string} />
+          <PreviewFieldRow label="Contact Person" value={f.contactPerson as string} />
+          <PreviewFieldRow label="Position" value={f.position as string} />
+          <PreviewFieldRow label="Office Address" value={f.officeAddress as string} />
+          <PreviewFieldRow label="Office Tel." value={f.officeTel as string} />
+          <PreviewFieldRow label="Office Fax" value={f.officeFax as string} />
+          <PreviewFieldRow label="Office Email" value={f.officeEmail as string} />
+          <PreviewFieldRow label="Factory Address" value={f.factoryAddress as string} />
+          <PreviewFieldRow label="Factory Tel." value={f.factoryTel as string} />
+          <PreviewFieldRow label="Factory Fax" value={f.factoryFax as string} />
+          <PreviewFieldRow label="Factory Email" value={f.factoryEmail as string} />
+          <PreviewFieldRow label="Website" value={f.website as string} />
+        </PreviewSection>
 
-        <Section title="II. General Agreements" pageBreak>
+        <PreviewSection title="II. General Agreements" pageBreak>
           <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 leading-relaxed">
             {GENERAL_AGREEMENTS.map((text, i) => (
               <li key={i} className={f[`agreeGA${i + 1}`] ? "text-gray-800" : "text-gray-400"}>
@@ -202,43 +152,43 @@ export function TnaForm01Preview({
               </li>
             ))}
           </ol>
-        </Section>
+        </PreviewSection>
 
-        <Section title="III. Undertaking">
+        <PreviewSection title="III. Undertaking">
           <p className="text-sm text-gray-600 mb-4 leading-relaxed">
             I agree to undertake and observe the above General Agreements as stipulated by the
             Department of Science and Technology.
           </p>
-          <Row label="Signature over Printed Name" value={f.undertakingName as string} />
-          <Row label="Position in Enterprise" value={f.undertakingPosition as string} />
-          <Row label="Date" value={f.undertakingDate as string} />
-        </Section>
+          <PreviewFieldRow label="Signature over Printed Name" value={f.undertakingName as string} />
+          <PreviewFieldRow label="Position in Enterprise" value={f.undertakingPosition as string} />
+          <PreviewFieldRow label="Date" value={f.undertakingDate as string} />
+        </PreviewSection>
 
-        <Section title="IV. Attachment A — Enterprise Profile" pageBreak>
-          <Row label="Production Site / Location" value={f.productionSite as string} />
-          <Row label="Business Permit No." value={f.businessPermitNo as string} />
-          <Row label="Year Registered" value={f.yearRegistered as string} />
-          <Row label="Type of Organization" value={f.organizationType as string} />
-          <Row label="Classification by Capital" value={f.capitalClassification as string} />
-          <Row label="Classification by Employment" value={f.employmentClass as string} />
-          <Row
+        <PreviewSection title="IV. Attachment A — Enterprise Profile" pageBreak>
+          <PreviewFieldRow label="Production Site / Location" value={f.productionSite as string} />
+          <PreviewFieldRow label="Business Permit No." value={f.businessPermitNo as string} />
+          <PreviewFieldRow label="Year Registered" value={f.yearRegistered as string} />
+          <PreviewFieldRow label="Type of Organization" value={f.organizationType as string} />
+          <PreviewFieldRow label="Classification by Capital" value={f.capitalClassification as string} />
+          <PreviewFieldRow label="Classification by Employment" value={f.employmentClass as string} />
+          <PreviewFieldRow
             label="Employees (Male / Female)"
             value={`${f.employeesMale} male · ${f.employeesFemale} female`}
           />
-          <Row
+          <PreviewFieldRow
             label="Indirect / Contract Workers"
             value={`${f.employeesIndirect} indirect · ${f.employeesContract} contract`}
           />
-          <Row label="Year Established" value={f.yearEstablished as string} />
-          <Row label="Initial Capitalization (PHP)" value={f.initialCapital as string} />
-          <Row label="Registration No." value={f.registrationNo as string} />
-          <Row label="Present Capitalization (PHP)" value={f.presentCapital as string} />
-          <Row label="Sector" value={f.sector as string} />
-          <Row label="Commodity" value={f.commodity as string} />
-          <Row label="Main Product / Service" value={f.mainProduct as string} />
-          <Row label="Enterprise Background" value={f.enterpriseBackground as string} />
-          <Row label="Reasons for Assistance" value={f.reasonsForAssistance as string} />
-          <Row
+          <PreviewFieldRow label="Year Established" value={f.yearEstablished as string} />
+          <PreviewFieldRow label="Initial Capitalization (PHP)" value={f.initialCapital as string} />
+          <PreviewFieldRow label="Registration No." value={f.registrationNo as string} />
+          <PreviewFieldRow label="Present Capitalization (PHP)" value={f.presentCapital as string} />
+          <PreviewFieldRow label="Sector" value={f.sector as string} />
+          <PreviewFieldRow label="Commodity" value={f.commodity as string} />
+          <PreviewFieldRow label="Main Product / Service" value={f.mainProduct as string} />
+          <PreviewFieldRow label="Enterprise Background" value={f.enterpriseBackground as string} />
+          <PreviewFieldRow label="Reasons for Assistance" value={f.reasonsForAssistance as string} />
+          <PreviewFieldRow
             label="Consulted Other Agency"
             value={
               f.consultedOther === "Yes"
@@ -247,14 +197,14 @@ export function TnaForm01Preview({
             }
           />
           {f.consultedOther === "No" && (
-            <Row label="Why Not Consulted" value={f.whyNotConsulted as string} />
+            <PreviewFieldRow label="Why Not Consulted" value={f.whyNotConsulted as string} />
           )}
-          <Row label="5-Year Development Plan" value={f.plan5Years as string} />
-          <Row label="10-Year Development Plan" value={f.plan10Years as string} />
-          <Row label="Agreements / Commitments" value={f.agreements as string} />
-        </Section>
+          <PreviewFieldRow label="5-Year Development Plan" value={f.plan5Years as string} />
+          <PreviewFieldRow label="10-Year Development Plan" value={f.plan10Years as string} />
+          <PreviewFieldRow label="Agreements / Commitments" value={f.agreements as string} />
+        </PreviewSection>
 
-        <Section title="V. Benchmark Information" pageBreak>
+        <PreviewSection title="V. Benchmark Information" pageBreak>
           <p className="text-xs font-bold text-gray-500 uppercase mb-2">Raw Materials</p>
           <DataTable
             columns={["Material", "Source", "Unit Cost", "Volume/Year"]}
@@ -271,15 +221,15 @@ export function TnaForm01Preview({
             rows={tables.equipment}
           />
           <div className="mt-4 space-y-1">
-            <Row label="Production Problems & Concerns" value={f.productionProblemsConcerns as string} />
-            <Row label="Waste Management" value={f.wasteManagement as string} />
-            <Row label="Production Plan" value={f.productionPlan as string} />
-            <Row label="Inventory System" value={f.inventorySystem as string} />
-            <Row label="Maintenance Program" value={f.maintenanceProgram as string} />
-            <Row label="cGMP / HACCP" value={f.cgmpHaccp as string} />
-            <Row label="Purchasing System" value={f.purchasingSystem as string} />
-            <Row label="Plant Lay-Out" value={f.plantLayoutFileName as string} />
-            <Row
+            <PreviewFieldRow label="Production Problems & Concerns" value={f.productionProblemsConcerns as string} />
+            <PreviewFieldRow label="Waste Management" value={f.wasteManagement as string} />
+            <PreviewFieldRow label="Production Plan" value={f.productionPlan as string} />
+            <PreviewFieldRow label="Inventory System" value={f.inventorySystem as string} />
+            <PreviewFieldRow label="Maintenance Program" value={f.maintenanceProgram as string} />
+            <PreviewFieldRow label="cGMP / HACCP" value={f.cgmpHaccp as string} />
+            <PreviewFieldRow label="Purchasing System" value={f.purchasingSystem as string} />
+            <PreviewFieldRow label="Plant Lay-Out" value={f.plantLayoutFileName as string} />
+            <PreviewFieldRow
               label="Process Flow"
               value={
                 f.processFlowMode === "attachment"
@@ -288,34 +238,34 @@ export function TnaForm01Preview({
               }
             />
           </div>
-        </Section>
+        </PreviewSection>
 
-        <Section title="VI. Marketing & Packaging" pageBreak>
-          <Row label="Marketing Plan" value={f.marketingPlan as string} />
-          <Row label="Market Outlets" value={f.marketOutlets as string} />
-          <Row label="Promotional Strategies" value={f.promotionalStrategies as string} />
-          <Row label="Market Competitors" value={f.marketCompetitors as string} />
+        <PreviewSection title="VI. Marketing & Packaging" pageBreak>
+          <PreviewFieldRow label="Marketing Plan" value={f.marketingPlan as string} />
+          <PreviewFieldRow label="Market Outlets" value={f.marketOutlets as string} />
+          <PreviewFieldRow label="Promotional Strategies" value={f.promotionalStrategies as string} />
+          <PreviewFieldRow label="Market Competitors" value={f.marketCompetitors as string} />
           <p className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2">Packaging Compliance</p>
           {packaging.map((p) => (
-            <Row
+            <PreviewFieldRow
               key={p.label}
               label={`${p.label}${p.on ? " ✓" : ""}`}
               value={p.remarks as string}
             />
           ))}
-        </Section>
+        </PreviewSection>
 
-        <Section title="VII. Finance & Human Resources" pageBreak>
-          <Row label="Cash Flow" value={f.cashFlow as string} />
-          <Row label="Source of Capital" value={f.capitalSource as string} />
-          <Row label="Accounting System" value={f.accountingSystem as string} />
-          <Row label="Hiring Criteria" value={f.hiringCriteria as string} />
-          <Row label="Employee Incentives" value={f.employeeIncentives as string} />
-          <Row label="Training & Development" value={f.trainingDevelopment as string} />
-          <Row label="Safety Measures" value={f.safetyMeasures as string} />
-          <Row label="Employee Welfare" value={f.employeeWelfare as string} />
-          <Row label="Other Concerns" value={f.otherConcerns as string} />
-        </Section>
+        <PreviewSection title="VII. Finance & Human Resources" pageBreak>
+          <PreviewFieldRow label="Cash Flow" value={f.cashFlow as string} />
+          <PreviewFieldRow label="Source of Capital" value={f.capitalSource as string} />
+          <PreviewFieldRow label="Accounting System" value={f.accountingSystem as string} />
+          <PreviewFieldRow label="Hiring Criteria" value={f.hiringCriteria as string} />
+          <PreviewFieldRow label="Employee Incentives" value={f.employeeIncentives as string} />
+          <PreviewFieldRow label="Training & Development" value={f.trainingDevelopment as string} />
+          <PreviewFieldRow label="Safety Measures" value={f.safetyMeasures as string} />
+          <PreviewFieldRow label="Employee Welfare" value={f.employeeWelfare as string} />
+          <PreviewFieldRow label="Other Concerns" value={f.otherConcerns as string} />
+        </PreviewSection>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-4 border-t border-gray-200 text-sm tna-print-section tna-page-break">
           <div>

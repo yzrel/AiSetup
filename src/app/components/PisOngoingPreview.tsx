@@ -4,6 +4,7 @@
 
 import type { PisOngoingFiling } from "../api/types";
 import { PIS_DOST_BLUE } from "../utils/projectInformationSheet";
+import { PreviewFieldRow, PreviewTable } from "./PreviewLayout";
 
 interface PisOngoingPreviewProps {
   filing: PisOngoingFiling;
@@ -11,10 +12,17 @@ interface PisOngoingPreviewProps {
 }
 
 export function PisOngoingPreview({ filing, applicationId }: PisOngoingPreviewProps) {
+  const semesterLabel =
+    filing.semester === "1"
+      ? "1st Semester (January–June)"
+      : filing.semester === "2"
+        ? "2nd Semester (July–December)"
+        : "—";
+
   return (
     <div
       id={`pis-ongoing-preview-${filing.id}`}
-      className="bg-white border border-gray-200 rounded-xl p-6 text-xs"
+      className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 text-xs"
     >
       <h1 className="text-center font-black text-sm mb-4" style={{ color: PIS_DOST_BLUE }}>
         PROJECT INFORMATION SHEET (FORM 009)
@@ -22,113 +30,65 @@ export function PisOngoingPreview({ filing, applicationId }: PisOngoingPreviewPr
         <span className="text-xs font-semibold">Ongoing Monitoring Report</span>
       </h1>
 
-      <table className="w-full mb-4">
-        <tbody>
-          <tr>
-            <td className="font-semibold w-1/3">Reporting period</td>
-            <td>{filing.periodLabel || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Semester</td>
-            <td>
-              {filing.semester === "1"
-                ? "1st Semester (January–June)"
-                : filing.semester === "2"
-                  ? "2nd Semester (July–December)"
-                  : "—"}
-            </td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Project code</td>
-            <td>{filing.projectCode || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Project title</td>
-            <td>{filing.projectTitle || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Firm name</td>
-            <td>{filing.firmName || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Owner / manager</td>
-            <td>{filing.ownerName || "—"}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="space-y-0 mb-4">
+        <PreviewFieldRow label="Reporting period" value={filing.periodLabel} className="text-xs" />
+        <PreviewFieldRow label="Semester" value={semesterLabel} className="text-xs" />
+        <PreviewFieldRow label="Project code" value={filing.projectCode} className="text-xs" />
+        <PreviewFieldRow label="Project title" value={filing.projectTitle} className="text-xs" />
+        <PreviewFieldRow label="Firm name" value={filing.firmName} className="text-xs" />
+        <PreviewFieldRow label="Owner / manager" value={filing.ownerName} className="text-xs" />
+      </div>
 
       <h2 style={{ color: PIS_DOST_BLUE }}>Assets (Php)</h2>
-      <table className="w-full mb-4">
-        <thead>
-          <tr>
-            <th>Land</th>
-            <th>Building</th>
-            <th>Equipment</th>
-            <th>Working capital</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{filing.assetsLand || "—"}</td>
-            <td>{filing.assetsBuilding || "—"}</td>
-            <td>{filing.assetsEquipment || "—"}</td>
-            <td>{filing.assetsWorkingCapital || "—"}</td>
-          </tr>
-        </tbody>
-      </table>
+      <PreviewTable
+        className="mb-4"
+        columns={[
+          { key: "land", header: "Land", mobileLabel: "Land" },
+          { key: "building", header: "Building", mobileLabel: "Building" },
+          { key: "equipment", header: "Equipment", mobileLabel: "Equipment" },
+          { key: "wc", header: "Working capital", mobileLabel: "Working capital" },
+        ]}
+        rows={[
+          [
+            filing.assetsLand || "—",
+            filing.assetsBuilding || "—",
+            filing.assetsEquipment || "—",
+            filing.assetsWorkingCapital || "—",
+          ],
+        ]}
+      />
 
       <h2 style={{ color: PIS_DOST_BLUE }}>Employment</h2>
-      <table className="w-full mb-4">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Male</th>
-            <th>Female</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Direct</td>
-            <td>{filing.employmentDirectMale || "—"}</td>
-            <td>{filing.employmentDirectFemale || "—"}</td>
-          </tr>
-          <tr>
-            <td>Indirect</td>
-            <td>{filing.employmentIndirectMale || "—"}</td>
-            <td>{filing.employmentIndirectFemale || "—"}</td>
-          </tr>
-        </tbody>
-      </table>
+      <PreviewTable
+        className="mb-4"
+        columns={[
+          { key: "type", header: "Type", mobileLabel: "Type" },
+          { key: "male", header: "Male", mobileLabel: "Male" },
+          { key: "female", header: "Female", mobileLabel: "Female" },
+        ]}
+        rows={[
+          [
+            "Direct",
+            filing.employmentDirectMale || "—",
+            filing.employmentDirectFemale || "—",
+          ],
+          [
+            "Indirect",
+            filing.employmentIndirectMale || "—",
+            filing.employmentIndirectFemale || "—",
+          ],
+        ]}
+      />
 
       <h2 style={{ color: PIS_DOST_BLUE }}>Production &amp; Sales</h2>
-      <table className="w-full mb-4">
-        <tbody>
-          <tr>
-            <td className="font-semibold w-1/3">Production volume (local)</td>
-            <td>{filing.productionVolumeLocal || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Production volume (export)</td>
-            <td>{filing.productionVolumeExport || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Production details</td>
-            <td>{filing.productionDetails || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Gross sales (local)</td>
-            <td>{filing.grossSalesLocal || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Gross sales (export)</td>
-            <td>{filing.grossSalesExport || "—"}</td>
-          </tr>
-          <tr>
-            <td className="font-semibold">Export destinations</td>
-            <td>{filing.exportDestinations || "—"}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="space-y-0 mb-4">
+        <PreviewFieldRow label="Production volume (local)" value={filing.productionVolumeLocal} className="text-xs" />
+        <PreviewFieldRow label="Production volume (export)" value={filing.productionVolumeExport} className="text-xs" />
+        <PreviewFieldRow label="Production details" value={filing.productionDetails} className="text-xs" />
+        <PreviewFieldRow label="Gross sales (local)" value={filing.grossSalesLocal} className="text-xs" />
+        <PreviewFieldRow label="Gross sales (export)" value={filing.grossSalesExport} className="text-xs" />
+        <PreviewFieldRow label="Export destinations" value={filing.exportDestinations} className="text-xs" />
+      </div>
 
       {filing.dostAssistance.length > 0 && (
         <>

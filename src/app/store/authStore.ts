@@ -5,6 +5,7 @@
 // ── Auth Store ─────────────────────────────────────────────────────────────────
 
 import { staffContextStore } from "./staffContextStore";
+import { clearCurrentView } from "./navigationStore";
 import { isDemoModeActive } from "../utils/demoMode";
 
 export type UserRole = "applicant" | "client" | "agent" | "admin";
@@ -87,8 +88,34 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   applicant: "Applicant",
 };
 
-let currentUser: AuthUser | null = null;
+let currentUser: AuthUser | null = loadStoredUser();
 let listeners: (() => void)[] = [];
+
+const AUTH_STORAGE_KEY = "aisetup.auth.user";
+
+function loadStoredUser(): AuthUser | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthUser;
+    if (!parsed?.id || !parsed?.role || !parsed?.email) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistUser(user: AuthUser | null): void {
+  try {
+    if (user) {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    } else {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 const notify = () => listeners.forEach((l) => l());
 
@@ -99,11 +126,14 @@ export const authStore = {
 
   login: (user: AuthUser) => {
     currentUser = user;
+    persistUser(user);
     notify();
   },
 
   logout: () => {
     currentUser = null;
+    persistUser(null);
+    clearCurrentView();
     staffContextStore.clearSelection();
     notify();
   },
@@ -111,6 +141,7 @@ export const authStore = {
   updateUser: (patch: Partial<AuthUser>) => {
     if (!currentUser) return;
     currentUser = { ...currentUser, ...patch };
+    persistUser(currentUser);
     notify();
   },
 

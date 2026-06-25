@@ -19,7 +19,7 @@ import {
 import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
-import { DOST_BLUE, ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
+import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyApprovalLetterPublished } from "../utils/notificationHelpers";
 import type { ApprovalLetterForm } from "../api/types";
@@ -380,7 +380,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               )}
 
               {showStaffWorkflow && (
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                <div className={`${ACTION_ROW} flex-wrap pt-2 border-t border-gray-100`}>
                   <button
                     type="button"
                     onClick={() => setStep(STEP_IDS[Math.max(0, stepIndex - 1)])}
