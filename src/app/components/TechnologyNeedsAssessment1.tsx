@@ -23,7 +23,7 @@ import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
-import { moduleStepPillClass } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
@@ -114,43 +114,7 @@ function ValidationRow({ label, value, passed }) {
   );
 }
 
-// ─── Editable table ───────────────────────────────────────────────────────────
-function EditableTable({ columns, rows, onChange, onAddRow }) {
-  return (
-    <div className="overflow-x-auto mb-3">
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr style={{ background: DOST_BLUE }}>
-            {columns.map((col, i) => (
-              <th key={i} className="px-3 py-2 text-white font-semibold text-left whitespace-nowrap">{col}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-              {row.map((cell, ci) => (
-                <td key={ci} className="border border-gray-100 p-1">
-                  <input value={cell}
-                    onChange={e => {
-                      const nr = rows.map((r, i) => i === ri ? r.map((c, j) => j === ci ? e.target.value : c) : r);
-                      onChange(nr);
-                    }}
-                    className="w-full border-none bg-transparent text-xs px-2 py-1.5 outline-none focus:bg-blue-50 rounded"
-                  />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <button onClick={onAddRow}
-        className="mt-1.5 px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">
-        + Add Row
-      </button>
-    </div>
-  );
-}
+import { EditableTableResponsive } from "./ui/editable-table-responsive";
 
 // ─── Checkbox clause (same pattern as LOI agreement clauses) ─────────────────
 function ClauseCheck({ checked, onChange, title, text }) {
@@ -271,16 +235,24 @@ function AILoader({ label }) {
 function ReportViewer({ title, content, color, badge }) {
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200" style={{ background: color }}>
-        <p className="text-sm font-bold text-white flex items-center gap-2">
-          📄 {title}
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20">{badge}</span>
+      <div
+        className="px-4 sm:px-5 py-3 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+        style={{ background: color }}
+      >
+        <p className="text-sm font-bold text-white flex flex-wrap items-center gap-2 min-w-0">
+          <span>📄 {title}</span>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20 shrink-0">
+            {badge}
+          </span>
         </p>
-        <button className="text-xs text-white/80 bg-white/15 border border-white/25 px-3 py-1.5 rounded-lg hover:bg-white/25 transition-colors">
+        <button
+          type="button"
+          className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-1.5 min-h-11 px-4 py-2.5 rounded-lg text-xs font-semibold text-white bg-white/15 border border-white/25 hover:bg-white/25 transition-colors whitespace-nowrap"
+        >
           ⬇ Download
         </button>
       </div>
-      <div className="p-5 bg-gray-50 max-h-72 overflow-y-auto text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">
+      <div className="p-4 sm:p-5 bg-gray-50 max-h-72 overflow-y-auto text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">
         {content}
       </div>
     </div>
@@ -663,7 +635,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
         {/* ── Header (identical structure to LOI) ── */}
-        <div className="p-6 text-white" style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}>
+        <div className={`${MODULE_HEADER} text-white`} style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}>
           <div className="flex items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
@@ -703,7 +675,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 1 — Enterprise Identification
         ══════════════════════════════════════════════════════════════════ */}
         {step === "identification" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="📋" color="blue"
               title={formatFormMention("tna01")}
               text="Please fill out all sections accurately. Your registration data is pre-filled where available. Progress is saved automatically as you continue." />
@@ -737,19 +709,31 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               <h2 className={sectionTitle}>🏭 Enterprise Identification</h2>
               <div className="border border-gray-200 rounded-xl overflow-hidden text-sm">
                 {/* Name row */}
-                <div className="grid grid-cols-[180px_1fr] border-b border-gray-100">
-                  <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 flex items-center border-r border-gray-100">Name of Enterprise <span className="text-red-500 ml-1">*</span></div>
-                  <div className="p-1.5"><input value={form.enterpriseName} onChange={e => set("enterpriseName", e.target.value)} className={inputCls} /></div>
+                <div className="flex flex-col md:grid md:grid-cols-[minmax(140px,180px)_1fr] border-b border-gray-100">
+                  <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 md:flex md:items-center md:border-r md:border-gray-100 shrink-0">
+                    Name of Enterprise <span className="text-red-500 ml-1">*</span>
+                  </div>
+                  <div className="p-2 sm:p-1.5">
+                    <input value={form.enterpriseName} onChange={e => set("enterpriseName", e.target.value)} className={`${inputCls} w-full`} />
+                  </div>
                 </div>
                 {/* Contact + Position */}
-                <div className="grid grid-cols-2 border-b border-gray-100">
-                  <div className="grid grid-cols-[130px_1fr] border-r border-gray-100">
-                    <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 flex items-center border-r border-gray-100">Contact Person <span className="text-red-500 ml-1">*</span></div>
-                    <div className="p-1.5"><input value={form.contactPerson} onChange={e => set("contactPerson", e.target.value)} className={inputCls} /></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-100">
+                  <div className="flex flex-col md:grid md:grid-cols-[minmax(120px,130px)_1fr] border-b md:border-b-0 md:border-r border-gray-100">
+                    <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 md:flex md:items-center md:border-r md:border-gray-100 shrink-0">
+                      Contact Person <span className="text-red-500 ml-1">*</span>
+                    </div>
+                    <div className="p-2 sm:p-1.5">
+                      <input value={form.contactPerson} onChange={e => set("contactPerson", e.target.value)} className={`${inputCls} w-full`} />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-[150px_1fr]">
-                    <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 flex items-center border-r border-gray-100">Position in Enterprise</div>
-                    <div className="p-1.5"><input value={form.position} onChange={e => set("position", e.target.value)} className={inputCls} /></div>
+                  <div className="flex flex-col md:grid md:grid-cols-[minmax(130px,150px)_1fr]">
+                    <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 md:flex md:items-center md:border-r md:border-gray-100 shrink-0">
+                      Position in Enterprise
+                    </div>
+                    <div className="p-2 sm:p-1.5">
+                      <input value={form.position} onChange={e => set("position", e.target.value)} className={`${inputCls} w-full`} />
+                    </div>
                   </div>
                 </div>
                 {/* Office + Factory addresses */}
@@ -757,28 +741,61 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   { label: "Office Address", keyAddr: "officeAddress", keyTel: "officeTel", keyFax: "officeFax", keyEmail: "officeEmail" },
                   { label: "Factory Address", keyAddr: "factoryAddress", keyTel: "factoryTel", keyFax: "factoryFax", keyEmail: "factoryEmail" },
                 ].map((row, i) => (
-                  <div key={i} className="grid grid-cols-[180px_1fr_1fr_1fr] border-b border-gray-100 last:border-0">
-                    <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 flex items-center border-r border-gray-100">{row.label}</div>
-                    <div className="p-1.5 border-r border-gray-100">
-                      <div className="text-xs text-gray-400 mb-1">Address</div>
-                      <input value={form[row.keyAddr]} onChange={e => set(row.keyAddr, e.target.value)} className={inputCls} />
+                  <div key={i} className="border-b border-gray-100 last:border-0">
+                    {/* Mobile: stacked fields */}
+                    <div className="md:hidden p-4 space-y-3">
+                      <p className="text-xs font-semibold text-gray-700 bg-gray-50 -mx-4 px-4 py-2 border-b border-gray-100">
+                        {row.label}
+                      </p>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Address</label>
+                        <input value={form[row.keyAddr]} onChange={e => set(row.keyAddr, e.target.value)} className={`${inputCls} w-full`} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Tel. No.</label>
+                          <input value={form[row.keyTel]} onChange={e => set(row.keyTel, e.target.value)} className={`${inputCls} w-full`} />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Fax No.</label>
+                          <input value={form[row.keyFax]} onChange={e => set(row.keyFax, e.target.value)} className={`${inputCls} w-full`} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">E-mail Address</label>
+                        <input value={form[row.keyEmail]} onChange={e => set(row.keyEmail, e.target.value)} className={`${inputCls} w-full`} type="email" />
+                      </div>
                     </div>
-                    <div className="p-1.5 border-r border-gray-100">
-                      <div className="text-xs text-gray-400 mb-1">Tel. No.</div>
-                      <input value={form[row.keyTel]} onChange={e => set(row.keyTel, e.target.value)} className={inputCls} />
-                      <div className="text-xs text-gray-400 mb-1 mt-2">Fax No.</div>
-                      <input value={form[row.keyFax]} onChange={e => set(row.keyFax, e.target.value)} className={inputCls} />
-                    </div>
-                    <div className="p-1.5">
-                      <div className="text-xs text-gray-400 mb-1">E-mail Address</div>
-                      <input value={form[row.keyEmail]} onChange={e => set(row.keyEmail, e.target.value)} className={inputCls} />
+                    {/* Desktop: table row */}
+                    <div className="hidden md:grid md:grid-cols-[minmax(140px,180px)_1fr_1fr_1fr]">
+                      <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 flex items-center border-r border-gray-100">
+                        {row.label}
+                      </div>
+                      <div className="p-1.5 border-r border-gray-100 min-w-0">
+                        <div className="text-xs text-gray-400 mb-1">Address</div>
+                        <input value={form[row.keyAddr]} onChange={e => set(row.keyAddr, e.target.value)} className={`${inputCls} w-full`} />
+                      </div>
+                      <div className="p-1.5 border-r border-gray-100 min-w-0">
+                        <div className="text-xs text-gray-400 mb-1">Tel. No.</div>
+                        <input value={form[row.keyTel]} onChange={e => set(row.keyTel, e.target.value)} className={`${inputCls} w-full`} />
+                        <div className="text-xs text-gray-400 mb-1 mt-2">Fax No.</div>
+                        <input value={form[row.keyFax]} onChange={e => set(row.keyFax, e.target.value)} className={`${inputCls} w-full`} />
+                      </div>
+                      <div className="p-1.5 min-w-0">
+                        <div className="text-xs text-gray-400 mb-1">E-mail Address</div>
+                        <input value={form[row.keyEmail]} onChange={e => set(row.keyEmail, e.target.value)} className={`${inputCls} w-full`} type="email" />
+                      </div>
                     </div>
                   </div>
                 ))}
                 {/* Website */}
-                <div className="grid grid-cols-[180px_1fr]">
-                  <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 flex items-center border-r border-gray-100">Website</div>
-                  <div className="p-1.5"><input value={form.website} onChange={e => set("website", e.target.value)} className={inputCls} placeholder="https://" /></div>
+                <div className="flex flex-col md:grid md:grid-cols-[minmax(140px,180px)_1fr]">
+                  <div className="bg-gray-50 px-3 py-2.5 text-xs font-semibold text-gray-600 md:flex md:items-center md:border-r md:border-gray-100 shrink-0">
+                    Website
+                  </div>
+                  <div className="p-2 sm:p-1.5">
+                    <input value={form.website} onChange={e => set("website", e.target.value)} className={`${inputCls} w-full`} placeholder="https://" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -840,7 +857,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 2 — Attachment A: Enterprise Profile
         ══════════════════════════════════════════════════════════════════ */}
         {step === "attachment-a" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="📎" color="blue" title="Attachment A — Enterprise Profile"
               text="Provide detailed background information about your enterprise. All fields marked * are required." />
 
@@ -929,7 +946,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
                 <div>
                   <label className={labelCls}>Number of Employees <span className="text-red-500">*</span></label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
                       <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
                       <input type="number" min="0" value={form.employeesMale} onChange={e => set("employeesMale", e.target.value)} className={inputCls} placeholder="0" />
@@ -1045,13 +1062,13 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 3 — Benchmark Information
         ══════════════════════════════════════════════════════════════════ */}
         {step === "benchmark" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="📊" color="blue" title="Benchmark Information — Production & Supply Chain"
               text="Enter details about your raw materials, production output, and existing equipment. Click '+ Add Row' to add more entries." />
 
             <div>
               <h2 className={sectionTitle}>🌿 Raw Materials</h2>
-              <EditableTable
+              <EditableTableResponsive
                 columns={["Raw Material","Source","Unit Cost (PHP)","Volume Used / Year"]}
                 rows={tables.rawMaterials}
                 onChange={rows => setT("rawMaterials", rows)}
@@ -1060,7 +1077,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             </div>
             <div>
               <h2 className={sectionTitle}>🏭 Production</h2>
-              <EditableTable
+              <EditableTableResponsive
                 columns={["Product","Volume of Production / Year","Unit Cost of Production (PHP)","Annual Cost of Production (PHP)"]}
                 rows={tables.production}
                 onChange={rows => setT("production", rows)}
@@ -1069,7 +1086,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             </div>
             <div>
               <h2 className={sectionTitle}>⚙️ Existing Functional Production Equipment</h2>
-              <EditableTable
+              <EditableTableResponsive
                 columns={["Type of Equipment","Specifications","Capacity","No. of Units","Year Acquired"]}
                 rows={tables.equipment}
                 onChange={rows => setT("equipment", rows)}
@@ -1172,7 +1189,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 4 — Production Problems & Marketing
         ══════════════════════════════════════════════════════════════════ */}
         {step === "concerns" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="⚠️" color="amber" title="Production Problems, Concerns & Marketing"
               text="Review operational details from Benchmark Information and complete marketing and packaging compliance." />
 
@@ -1259,7 +1276,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 5 — Finance & Human Resources
         ══════════════════════════════════════════════════════════════════ */}
         {step === "finance-hr" && (
-          <div className="p-6 space-y-6">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="💼" color="blue" title="Finance & Human Resources"
               text="Provide financial and HR information to complete your application profile." />
 
@@ -1344,7 +1361,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 6 — Validation (mirrors LOI validation step)
         ══════════════════════════════════════════════════════════════════ */}
         {step === "validation" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="✅" color="blue" title="Data Validation Check"
               text="All required fields must be complete before submitting for staff review. Fields marked MISSING must be corrected." />
 
@@ -1457,7 +1474,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP — TNA Form 01 Preview (printable summary)
         ══════════════════════════════════════════════════════════════════ */}
         {step === "complete" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5 text-center">
               <span className="text-3xl">✅</span>
               <h3 className="font-black text-green-800 text-lg mt-2">TNA Form 01 Recorded</h3>
@@ -1539,7 +1556,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 7 — Staff Review
         ══════════════════════════════════════════════════════════════════ */}
         {step === "staff-review" && isStaff && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             {!staffMode ? (
               <div className="text-center py-16 space-y-4">
                 <div className="text-5xl">🔒</div>
@@ -1566,7 +1583,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 </div>
 
                 {/* Doc verification stats */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
                     { label: "Uploaded",  value: uploadedDocs.length,                       icon: "📤", color: "text-blue-600" },
                     { label: "Verified",  value: docs.filter(d => d.verified).length,        icon: "✅", color: "text-green-600" },
@@ -1618,7 +1635,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 {/* Enterprise data review */}
                 <div>
                   <h2 className={sectionTitle}>🏭 Encoded Enterprise Data</h2>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
                       ["Enterprise Name",    form.enterpriseName],
                       ["Contact Person",     form.contactPerson],
@@ -1677,7 +1694,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 8 — AI Analysis
         ══════════════════════════════════════════════════════════════════ */}
         {step === "analysis" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="🤖" color="purple" title="AI-Powered Enterprise Analysis"
               text="Generate an intelligent assessment of the enterprise's SETUP eligibility, technology needs, and qualification status." />
 
@@ -1777,12 +1794,12 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             STEP 9 — Reports
         ══════════════════════════════════════════════════════════════════ */}
         {step === "reports" && (
-          <div className="p-6 space-y-5">
+          <div className={MODULE_BODY}>
             <InfoBanner icon="📄" color="blue" title="Auto-Generated Reports"
               text="Generate the Project Proposal from TNA1 data, then generate the RTEC Report once no further changes are needed." />
 
             {/* Status strip */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[
                 { label: "Staff Verification", done: staffApproved,   icon: "🔍" },
                 { label: "Project Proposal",   done: !!proposalContent, icon: "📋" },
@@ -1822,14 +1839,14 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 <InfoBanner icon="💡" color="amber" text="Review the Project Proposal above. If no more changes are needed, generate the RTEC Report." />
                 {rtecLoading
                   ? <AILoader label="Generating RTEC Report" />
-                  : <div className="flex gap-3">
+                  : <div className="flex flex-col sm:flex-row gap-3">
                       <button onClick={handleGenerateRTEC}
-                        className="flex-1 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+                        className="flex-1 min-h-11 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
                         style={{ background: "#00695C" }}>
                         📊 Generate RTEC Report — No More Changes
                       </button>
                       <button onClick={() => setProposalContent(null)}
-                        className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
+                        className="min-h-11 px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm whitespace-nowrap">
                         ✏ Edit Proposal
                       </button>
                     </div>
@@ -1840,17 +1857,20 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
 
             {/* Completion banner */}
             {rtecContent && (
-              <div className="bg-green-50 border-2 border-green-400 rounded-xl p-5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">🎉</span>
-                  <div>
+              <div className="bg-green-50 border-2 border-green-400 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <span className="text-3xl shrink-0">🎉</span>
+                  <div className="min-w-0">
                     <p className="font-black text-green-800 text-base">TNA1 Module Complete!</p>
                     <p className="text-sm text-green-600">All reports generated. Proceed to TNA2 Technical Report.</p>
                   </div>
                 </div>
-                <button onClick={() => onSubmitSuccess?.()}
-                  className="px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
-                  style={{ background: "#059669" }}>
+                <button
+                  type="button"
+                  onClick={() => onSubmitSuccess?.()}
+                  className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 min-h-11 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 whitespace-nowrap"
+                  style={{ background: "#059669" }}
+                >
                   ▶ Proceed to TNA2
                 </button>
               </div>

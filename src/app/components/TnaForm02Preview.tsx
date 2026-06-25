@@ -3,8 +3,13 @@
  */
 
 import { Printer } from "lucide-react";
-import type { ReactNode } from "react";
 import type { Tna2DocumentResponse } from "../api/types";
+import {
+  PreviewFieldRow,
+  PreviewSection,
+  PreviewTable,
+  PreviewToolbar,
+} from "./PreviewLayout";
 
 const DOST_BLUE = "#0C2461";
 
@@ -15,39 +20,6 @@ interface TnaForm02PreviewProps {
   published?: boolean;
   onPrint?: () => void;
   compact?: boolean;
-}
-
-function Section({
-  title,
-  children,
-  pageBreak,
-}: {
-  title: string;
-  children: ReactNode;
-  pageBreak?: boolean;
-}) {
-  return (
-    <div className={`mb-6 tna-print-section ${pageBreak ? "tna-page-break" : ""}`}>
-      <h3
-        className="text-sm font-bold text-white px-3 py-2 rounded-t-lg"
-        style={{ background: DOST_BLUE }}
-      >
-        {title}
-      </h3>
-      <div className="border border-t-0 border-gray-200 rounded-b-lg p-4 bg-white">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="grid grid-cols-[200px_1fr] gap-2 py-1.5 border-b border-gray-100 text-sm">
-      <span className="text-gray-500 font-medium">{label}</span>
-      <span className="text-gray-800">{value?.trim() ? value : "—"}</span>
-    </div>
-  );
 }
 
 export function TnaForm02Preview({
@@ -64,21 +36,21 @@ export function TnaForm02Preview({
   return (
     <div className={compact ? "" : "space-y-4"}>
       {!compact && onPrint && (
-        <div className="flex justify-end print:hidden">
+        <PreviewToolbar className="justify-end">
           <button
             type="button"
             onClick={onPrint}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
           >
             <Printer className="w-4 h-4" />
             Print / Save as PDF
           </button>
-        </div>
+        </PreviewToolbar>
       )}
 
       <div
         id="tna-form-02-preview"
-        className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800 tna-form-document"
+        className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-8 text-gray-800 tna-form-document"
       >
         <div className="text-center border-b border-gray-200 pb-4 mb-6 tna-print-section">
           <p className="text-[10px] uppercase tracking-widest text-gray-400">
@@ -106,20 +78,20 @@ export function TnaForm02Preview({
           </p>
         </div>
 
-        <Section title="I. Enterprise Profile" pageBreak>
-          <Row label="Enterprise Name" value={profile.enterpriseName} />
-          <Row label="Business Address" value={profile.address} />
-          <Row label="Business Type" value={profile.businessType} />
-          <Row label="Sector" value={profile.sector} />
-          <Row label="Commodity" value={profile.commodity} />
-          <Row label="Main Product / Service" value={profile.mainProduct} />
-          <Row label="Employees" value={profile.employees} />
-          <Row label="Contact Person" value={profile.contactPerson} />
-          <Row label="Contact Number" value={profile.contactNumber} />
-          <Row label="Email" value={profile.emailAddress} />
-        </Section>
+        <PreviewSection title="I. Enterprise Profile" pageBreak>
+          <PreviewFieldRow label="Enterprise Name" value={profile.enterpriseName} />
+          <PreviewFieldRow label="Business Address" value={profile.address} />
+          <PreviewFieldRow label="Business Type" value={profile.businessType} />
+          <PreviewFieldRow label="Sector" value={profile.sector} />
+          <PreviewFieldRow label="Commodity" value={profile.commodity} />
+          <PreviewFieldRow label="Main Product / Service" value={profile.mainProduct} />
+          <PreviewFieldRow label="Employees" value={profile.employees} />
+          <PreviewFieldRow label="Contact Person" value={profile.contactPerson} />
+          <PreviewFieldRow label="Contact Number" value={profile.contactNumber} />
+          <PreviewFieldRow label="Email" value={profile.emailAddress} />
+        </PreviewSection>
 
-        <Section title="II. Site Validation Findings" pageBreak>
+        <PreviewSection title="II. Site Validation Findings" pageBreak>
           {doc.siteValidationFindings?.length ? (
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
               {doc.siteValidationFindings.map((item, i) => (
@@ -129,9 +101,9 @@ export function TnaForm02Preview({
           ) : (
             <p className="text-sm text-gray-400">—</p>
           )}
-        </Section>
+        </PreviewSection>
 
-        <Section title="III. Production Process Analysis">
+        <PreviewSection title="III. Production Process Analysis">
           <p className="text-sm text-gray-700 leading-relaxed mb-3">
             {doc.productionProcessAnalysis?.summary || "—"}
           </p>
@@ -142,9 +114,9 @@ export function TnaForm02Preview({
               ))}
             </ol>
           ) : null}
-        </Section>
+        </PreviewSection>
 
-        <Section title="IV. Technology Gap Analysis" pageBreak>
+        <PreviewSection title="IV. Technology Gap Analysis" pageBreak>
           {doc.technologyGaps?.length ? (
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
               {doc.technologyGaps.map((item, i) => (
@@ -154,9 +126,9 @@ export function TnaForm02Preview({
           ) : (
             <p className="text-sm text-gray-400">—</p>
           )}
-        </Section>
+        </PreviewSection>
 
-        <Section title="V. Proposed Technology Intervention">
+        <PreviewSection title="V. Proposed Technology Intervention">
           {doc.proposedInterventions?.length ? (
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
               {doc.proposedInterventions.map((item, i) => (
@@ -166,53 +138,34 @@ export function TnaForm02Preview({
           ) : (
             <p className="text-sm text-gray-400">—</p>
           )}
-        </Section>
+        </PreviewSection>
 
-        <Section title="VI. Recommended Equipment List" pageBreak>
+        <PreviewSection title="VI. Recommended Equipment List" pageBreak>
           {doc.recommendedEquipment?.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr style={{ background: DOST_BLUE }}>
-                    {["#", "Equipment", "Specifications", "Qty", "Est. Cost (₱)", "Priority"].map(
-                      (col) => (
-                        <th key={col} className="text-left text-white px-2 py-1.5 font-semibold">
-                          {col}
-                        </th>
-                      ),
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {doc.recommendedEquipment.map((row, i) => (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="border border-gray-100 px-2 py-1.5">{i + 1}</td>
-                      <td className="border border-gray-100 px-2 py-1.5 font-medium">
-                        {row.name}
-                      </td>
-                      <td className="border border-gray-100 px-2 py-1.5">
-                        {row.specifications || "—"}
-                      </td>
-                      <td className="border border-gray-100 px-2 py-1.5">
-                        {row.quantity || "—"}
-                      </td>
-                      <td className="border border-gray-100 px-2 py-1.5">
-                        {row.estimatedCost || "—"}
-                      </td>
-                      <td className="border border-gray-100 px-2 py-1.5">
-                        {row.priority || "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <PreviewTable
+              columns={[
+                { key: "n", header: "#", mobileLabel: "#" },
+                { key: "name", header: "Equipment", mobileLabel: "Equipment" },
+                { key: "specs", header: "Specifications", mobileLabel: "Specs" },
+                { key: "qty", header: "Qty", mobileLabel: "Qty" },
+                { key: "cost", header: "Est. Cost (₱)", mobileLabel: "Cost" },
+                { key: "priority", header: "Priority", mobileLabel: "Priority" },
+              ]}
+              rows={doc.recommendedEquipment.map((row, i) => [
+                String(i + 1),
+                row.name,
+                row.specifications || "—",
+                row.quantity || "—",
+                row.estimatedCost || "—",
+                row.priority || "—",
+              ])}
+            />
           ) : (
             <p className="text-sm text-gray-400">—</p>
           )}
-        </Section>
+        </PreviewSection>
 
-        <Section title="VII. Expected Productivity Improvement" pageBreak>
+        <PreviewSection title="VII. Expected Productivity Improvement" pageBreak>
           {doc.productivityImprovement?.kpis?.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {doc.productivityImprovement.kpis.map((kpi) => (
@@ -235,7 +188,7 @@ export function TnaForm02Preview({
               ))}
             </ol>
           ) : null}
-        </Section>
+        </PreviewSection>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-4 border-t border-gray-200 text-sm tna-print-section">
           <div>

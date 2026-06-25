@@ -11,6 +11,7 @@ import { normalizeRegistrationType } from "../utils/applicantPrefill";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
+import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -139,7 +140,7 @@ export function EnterpriseRegistration({
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div
-          className="p-6 text-white"
+          className={`${MODULE_HEADER} text-white`}
           style={{
             background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)`,
           }}
@@ -181,7 +182,7 @@ export function EnterpriseRegistration({
 
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-4"
+          className={MODULE_BODY}
           noValidate={isDemoModeActive()}
         >
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">

@@ -13,6 +13,7 @@ import {
 import { notifyMoaUploaded } from "../utils/notificationHelpers";
 import { formatFormMention } from "../constants/setupForms";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
+import { ACTION_ROW } from "./moduleTheme";
 
 interface SignedMoaUploadPanelProps {
   applicant: Applicant;
@@ -136,13 +137,15 @@ export function SignedMoaUploadPanel({
         showVenue
         staffOnly={staffOnly}
       />
-      <button
-        type="button"
-        onClick={handleSave}
-        className="px-4 py-2 rounded-lg bg-[#0C2461] text-white text-sm font-semibold"
-      >
-        Save signed MOA
-      </button>
+      <div className={ACTION_ROW}>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#0C2461] text-white text-sm font-semibold"
+        >
+          Save signed MOA
+        </button>
+      </div>
       {notice && (
         <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
           {notice}

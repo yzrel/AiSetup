@@ -12,6 +12,7 @@ import type {
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { RTEC_DOST_BLUE } from "../utils/rtecReport";
+import { PreviewFieldRow, PreviewTable } from "./PreviewLayout";
 
 interface RtecReportPreviewProps {
   form: RtecReportForm;
@@ -29,12 +30,7 @@ function Footer({ page }: { page: string }) {
 }
 
 function CoverRow({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="rtec-cover-row grid grid-cols-[140px_1fr] gap-2 py-1 text-sm">
-      <span className="font-semibold text-gray-600">{label}</span>
-      <span className="text-gray-800 whitespace-pre-wrap">{value?.trim() || "—"}</span>
-    </div>
-  );
+  return <PreviewFieldRow label={label} value={value} />;
 }
 
 function Narrative({ text }: { text?: string }) {
@@ -67,42 +63,11 @@ function Table({
   colClasses?: string;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className={`w-full text-xs border-collapse ${colClasses ?? ""}`}>
-        <thead>
-          <tr>
-            {headers.map((h) => (
-              <th
-                key={h}
-                className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-white"
-                style={{ background: RTEC_DOST_BLUE }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length ? (
-            rows.map((row, ri) => (
-              <tr key={ri}>
-                {headers.map((_, ci) => (
-                  <td key={ci} className="border border-gray-200 px-2 py-1.5 align-top">
-                    {row[ci] ?? ""}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={headers.length} className="border border-gray-200 px-2 py-2 text-gray-400">
-                —
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <PreviewTable
+      className={colClasses}
+      columns={headers.map((h, i) => ({ key: String(i), header: h, mobileLabel: h }))}
+      rows={rows.length ? rows : []}
+    />
   );
 }
 
@@ -226,7 +191,7 @@ export function RtecReportPreview({
         <CoverRow label="Project Title:" value={pp.projectTitle} />
         <CoverRow label="Proponent:" value={pp.proponentName || pp.firmName} />
         <CoverRow label="Contact Person:" value={pp.contactPerson} />
-        <div className="grid grid-cols-3 gap-4 mt-3 mb-6 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3 mb-6 text-sm">
           <div>
             <span className="font-semibold text-gray-600">Project Cost: Proponent</span>
             <p>{form.projectCostProponent || "—"}</p>
@@ -476,13 +441,13 @@ export function RtecReportPreview({
           </Section>
           <div className="mt-8">
             <p className="text-sm font-semibold text-gray-700 mb-4">Evaluated by:</p>
-            <div className="grid grid-cols-2 gap-6 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
               <div>
                 <p className="text-xs text-gray-500">RTEC Chairperson</p>
                 <div className="rtec-sig-line border-b border-gray-400 min-h-10 mt-6" />
                 <p className="mt-1">{form.signatures.chairperson || " "}</p>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {(["member1", "member2", "member3"] as const).map((k, i) => (
                   <div key={k}>
                     <p className="text-xs text-gray-500">Member</p>
@@ -492,7 +457,7 @@ export function RtecReportPreview({
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6 mt-8 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8 text-sm">
               <div>
                 <p className="text-xs text-gray-500">Reviewed and endorsed by: RPMO</p>
                 <div className="rtec-sig-line border-b border-gray-400 min-h-10 mt-6" />

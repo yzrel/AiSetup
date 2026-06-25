@@ -76,7 +76,7 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
         January–June; 2nd Semester: July–December) during project implementation.
       </p>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <FieldLabel>Reporting year</FieldLabel>
           <TextInput
@@ -129,7 +129,7 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
 
       <div>
         <h3 className="text-sm font-bold text-[#0C2461] mb-2">Assets (Php)</h3>
-        <div className="grid sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <FieldLabel>Land</FieldLabel>
             <TextInput
@@ -163,7 +163,7 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
 
       <div>
         <h3 className="text-sm font-bold text-[#0C2461] mb-2">Employment</h3>
-        <div className="grid sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <FieldLabel>Direct male</FieldLabel>
             <TextInput
@@ -195,7 +195,7 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>Production volume (local)</FieldLabel>
           <TextInput

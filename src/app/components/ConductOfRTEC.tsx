@@ -20,7 +20,7 @@ import {
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
-import { DOST_BLUE, ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
+import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import type { RtecReportForm } from "../api/types";
 import {
@@ -267,64 +267,70 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                 />
               )}
 
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setStep(STEP_IDS[Math.max(0, stepIndex - 1)])}
-                  disabled={stepIndex === 0}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStep(STEP_IDS[Math.min(STEP_IDS.length - 1, stepIndex + 1)])
-                  }
-                  disabled={stepIndex === STEPS.length - 1}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <div className="flex-1" />
-                <button
-                  type="button"
-                  onClick={handleSync}
-                  disabled={!allowWhenDemo(rtecReady)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-semibold hover:bg-blue-50 disabled:opacity-40"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Sync from Project Proposal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-700 text-white text-sm font-semibold hover:bg-gray-800"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownload}
-                  disabled={!allowWhenDemo(rtecReady)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
-                  style={{ background: DOST_BLUE }}
-                >
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={handleComplete}
-                  disabled={!allowWhenDemo(rtecReady) || isComplete}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Mark RTEC Complete
-                </button>
+              <div className="pt-2 border-t border-gray-100 space-y-2">
+                <div className={`${ACTION_ROW}`}>
+                  <button
+                    type="button"
+                    onClick={() => setStep(STEP_IDS[Math.max(0, stepIndex - 1)])}
+                    disabled={stepIndex === 0}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStep(STEP_IDS[Math.min(STEP_IDS.length - 1, stepIndex + 1)])
+                    }
+                    disabled={stepIndex === STEPS.length - 1}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className={`${ACTION_ROW} flex-wrap`}>
+                  <button
+                    type="button"
+                    onClick={handleSync}
+                    disabled={!allowWhenDemo(rtecReady)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-semibold hover:bg-blue-50 disabled:opacity-40"
+                  >
+                    <RefreshCw className="w-4 h-4 shrink-0" />
+                    <span className="hidden sm:inline">Sync from Project Proposal</span>
+                    <span className="sm:hidden">Sync Proposal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-gray-700 text-white text-sm font-semibold hover:bg-gray-800"
+                  >
+                    <Save className="w-4 h-4 shrink-0" />
+                    Save Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    disabled={!allowWhenDemo(rtecReady)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+                    style={{ background: DOST_BLUE }}
+                  >
+                    <Download className="w-4 h-4 shrink-0" />
+                    <span className="hidden sm:inline">Download PDF</span>
+                    <span className="sm:hidden">PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleComplete}
+                    disabled={!allowWhenDemo(rtecReady) || isComplete}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
+                  >
+                    <CheckCircle className="w-4 h-4 shrink-0" />
+                    <span className="hidden sm:inline">Mark RTEC Complete</span>
+                    <span className="sm:hidden">Complete</span>
+                  </button>
+                </div>
               </div>
 
               {saveNotice && (
