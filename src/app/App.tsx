@@ -893,10 +893,10 @@ export default function App() {
                   user={user}
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
-                    if (app) {
+                    if (app?.qualified) {
                       applicantStore.update(app.id, { currentModule: "registration" });
+                      navigate("registration");
                     }
-                    navigate("registration");
                   }}
                 />
               )}

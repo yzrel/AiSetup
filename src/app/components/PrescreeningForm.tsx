@@ -71,6 +71,48 @@ export function PrescreeningForm({
     value: (typeof formData)[K],
   ) => setFormData((prev) => ({ ...prev, [key]: value }));
 
+  const prescreeningInputFromForm = () => ({
+    businessSector: formData.businessSector,
+    businessNature: formData.businessNature,
+    yearsOfOperation: formData.yearsOfOperation,
+    msmeSize: formData.msmeSize,
+    exportClassification: formData.exportClassification,
+  });
+
+  const prescreeningInputFromApplicant = (app: Applicant) => ({
+    businessSector: app.businessSector,
+    businessNature: app.businessNature,
+    yearsOfOperation: app.yearsOfOperation,
+    msmeSize: app.msmeSize,
+    exportClassification: String(app.moduleData?.exportClassification ?? ""),
+  });
+
+  const applyEvaluationToState = (
+    result: PrescreeningEvaluation,
+    app?: Applicant | null,
+  ) => {
+    setQualified(result.qualified);
+    if (result.qualified) {
+      setEvaluation(result);
+      return;
+    }
+    const storedIds = (app?.moduleData?.prescreening?.recommendedProgramIds ??
+      result.recommendedProgramIds) as string[];
+    const storedReasons = (app?.moduleData?.prescreening?.failedReasons ??
+      []) as EligibilityReason[];
+    const programs =
+      storedIds.length > 0 && app
+        ? getProgramsByIds(storedIds)
+        : result.recommendedPrograms;
+    setEvaluation({
+      ...result,
+      failedReasons:
+        storedReasons.length > 0 ? storedReasons : result.failedReasons,
+      recommendedPrograms: programs,
+      recommendedProgramIds: programs.map((p) => p.id),
+    });
+  };
+
   const loadApplicantPrescreening = (app: Applicant | null) => {
     if (!app) {
       setQualified(null);
@@ -96,38 +138,16 @@ export function PrescreeningForm({
       essentialPeriod: String(app.moduleData?.essentialPeriod ?? ""),
       turnover: String(app.moduleData?.turnover ?? ""),
     });
-    if (app.qualified) {
-      setQualified(true);
+
+    const hasEvaluation = Boolean(app.moduleData?.prescreening?.evaluatedAt);
+    if (!hasEvaluation && !app.qualified) {
+      setQualified(null);
       setEvaluation(null);
-    } else {
-      setQualified(false);
-      const storedIds = (app.moduleData?.prescreening?.recommendedProgramIds ??
-        []) as string[];
-      const recomputed = evaluatePrescreening({
-        businessSector: app.businessSector,
-        businessNature: app.businessNature,
-        yearsOfOperation: app.yearsOfOperation,
-        msmeSize: app.msmeSize,
-        exportClassification: String(
-          app.moduleData?.exportClassification ?? "",
-        ),
-      });
-      const storedReasons = (app.moduleData?.prescreening?.failedReasons ??
-        []) as EligibilityReason[];
-      const programs =
-        storedIds.length > 0
-          ? getProgramsByIds(storedIds)
-          : recomputed.recommendedPrograms;
-      setEvaluation({
-        qualified: false,
-        failedReasons:
-          storedReasons.length > 0
-            ? storedReasons
-            : recomputed.failedReasons,
-        recommendedPrograms: programs,
-        recommendedProgramIds: programs.map((p) => p.id),
-      });
+      return;
     }
+
+    const result = evaluatePrescreening(prescreeningInputFromApplicant(app));
+    applyEvaluationToState(result, app);
   };
 
   useEffect(() => {
@@ -136,15 +156,8 @@ export function PrescreeningForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const result = evaluatePrescreening({
-      businessSector: formData.businessSector,
-      businessNature: formData.businessNature,
-      yearsOfOperation: formData.yearsOfOperation,
-      msmeSize: formData.msmeSize,
-      exportClassification: formData.exportClassification,
-    });
-    setQualified(result.qualified);
-    setEvaluation(result);
+    const result = evaluatePrescreening(prescreeningInputFromForm());
+    applyEvaluationToState(result);
     const existing = applicant;
     const payload = {
       applicantName: formData.applicantName,
