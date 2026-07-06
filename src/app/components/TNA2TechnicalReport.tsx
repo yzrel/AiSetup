@@ -17,6 +17,8 @@ import {
   buildTna2GenerationPayload,
   getPublishedTna2,
   getTna2Draft,
+  normalizeFindingsByArea,
+  prefillFindingsFromTna1,
   publishTna2Document,
   saveTna2Draft,
 } from "../utils/tnaForm02";
@@ -25,6 +27,7 @@ import { TnaForm02Editor } from "./TnaForm02Editor";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { applicantAiContext } from "../utils/aiAssist";
+import { appendStaffAssessment } from "../utils/clientAssessment";
 
 interface TNA2TechnicalReportProps {
   user?: AuthUser | null;
@@ -45,7 +48,15 @@ export function TNA2TechnicalReport({
 
   const loadApplicant = useCallback((app: Applicant | null) => {
     const stored = getTna2Draft(app);
-    setDraft(stored ?? null);
+    if (!stored) {
+      setDraft(null);
+      setEditMode(false);
+      return;
+    }
+    setDraft({
+      ...stored,
+      findingsByArea: normalizeFindingsByArea(stored.findingsByArea),
+    });
     setEditMode(false);
   }, []);
 
@@ -90,8 +101,14 @@ export function TNA2TechnicalReport({
       );
     }
 
-    saveTna2Draft(applicant.id, document);
-    setDraft(document);
+    const findingsByArea = prefillFindingsFromTna1(
+      normalizeFindingsByArea(document.findingsByArea),
+      (payload.tna1Form as Record<string, unknown>) ?? {},
+      document.enterpriseProfile?.employees,
+    );
+    const normalized: Tna2DocumentResponse = { ...document, findingsByArea };
+    saveTna2Draft(applicant.id, normalized);
+    setDraft(normalized);
     setEditMode(true);
     setGenerating(false);
   };
@@ -232,8 +249,17 @@ export function TNA2TechnicalReport({
               onSave={handleSaveEdits}
               aiContext={{
                 ...applicantAiContext(applicant),
+                ...buildTna2GenerationPayload(applicant!),
                 enterpriseProfile: draft.enterpriseProfile,
                 siteValidationFindings: draft.siteValidationFindings,
+                background: draft.background,
+                methodology: draft.methodology,
+                tna1Form:
+                  (applicant?.moduleData?.tna1Document as { form?: Record<string, unknown> } | undefined)
+                    ?.form ??
+                  (applicant?.moduleData?.tna1 as { form?: Record<string, unknown> } | undefined)
+                    ?.form ??
+                  {},
               }}
             />
           )}

@@ -2,6 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
+import type { ModuleDocument } from "../api/types";
 import { Applicant } from "./applicantStore";
 import { yearFromDateEstablished } from "../utils/applicantPrefill";
 
@@ -138,7 +139,19 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     employeeWelfare: "",
     productionProblemsConcerns: "",
     wasteManagement: "",
-    productionPlan: projectDescription,
+    productionPlan: String(
+      md.productionPlanNotes ??
+        (md.productionPlanDocument as ModuleDocument | undefined)?.notes ??
+        "",
+    ),
+    productionPlanFileName: String(
+      (md.productionPlanDocument as ModuleDocument | undefined)?.fileName ??
+        md.productionPlanFile ??
+        "",
+    ),
+    productionPlanFileData: String(
+      (md.productionPlanDocument as ModuleDocument | undefined)?.dataUrl ?? "",
+    ),
     plantLayoutFileName: "",
     plantLayoutFileData: "",
     processFlowMode: "text" as "text" | "attachment",

@@ -1,0 +1,33 @@
+---
+description: SETUP Form 008 / 009 PIS print layout conventions
+globs: src/app/components/PrePis*.tsx,src/app/components/PisOngoing*.tsx,src/app/components/PisEmploymentMatrixFields.tsx,src/app/constants/pisFormLayout.ts,src/app/utils/projectInformationSheet.ts
+alwaysApply: false
+---
+
+# Form 008 / 009 PIS layout
+
+## Titles
+
+- Form 008: `SETUP Form 008 - Pre-Implementation Project Information Sheet`
+- Form 009: `SETUP Form 009 - Project Information Sheet for Ongoing Projects`
+
+## Official fields (both forms)
+
+- Project title / code, firm and owner (name, sex, birthday), org type, business address, contacts
+- Total assets (Land, Building, Equipment, Working Capital)
+- Employment matrix (company hire / sub-contractor: regular, part-time, PWD, senior citizen; indirect: backward, forward, PWD, senior citizen)
+- Production volume and gross sales (local / export)
+- Assistance obtained from DOST checklists (`FORM_008_ASSISTANCE_OPTIONS` / `FORM_009_ASSISTANCE_OPTIONS`)
+
+## Form 009 specifics
+
+- Firm fields filled **only if changed** from Pre-PIS
+- Prepared by PSTD/CASTD/CSTD
+- Semestral filing (Jan–Jun / Jul–Dec)
+
+## Key files
+
+- `src/app/constants/pisFormLayout.ts`
+- `src/app/components/PrePisPreview.tsx` / `PrePisEditor.tsx`
+- `src/app/components/PisOngoingPreview.tsx` / `PisOngoingEditor.tsx`
+- `src/app/utils/projectInformationSheet.ts`

@@ -1,24 +1,30 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Official DOST TNA Form 02 printable document (print-only; preview unchanged).
+ * Official DOST TNA Form 02 document (on-screen preview and print).
+ * Layout follows regional forms pack / filled sample: scope checklist,
+ * SUMMARY OF ASSESSMENT, intervention table, TNA team, signatures.
  */
 
 import type { ReactNode } from "react";
 import type { Tna2DocumentResponse } from "../../api/types";
 import {
-  TNA_FORM_02_EQUIPMENT_COLUMNS,
-  TNA_FORM_02_KPI_COLUMNS,
-  TNA_FORM_02_SECTION_ENTERPRISE,
-  TNA_FORM_02_SECTION_EQUIPMENT,
-  TNA_FORM_02_SECTION_INTERVENTIONS,
-  TNA_FORM_02_SECTION_PRODUCTION,
-  TNA_FORM_02_SECTION_PRODUCTIVITY,
-  TNA_FORM_02_SECTION_SITE_VALIDATION,
-  TNA_FORM_02_SECTION_TECHNOLOGY_GAPS,
+  TNA_FORM_02_INTERVENTION_COLUMNS,
+  TNA_FORM_02_SCOPE_GROUPS,
+  TNA_FORM_02_SCOPE_NOTE,
+  TNA_FORM_02_SECTION_BACKGROUND,
+  TNA_FORM_02_SECTION_CONCLUSIONS,
+  TNA_FORM_02_SECTION_FINDINGS,
+  TNA_FORM_02_SECTION_METHODOLOGY,
+  TNA_FORM_02_SECTION_OTHER,
+  TNA_FORM_02_SECTION_RECOMMENDATIONS,
+  TNA_FORM_02_SECTION_SUMMARY,
+  TNA_FORM_02_SECTION_TEAM,
+  TNA_FORM_02_SUBTITLE,
   TNA_FORM_02_TITLE,
   displayValue,
 } from "../../constants/tnaForm02Layout";
+import { deriveScopeItems, enrichTna2Summary } from "../../utils/tnaForm02";
 
 export interface TnaForm02DocumentProps {
   document: Tna2DocumentResponse;
@@ -60,19 +66,16 @@ function FormLabelCell({
   children,
   width,
   colSpan,
-  rowSpan,
 }: {
   children: ReactNode;
   width?: string;
   colSpan?: number;
-  rowSpan?: number;
 }) {
   return (
     <td
       className="tna2-form-label"
       style={width ? { width } : undefined}
       colSpan={colSpan}
-      rowSpan={rowSpan}
     >
       {children}
     </td>
@@ -82,53 +85,14 @@ function FormLabelCell({
 function FormValueCell({
   children,
   colSpan,
-  rowSpan,
 }: {
   children: ReactNode;
   colSpan?: number;
-  rowSpan?: number;
 }) {
   return (
-    <td className="tna2-form-value" colSpan={colSpan} rowSpan={rowSpan}>
+    <td className="tna2-form-value" colSpan={colSpan}>
       {children}
     </td>
-  );
-}
-
-function FormTextBlock({
-  label,
-  value,
-  lines = 3,
-}: {
-  label: string;
-  value: string;
-  lines?: number;
-}) {
-  return (
-    <FormBlock>
-      <FormTable className="tna2-form-field-table">
-        <tbody>
-          {label ? (
-            <tr>
-              <td className="tna2-form-label tna2-form-field-label" colSpan={2}>
-                {label}
-              </td>
-            </tr>
-          ) : null}
-          <tr>
-            <td className="tna2-form-value tna2-form-field-value" colSpan={2}>
-              {value || (
-                <span className="tna2-form-blank-lines">
-                  {Array.from({ length: lines }, (_, i) => (
-                    <span key={i} className="tna2-form-ruled-line" />
-                  ))}
-                </span>
-              )}
-            </td>
-          </tr>
-        </tbody>
-      </FormTable>
-    </FormBlock>
   );
 }
 
@@ -163,25 +127,100 @@ function FormHeader() {
         </div>
       </div>
       <h1 className="tna2-form-title">{TNA_FORM_02_TITLE}</h1>
+      <p className="tna2-form-subtitle">{TNA_FORM_02_SUBTITLE}</p>
     </header>
   );
 }
 
-export function TnaForm02Document({ document: doc }: TnaForm02DocumentProps) {
-  const profile = doc.enterpriseProfile ?? {};
-  const process = doc.productionProcessAnalysis ?? { summary: "", findings: [] };
-  const productivity = doc.productivityImprovement ?? { kpis: [], outcomes: [] };
+function ScopeChecklist({ document: doc }: { document: Tna2DocumentResponse }) {
+  const scopeItems = deriveScopeItems(doc);
+  const byId = new Map(scopeItems.map((item) => [item.id, item]));
+
+  return (
+    <FormBlock>
+      <SectionHeading>SCOPE OF ASSESSMENT</SectionHeading>
+      <p className="tna2-form-scope-intro">The TNA covered the following areas:</p>
+      {TNA_FORM_02_SCOPE_GROUPS.map((group) => (
+        <div key={group.id} className="tna2-form-scope-group">
+          <p className="tna2-form-scope-group-label">{group.label}</p>
+          <ul className="tna2-form-scope-list">
+            {group.items.map((item) => {
+              const entry = byId.get(item.id);
+              const covered = entry?.covered ?? false;
+              const notes = entry?.notes?.trim() ?? "";
+              return (
+                <li key={item.id} className="tna2-form-scope-item">
+                  <span className="tna2-form-scope-check" aria-hidden>
+                    {covered ? "☑" : "☐"}
+                  </span>
+                  <span className="tna2-form-scope-item-label">{item.label}</span>
+                  {notes ? (
+                    <span className="tna2-form-scope-notes"> — {notes}</span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+      <p className="tna2-form-scope-footnote">{TNA_FORM_02_SCOPE_NOTE}</p>
+    </FormBlock>
+  );
+}
+
+function SignatureBlock({
+  doc,
+}: {
+  doc: Tna2DocumentResponse;
+}) {
   const assessor = doc.assessor ?? {};
+  const attestedBy = doc.attestedBy ?? {};
+  return (
+    <FormBlock>
+      <FormTable className="tna2-form-signature-table">
+        <tbody>
+          <tr>
+            <td className="tna2-form-signature-cell">
+              <p className="tna2-form-signature-title">Reported by:</p>
+              <div className="tna2-form-signature-line" />
+              <p className="tna2-form-signature-label">Name of TNA Team Leader</p>
+              <p className="tna2-form-signature-name">{val(assessor.name)}</p>
+              <p className="tna2-form-signature-meta">{val(assessor.title)}</p>
+              <p className="tna2-form-signature-meta">{val(assessor.office)}</p>
+              <p className="tna2-form-signature-date">
+                Date: {val(doc.assessmentDate) || "__________________"}
+              </p>
+            </td>
+            <td className="tna2-form-signature-cell">
+              <p className="tna2-form-signature-title">Attested by:</p>
+              <div className="tna2-form-signature-line" />
+              <p className="tna2-form-signature-label">Name of ARD</p>
+              <p className="tna2-form-signature-name">
+                {val(attestedBy.name) || "\u00a0"}
+              </p>
+              <p className="tna2-form-signature-meta">
+                {val(attestedBy.title) || "Assistant Regional Director"}
+              </p>
+              <p className="tna2-form-signature-meta">{val(attestedBy.office)}</p>
+              <p className="tna2-form-signature-date">Date: __________________</p>
+            </td>
+          </tr>
+        </tbody>
+      </FormTable>
+    </FormBlock>
+  );
+}
 
-  const equipmentRows =
-    doc.recommendedEquipment?.length > 0
-      ? doc.recommendedEquipment
-      : [{ name: "", specifications: "", quantity: "", estimatedCost: "", priority: "" }];
-
-  const kpiRows =
-    productivity.kpis?.length > 0
-      ? productivity.kpis
-      : [{ label: "", before: "", after: "", change: "" }];
+export function TnaForm02Document({ document: raw }: TnaForm02DocumentProps) {
+  const doc = enrichTna2Summary(raw);
+  const profile = doc.enterpriseProfile ?? {};
+  const findings = doc.findingsByArea ?? [];
+  const recommendations = doc.recommendations ?? [];
+  const interventionRows =
+    doc.interventionRows?.length
+      ? doc.interventionRows
+      : [{ problem: "", intervention: "", equipment: "", impact: "" }];
+  const team = doc.tnaTeam ?? { leader: { name: "" }, members: [] };
 
   return (
     <div className="tna2-form-document-root">
@@ -191,165 +230,132 @@ export function TnaForm02Document({ document: doc }: TnaForm02DocumentProps) {
           <FormTable>
             <tbody>
               <tr>
-                <FormLabelCell width="32%">Assessment Date</FormLabelCell>
+                <FormLabelCell width="28%">COMPANY</FormLabelCell>
+                <FormValueCell colSpan={3}>{val(profile.enterpriseName)}</FormValueCell>
+              </tr>
+              <tr>
+                <FormLabelCell>ADDRESS</FormLabelCell>
+                <FormValueCell colSpan={3}>{val(profile.address)}</FormValueCell>
+              </tr>
+              <tr>
+                <FormLabelCell>Assessment Date</FormLabelCell>
                 <FormValueCell colSpan={3}>{val(doc.assessmentDate)}</FormValueCell>
               </tr>
             </tbody>
           </FormTable>
         </FormBlock>
 
+        <ScopeChecklist document={doc} />
+        <SignatureBlock doc={doc} />
+      </FormPage>
+
+      <FormPage>
         <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_ENTERPRISE}</SectionHeading>
-          <FormTable>
-            <tbody>
-              <tr>
-                <FormLabelCell width="32%">Enterprise Name</FormLabelCell>
-                <FormValueCell colSpan={3}>{val(profile.enterpriseName)}</FormValueCell>
-              </tr>
-              <tr>
-                <FormLabelCell>Business Address</FormLabelCell>
-                <FormValueCell colSpan={3}>{val(profile.address)}</FormValueCell>
-              </tr>
-              <tr>
-                <FormLabelCell>Business Type</FormLabelCell>
-                <FormValueCell>{val(profile.businessType)}</FormValueCell>
-                <FormLabelCell width="22%">Sector</FormLabelCell>
-                <FormValueCell>{val(profile.sector)}</FormValueCell>
-              </tr>
-              <tr>
-                <FormLabelCell>Commodity</FormLabelCell>
-                <FormValueCell colSpan={3}>{val(profile.commodity)}</FormValueCell>
-              </tr>
-              <tr>
-                <FormLabelCell>Main Product / Service</FormLabelCell>
-                <FormValueCell colSpan={3}>{val(profile.mainProduct)}</FormValueCell>
-              </tr>
-              <tr>
-                <FormLabelCell>Number of Employees</FormLabelCell>
-                <FormValueCell>{val(profile.employees)}</FormValueCell>
-                <FormLabelCell>Contact Person</FormLabelCell>
-                <FormValueCell>{val(profile.contactPerson)}</FormValueCell>
-              </tr>
-              <tr>
-                <FormLabelCell>Contact Number</FormLabelCell>
-                <FormValueCell>{val(profile.contactNumber)}</FormValueCell>
-                <FormLabelCell>Email Address</FormLabelCell>
-                <FormValueCell>{val(profile.emailAddress)}</FormValueCell>
-              </tr>
-            </tbody>
-          </FormTable>
+          <SectionHeading>{TNA_FORM_02_SECTION_SUMMARY}</SectionHeading>
+          <p className="tna2-form-subheading">{TNA_FORM_02_SECTION_BACKGROUND}</p>
+          <p className="tna2-form-prose">{val(doc.background) || "—"}</p>
+
+          <p className="tna2-form-subheading">{TNA_FORM_02_SECTION_METHODOLOGY}</p>
+          <p className="tna2-form-prose">{val(doc.methodology) || "—"}</p>
+
+          <p className="tna2-form-subheading">{TNA_FORM_02_SECTION_FINDINGS}</p>
+          {findings.length === 0 ? (
+            <p className="tna2-form-empty">—</p>
+          ) : (
+            findings.map((section) => {
+              const subs = (section.subsections ?? []).filter((s) =>
+                val(s.content),
+              );
+              const hasSubs = (section.subsections ?? []).length > 0;
+              return (
+                <div key={section.title} className="tna2-form-finding-block">
+                  <p className="tna2-form-finding-title">{section.title}</p>
+                  {hasSubs ? (
+                    subs.length > 0 ? (
+                      subs.map((sub) => (
+                        <div key={sub.id} className="tna2-form-finding-sub">
+                          <p className="tna2-form-finding-sub-label">{sub.label}</p>
+                          <p className="tna2-form-prose">{val(sub.content)}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="tna2-form-prose">
+                        {val(section.content) || "—"}
+                      </p>
+                    )
+                  ) : (
+                    <p className="tna2-form-prose">
+                      {val(section.content) || "—"}
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          )}
+
+          <p className="tna2-form-subheading">{TNA_FORM_02_SECTION_OTHER}</p>
+          <p className="tna2-form-prose">{val(doc.otherObservations) || "—"}</p>
+
+          <p className="tna2-form-subheading">{TNA_FORM_02_SECTION_CONCLUSIONS}</p>
+          <p className="tna2-form-prose">{val(doc.conclusions) || "—"}</p>
         </FormBlock>
       </FormPage>
 
       <FormPage>
         <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_SITE_VALIDATION}</SectionHeading>
-          <NumberedList items={doc.siteValidationFindings ?? []} />
+          <SectionHeading>{TNA_FORM_02_SECTION_RECOMMENDATIONS}</SectionHeading>
+          <NumberedList items={recommendations} />
         </FormBlock>
 
         <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_PRODUCTION}</SectionHeading>
-          <FormTextBlock label="Process Summary" value={val(process.summary)} lines={3} />
-          <p className="tna2-form-subheading">Key Findings</p>
-          <NumberedList items={process.findings ?? []} />
-        </FormBlock>
-      </FormPage>
-
-      <FormPage>
-        <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_TECHNOLOGY_GAPS}</SectionHeading>
-          <NumberedList items={doc.technologyGaps ?? []} />
-        </FormBlock>
-
-        <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_INTERVENTIONS}</SectionHeading>
-          <NumberedList items={doc.proposedInterventions ?? []} />
-        </FormBlock>
-      </FormPage>
-
-      <FormPage>
-        <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_EQUIPMENT}</SectionHeading>
           <FormTable>
             <thead>
               <tr>
-                {TNA_FORM_02_EQUIPMENT_COLUMNS.map((col) => (
+                {TNA_FORM_02_INTERVENTION_COLUMNS.map((col) => (
                   <th key={col}>{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {equipmentRows.map((row, i) => (
+              {interventionRows.map((row, i) => (
                 <tr key={i}>
-                  <td className="tna2-form-center">{String(i + 1)}</td>
-                  <td>{val(row.name) || "\u00a0"}</td>
-                  <td>{val(row.specifications) || "\u00a0"}</td>
-                  <td className="tna2-form-center">{val(row.quantity) || "\u00a0"}</td>
-                  <td>{val(row.estimatedCost) || "\u00a0"}</td>
-                  <td>{val(row.priority) || "\u00a0"}</td>
+                  <td>{val(row.problem) || "\u00a0"}</td>
+                  <td>{val(row.intervention) || "\u00a0"}</td>
+                  <td>{val(row.equipment) || "\u00a0"}</td>
+                  <td>{val(row.impact) || "\u00a0"}</td>
                 </tr>
               ))}
             </tbody>
           </FormTable>
         </FormBlock>
-      </FormPage>
 
-      <FormPage>
         <FormBlock>
-          <SectionHeading>{TNA_FORM_02_SECTION_PRODUCTIVITY}</SectionHeading>
+          <SectionHeading>{TNA_FORM_02_SECTION_TEAM}</SectionHeading>
           <FormTable>
-            <thead>
-              <tr>
-                {TNA_FORM_02_KPI_COLUMNS.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
-              </tr>
-            </thead>
             <tbody>
-              {kpiRows.map((kpi, i) => (
-                <tr key={i}>
-                  <td>{val(kpi.label) || "\u00a0"}</td>
-                  <td>{val(kpi.before) || "\u00a0"}</td>
-                  <td>{val(kpi.after) || "\u00a0"}</td>
-                  <td>{val(kpi.change) || "\u00a0"}</td>
-                </tr>
-              ))}
+              <tr>
+                <FormLabelCell width="32%">Team Leader</FormLabelCell>
+                <FormValueCell>
+                  {val(team.leader?.name)}
+                  {team.leader?.title ? ` — ${team.leader.title}` : ""}
+                </FormValueCell>
+              </tr>
+              {(team.members?.length ? team.members : [{ name: "", title: "" }]).map(
+                (m, i) => (
+                  <tr key={i}>
+                    <FormLabelCell>{i === 0 ? "Members" : ""}</FormLabelCell>
+                    <FormValueCell>
+                      {val(m.name)}
+                      {m.title ? ` — ${m.title}` : ""}
+                    </FormValueCell>
+                  </tr>
+                ),
+              )}
             </tbody>
           </FormTable>
-          <p className="tna2-form-subheading">Expected Outcomes</p>
-          <NumberedList items={productivity.outcomes ?? []} />
         </FormBlock>
-      </FormPage>
 
-      <FormPage>
-        <FormBlock>
-          <FormTable className="tna2-form-signature-table">
-            <tbody>
-              <tr>
-                <td className="tna2-form-signature-cell">
-                  <p className="tna2-form-signature-title">Prepared by:</p>
-                  <div className="tna2-form-signature-line" />
-                  <p className="tna2-form-signature-label">
-                    Printed Name and Signature of Assessor
-                  </p>
-                  <p className="tna2-form-signature-name">{val(assessor.name)}</p>
-                  <p className="tna2-form-signature-meta">{val(assessor.title)}</p>
-                  <p className="tna2-form-signature-meta">{val(assessor.office)}</p>
-                  <p className="tna2-form-signature-date">Date: __________________</p>
-                </td>
-                <td className="tna2-form-signature-cell">
-                  <p className="tna2-form-signature-title">Validated by:</p>
-                  <div className="tna2-form-signature-line" />
-                  <p className="tna2-form-signature-label">
-                    Printed Name and Signature of PSTD
-                  </p>
-                  <p className="tna2-form-signature-name">&nbsp;</p>
-                  <p className="tna2-form-signature-date">Date: __________________</p>
-                </td>
-              </tr>
-            </tbody>
-          </FormTable>
-        </FormBlock>
+        <SignatureBlock doc={doc} />
       </FormPage>
     </div>
   );

@@ -95,6 +95,9 @@ public class Tna1GenerationService {
             String key = entry.getKey();
             if (!NARRATIVE_FIELDS.contains(key)) return;
             if (!isBlank(current.get(key))) return;
+            if ("productionPlan".equals(key) && !stringVal(current.get("productionPlanFileName")).isBlank()) {
+                return;
+            }
             String value = entry.getValue().asText("").trim();
             if (!value.isEmpty()) {
                 out.put(key, value);
@@ -148,6 +151,10 @@ public class Tna1GenerationService {
             }
         } else {
             emptyFields.remove("processFlow");
+        }
+
+        if (!stringVal(r.getForm().get("productionPlanFileName")).isBlank()) {
+            emptyFields.remove("productionPlan");
         }
 
         String facts = """
@@ -266,8 +273,10 @@ public class Tna1GenerationService {
                 "Key concerns include manual or semi-automated processes, capacity constraints, and the need for technology upgrading to meet quality and volume targets.");
         putIfEmpty(r.getForm(), suggestions, "wasteManagement",
                 "Waste is segregated at source; disposal follows local environmental regulations. Improvements are planned as part of technology upgrading.");
-        putIfEmpty(r.getForm(), suggestions, "productionPlan",
-                project.isBlank() ? "Production will be optimized through upgraded equipment and improved process controls." : project);
+        if (stringVal(r.getForm().get("productionPlanFileName")).isBlank()) {
+            putIfEmpty(r.getForm(), suggestions, "productionPlan",
+                    "Production will be optimized through upgraded equipment and improved process controls.");
+        }
         putIfEmpty(r.getForm(), suggestions, "inventorySystem",
                 "Raw materials and finished goods are tracked through manual ledgers with periodic physical counts.");
         putIfEmpty(r.getForm(), suggestions, "maintenanceProgram",

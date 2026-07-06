@@ -4,7 +4,9 @@
 
 import type { ReactNode } from "react";
 import type { PisOngoingFiling, PisSemester } from "../api/types";
+import { FORM_009_ASSISTANCE_OPTIONS } from "../constants/pisFormLayout";
 import { formatSemesterLabel } from "../utils/projectInformationSheet";
+import { PisEmploymentMatrixFields } from "./PisEmploymentMatrixFields";
 
 interface PisOngoingEditorProps {
   filing: PisOngoingFiling;
@@ -69,11 +71,19 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
     onChange(next);
   };
 
+  const toggleAssistance = (id: string) => {
+    const set = new Set(filing.dostAssistance);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    patch({ dostAssistance: [...set] });
+  };
+
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-600">
-        Form 009 ongoing PIS is filed <strong>once per semester</strong> (1st Semester:
-        January–June; 2nd Semester: July–December) during project implementation.
+        SETUP Form 009 ongoing PIS is filed <strong>once per semester</strong> (1st
+        Semester: January–June; 2nd Semester: July–December). Firm fields below are
+        filled only if information changed from Pre-PIS.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -117,82 +127,95 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
             onChange={(projectTitle) => patch({ projectTitle })}
           />
         </div>
-        <div>
-          <FieldLabel>Firm name</FieldLabel>
-          <TextInput value={filing.firmName} onChange={(firmName) => patch({ firmName })} />
-        </div>
-        <div>
-          <FieldLabel>Owner / manager</FieldLabel>
-          <TextInput value={filing.ownerName} onChange={(ownerName) => patch({ ownerName })} />
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-[#0C2461] mb-2">
+          Firm details (fill only if changed)
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>Name of firm</FieldLabel>
+            <TextInput value={filing.firmName} onChange={(firmName) => patch({ firmName })} />
+          </div>
+          <div>
+            <FieldLabel>Owner / contact person</FieldLabel>
+            <TextInput
+              value={filing.ownerName}
+              onChange={(ownerName) => patch({ ownerName })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Sex</FieldLabel>
+            <TextInput value={filing.ownerSex} onChange={(ownerSex) => patch({ ownerSex })} />
+          </div>
+          <div>
+            <FieldLabel>Birthday</FieldLabel>
+            <TextInput
+              value={filing.ownerBirthday}
+              onChange={(ownerBirthday) => patch({ ownerBirthday })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Type of organization</FieldLabel>
+            <TextInput value={filing.orgType} onChange={(orgType) => patch({ orgType })} />
+          </div>
+          <div>
+            <FieldLabel>Business address</FieldLabel>
+            <TextInput
+              value={filing.businessAddress}
+              onChange={(businessAddress) => patch({ businessAddress })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Landline</FieldLabel>
+            <TextInput value={filing.landline} onChange={(landline) => patch({ landline })} />
+          </div>
+          <div>
+            <FieldLabel>Fax</FieldLabel>
+            <TextInput value={filing.fax} onChange={(fax) => patch({ fax })} />
+          </div>
+          <div>
+            <FieldLabel>Mobile phone</FieldLabel>
+            <TextInput
+              value={filing.mobilePhone}
+              onChange={(mobilePhone) => patch({ mobilePhone })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Email</FieldLabel>
+            <TextInput value={filing.email} onChange={(email) => patch({ email })} />
+          </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-[#0C2461] mb-2">Assets (Php)</h3>
+        <h3 className="text-sm font-bold text-[#0C2461] mb-2">Total assets (₱)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div>
-            <FieldLabel>Land</FieldLabel>
-            <TextInput
-              value={filing.assetsLand}
-              onChange={(assetsLand) => patch({ assetsLand })}
-            />
-          </div>
-          <div>
-            <FieldLabel>Building</FieldLabel>
-            <TextInput
-              value={filing.assetsBuilding}
-              onChange={(assetsBuilding) => patch({ assetsBuilding })}
-            />
-          </div>
-          <div>
-            <FieldLabel>Equipment</FieldLabel>
-            <TextInput
-              value={filing.assetsEquipment}
-              onChange={(assetsEquipment) => patch({ assetsEquipment })}
-            />
-          </div>
-          <div>
-            <FieldLabel>Working capital</FieldLabel>
-            <TextInput
-              value={filing.assetsWorkingCapital}
-              onChange={(assetsWorkingCapital) => patch({ assetsWorkingCapital })}
-            />
-          </div>
+          {(
+            [
+              ["assetsLand", "Land"],
+              ["assetsBuilding", "Building"],
+              ["assetsEquipment", "Equipment"],
+              ["assetsWorkingCapital", "Working capital"],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key}>
+              <FieldLabel>{label}</FieldLabel>
+              <TextInput value={filing[key]} onChange={(v) => patch({ [key]: v })} />
+            </div>
+          ))}
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-[#0C2461] mb-2">Employment</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div>
-            <FieldLabel>Direct male</FieldLabel>
-            <TextInput
-              value={filing.employmentDirectMale}
-              onChange={(employmentDirectMale) => patch({ employmentDirectMale })}
-            />
-          </div>
-          <div>
-            <FieldLabel>Direct female</FieldLabel>
-            <TextInput
-              value={filing.employmentDirectFemale}
-              onChange={(employmentDirectFemale) => patch({ employmentDirectFemale })}
-            />
-          </div>
-          <div>
-            <FieldLabel>Indirect male</FieldLabel>
-            <TextInput
-              value={filing.employmentIndirectMale}
-              onChange={(employmentIndirectMale) => patch({ employmentIndirectMale })}
-            />
-          </div>
-          <div>
-            <FieldLabel>Indirect female</FieldLabel>
-            <TextInput
-              value={filing.employmentIndirectFemale}
-              onChange={(employmentIndirectFemale) => patch({ employmentIndirectFemale })}
-            />
-          </div>
-        </div>
+        <h3 className="text-sm font-bold text-[#0C2461] mb-2">
+          Total employment generated (period covered)
+        </h3>
+        <PisEmploymentMatrixFields
+          employment={filing.employment}
+          onChange={(employment) => patch({ employment })}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -238,13 +261,40 @@ export function PisOngoingEditor({ filing, onChange }: PisOngoingEditorProps) {
             onChange={(exportDestinations) => patch({ exportDestinations })}
           />
         </div>
-        <div className="sm:col-span-2">
-          <FieldLabel>Prepared by</FieldLabel>
-          <TextInput
-            value={filing.preparedBy}
-            onChange={(preparedBy) => patch({ preparedBy })}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-[#0C2461] mb-2">
+          Assistance obtained from DOST
+        </h3>
+        <div className="space-y-2">
+          {FORM_009_ASSISTANCE_OPTIONS.map((opt) => (
+            <label key={opt.id} className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={filing.dostAssistance.includes(opt.id)}
+                onChange={() => toggleAssistance(opt.id)}
+              />
+              <span>{opt.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className="mt-3">
+          <FieldLabel>Specify (training / consultancy / others)</FieldLabel>
+          <TextArea
+            value={filing.assistanceSpecify}
+            onChange={(assistanceSpecify) => patch({ assistanceSpecify })}
           />
         </div>
+      </div>
+
+      <div>
+        <FieldLabel>Prepared by (PSTD / CASTD / CSTD)</FieldLabel>
+        <TextInput
+          value={filing.preparedBy}
+          onChange={(preparedBy) => patch({ preparedBy })}
+        />
       </div>
     </div>
   );

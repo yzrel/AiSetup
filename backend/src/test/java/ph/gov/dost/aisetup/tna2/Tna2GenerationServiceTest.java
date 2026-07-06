@@ -61,5 +61,11 @@ class Tna2GenerationServiceTest {
         assertFalse(response.getRecommendedEquipment().isEmpty());
         assertNotNull(response.getAssessor().getName());
         assertEquals("ABC Food Processing", response.getEnterpriseProfile().getEnterpriseName());
+        assertNotNull(response.getFindingsByArea());
+        assertFalse(response.getFindingsByArea().isEmpty());
+        assertNotNull(response.getFindingsByArea().get(0).getSubsections());
+        assertFalse(response.getFindingsByArea().get(0).getSubsections().isEmpty());
+        assertNotNull(response.getBackground());
+        assertNotNull(response.getMethodology());
     }
 }

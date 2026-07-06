@@ -1,4 +1,7 @@
 # Ensures backend/.env exists and ANTHROPIC_API_KEY is available for AI assist.
+param(
+    [switch]$SkipInteractiveSetup
+)
 $ErrorActionPreference = "Stop"
 $backendRoot = Split-Path -Parent $PSScriptRoot
 $envFile = Join-Path $backendRoot ".env"
@@ -87,8 +90,19 @@ if ([string]::IsNullOrWhiteSpace($currentKey)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($currentKey)) {
-    Write-Warning "ANTHROPIC_API_KEY is not set. Run: npm run ai:setup"
-} else {
+    if ($env:AISETUP_SKIP_AI_SETUP -eq "1") {
+        Write-Warning "ANTHROPIC_API_KEY is not set (AISETUP_SKIP_AI_SETUP=1). Template-only mode."
+    } elseif (-not $SkipInteractiveSetup) {
+        Write-Host ""
+        Write-Host "ANTHROPIC_API_KEY is not set. Running interactive AI setup..."
+        & "$PSScriptRoot\ai-setup.ps1"
+        $currentKey = Get-EnvFileValue $envFile "ANTHROPIC_API_KEY"
+    } else {
+        Write-Warning "ANTHROPIC_API_KEY is not set. Run: npm run ai:setup"
+    }
+}
+
+if (-not [string]::IsNullOrWhiteSpace($currentKey)) {
     $env:ANTHROPIC_API_KEY = $currentKey
     Write-Host "AI assist ready (Anthropic API key loaded)"
 }

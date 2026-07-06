@@ -28,7 +28,7 @@ import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
-import { applicantAiContext, completeAiPrompt, useAiFieldSuggest } from "../utils/aiAssist";
+import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
 import { allowWhenDemo, aiGenerateNotice } from "../utils/demoMode";
 
@@ -53,25 +53,43 @@ const STEPS = [
   { id: "validation",    label: "Validation",           icon: "✅" },
   { id: "complete",      label: "Form Preview",       icon: "📄" },
   { id: "staff-review",  label: "Staff Review",         icon: "🔍" },
-  { id: "analysis",      label: "AI Analysis",          icon: "🤖" },
-  { id: "reports",       label: "Reports",              icon: "📄" },
+  { id: "reports",       label: "Complete",             icon: "✅" },
 ];
 
+/** Staff may jump to these steps when reviewing a submitted application */
+const STAFF_NAV_STEPS = new Set(["complete", "staff-review", "reports"]);
+
 // ─── Step header (identical pattern to LOI StepHeader) ───────────────────────
-function StepHeader({ current }) {
+function StepHeader({
+  current,
+  onNavigate,
+  allowStaffNav,
+}: {
+  current: string;
+  onNavigate?: (id: string) => void;
+  allowStaffNav?: boolean;
+}) {
   const currentIdx = STEPS.findIndex(s => s.id === current);
   return (
     <div className="flex items-center gap-1 overflow-x-auto pb-1">
       {STEPS.map((s, i) => {
         const done   = i < currentIdx;
         const active = i === currentIdx;
+        const clickable = allowStaffNav && STAFF_NAV_STEPS.has(s.id) && onNavigate;
         return (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div className={moduleStepPillClass({ active, done, locked: false })}>
+            <button
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onNavigate?.(s.id)}
+              className={`${moduleStepPillClass({ active, done, locked: false })} ${
+                clickable ? "cursor-pointer hover:opacity-90" : "cursor-default"
+              }`}
+            >
               {done ? <span className="text-green-300">✓</span> : <span>{s.icon}</span>}
               <span className="hidden sm:inline">{s.label}</span>
               <span className="sm:hidden">{i + 1}</span>
-            </div>
+            </button>
             {i < STEPS.length - 1 && (
               <span className="text-white/30 text-xs shrink-0">›</span>
             )}
@@ -206,46 +224,12 @@ function InfoBanner({ icon = "ℹ️", color = "blue", title, text }) {
   );
 }
 
-// ─── AI call helper ───────────────────────────────────────────────────────────
-async function callAI(prompt: string) {
-  const { text } = await completeAiPrompt(prompt, 2048);
-  return text;
-}
-
 // ─── AI Loading indicator ─────────────────────────────────────────────────────
 function AILoader({ label }) {
   return (
     <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
       <div className="w-5 h-5 border-2 border-blue-800 border-t-transparent rounded-full animate-spin flex-shrink-0" />
       <span className="text-sm font-semibold text-blue-800">{label}…</span>
-    </div>
-  );
-}
-
-// ─── Report viewer ────────────────────────────────────────────────────────────
-function ReportViewer({ title, content, color, badge }) {
-  return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div
-        className="px-4 sm:px-5 py-3 border-b border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-        style={{ background: color }}
-      >
-        <p className="text-sm font-bold text-white flex flex-wrap items-center gap-2 min-w-0">
-          <span>📄 {title}</span>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20 shrink-0">
-            {badge}
-          </span>
-        </p>
-        <button
-          type="button"
-          className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-1.5 min-h-11 px-4 py-2.5 rounded-lg text-xs font-semibold text-white bg-white/15 border border-white/25 hover:bg-white/25 transition-colors whitespace-nowrap"
-        >
-          ⬇ Download
-        </button>
-      </div>
-      <div className="p-4 sm:p-5 bg-gray-50 max-h-72 overflow-y-auto text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">
-        {content}
-      </div>
     </div>
   );
 }
@@ -318,13 +302,40 @@ export function TechnologyNeedsAssessment1({
     setForm(merged.form);
     setTables(merged.tables);
     setApplicantSubmitted(!!saved?.submitted);
+    setStaffApproved(!!saved?.staffReviewed);
     const doc = app?.moduleData?.tna1Document as { aiGenerated?: boolean } | undefined;
     setTnaAiGenerated(doc?.aiGenerated ?? null);
+    if (saved?.siteVisitDate) setSiteVisitDate(String(saved.siteVisitDate));
+    if (saved?.siteVisitNotes) setSiteVisitNotes(String(saved.siteVisitNotes));
   }, []);
 
   useEffect(() => {
     loadApplicantData(applicant);
   }, [applicant?.id, loadApplicantData]);
+
+  useEffect(() => {
+    const fileName =
+      String(form.productionPlanFileName ?? "").trim() ||
+      String(applicant?.moduleData?.productionPlanFile ?? "").trim() ||
+      null;
+    const hasPlan =
+      !!fileName || !!String(form.productionPlan ?? "").trim();
+    setDocs((prev) =>
+      prev.map((d) =>
+        d.name === "Production Plan"
+          ? {
+              ...d,
+              uploaded: hasPlan,
+              file: fileName,
+            }
+          : d,
+      ),
+    );
+  }, [
+    form.productionPlan,
+    form.productionPlanFileName,
+    applicant?.moduleData?.productionPlanFile,
+  ]);
 
   const persistStaffReview = useCallback(
     (decision: "approved" | "needs-revision") => {
@@ -381,7 +392,7 @@ export function TechnologyNeedsAssessment1({
       });
       notifyTna1Reviewed(applicant);
       setStaffApproved(true);
-      setStep("analysis");
+      setStep("reports");
     },
     [applicant, user, staffNotes, siteVisitDate, siteVisitNotes, form, tables],
   );
@@ -478,23 +489,14 @@ export function TechnologyNeedsAssessment1({
 
   // ── Document state ───────────────────────────────────────────────────────────
   const [docs, setDocs] = useState([
-    { name: "General Agreements",        required: true,  uploaded: true,  verified: false, flagged: false, file: "general_agreements.pdf" },
-    { name: "Undertaking",               required: true,  uploaded: true,  verified: false, flagged: false, file: "undertaking_signed.pdf" },
-    { name: "Enterprise Profile",        required: true,  uploaded: true,  verified: false, flagged: false, file: "enterprise_profile.pdf" },
-    { name: "Benchmark Information",     required: true,  uploaded: true,  verified: false, flagged: false, file: "benchmark_data.pdf" },
-    { name: "Production Plan",           required: true,  uploaded: true,  verified: false, flagged: false, file: "production_plan.pdf" },
-    { name: "Marketing",                 required: true,  uploaded: false, verified: false, flagged: false, file: null },
-    { name: "Finance / Other Concerns",  required: false, uploaded: false, verified: false, flagged: false, file: null },
+    { name: "General Agreements",        required: true,  uploaded: true,  verified: false, flagged: false, file: "general_agreements.pdf" as string | null },
+    { name: "Undertaking",               required: true,  uploaded: true,  verified: false, flagged: false, file: "undertaking_signed.pdf" as string | null },
+    { name: "Enterprise Profile",        required: true,  uploaded: true,  verified: false, flagged: false, file: "enterprise_profile.pdf" as string | null },
+    { name: "Benchmark Information",     required: true,  uploaded: true,  verified: false, flagged: false, file: "benchmark_data.pdf" as string | null },
+    { name: "Production Plan",           required: true,  uploaded: false, verified: false, flagged: false, file: null as string | null },
+    { name: "Marketing",                 required: true,  uploaded: false, verified: false, flagged: false, file: null as string | null },
+    { name: "Finance / Other Concerns",  required: false, uploaded: false, verified: false, flagged: false, file: null as string | null },
   ]);
-
-  // ── AI state ─────────────────────────────────────────────────────────────────
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysisResult, setAnalysisResult]   = useState(null);
-  const [qualification,   setQualification]   = useState(null);
-  const [proposalLoading, setProposalLoading] = useState(false);
-  const [proposalContent, setProposalContent] = useState(null);
-  const [rtecLoading,     setRtecLoading]     = useState(false);
-  const [rtecContent,     setRtecContent]     = useState(null);
 
   // ── Computed ─────────────────────────────────────────────────────────────────
   const allGA = [form.agreeGA1,form.agreeGA2,form.agreeGA3,form.agreeGA4,form.agreeGA5,form.agreeGA6].every(Boolean);
@@ -518,6 +520,11 @@ export function TechnologyNeedsAssessment1({
     { label: "Undertaking Signature",   value: form.undertakingName,      passed: !!form.undertakingName },
     { label: "Raw Materials Table",     value: tables.rawMaterials[0]?.[0] ? "Entered" : "", passed: !!tables.rawMaterials[0]?.[0] },
     { label: "Production Problems",     value: form.productionProblemsConcerns, passed: !!form.productionProblemsConcerns },
+    {
+      label: "Production Plan",
+      value: form.productionPlanFileName || form.productionPlan,
+      passed: !!form.productionPlanFileName || !!String(form.productionPlan ?? "").trim(),
+    },
     { label: "Plant Lay-Out Upload",    value: form.plantLayoutFileName, passed: !!form.plantLayoutFileName },
     {
       label: "Process Flow",
@@ -528,96 +535,16 @@ export function TechnologyNeedsAssessment1({
   ];
   const allValid = validationChecks.every(c => c.passed);
 
-  // ── AI handlers ──────────────────────────────────────────────────────────────
-  const handleAnalyze = async () => {
-    setAnalysisLoading(true);
-    setQualification(null);
-    try {
-      const result = await callAI(`You are a DOST SETUP evaluator in the Philippines. Analyze this enterprise:
-Enterprise: ${form.enterpriseName}
-Sector: ${form.sector} | Commodity: ${form.commodity}
-Employment: ${form.employmentClass} | Capital: PHP ${form.presentCapital}
-Main Product: ${form.mainProduct}
-Reasons for Assistance: ${form.reasonsForAssistance}
-5-Year Plan: ${form.plan5Years}
-
-Write 3–4 professional paragraphs covering: 1) Business viability, 2) Technology appropriateness, 3) SETUP eligibility, 4) Recommended interventions including whether lab testing or MPEX pre-requisite is needed.`);
-      setAnalysisResult(result);
-
-      const capitalAmt = parseInt((form.presentCapital || "0").replace(/,/g, ""));
-      const needsMpex = form.plan10Years?.toLowerCase().includes("export") || form.reasonsForAssistance?.toLowerCase().includes("export");
-      const needsLab  = ["food","pharma","cosmet"].some(k => form.sector?.toLowerCase().includes(k));
-      const isSmall   = form.employmentClass?.toLowerCase().includes("micro") || form.employmentClass?.toLowerCase().includes("small");
-
-      if (!isSmall || capitalAmt > 15000000) {
-        setQualification({ status: "not_qualified",
-          reasons: [
-            { ok: isSmall, text: "Enterprise size must be Micro, Small, or Medium (max 99 employees)" },
-            { ok: capitalAmt <= 15000000, text: `Capital PHP ${form.presentCapital} — must not exceed PHP 15M` },
-          ],
-          requirements: ["Re-apply when eligibility criteria are met."],
-        });
-      } else if (needsMpex) {
-        setQualification({ status: "mpex",
-          reasons: [
-            { ok: true,  text: "SME size criteria met" },
-            { ok: false, text: "Export-readiness requires MPEX pre-qualification" },
-          ],
-          requirements: [
-            "Complete MPEX (Market Preparation for Export) assessment",
-            "Obtain export certification from DTI-Export Marketing Bureau",
-            "Submit Letter of Intent from foreign buyer or export market study",
-          ],
-          labTests: needsLab ? ["FDA-accredited product safety testing","Shelf-life and microbiological testing"] : [],
-        });
-      } else {
-        setQualification({ status: "qualified",
-          reasons: [
-            { ok: true, text: "SME criteria met (size and capitalization)" },
-            { ok: true, text: "Enterprise has documented technology needs" },
-          ],
-          labTests: needsLab ? [
-            "Product quality and safety testing (FDA-accredited lab)",
-            "Nutritional labeling compliance",
-            "Shelf-life and stability testing",
-          ] : [],
-        });
-      }
-    } catch {
-      setAnalysisResult("Analysis unavailable. Please check your connection.");
-    }
-    setAnalysisLoading(false);
-  };
-
-  const handleGenerateProposal = async () => {
-    setProposalLoading(true);
-    try {
-      const result = await callAI(`Generate a formal DOST SETUP Project Proposal for:
-Enterprise: ${form.enterpriseName} | Sector: ${form.sector}
-Product: ${form.mainProduct} | Location: ${form.officeAddress}
-Problem: ${form.reasonsForAssistance}
-5-Year Plan: ${form.plan5Years}
-Capital: PHP ${form.presentCapital}
-
-Use sections: I. PROJECT BACKGROUND, II. OBJECTIVES, III. SCOPE AND LIMITATIONS, IV. TECHNOLOGY INTERVENTION PLAN, V. EXPECTED OUTCOMES & IMPACT, VI. BUDGET ESTIMATE, VII. IMPLEMENTATION TIMELINE. Keep it formal (~400 words).`);
-      setProposalContent(result);
-    } catch { setProposalContent("Unable to generate. Please try again."); }
-    setProposalLoading(false);
-  };
-
-  const handleGenerateRTEC = async () => {
-    setRtecLoading(true);
-    try {
-      const result = await callAI(`Generate a formal RTEC Evaluation Report for DOST SETUP:
-Enterprise: ${form.enterpriseName} | Sector: ${form.sector}
-Location: ${form.officeAddress}
-Qualification Status: ${qualification?.status?.toUpperCase()}
-
-Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOGY ASSESSMENT FINDINGS, IV. COMMITTEE DELIBERATIONS, V. RECOMMENDATION, VI. CONDITIONS FOR APPROVAL, VII. COMMITTEE SIGNATURES. Formal, ~350 words.`);
-      setRtecContent(result);
-    } catch { setRtecContent("Unable to generate. Please try again."); }
-    setRtecLoading(false);
-  };
+  const previewForm = useMemo(
+    () =>
+      (applicant?.moduleData?.tna1Document?.form as Record<string, unknown>) ?? form,
+    [applicant?.moduleData?.tna1Document, form],
+  );
+  const previewTables = useMemo(
+    () =>
+      (applicant?.moduleData?.tna1Document?.tables as typeof tables) ?? tables,
+    [applicant?.moduleData?.tna1Document, tables],
+  );
 
   // ─── RENDER ─────────────────────────────────────────────────────────────────
   return (
@@ -650,7 +577,11 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
             </button>
             )}
           </div>
-          <StepHeader current={step} />
+          <StepHeader
+            current={step}
+            allowStaffNav={isStaff}
+            onNavigate={(id) => setStep(id)}
+          />
           {saveNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{saveNotice}</p>
           )}
@@ -1099,7 +1030,6 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               <div className="space-y-3 mt-4">
                 {[
                   { label: "Production Waste Management System", key: "wasteManagement" },
-                  { label: "Production Plan", key: "productionPlan" },
                   { label: "Inventory System", key: "inventorySystem" },
                   { label: "Maintenance Program", key: "maintenanceProgram" },
                   { label: "cGMP / HACCP Activities", key: "cgmpHaccp" },
@@ -1111,6 +1041,28 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                       className={inputCls} placeholder={`Describe your ${item.label.toLowerCase()}…`} />
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 space-y-3">
+                <AiAssistTextarea
+                  label="Production Plan"
+                  value={form.productionPlan}
+                  onChange={(productionPlan) => set("productionPlan", productionPlan)}
+                  inputClassName={inputCls}
+                  labelClassName={labelCls}
+                  minHeight="min-h-[80px]"
+                  hint="Narrative from Letter of Intent notes (editable). Provide text and/or attach the production plan document."
+                  {...tnaAi("productionPlan", (v) => set("productionPlan", v))}
+                />
+                <FileAttachmentField
+                  label="Production Plan Attachment"
+                  fileName={form.productionPlanFileName}
+                  onFile={(name, data) => {
+                    set("productionPlanFileName", name);
+                    set("productionPlanFileData", data);
+                  }}
+                  hint="Prefilled from Letter of Intent when available. You may replace or clear the file."
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                />
               </div>
             </div>
 
@@ -1190,6 +1142,14 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               <h2 className={sectionTitle}>🔧 Production Summary</h2>
               <ReadonlyField label="Production Problems and Concerns (from Benchmark)" value={form.productionProblemsConcerns || "—"} />
               <div className="mt-4 space-y-4">
+                <ReadonlyField
+                  label="Production Plan"
+                  value={form.productionPlan || "—"}
+                />
+                <ReadonlyField
+                  label="Production Plan Attachment"
+                  value={form.productionPlanFileName || "No file uploaded"}
+                />
                 <ReadonlyField label="Plant Lay-Out" value={form.plantLayoutFileName || "No file uploaded"} />
                 <ReadonlyField
                   label="Process Flow"
@@ -1512,7 +1472,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               ) : (
               <button
                 onClick={() => {
-                  if (isStaff) goToStep("staff-review");
+                  if (isStaff) goToStep("complete");
                   else {
                     saveTnaDraft(true);
                     setApplicantSubmitted(true);
@@ -1523,7 +1483,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                 disabled={!allowWhenDemo(allValid)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}>
-                {isStaff ? "Submit for Staff Review →" : "Submit TNA Form 01 ✓"}
+                {isStaff ? "Review Form Preview →" : "Submit TNA Form 01 ✓"}
               </button>
               )}
             </div>
@@ -1570,32 +1530,47 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
               </div>
             )}
 
+            {isStaff && (
+              <InfoBanner
+                icon="📄"
+                color="blue"
+                title="Submitted Form 01"
+                text="Review the applicant's completed TNA Form 01 below. Print if needed, then continue to Staff Review."
+              />
+            )}
+
             <TnaForm01Preview
               applicant={applicant}
-              form={
-                (applicant?.moduleData?.tna1Document?.form as Record<string, unknown>) ?? form
-              }
-              tables={
-                (applicant?.moduleData?.tna1Document?.tables as typeof tables) ?? tables
-              }
+              form={previewForm}
+              tables={previewTables}
               aiGenerated={tnaAiGenerated ?? undefined}
               onPrint={() => printTnaForm01(applicant?.applicationId)}
             />
 
             <div className="flex flex-col sm:flex-row gap-3 print:hidden">
-              <button
-                onClick={() => setStep("validation")}
-                className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 text-sm"
-              >
-                ← Back to validation
-              </button>
               {!isStaff && (
                 <button
-                  onClick={() => printTnaForm01(applicant?.applicationId)}
-                  className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
-                  style={{ background: DOST_BLUE }}
+                  onClick={() => setStep("validation")}
+                  className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 text-sm"
                 >
-                  Print / Save as PDF
+                  ← Back to validation
+                </button>
+              )}
+              <button
+                onClick={() => printTnaForm01(applicant?.applicationId)}
+                className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
+                style={{ background: DOST_BLUE }}
+              >
+                Print / Save as PDF
+              </button>
+              {isStaff && (
+                <button
+                  type="button"
+                  onClick={() => setStep("staff-review")}
+                  className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
+                  style={{ background: "#059669" }}
+                >
+                  Continue to Staff Review →
                 </button>
               )}
               {onSubmitSuccess && !isStaff && (
@@ -1639,6 +1614,43 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                   </div>
                   <div className="ml-auto">
                     <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-sky-300">🔒 Secure Mode</span>
+                  </div>
+                </div>
+
+                <div className="border border-blue-100 rounded-xl overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100">
+                    <div>
+                      <p className="text-sm font-bold text-blue-900">Submitted Form 01</p>
+                      <p className="text-xs text-blue-700">
+                        Full printable TNA Form 01 as submitted by the applicant.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStep("complete")}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg border border-blue-200 text-blue-800 bg-white hover:bg-blue-50"
+                      >
+                        Open Form Preview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => printTnaForm01(applicant?.applicationId)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-white"
+                        style={{ background: DOST_BLUE }}
+                      >
+                        Print / Save as PDF
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-[28rem] overflow-y-auto p-3 bg-white">
+                    <TnaForm01Preview
+                      applicant={applicant}
+                      form={previewForm}
+                      tables={previewTables}
+                      aiGenerated={tnaAiGenerated ?? undefined}
+                      compact
+                    />
                   </div>
                 </div>
 
@@ -1738,7 +1750,7 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
                     disabled={!allowWhenDemo(allDocReviewed)}
                     className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                     style={{ background: "#059669" }}>
-                    ✅ Approve & Proceed to AI Analysis →
+                    ✅ Approve & Complete TNA Form 01 →
                   </button>
                   <button onClick={() => persistStaffReview("needs-revision")}
                     className="px-5 py-3 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition-all">
@@ -1751,190 +1763,90 @@ Use sections: I. RTEC MEETING DETAILS, II. ENTERPRISE BACKGROUND, III. TECHNOLOG
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 8 — AI Analysis
-        ══════════════════════════════════════════════════════════════════ */}
-        {step === "analysis" && (
-          <div className={MODULE_BODY}>
-            <InfoBanner icon="🤖" color="purple" title="AI-Powered Enterprise Analysis"
-              text="Generate an intelligent assessment of the enterprise's SETUP eligibility, technology needs, and qualification status." />
-
-            {!analysisResult && !analysisLoading && (
-              <button onClick={handleAnalyze}
-                className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
-                style={{ background: "#6A1B9A" }}>
-                🔍 Generate AI Analysis
-              </button>
-            )}
-            {analysisLoading && <AILoader label="Generating enterprise analysis" />}
-
-            {analysisResult && (
-              <>
-                <div className="border border-purple-200 rounded-xl overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3 bg-purple-700 border-b border-purple-200">
-                    <p className="text-sm font-bold text-white flex items-center gap-2">🤖 AI Assessment Analysis
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20">AI Generated</span>
-                    </p>
-                    <button onClick={handleAnalyze}
-                      className="text-xs text-white/80 bg-white/15 border border-white/25 px-3 py-1.5 rounded-lg hover:bg-white/25 transition-colors">
-                      🔄 Re-analyze
-                    </button>
-                  </div>
-                  <div className="p-5 bg-purple-50 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">{analysisResult}</div>
-                </div>
-
-                {/* Qualification panel */}
-                {qualification && (
-                  <div className={`rounded-xl overflow-hidden border-2 ${
-                    qualification.status === "qualified"     ? "border-green-400"
-                    : qualification.status === "mpex"        ? "border-purple-400"
-                                                             : "border-red-400"
-                  }`}>
-                    <div className={`px-5 py-4 flex items-center gap-3 ${
-                      qualification.status === "qualified" ? "bg-green-600"
-                      : qualification.status === "mpex"    ? "bg-purple-700"
-                                                           : "bg-red-600"
-                    } text-white`}>
-                      <span className="text-2xl">{qualification.status === "qualified" ? "✅" : qualification.status === "mpex" ? "🔬" : "❌"}</span>
-                      <div>
-                        <p className="font-bold text-base">
-                          {qualification.status === "qualified" ? "Enterprise Qualified for SETUP"
-                          : qualification.status === "mpex"     ? "MPEX Pre-requisite Required"
-                                                                : "Enterprise Not Qualified"}
-                        </p>
-                        <p className="text-xs opacity-80">
-                          {qualification.status === "qualified" ? "Proceed to generate Project Proposal"
-                          : qualification.status === "mpex"     ? "Complete MPEX requirements before SETUP enrollment"
-                                                                : "Does not meet minimum SETUP criteria"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="p-5 bg-white space-y-3">
-                      {qualification.reasons?.map((r, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span>{r.ok ? "✅" : "⚠️"}</span>
-                          <span className={`text-sm ${r.ok ? "text-green-700" : "text-amber-700"}`}>{r.text}</span>
-                        </div>
-                      ))}
-                      {qualification.requirements?.length > 0 && (
-                        <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-100 space-y-2">
-                          <p className="text-xs font-bold text-purple-700 uppercase tracking-wide">
-                            {qualification.status === "mpex" ? "MPEX Pre-requisite Requirements:" : "Additional Requirements:"}
-                          </p>
-                          {qualification.requirements.map((r, i) => (
-                            <div key={i} className="flex gap-2 text-xs text-purple-700"><span>📋</span><span>{r}</span></div>
-                          ))}
-                        </div>
-                      )}
-                      {qualification.labTests?.length > 0 && (
-                        <div className="p-3 bg-teal-50 rounded-lg border border-teal-100 space-y-2">
-                          <p className="text-xs font-bold text-teal-700 uppercase tracking-wide">Laboratory Testing Required:</p>
-                          {qualification.labTests.map((t, i) => (
-                            <div key={i} className="flex gap-2 text-xs text-teal-700"><span>🔬</span><span>{t}</span></div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button onClick={() => setStep("staff-review")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
-                  <button onClick={() => setStep("reports")} disabled={!allowWhenDemo(!!qualification)}
-                    className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
-                    style={{ background: DOST_BLUE }}>
-                    Proceed to Reports →
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            STEP 9 — Reports
+            STEP 8 — Complete (handoff to TNA2)
         ══════════════════════════════════════════════════════════════════ */}
         {step === "reports" && (
           <div className={MODULE_BODY}>
-            <InfoBanner icon="📄" color="blue" title="Auto-Generated Reports"
-              text="Generate the Project Proposal from TNA1 data, then generate the RTEC Report once no further changes are needed." />
+            <InfoBanner
+              icon="✅"
+              color="blue"
+              title="TNA Form 01 complete"
+              text="Project Proposal (Form 001) and RTEC Report (Form 002) are prepared in their own modules after TNA Form 02 and documentary requirements."
+            />
 
-            {/* Status strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { label: "Staff Verification", done: staffApproved,   icon: "🔍" },
-                { label: "Project Proposal",   done: !!proposalContent, icon: "📋" },
-                { label: "RTEC Report",        done: !!rtecContent,   icon: "📊" },
+                {
+                  label: "Form 01 on file",
+                  done: applicantSubmitted || !!applicant?.moduleData?.tna1Document,
+                  icon: "📄",
+                },
+                { label: "Staff verification", done: staffApproved, icon: "🔍" },
               ].map((s, i) => (
-                <div key={i} className={`text-center p-4 rounded-xl border ${s.done ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-100"}`}>
+                <div
+                  key={i}
+                  className={`text-center p-4 rounded-xl border ${
+                    s.done
+                      ? "bg-green-50 border-green-200"
+                      : "bg-gray-50 border-gray-100"
+                  }`}
+                >
                   <div className="text-2xl">{s.icon}</div>
                   <p className="text-xs font-bold text-gray-700 mt-1">{s.label}</p>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.done ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      s.done
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
                     {s.done ? "Complete ✓" : "Pending"}
                   </span>
                 </div>
               ))}
             </div>
 
-            {/* Project Proposal */}
-            {!proposalContent && (
-              <div className="p-5 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
-                <h2 className={sectionTitle}>📋 Project Proposal</h2>
-                <p className="text-sm text-gray-500">Auto-generated from TNA1 enterprise data and AI analysis. Review the analysis result first, then generate.</p>
-                {proposalLoading
-                  ? <AILoader label="Generating Project Proposal" />
-                  : <button onClick={handleGenerateProposal} disabled={!allowWhenDemo(!!analysisResult)}
-                      className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
-                      style={{ background: DOST_BLUE }}>
-                      📋 Generate Project Proposal
-                    </button>
-                }
-              </div>
-            )}
-            {proposalContent && <ReportViewer title="Project Proposal" content={proposalContent} color="#1565C0" badge="Auto-Generated" />}
-
-            {/* RTEC Report */}
-            {proposalContent && !rtecContent && (
-              <div className="p-5 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
-                <h2 className={sectionTitle}>📊 RTEC Evaluation Report</h2>
-                <InfoBanner icon="💡" color="amber" text="Review the Project Proposal above. If no more changes are needed, generate the RTEC Report." />
-                {rtecLoading
-                  ? <AILoader label="Generating RTEC Report" />
-                  : <div className="flex flex-col sm:flex-row gap-3">
-                      <button onClick={handleGenerateRTEC}
-                        className="flex-1 min-h-11 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
-                        style={{ background: "#00695C" }}>
-                        📊 Generate RTEC Report — No More Changes
-                      </button>
-                      <button onClick={() => setProposalContent(null)}
-                        className="min-h-11 px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm whitespace-nowrap">
-                        ✏ Edit Proposal
-                      </button>
-                    </div>
-                }
-              </div>
-            )}
-            {rtecContent && <ReportViewer title="RTEC Evaluation Report" content={rtecContent} color="#00695C" badge="Auto-Generated" />}
-
-            {/* Completion banner */}
-            {rtecContent && (
-              <div className="bg-green-50 border-2 border-green-400 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-start sm:items-center gap-3 min-w-0">
-                  <span className="text-3xl shrink-0">🎉</span>
-                  <div className="min-w-0">
-                    <p className="font-black text-green-800 text-base">TNA1 Module Complete!</p>
-                    <p className="text-sm text-green-600">All reports generated. Proceed to TNA2 Technical Report.</p>
-                  </div>
-                </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {isStaff && (
                 <button
                   type="button"
-                  onClick={() => onSubmitSuccess?.()}
-                  className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 min-h-11 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 whitespace-nowrap"
-                  style={{ background: "#059669" }}
+                  onClick={() => setStep("staff-review")}
+                  className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 text-sm"
                 >
-                  ▶ Proceed to TNA2
+                  ← Back to staff review
                 </button>
+              )}
+              <button
+                type="button"
+                onClick={() => printTnaForm01(applicant?.applicationId)}
+                className="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 text-sm"
+              >
+                Print Form 01
+              </button>
+            </div>
+
+            <div className="bg-green-50 border-2 border-green-400 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <span className="text-3xl shrink-0">🎉</span>
+                <div className="min-w-0">
+                  <p className="font-black text-green-800 text-base">
+                    TNA1 Module Complete
+                  </p>
+                  <p className="text-sm text-green-600">
+                    Next: generate and publish TNA Form 02 (Technical Report).
+                  </p>
+                </div>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => onSubmitSuccess?.()}
+                disabled={!allowWhenDemo(staffApproved)}
+                className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 min-h-11 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 whitespace-nowrap disabled:opacity-40"
+                style={{ background: "#059669" }}
+              >
+                Proceed to TNA2 →
+              </button>
+            </div>
           </div>
         )}
 

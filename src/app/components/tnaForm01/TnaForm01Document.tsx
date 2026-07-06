@@ -682,6 +682,14 @@ export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
       {/* Page 8 — Production plan + plant layout */}
       <FormPage>
         <FormTextBlock label="Production Plan" value={val(f, "productionPlan")} lines={3} />
+        {val(f, "productionPlanFileName") ? (
+          <FormAttachmentBlock
+            label="Production Plan Attachment"
+            fileName={val(f, "productionPlanFileName")}
+            fileData={val(f, "productionPlanFileData")}
+            minHeight={140}
+          />
+        ) : null}
         <FormAttachmentBlock
           label="Plant Lay-Out"
           fileName={val(f, "plantLayoutFileName")}

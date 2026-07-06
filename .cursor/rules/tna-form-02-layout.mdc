@@ -1,6 +1,6 @@
 ---
-description: TNA Form 02 print-only official layout conventions
-globs: src/app/components/tnaForm02/**,src/styles/tnaForm02.css,src/app/constants/tnaForm02Layout.ts,src/app/utils/tnaForm02Print.tsx
+description: TNA Form 02 official layout conventions (preview + print)
+globs: src/app/components/tnaForm02/**,src/styles/tnaForm02.css,src/app/constants/tnaForm02Layout.ts,src/app/utils/tnaForm02Print.tsx,src/app/components/TnaForm02Preview.tsx
 alwaysApply: false
 ---
 
@@ -8,28 +8,49 @@ alwaysApply: false
 
 ## Scope
 
-- **Print only** — on-screen preview in `TnaForm02Preview.tsx` stays modern/summary layout.
-- Official output via `TnaForm02Document` rendered at print time (`printTnaForm02Pdf`).
+- On-screen preview and print both use `TnaForm02Document` (class `.tna2-form-doc`).
+- Preview: `TnaForm02Preview.tsx` wraps `TnaForm02Document`.
+- Print: `printTnaForm02Pdf` renders `TnaForm02Document` into `#tna-form-02-print-root.tna2-form-doc`.
 
 ## Document title
 
 `DOST TNA FORM 02 - TECHNOLOGY NEEDS ASSESSMENT REPORT`
 
+Subtitle: `TECHNOLOGY NEEDS ASSESSMENT (TNA) REPORT`
+
+## Official page structure (regional forms pack / filled sample)
+
+1. **Header** — COMPANY, ADDRESS, Assessment Date
+2. **SCOPE OF ASSESSMENT** — checklist groups from `TNA_FORM_02_SCOPE_GROUPS`
+3. **Signatures** — Reported by (TNA Team Leader), Attested by (ARD)
+4. **SUMMARY OF ASSESSMENT**
+   - BACKGROUND
+   - METHODOLOGY
+   - SUMMARY OF FINDINGS (by scope area, with labeled subsections from `TNA_FORM_02_FINDINGS_TEMPLATE`)
+   - OTHER OBSERVATIONS
+   - CONCLUSIONS
+5. **RECOMMENDATIONS** (numbered list)
+6. **Intervention table** — Problem | Proposed S&T | Equipment/skills | Impact
+7. **TNA TEAM** — Team Leader + Members
+8. Closing signatures (Reported by / Attested by)
+
+Missing summary fields are filled via `enrichTna2Summary()` / `normalizeFindingsByArea()` / TNA Form 01 prefill.
+
 ## Pagination
 
-- Physical page footers via CSS `@page @bottom-center` with `counter(page)` / `counter(pages)` — matches actual printed sheet count.
-- No per-section inline footers (avoid misleading "Page X of 6" when content fits fewer sheets).
+- Physical page footers via CSS `@page @bottom-center` with `counter(page)` / `counter(pages)`.
 - `FormBlock` + `break-inside: avoid` — section titles stay with content.
 
 ## Print path
 
 - In-page `window.print()` via `#tna-form-02-print-root` + `body.tna-form-02-printing`.
 - `createRoot` render (do not clone preview; do not use popup `document.write`).
-- Hide portal metadata in print: no Document Ref, Application ID, AI/draft badges.
 
 ## Key files
 
 - `src/app/components/tnaForm02/TnaForm02Document.tsx`
+- `src/app/components/TnaForm02Preview.tsx`
+- `src/app/utils/tnaForm02.ts` (`deriveScopeItems`, `enrichTna2Summary`, `normalizeFindingsByArea`, `prefillFindingsFromTna1`)
 - `src/app/utils/tnaForm02Print.tsx`
 - `src/styles/tnaForm02.css`
 - `src/app/constants/tnaForm02Layout.ts`

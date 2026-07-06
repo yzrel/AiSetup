@@ -4,6 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "ensure:env": "powershell -ExecutionPolicy Bypass -File backend/scripts/ensure-env.ps1",
+    "predev": "npm run ensure:env",
+    "prestart": "npm run ensure:env",
+    "prebackend": "npm run ensure:env",
     "dev": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-frontend.ps1",
     "build": "vite build",
     "preview": "vite preview",

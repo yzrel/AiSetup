@@ -29,7 +29,7 @@ export {
   PP_ROI_COLUMNS,
 } from "./projectProposalLayout";
 
-export const RTEC_REPORT_TITLE = "SETUP Form 002 · RTEC Report";
+export const RTEC_REPORT_TITLE = "SETUP Form 002 - RTEC Report";
 
 export const RTEC_REPORT_FOOTER_PREFIX =
   "SETUP Guidelines (Revision 3.0) Annex A-2: SETUP Form 002 - RTEC Report";

@@ -6,10 +6,13 @@ import { Plus, Trash2 } from "lucide-react";
 import type {
   Tna2DocumentResponse,
   Tna2EquipmentRow,
+  Tna2FindingSection,
+  Tna2InterventionRow,
   Tna2Kpi,
 } from "../api/types";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { useAiFieldSuggest } from "../utils/aiAssist";
+import { normalizeFindingsByArea } from "../utils/tnaForm02";
 import {
   AiAssistNotice,
   AiAssistStringList,
@@ -165,6 +168,25 @@ export function TnaForm02Editor({
   const patch = (partial: Partial<Tna2DocumentResponse>) =>
     onChange({ ...doc, ...partial });
 
+  const findingsByArea = normalizeFindingsByArea(doc.findingsByArea);
+
+  const patchSubsection = (
+    sectionIndex: number,
+    subsectionId: string,
+    content: string,
+  ) => {
+    const rows: Tna2FindingSection[] = findingsByArea.map((section, i) => {
+      if (i !== sectionIndex) return section;
+      return {
+        ...section,
+        subsections: (section.subsections ?? []).map((sub) =>
+          sub.id === subsectionId ? { ...sub, content } : sub,
+        ),
+      };
+    });
+    patch({ findingsByArea: rows });
+  };
+
   const patchProfile = (key: keyof Tna2DocumentResponse["enterpriseProfile"], value: string) =>
     onChange({
       ...doc,
@@ -189,6 +211,15 @@ export function TnaForm02Editor({
     onChange({
       ...doc,
       assessor: { ...doc.assessor, [key]: value },
+    });
+
+  const patchAttestedBy = (
+    key: keyof NonNullable<Tna2DocumentResponse["attestedBy"]>,
+    value: string,
+  ) =>
+    onChange({
+      ...doc,
+      attestedBy: { ...(doc.attestedBy ?? {}), [key]: value },
     });
 
   const updateEquipment = (index: number, row: Tna2EquipmentRow) => {
@@ -241,7 +272,119 @@ export function TnaForm02Editor({
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-bold text-gray-700">I. Enterprise profile</h3>
+        <h3 className="text-sm font-bold text-gray-700">Summary of Assessment</h3>
+        <Field
+          label="Background"
+          value={doc.background ?? ""}
+          onChange={(v) => patch({ background: v })}
+          multiline
+          {...ai("background", (value) =>
+            patch({ background: Array.isArray(value) ? value.join("\n") : value }),
+          )}
+        />
+        <Field
+          label="Methodology"
+          value={doc.methodology ?? ""}
+          onChange={(v) => patch({ methodology: v })}
+          multiline
+          {...ai("methodology", (value) =>
+            patch({ methodology: Array.isArray(value) ? value.join("\n") : value }),
+          )}
+        />
+        <div className="space-y-4">
+          <p className="text-xs font-bold text-gray-500 uppercase">
+            Summary of findings by area
+          </p>
+          {findingsByArea.map((section, sectionIndex) => (
+            <div
+              key={section.title}
+              className="border border-gray-100 rounded-lg p-3 space-y-3"
+            >
+              <p className="text-sm font-bold text-gray-800">{section.title}</p>
+              {(section.subsections ?? []).map((sub) => (
+                <Field
+                  key={sub.id}
+                  label={sub.label}
+                  value={sub.content}
+                  onChange={(content) =>
+                    patchSubsection(sectionIndex, sub.id, content)
+                  }
+                  multiline
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        <Field
+          label="Other observations"
+          value={doc.otherObservations ?? ""}
+          onChange={(v) => patch({ otherObservations: v })}
+          multiline
+        />
+        <Field
+          label="Conclusions"
+          value={doc.conclusions ?? ""}
+          onChange={(v) => patch({ conclusions: v })}
+          multiline
+        />
+        <StringListEditor
+          label="Recommendations"
+          items={doc.recommendations ?? []}
+          onChange={(recommendations) => patch({ recommendations })}
+        />
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-gray-500 uppercase">Intervention table</p>
+          {(doc.interventionRows?.length
+            ? doc.interventionRows
+            : [{ problem: "", intervention: "", equipment: "", impact: "" }]
+          ).map((row, i) => (
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border border-gray-100 rounded-lg p-3">
+              {(
+                [
+                  ["problem", "Problem / existing practice"],
+                  ["intervention", "Proposed S&T intervention"],
+                  ["equipment", "Equipment / skills upgrading"],
+                  ["impact", "Impact"],
+                ] as const
+              ).map(([key, label]) => (
+                <Field
+                  key={key}
+                  label={label}
+                  value={row[key]}
+                  onChange={(v) => {
+                    const rows: Tna2InterventionRow[] = [
+                      ...(doc.interventionRows?.length
+                        ? doc.interventionRows
+                        : [{ problem: "", intervention: "", equipment: "", impact: "" }]),
+                    ];
+                    rows[i] = { ...rows[i], [key]: v };
+                    patch({ interventionRows: rows });
+                  }}
+                  multiline
+                />
+              ))}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              patch({
+                interventionRows: [
+                  ...(doc.interventionRows ?? []),
+                  { problem: "", intervention: "", equipment: "", impact: "" },
+                ],
+              })
+            }
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#0C2461] hover:underline"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add intervention row
+          </button>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-bold text-gray-700">Enterprise profile</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Enterprise name" value={doc.enterpriseProfile.enterpriseName ?? ""} onChange={(v) => patchProfile("enterpriseName", v)} />
           <Field label="Business type" value={doc.enterpriseProfile.businessType ?? ""} onChange={(v) => patchProfile("businessType", v)} />
@@ -381,11 +524,32 @@ export function TnaForm02Editor({
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-bold text-gray-700">Assessor sign-off</h3>
+        <h3 className="text-sm font-bold text-gray-700">Reported by (TNA Team Leader)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="Name" value={doc.assessor.name ?? ""} onChange={(v) => patchAssessor("name", v)} />
           <Field label="Title" value={doc.assessor.title ?? ""} onChange={(v) => patchAssessor("title", v)} />
           <Field label="Office" value={doc.assessor.office ?? ""} onChange={(v) => patchAssessor("office", v)} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-bold text-gray-700">Attested by (ARD)</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field
+            label="Name"
+            value={doc.attestedBy?.name ?? ""}
+            onChange={(v) => patchAttestedBy("name", v)}
+          />
+          <Field
+            label="Title"
+            value={doc.attestedBy?.title ?? "Assistant Regional Director"}
+            onChange={(v) => patchAttestedBy("title", v)}
+          />
+          <Field
+            label="Office"
+            value={doc.attestedBy?.office ?? ""}
+            onChange={(v) => patchAttestedBy("office", v)}
+          />
         </div>
       </section>
     </div>

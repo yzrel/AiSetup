@@ -43,6 +43,7 @@ export function printTnaForm02Pdf(
 
   const printRoot = window.document.createElement("div");
   printRoot.id = PRINT_ROOT_ID;
+  printRoot.className = "tna2-form-doc";
   window.document.body.appendChild(printRoot);
 
   let reactRoot: Root | null = createRoot(printRoot);

@@ -77,7 +77,10 @@ public class Tna2GenerationService {
     }
 
     private boolean isEmptyDocument(Tna2DocumentResponse doc) {
-        return doc.getSiteValidationFindings() == null || doc.getSiteValidationFindings().isEmpty();
+        boolean noSite = doc.getSiteValidationFindings() == null || doc.getSiteValidationFindings().isEmpty();
+        boolean noBackground = doc.getBackground() == null || doc.getBackground().isBlank();
+        boolean noFindings = doc.getFindingsByArea() == null || doc.getFindingsByArea().isEmpty();
+        return noSite && noBackground && noFindings;
     }
 
     private String buildPrompt(Tna2GenerationRequest r) {
@@ -127,16 +130,83 @@ public class Tna2GenerationService {
         );
 
         return """
-                You are a DOST Region XII SETUP assessor drafting TNA Form 02 (Technology Needs Assessment Technical Report) based on TNA Form 01 and site validation data.
+                You are a DOST Region XII SETUP assessor drafting TNA Form 02 (Technology Needs Assessment Report) based on TNA Form 01 and site validation data.
 
-                Write a complete formal technical report. Do NOT invent specific costs, equipment models, or metrics not supported by the data; use conservative estimates marked as approximate where needed.
+                Write a complete formal report matching the official SUMMARY OF ASSESSMENT structure. Do NOT invent specific costs, equipment models, or metrics not supported by the data.
                 Base findings on TNA Form 01 production problems, equipment inventory, and project description.
+                Fill findingsByArea subsection content from TNA Form 01 fields (plan5Years/plan10Years, employees, purchasingSystem, safetyMeasures, trainingDevelopment, marketing/promotionalStrategies, productionPlan, wasteManagement, processFlow).
 
                 Return ONLY a valid JSON object with this exact structure (no markdown):
                 {
                   "enterpriseProfile": {
                     "enterpriseName": "", "address": "", "businessType": "", "sector": "", "commodity": "",
                     "mainProduct": "", "employees": "", "contactPerson": "", "contactNumber": "", "emailAddress": ""
+                  },
+                  "background": "",
+                  "methodology": "",
+                  "findingsByArea": [
+                    {
+                      "title": "1. Strategic Direction",
+                      "subsections": [
+                        { "id": "mission", "label": "Mission Statement", "content": "" },
+                        { "id": "vision", "label": "Vision Statement", "content": "" },
+                        { "id": "plans", "label": "Plans", "content": "" },
+                        { "id": "alliances", "label": "Strategic alliances and current agreement", "content": "" }
+                      ]
+                    },
+                    {
+                      "title": "2. Management Aspect",
+                      "subsections": [
+                        { "id": "human-resources", "label": "Human Resources", "content": "" },
+                        { "id": "purchasing", "label": "Purchasing", "content": "" },
+                        { "id": "work-environment", "label": "Work Environment", "content": "" },
+                        { "id": "compensation", "label": "Compensation", "content": "" },
+                        { "id": "ohs", "label": "Occupational Health and Safety", "content": "" },
+                        { "id": "business-ethics", "label": "Business ethics and social responsibilities", "content": "" },
+                        { "id": "technical-training", "label": "Technical Training", "content": "" },
+                        { "id": "product-promotion", "label": "Product Promotion", "content": "" },
+                        { "id": "product-process-performance", "label": "Product and Process Performance and Improvement", "content": "" }
+                      ]
+                    },
+                    {
+                      "title": "3. Technical Aspect",
+                      "subsections": [
+                        { "id": "operational", "label": "Operational and Outsourcing Practices", "content": "" },
+                        { "id": "production-system", "label": "Production System", "content": "" },
+                        { "id": "production-planning", "label": "Production and Planning Control", "content": "" },
+                        { "id": "production-layout", "label": "Production Layout", "content": "" },
+                        { "id": "work-study", "label": "Work Study/improvement", "content": "" },
+                        { "id": "equipment-mgmt", "label": "Equipment Management and Maintenance", "content": "" },
+                        { "id": "qa-system", "label": "Quality Assurance System", "content": "" }
+                      ]
+                    },
+                    {
+                      "title": "4. Product and Process Performance and Improvement",
+                      "subsections": [
+                        { "id": "reengineering", "label": "Re-engineering and Research and Development", "content": "" },
+                        { "id": "pm-process", "label": "Performance Measures and Results - Process", "content": "" },
+                        { "id": "pm-product", "label": "Performance Measures and Results - Product", "content": "" },
+                        { "id": "continuous-improvement", "label": "Procedures for Continuous Improvement", "content": "" },
+                        { "id": "product-quality", "label": "Product Quality Standards", "content": "" }
+                      ]
+                    },
+                    {
+                      "title": "5. Environmental Management System",
+                      "subsections": [
+                        { "id": "waste-management", "label": "Waste Management", "content": "" },
+                        { "id": "methods-of-disposal", "label": "Methods of disposal", "content": "" }
+                      ]
+                    }
+                  ],
+                  "otherObservations": "",
+                  "conclusions": "",
+                  "recommendations": ["", ""],
+                  "interventionRows": [
+                    { "problem": "", "intervention": "", "equipment": "", "impact": "" }
+                  ],
+                  "tnaTeam": {
+                    "leader": { "name": "", "title": "TNA Team Leader" },
+                    "members": [{ "name": "", "title": "" }]
                   },
                   "siteValidationFindings": ["finding1", "finding2"],
                   "productionProcessAnalysis": { "summary": "", "findings": ["", ""] },
@@ -151,7 +221,8 @@ public class Tna2GenerationService {
                     ],
                     "outcomes": ["", ""]
                   },
-                  "assessor": { "name": "", "title": "Provincial Director", "office": "" }
+                  "assessor": { "name": "", "title": "TNA Team Leader", "office": "" },
+                  "attestedBy": { "name": "", "title": "Assistant Regional Director", "office": "DOST Region XII" }
                 }
 
                 Applicant and TNA Form 01 data:
@@ -160,7 +231,7 @@ public class Tna2GenerationService {
     }
 
     private Tna2DocumentResponse buildTemplateDocument(Tna2GenerationRequest r) {
-        Map<String, Object> form = r.getTna1Form();
+        Map<String, Object> form = r.getTna1Form() != null ? r.getTna1Form() : Map.of();
         Tna2DocumentResponse doc = new Tna2DocumentResponse();
 
         Tna2EnterpriseProfileDto profile = new Tna2EnterpriseProfileDto();
@@ -222,7 +293,170 @@ public class Tna2GenerationService {
         doc.setRecommendedEquipment(buildEquipmentFromTna1(r));
         doc.setProductivityImprovement(buildDefaultProductivity(r));
         doc.setAssessor(buildDefaultAssessor(r.getProvince()));
+
+        String enterprise = profile.getEnterpriseName();
+        doc.setBackground(firstNonBlank(
+                stringVal(form.get("enterpriseBackground")),
+                enterprise + " was assessed under DOST SETUP TNA. "
+                        + (problems.isBlank() ? "" : "Key concerns: " + problems)
+        ));
+        doc.setMethodology(
+                "The assessment was conducted through on-site plant visits, direct observation of the workflow and facilities, "
+                        + "interviews with the owner and key production staff, and a thorough review of operational documents submitted with TNA Form 01."
+        );
+        doc.setFindingsByArea(buildFindingsFromTna1(form, profile, process));
+        doc.setOtherObservations(problems.isBlank()
+                ? "No additional observations beyond the findings above."
+                : problems);
+        doc.setConclusions(
+                "The enterprise demonstrates operational capacity with documented technology needs. "
+                        + "Technology intervention under SETUP is recommended to address identified gaps."
+        );
+        doc.setRecommendations(doc.getProposedInterventions());
+        List<Tna2InterventionRowDto> interventions = new ArrayList<>();
+        List<String> gaps = doc.getTechnologyGaps();
+        List<String> proposed = doc.getProposedInterventions();
+        List<Tna2EquipmentRowDto> equipment = doc.getRecommendedEquipment();
+        for (int i = 0; i < Math.max(gaps.size(), 1); i++) {
+            Tna2InterventionRowDto row = new Tna2InterventionRowDto();
+            row.setProblem(i < gaps.size() ? gaps.get(i) : "");
+            row.setIntervention(i < proposed.size() ? proposed.get(i) : (proposed.isEmpty() ? "" : proposed.get(0)));
+            if (i < equipment.size()) {
+                Tna2EquipmentRowDto eq = equipment.get(i);
+                row.setEquipment(eq.getName() + (eq.getSpecifications() != null && !eq.getSpecifications().isBlank()
+                        ? " — " + eq.getSpecifications() : ""));
+            } else if (!equipment.isEmpty()) {
+                row.setEquipment(equipment.get(0).getName());
+            }
+            List<String> outcomes = doc.getProductivityImprovement().getOutcomes();
+            row.setImpact(i < outcomes.size() ? outcomes.get(i) : (outcomes.isEmpty() ? "" : outcomes.get(0)));
+            interventions.add(row);
+        }
+        doc.setInterventionRows(interventions);
+
+        Tna2TeamDto team = new Tna2TeamDto();
+        Tna2TeamMemberDto leader = new Tna2TeamMemberDto();
+        leader.setName(doc.getAssessor().getName());
+        leader.setTitle(doc.getAssessor().getTitle());
+        team.setLeader(leader);
+        doc.setTnaTeam(team);
+
+        Tna2AssessorDto attested = new Tna2AssessorDto();
+        attested.setName("");
+        attested.setTitle("Assistant Regional Director");
+        attested.setOffice("DOST Region XII");
+        doc.setAttestedBy(attested);
+
         return doc;
+    }
+
+    private static Tna2FindingSubsectionDto sub(String id, String label, String content) {
+        return new Tna2FindingSubsectionDto(id, label, content == null ? "" : content.trim());
+    }
+
+    private static Tna2FindingSectionDto section(String title, List<Tna2FindingSubsectionDto> subsections) {
+        Tna2FindingSectionDto section = new Tna2FindingSectionDto();
+        section.setTitle(title);
+        section.setSubsections(subsections);
+        return section;
+    }
+
+    private static List<Tna2FindingSectionDto> buildFindingsFromTna1(
+            Map<String, Object> form,
+            Tna2EnterpriseProfileDto profile,
+            Tna2ProductionProcessDto process
+    ) {
+        String employees = profile.getEmployees() != null ? profile.getEmployees() : "";
+        String hr = joinNonBlank(
+                employees.isBlank() ? "" : "Total personnel: " + employees + ".",
+                blankToEmpty(form.get("hiringCriteria"), "Hiring criteria: %s."),
+                blankToEmpty(form.get("employeeIncentives"), "Incentives: %s."),
+                blankToEmpty(form.get("trainingDevelopment"), "Training: %s.")
+        );
+        String waste = stringVal(form.get("wasteManagement"));
+        String processFlow = firstNonBlank(stringVal(form.get("processFlow")), process.getSummary());
+        String problems = firstNonBlank(
+                stringVal(form.get("productionProblemsConcerns")),
+                process.getFindings() != null && !process.getFindings().isEmpty()
+                        ? process.getFindings().get(0) : ""
+        );
+        String productionPlan = stringVal(form.get("productionPlan"));
+        String plans = joinNonBlank(
+                stringVal(form.get("reasonsForAssistance")),
+                stringVal(form.get("expectedOutcome"))
+        );
+
+        return List.of(
+                section("1. Strategic Direction", List.of(
+                        sub("mission", "Mission Statement", stringVal(form.get("plan5Years"))),
+                        sub("vision", "Vision Statement", stringVal(form.get("plan10Years"))),
+                        sub("plans", "Plans", plans.isBlank()
+                                ? "Plans focus on technology upgrading aligned with SETUP objectives."
+                                : plans),
+                        sub("alliances", "Strategic alliances and current agreement", "")
+                )),
+                section("2. Management Aspect", List.of(
+                        sub("human-resources", "Human Resources", hr),
+                        sub("purchasing", "Purchasing", stringVal(form.get("purchasingSystem"))),
+                        sub("work-environment", "Work Environment", stringVal(form.get("safetyMeasures"))),
+                        sub("compensation", "Compensation", stringVal(form.get("employeeIncentives"))),
+                        sub("ohs", "Occupational Health and Safety", stringVal(form.get("safetyMeasures"))),
+                        sub("business-ethics", "Business ethics and social responsibilities",
+                                stringVal(form.get("agreements"))),
+                        sub("technical-training", "Technical Training",
+                                stringVal(form.get("trainingDevelopment"))),
+                        sub("product-promotion", "Product Promotion", joinNonBlank(
+                                stringVal(form.get("promotionalStrategies")),
+                                stringVal(form.get("marketingPlan")))),
+                        sub("product-process-performance",
+                                "Product and Process Performance and Improvement",
+                                joinNonBlank(productionPlan, problems, stringVal(form.get("cgmpHaccp"))))
+                )),
+                section("3. Technical Aspect", List.of(
+                        sub("operational", "Operational and Outsourcing Practices", processFlow),
+                        sub("production-system", "Production System", processFlow),
+                        sub("production-planning", "Production and Planning Control", problems),
+                        sub("production-layout", "Production Layout",
+                                stringVal(form.get("plantLayoutFileName")).isBlank()
+                                        ? ""
+                                        : "Plant layout on file: " + stringVal(form.get("plantLayoutFileName"))),
+                        sub("work-study", "Work Study/improvement", problems),
+                        sub("equipment-mgmt", "Equipment Management and Maintenance", problems),
+                        sub("qa-system", "Quality Assurance System", stringVal(form.get("cgmpHaccp")))
+                )),
+                section("4. Product and Process Performance and Improvement", List.of(
+                        sub("reengineering", "Re-engineering and Research and Development",
+                                stringVal(form.get("reasonsForAssistance"))),
+                        sub("pm-process", "Performance Measures and Results - Process", productionPlan),
+                        sub("pm-product", "Performance Measures and Results - Product",
+                                stringVal(form.get("mainProduct"))),
+                        sub("continuous-improvement", "Procedures for Continuous Improvement",
+                                stringVal(form.get("expectedOutcome"))),
+                        sub("product-quality", "Product Quality Standards", stringVal(form.get("cgmpHaccp")))
+                )),
+                section("5. Environmental Management System", List.of(
+                        sub("waste-management", "Waste Management",
+                                waste.isBlank()
+                                        ? "Waste management and environmental controls were reviewed during the assessment."
+                                        : waste),
+                        sub("methods-of-disposal", "Methods of disposal", waste)
+                ))
+        );
+    }
+
+    private static String blankToEmpty(Object value, String template) {
+        String s = stringVal(value);
+        return s.isBlank() ? "" : template.formatted(s);
+    }
+
+    private static String joinNonBlank(String... parts) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (part == null || part.isBlank()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(part.trim());
+        }
+        return sb.toString();
     }
 
     private List<Tna2EquipmentRowDto> buildEquipmentFromTna1(Tna2GenerationRequest r) {

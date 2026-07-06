@@ -232,15 +232,22 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       if (savedPlan?.fileName) {
         setProductionPlanDocument(savedPlan);
       }
+      setProductionPlanNotes(
+        String(md.productionPlanNotes ?? savedPlan?.notes ?? ""),
+      );
     } else {
       setLoiDocument(null);
       setStep("review");
-      const savedPlan = app.moduleData?.productionPlanDocument as ModuleDocument | undefined;
+      const md = app.moduleData ?? {};
+      const savedPlan = md.productionPlanDocument as ModuleDocument | undefined;
       if (savedPlan?.fileName) {
         setProductionPlanDocument(savedPlan);
       } else {
         setProductionPlanDocument(null);
       }
+      setProductionPlanNotes(
+        String(md.productionPlanNotes ?? savedPlan?.notes ?? ""),
+      );
     }
   };
 
@@ -297,6 +304,29 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     !!(commitmentRefund.repaymentTerm) &&
     !!(commitmentRefund.startDate);
 
+  const persistProductionPlanMeta = (
+    doc: ModuleDocument | null,
+    notes: string,
+  ) => {
+    if (!applicant) return;
+    const withNotes = doc
+      ? { ...doc, notes: notes.trim() || undefined }
+      : null;
+    applicantStore.update(applicant.id, {
+      moduleData: {
+        ...applicant.moduleData,
+        ...(withNotes
+          ? {
+              productionPlanDocument: withNotes,
+              productionPlanFile: withNotes.fileName,
+            }
+          : {}),
+        productionPlanNotes: notes,
+      },
+    });
+    if (withNotes) setProductionPlanDocument(withNotes);
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !applicant) return;
@@ -305,13 +335,18 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         file,
         applicant.emailAddress || applicant.applicantName,
       );
+      const withNotes: ModuleDocument = {
+        ...moduleDoc,
+        notes: productionPlanNotes.trim() || undefined,
+      };
       setProductionPlanFile(file);
-      setProductionPlanDocument(moduleDoc);
+      setProductionPlanDocument(withNotes);
       applicantStore.update(applicant.id, {
         moduleData: {
           ...applicant.moduleData,
-          productionPlanDocument: moduleDoc,
-          productionPlanFile: moduleDoc.fileName,
+          productionPlanDocument: withNotes,
+          productionPlanFile: withNotes.fileName,
+          productionPlanNotes,
         },
       });
     } catch (err) {
@@ -328,7 +363,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     if (!applicant) return;
     const { productionPlanDocument: _removed, productionPlanFile: _name, ...rest } =
       applicant.moduleData ?? {};
-    applicantStore.update(applicant.id, { moduleData: rest });
+    applicantStore.update(applicant.id, {
+      moduleData: { ...rest, productionPlanNotes },
+    });
   };
 
   const buildCurrentPayload = () => {
@@ -403,9 +440,19 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
           productionPlanFile?.name ??
           productionPlanDocument?.fileName ??
           applicant.moduleData?.productionPlanFile,
-        productionPlanDocument:
-          productionPlanDocument ??
-          (applicant.moduleData?.productionPlanDocument as ModuleDocument | undefined),
+        productionPlanDocument: (() => {
+          const doc =
+            productionPlanDocument ??
+            (applicant.moduleData?.productionPlanDocument as
+              | ModuleDocument
+              | undefined);
+          if (!doc) return undefined;
+          return {
+            ...doc,
+            notes: productionPlanNotes.trim() || doc.notes || undefined,
+          };
+        })(),
+        productionPlanNotes,
         commitmentAmount: commitmentRefund.approvedAmount,
         repaymentTerm: commitmentRefund.repaymentTerm,
         loiSubmittedAt: new Date().toISOString(),
@@ -928,12 +975,18 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 <AiAssistTextarea
                   label="Production Plan Notes"
                   value={productionPlanNotes}
-                  onChange={setProductionPlanNotes}
+                  onChange={(notes) => {
+                    setProductionPlanNotes(notes);
+                    persistProductionPlanMeta(productionPlanDocument, notes);
+                  }}
                   inputClassName={inputCls}
                   labelClassName={labelCls}
                   minHeight="min-h-[80px]"
                   hint="Any additional notes about your production plan or technology requirements"
-                  {...loiAi("productionPlanNotes", setProductionPlanNotes)}
+                  {...loiAi("productionPlanNotes", (notes) => {
+                    setProductionPlanNotes(notes);
+                    persistProductionPlanMeta(productionPlanDocument, notes);
+                  })}
                 />
               </div>
             </div>
@@ -943,7 +996,10 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 ← Back
               </button>
               <button
-                onClick={() => setStep("commitment-refund")}
+                onClick={() => {
+                  persistProductionPlanMeta(productionPlanDocument, productionPlanNotes);
+                  setStep("commitment-refund");
+                }}
                 disabled={!allowWhenDemo(productionPlanComplete)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}

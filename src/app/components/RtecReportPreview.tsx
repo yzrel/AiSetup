@@ -181,7 +181,7 @@ export function RtecReportPreview({
         {/* Page 1 — Cover + I.a */}
         <div className="text-center border-b border-gray-200 pb-4 mb-6">
           <h1 className="text-lg font-black" style={{ color: RTEC_DOST_BLUE }}>
-            SETUP Form 002 · RTEC Report
+            SETUP Form 002 - RTEC Report
           </h1>
           {applicationId && (
             <p className="text-xs text-gray-500 mt-1 font-mono">{applicationId}</p>

@@ -203,30 +203,42 @@ export function collectApplicantSubmittedFiles(
     });
   }
 
-  const productionPlanDoc = md.productionPlanDocument as ModuleDocument | undefined;
-  if (productionPlanDoc?.fileName) {
-    pushModuleDocument(files, productionPlanDoc, {
-      id: "loi-production-plan",
-      category: "loi",
-      label: "Production plan",
-      sourceModule: "Letter of Intent",
-    });
-  } else if (md.productionPlanFile) {
-    files.push({
-      id: "loi-production-plan-meta",
-      category: "loi",
-      label: "Production plan",
-      fileName: String(md.productionPlanFile),
-      sourceModule: "Letter of Intent",
-      viewable: false,
-    });
-  }
-
   for (const upload of (md.requirementUploads ?? []) as StoredRequirementUpload[]) {
     pushRequirement(files, upload);
   }
 
   const tna1Form = (md.tna1 as { form?: Record<string, string> } | undefined)?.form;
+  const tnaProductionPlanName = String(tna1Form?.productionPlanFileName ?? "").trim();
+  const tnaProductionPlanData = String(tna1Form?.productionPlanFileData ?? "");
+  if (tnaProductionPlanName) {
+    pushTnaFile(
+      files,
+      tnaProductionPlanName,
+      tnaProductionPlanData,
+      "Production plan",
+      "tna1-production-plan",
+    );
+  } else {
+    const productionPlanDoc = md.productionPlanDocument as ModuleDocument | undefined;
+    if (productionPlanDoc?.fileName) {
+      pushModuleDocument(files, productionPlanDoc, {
+        id: "loi-production-plan",
+        category: "loi",
+        label: "Production plan",
+        sourceModule: "Letter of Intent",
+      });
+    } else if (md.productionPlanFile) {
+      files.push({
+        id: "loi-production-plan-meta",
+        category: "loi",
+        label: "Production plan",
+        fileName: String(md.productionPlanFile),
+        sourceModule: "Letter of Intent",
+        viewable: false,
+      });
+    }
+  }
+
   if (tna1Form) {
     pushTnaFile(
       files,

@@ -72,7 +72,9 @@ export function mergeAiTnaSuggestions(
   response: Tna1DocumentResponse,
 ): { form: Record<string, unknown>; tables: TnaTables } {
   const form = { ...currentForm };
+  const hasProductionPlanFile = !isBlank(form.productionPlanFileName);
   for (const [key, value] of Object.entries(response.form ?? {})) {
+    if (key === "productionPlan" && hasProductionPlanFile) continue;
     if (isBlank(form[key]) && !isBlank(value)) {
       form[key] = value;
     }
@@ -153,10 +155,12 @@ export function buildLocalTna1Document(
     "wasteManagement",
     "Waste is segregated at source; disposal follows local environmental regulations.",
   );
-  put(
-    "productionPlan",
-    project || "Production will be optimized through upgraded equipment and improved process controls.",
-  );
+  if (isBlank(payload.form.productionPlanFileName)) {
+    put(
+      "productionPlan",
+      "Production will be optimized through upgraded equipment and improved process controls.",
+    );
+  }
   put(
     "inventorySystem",
     "Raw materials and finished goods are tracked through manual ledgers with periodic physical counts.",

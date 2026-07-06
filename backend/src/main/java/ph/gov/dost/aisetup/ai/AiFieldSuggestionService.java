@@ -255,6 +255,14 @@ public class AiFieldSuggestionService {
                     Operations at %s follow a defined sequence from input preparation through processing, quality verification, and finished goods handling for the %s sector. Current process documentation identifies stages where cycle time, yield, and rework are most sensitive to equipment condition and operator technique. The recommended technology intervention addresses these stages to stabilize output and reduce non-value-added activity. Post-installation monitoring will compare actual performance against agreed baseline metrics.""".formatted(
                     enterprise, sector);
 
+            case "background" -> """
+                    %s is a %s enterprise engaged in %s within the %s sector, with %s as its principal product or service line. The firm maintains active operations and seeks SETUP assistance to address documented technology and productivity gaps. Enterprise background, employment, and assistance rationale are based on TNA Form 01 and supporting registration records. Site validation confirmed operations at the registered production location.""".formatted(
+                    enterprise, msme.toLowerCase(), nature, sector, products);
+
+            case "methodology" -> """
+                    The assessment of %s was conducted through on-site plant visits, direct observation of workflow and facilities, interviews with the owner and key production staff, and a thorough review of financial, marketing, and operational documents submitted with TNA Form 01. Findings were validated against the Technology Assessment Plan scope covering strategic direction, management, technical, performance, and environmental aspects. Observations and recommendations reflect conditions documented during the assessment period.""".formatted(
+                    enterprise);
+
             default -> """
                     %s is preparing this section as part of its SETUP application for technology upgrading in the %s sector. Content should be read together with supporting forms, financial projections, and PSTO validation records. The enterprise commits to accurate reporting and compliance with program requirements throughout implementation.""".formatted(
                     enterprise, sector);
@@ -390,6 +398,10 @@ public class AiFieldSuggestionService {
         ));
 
         reg.put("tna2", Map.ofEntries(
+                entry("background", "Background", "TNA Form 02 Summary of Assessment", false,
+                        "Write 1-2 formal paragraphs on enterprise background using TNA Form 01 data (establishment, products, capitalization, reasons for assistance). Do not invent unsupported facts."),
+                entry("methodology", "Methodology", "TNA Form 02 Summary of Assessment", false,
+                        "Write 1 formal paragraph describing TNA methodology: on-site plant visits, observation of workflow and facilities, interviews with owner and staff, and review of TNA Form 01 documents."),
                 entry("siteValidationFindings", "Site Validation Findings", "TNA Form 02", true,
                         "Provide 5-7 professional bullet points summarizing site validation observations."),
                 entry("processSummary", "Process Summary", "TNA Form 02", false,

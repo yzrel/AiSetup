@@ -32,10 +32,16 @@ export const PP_PROFIT_TYPES = ["Profit", "Non-Profit"] as const;
 export const PP_MSME_SIZES = [
   "Micro (P3M Total Asset Value or less)",
   "Small (P3,000,001 – P15M Total Asset Value)",
-  "Medium (P15,000,001 – P100M Total Asset Value)",
+  "Medium (P15,000,001 – P150M Total Asset Value)",
 ] as const;
 
-export const PP_REGISTRATION_OFFICES = ["DTI", "SEC", "CDA", "Others, please specify:"] as const;
+export const PP_REGISTRATION_OFFICES = [
+  "DTI",
+  "SEC",
+  "CDA",
+  "LGU",
+  "Others, please specify:",
+] as const;
 
 /** Business activities in official 2-column grid order (left column, then right column per row). */
 export const PP_BUSINESS_ACTIVITY_PAIRS: readonly [string, string][] = [
@@ -149,7 +155,7 @@ export const PP_BUDGET_COLUMNS = [
 export const PP_RISK_COLUMNS = ["RISKS", "ASSUMPTIONS", "RISK MANAGEMENT PLAN"] as const;
 
 export const PP_REFUND_NOTE =
-  "(Note: Refund schedule shall be within a period of three (3) to five (5) years depending on the nature/amount of project.)";
+  "(Note: Refund schedule shall be within a period of three (3) to five (5) years depending on the nature/cost of the project.)";
 
 export const PP_BUDGET_NOTE =
   "(note: cost-sharing of an item is not allowed due to issue on ownership)";

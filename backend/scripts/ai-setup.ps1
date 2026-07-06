@@ -4,7 +4,7 @@ $backendRoot = Split-Path -Parent $PSScriptRoot
 $envFile = Join-Path $backendRoot ".env"
 $exampleFile = Join-Path $backendRoot ".env.example"
 
-& "$PSScriptRoot\ensure-env.ps1" | Out-Null
+& "$PSScriptRoot\ensure-env.ps1" -SkipInteractiveSetup | Out-Null
 
 function Set-EnvFileValue([string]$path, [string]$name, [string]$value) {
     $lines = @()

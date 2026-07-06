@@ -7,17 +7,21 @@ import type {
   PisOngoingFiling,
   PisSemester,
   PrePisDraftForm,
-  PrePisGadRow,
   ProjectInformationSheetStored,
   SignedPrePisDocument,
 } from "../api/types";
 import { getApprovalLetterForm, getApprovalLetterStored, getSignedMoa } from "./approvalLetter";
-import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
-import { getPublishedTna2 } from "./tnaForm02";
 import { isDemoModeActive } from "./demoMode";
 import { a4PageRule, A4_MARGIN_DEFAULT, A4_MARGIN_PRE_PIS } from "./printPage";
 import { formatFormMention } from "../constants/setupForms";
+import {
+  emptyEmploymentMatrix,
+  employmentFromSimple,
+  ensureEmploymentMatrix,
+  FORM_008_ASSISTANCE_OPTIONS,
+  FORM_009_ASSISTANCE_OPTIONS,
+} from "../constants/pisFormLayout";
 import {
   hasPdcsRecordedForDisbursement,
   initRefundScheduleAtMoa,
@@ -27,16 +31,7 @@ import {
 
 const DOST_BLUE = "#0C2461";
 
-function applicantProvince(applicant: Applicant | null): string {
-  if (!applicant) return "";
-  const md = applicant.moduleData ?? {};
-  return String(md.province ?? applicant.address?.split(",").pop()?.trim() ?? "");
-}
-
-function resolvePstoContact(applicant: Applicant | null) {
-  const psto = resolveProvincialOffice(applicantProvince(applicant));
-  return { pstoOfficeName: psto.officeName, pstoDirectorTitle: psto.title };
-}
+export { FORM_008_ASSISTANCE_OPTIONS, FORM_009_ASSISTANCE_OPTIONS };
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -44,58 +39,36 @@ function uid() {
 
 export function emptyPrePisDraft(): PrePisDraftForm {
   return {
-    labName: "",
+    periodLabel: "",
     projectTitle: "",
-    dostPersonnelInCharge: "",
-    dostInput: "",
-    cooperatorInput: "",
-    datePrepared: new Date().toISOString().split("T")[0],
-    status: "New",
-    organizationName: "",
-    organizationAddress: "",
+    projectCode: "",
+    firmName: "",
+    ownerName: "",
+    ownerSex: "",
+    ownerBirthday: "",
     orgType: "",
-    natureOfBusiness: "",
-    sectors: "",
+    businessAddress: "",
+    landline: "",
+    fax: "",
+    mobilePhone: "",
+    email: "",
     yearEstablished: "",
-    classification: "",
-    mainProducts: "",
-    technologyEmployed: "",
-    productionCapacity: "",
-    standardsCertifications: "",
-    personInCharge: "",
-    staffComplement: "",
-    contactNumbers: "",
-    briefDescription: "",
-    implementingAgency: "",
-    costLgu: "",
-    costDost: "",
-    costCooperators: "",
-    costTotal: "",
-    generalObjective: "",
-    specificObjectives: [""],
-    methodology: "",
-    beneficiaries: "",
-    expectedOutputs: {
-      finalProduct: "",
-      publication: "",
-      policy: "",
-      peopleServices: "",
-      partnership: "",
-      economic: "",
-      others: "",
-    },
-    partnerFunding: "",
-    partnerGrant: "",
-    partnerOthers: "",
-    schedulePreImplementation: "",
-    scheduleImplementation: "",
-    scheduleOperation: "",
-    projectLocation: "",
-    rdDirective: "",
-    rdExpectedOutput: "",
-    rdStartDate: "",
-    rdCompletionDate: "",
-    gadRows: [{ id: uid(), genderIssues: "", gadObjectives: "", gadActivities: "" }],
+    dateAssistanceApproved: "",
+    assetsLand: "",
+    assetsBuilding: "",
+    assetsEquipment: "",
+    assetsWorkingCapital: "",
+    employment: emptyEmploymentMatrix(),
+    productionVolumeLocal: "",
+    productionVolumeExport: "",
+    productionDetails: "",
+    grossSalesLocal: "",
+    grossSalesExport: "",
+    exportDestinations: "",
+    dostAssistance: [],
+    assistanceSpecify: "",
+    preparedBy: "",
+    datePrepared: new Date().toISOString().split("T")[0],
   };
 }
 
@@ -113,72 +86,45 @@ export function buildPrePisDraft(applicant: Applicant | null): PrePisDraftForm {
 
   const pp = getProjectProposalForm(applicant);
   const approval = getApprovalLetterForm(applicant);
-  const tna2 = getPublishedTna2(applicant);
-  const psto = resolvePstoContact(applicant);
-  const staffTotal =
-    (parseInt(pp.employeesMale, 10) || 0) + (parseInt(pp.employeesFemale, 10) || 0);
-
-  const setupCost = approval.approvedAmount || pp.amountRequested;
-  const totalCost = pp.projectCost || setupCost;
-  const setupNum = parseFloat(String(setupCost).replace(/[^\d.]/g, "")) || 0;
-  const totalNum = parseFloat(String(totalCost).replace(/[^\d.]/g, "")) || 0;
-  const coopNum = totalNum > setupNum ? totalNum - setupNum : 0;
+  const contact = pp.contactNumber || applicant.contactNumber || "";
+  const isMobile = /^(\+?63|0)?9\d{9}$/.test(contact.replace(/[\s-]/g, ""));
 
   return {
-    labName: `LAB - ${pp.firmName || applicant.enterpriseName}`,
+    periodLabel: "",
     projectTitle: pp.projectTitle || approval.projectTitle,
-    dostPersonnelInCharge: psto.pstoOfficeName,
-    dostInput: setupCost,
-    cooperatorInput: coopNum > 0 ? `Php ${coopNum.toLocaleString("en-PH")}` : "",
-    datePrepared: new Date().toISOString().split("T")[0],
-    status: "New",
-    organizationName: pp.firmName || applicant.enterpriseName,
-    organizationAddress: pp.firmAddress || applicant.address,
+    projectCode: approval.referenceNumber || "",
+    firmName: pp.firmName || applicant.enterpriseName,
+    ownerName: pp.contactPerson || applicant.applicantName,
+    ownerSex: "",
+    ownerBirthday: "",
     orgType: pp.organizationType,
-    natureOfBusiness: pp.businessActivity || pp.profitType,
-    sectors: pp.businessActivity || applicant.businessSector || "",
+    businessAddress: pp.firmAddress || applicant.address,
+    landline: isMobile ? "" : contact,
+    fax: "",
+    mobilePhone: isMobile ? contact : "",
+    email: pp.email || applicant.emailAddress || "",
     yearEstablished: pp.yearEstablished,
-    classification: pp.msmeSize,
-    mainProducts: pp.productsServices,
-    technologyEmployed: pp.productionProcess || tna2?.productionProcessAnalysis?.summary || "",
-    productionCapacity: pp.capacityVolumeNarrative,
-    standardsCertifications: "",
-    personInCharge: pp.contactPerson || applicant.applicantName,
-    staffComplement: String(staffTotal || pp.employeesIndirect || ""),
-    contactNumbers: [pp.contactNumber, pp.email].filter(Boolean).join(" / "),
-    briefDescription: pp.enterpriseBackground || pp.generalObjective,
-    implementingAgency: pp.firmName || applicant.enterpriseName,
-    costLgu: "",
-    costDost: setupCost,
-    costCooperators: coopNum > 0 ? `Php ${coopNum.toLocaleString("en-PH")}` : "",
-    costTotal: totalCost,
-    generalObjective: pp.generalObjective,
-    specificObjectives: pp.specificObjectives.filter((s) => s.trim()).length
-      ? pp.specificObjectives.filter((s) => s.trim())
-      : [""],
-    methodology: pp.productionProcess || tna2?.proposedInterventions?.join("; ") || "",
-    beneficiaries: pp.productsServices || "Enterprise workers and local community",
-    expectedOutputs: {
-      finalProduct: pp.expectedOutputBullets[0] || "",
-      publication: "",
-      policy: "",
-      peopleServices: pp.expectedOutputBullets[1] || "",
-      partnership: "",
-      economic: pp.expectedOutputBullets[2] || "",
-      others: "",
-    },
-    partnerFunding: "",
-    partnerGrant: "",
-    partnerOthers: "",
-    schedulePreImplementation: "",
-    scheduleImplementation: "",
-    scheduleOperation: "",
-    projectLocation: pp.firmAddress || applicant.address,
-    rdDirective: "",
-    rdExpectedOutput: "",
-    rdStartDate: "",
-    rdCompletionDate: "",
-    gadRows: [{ id: uid(), genderIssues: "", gadObjectives: "", gadActivities: "" }],
+    dateAssistanceApproved: approval.letterDate || "",
+    assetsLand: "",
+    assetsBuilding: "",
+    assetsEquipment: "",
+    assetsWorkingCapital: "",
+    employment: employmentFromSimple(
+      pp.employeesMale,
+      pp.employeesFemale,
+      "",
+      pp.employeesIndirect,
+    ),
+    productionVolumeLocal: pp.capacityVolumeNarrative || "",
+    productionVolumeExport: "",
+    productionDetails: pp.productsServices || "",
+    grossSalesLocal: "",
+    grossSalesExport: "",
+    exportDestinations: "",
+    dostAssistance: [],
+    assistanceSpecify: "",
+    preparedBy: pp.contactPerson || applicant.applicantName,
+    datePrepared: new Date().toISOString().split("T")[0],
   };
 }
 
@@ -189,9 +135,32 @@ export function getProjectInformationSheetStored(
   return applicant.moduleData.projectInformationSheet as ProjectInformationSheetStored;
 }
 
+export function normalizePrePisDraft(draft: PrePisDraftForm): PrePisDraftForm {
+  const base = emptyPrePisDraft();
+  const legacy = draft as PrePisDraftForm & {
+    organizationName?: string;
+    organizationAddress?: string;
+    personInCharge?: string;
+    contactNumbers?: string;
+  };
+  return {
+    ...base,
+    ...draft,
+    firmName: draft.firmName || legacy.organizationName || "",
+    businessAddress: draft.businessAddress || legacy.organizationAddress || "",
+    ownerName: draft.ownerName || legacy.personInCharge || "",
+    employment: ensureEmploymentMatrix(draft.employment),
+    dostAssistance: Array.isArray(draft.dostAssistance) ? draft.dostAssistance : [],
+    assistanceSpecify: draft.assistanceSpecify ?? "",
+    preparedBy: draft.preparedBy || legacy.personInCharge || "",
+  };
+}
+
 export function getPrePisDraft(applicant: Applicant | null): PrePisDraftForm {
   const stored = getProjectInformationSheetStored(applicant);
-  if (stored?.prePisDraft?.projectTitle?.trim()) return stored.prePisDraft;
+  if (stored?.prePisDraft?.projectTitle?.trim()) {
+    return normalizePrePisDraft(stored.prePisDraft);
+  }
   return buildPrePisDraft(applicant);
 }
 
@@ -226,15 +195,26 @@ export function syncPrePisDraft(
   applicant: Applicant,
 ): PrePisDraftForm {
   const draft = buildPrePisDraft(applicant);
+  const prev = normalizePrePisDraft(existing);
   return {
     ...draft,
-    datePrepared: existing.datePrepared || draft.datePrepared,
-    status: existing.status || draft.status,
-    gadRows: existing.gadRows.some((r) =>
-      [r.genderIssues, r.gadObjectives, r.gadActivities].some((v) => v.trim()),
-    )
-      ? existing.gadRows
-      : draft.gadRows,
+    datePrepared: prev.datePrepared || draft.datePrepared,
+    ownerSex: prev.ownerSex || draft.ownerSex,
+    ownerBirthday: prev.ownerBirthday || draft.ownerBirthday,
+    assetsLand: prev.assetsLand || draft.assetsLand,
+    assetsBuilding: prev.assetsBuilding || draft.assetsBuilding,
+    assetsEquipment: prev.assetsEquipment || draft.assetsEquipment,
+    assetsWorkingCapital: prev.assetsWorkingCapital || draft.assetsWorkingCapital,
+    employment: prev.employment?.companyHire ? prev.employment : draft.employment,
+    productionVolumeLocal: prev.productionVolumeLocal || draft.productionVolumeLocal,
+    productionVolumeExport: prev.productionVolumeExport || draft.productionVolumeExport,
+    productionDetails: prev.productionDetails || draft.productionDetails,
+    grossSalesLocal: prev.grossSalesLocal || draft.grossSalesLocal,
+    grossSalesExport: prev.grossSalesExport || draft.grossSalesExport,
+    exportDestinations: prev.exportDestinations || draft.exportDestinations,
+    dostAssistance: prev.dostAssistance.length ? prev.dostAssistance : draft.dostAssistance,
+    assistanceSpecify: prev.assistanceSpecify || draft.assistanceSpecify,
+    preparedBy: prev.preparedBy || draft.preparedBy,
   };
 }
 
@@ -391,6 +371,17 @@ export function normalizePisOngoingFiling(filing: PisOngoingFiling): PisOngoingF
     reportingYear,
     semester,
     periodLabel: formatSemesterLabel(reportingYear, semester),
+    ownerSex: filing.ownerSex ?? "",
+    ownerBirthday: filing.ownerBirthday ?? "",
+    orgType: filing.orgType ?? "",
+    businessAddress: filing.businessAddress ?? "",
+    landline: filing.landline ?? "",
+    fax: filing.fax ?? "",
+    mobilePhone: filing.mobilePhone ?? "",
+    email: filing.email ?? "",
+    employment: ensureEmploymentMatrix(filing.employment, filing),
+    assistanceSpecify: filing.assistanceSpecify ?? "",
+    dostAssistance: Array.isArray(filing.dostAssistance) ? filing.dostAssistance : [],
   };
 }
 
@@ -431,24 +422,35 @@ export function sortPisOngoingFilings(filings: PisOngoingFiling[]): PisOngoingFi
 export function buildPisOngoingDraft(applicant: Applicant | null): PisOngoingFiling {
   const pp = getProjectProposalForm(applicant);
   const approval = getApprovalLetterForm(applicant);
+  const prePis = applicant ? getPrePisDraft(applicant) : emptyPrePisDraft();
   const { reportingYear, semester } = getCurrentReportingSemester();
   return {
     id: uid(),
     reportingYear,
     semester,
     periodLabel: formatSemesterLabel(reportingYear, semester),
-    projectCode: approval.referenceNumber,
-    projectTitle: pp.projectTitle,
-    firmName: pp.firmName,
-    ownerName: pp.contactPerson,
-    assetsLand: "",
-    assetsBuilding: "",
-    assetsEquipment: "",
-    assetsWorkingCapital: "",
-    employmentDirectMale: pp.employeesMale,
-    employmentDirectFemale: pp.employeesFemale,
-    employmentIndirectMale: "",
-    employmentIndirectFemale: pp.employeesIndirect,
+    projectCode: approval.referenceNumber || prePis.projectCode,
+    projectTitle: pp.projectTitle || prePis.projectTitle,
+    firmName: "",
+    ownerName: "",
+    ownerSex: "",
+    ownerBirthday: "",
+    orgType: "",
+    businessAddress: "",
+    landline: "",
+    fax: "",
+    mobilePhone: "",
+    email: "",
+    assetsLand: prePis.assetsLand,
+    assetsBuilding: prePis.assetsBuilding,
+    assetsEquipment: prePis.assetsEquipment,
+    assetsWorkingCapital: prePis.assetsWorkingCapital,
+    employment: employmentFromSimple(
+      pp.employeesMale,
+      pp.employeesFemale,
+      "",
+      pp.employeesIndirect,
+    ),
     productionVolumeLocal: "",
     productionVolumeExport: "",
     productionDetails: pp.productsServices,
@@ -456,6 +458,7 @@ export function buildPisOngoingDraft(applicant: Applicant | null): PisOngoingFil
     grossSalesExport: "",
     exportDestinations: "",
     dostAssistance: [],
+    assistanceSpecify: "",
     preparedBy: "",
     filedAt: new Date().toISOString(),
   };

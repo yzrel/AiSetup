@@ -191,18 +191,69 @@ export interface Tna2Assessor {
   office?: string;
 }
 
+/** Official Form 02 scope checklist item (covered during TNA) */
+export interface Tna2ScopeItem {
+  id: string;
+  covered: boolean;
+  notes?: string;
+}
+
+/** SUMMARY OF ASSESSMENT — labeled subsection within a findings area */
+export interface Tna2FindingSubsection {
+  id: string;
+  label: string;
+  content: string;
+}
+
+/** SUMMARY OF ASSESSMENT — findings by scope area */
+export interface Tna2FindingSection {
+  title: string;
+  /** Legacy free-text blob; used when subsections are empty */
+  content?: string;
+  subsections?: Tna2FindingSubsection[];
+}
+
+export interface Tna2InterventionRow {
+  problem: string;
+  intervention: string;
+  equipment: string;
+  impact: string;
+}
+
+export interface Tna2TeamMember {
+  name: string;
+  title?: string;
+}
+
 export interface Tna2DocumentResponse {
   documentRef: string;
   assessmentDate: string;
   applicationId?: string;
   enterpriseProfile: Tna2EnterpriseProfile;
+  /** Official scope-of-assessment checklist; derived from narrative when omitted */
+  scopeItems?: Tna2ScopeItem[];
+  /** SUMMARY OF ASSESSMENT — BACKGROUND */
+  background?: string;
+  /** SUMMARY OF ASSESSMENT — METHODOLOGY */
+  methodology?: string;
+  /** SUMMARY OF FINDINGS by scope area */
+  findingsByArea?: Tna2FindingSection[];
+  otherObservations?: string;
+  conclusions?: string;
+  recommendations?: string[];
+  interventionRows?: Tna2InterventionRow[];
+  tnaTeam?: { leader: Tna2TeamMember; members: Tna2TeamMember[] };
+  /** Legacy narrative fields (mapped into summary when new fields empty) */
   siteValidationFindings: string[];
   productionProcessAnalysis: { summary: string; findings: string[] };
   technologyGaps: string[];
   proposedInterventions: string[];
   recommendedEquipment: Tna2EquipmentRow[];
   productivityImprovement: { kpis: Tna2Kpi[]; outcomes: string[] };
+  /** Reported by — TNA Team Leader */
   assessor: Tna2Assessor;
+  /** Attested by — ARD */
+  attestedBy?: Tna2Assessor;
   generatedAt: string;
   aiGenerated: boolean;
 }
@@ -524,70 +575,62 @@ export interface SignedMoaDocument {
   notes?: string;
 }
 
-// ── SETUP Form 009 — Project Information Sheet ────────────────────────────────
+// ── SETUP Form 008 / 009 — Project Information Sheet ──────────────────────────
 
-export interface PrePisGadRow {
-  id: string;
-  genderIssues: string;
-  gadObjectives: string;
-  gadActivities: string;
+export interface PisSexCounts {
+  male: string;
+  female: string;
 }
 
-export interface PrePisExpectedOutputs {
-  finalProduct: string;
-  publication: string;
-  policy: string;
-  peopleServices: string;
-  partnership: string;
-  economic: string;
-  others: string;
+export interface PisHireBlock {
+  regular: PisSexCounts;
+  partTime: PisSexCounts;
+  pwd: PisSexCounts;
+  seniorCitizen: PisSexCounts;
 }
 
+export interface PisEmploymentMatrix {
+  companyHire: PisHireBlock;
+  subcontractorHire: PisHireBlock;
+  indirectBackward: PisSexCounts;
+  indirectForward: PisSexCounts;
+  indirectPwd: PisSexCounts;
+  indirectSeniorCitizen: PisSexCounts;
+}
+
+/** SETUP Form 008 — Pre-Implementation Project Information Sheet */
 export interface PrePisDraftForm {
-  labName: string;
+  periodLabel: string;
   projectTitle: string;
-  dostPersonnelInCharge: string;
-  dostInput: string;
-  cooperatorInput: string;
-  datePrepared: string;
-  status: string;
-  organizationName: string;
-  organizationAddress: string;
+  projectCode: string;
+  firmName: string;
+  ownerName: string;
+  ownerSex: string;
+  ownerBirthday: string;
   orgType: string;
-  natureOfBusiness: string;
-  sectors: string;
+  businessAddress: string;
+  landline: string;
+  fax: string;
+  mobilePhone: string;
+  email: string;
   yearEstablished: string;
-  classification: string;
-  mainProducts: string;
-  technologyEmployed: string;
-  productionCapacity: string;
-  standardsCertifications: string;
-  personInCharge: string;
-  staffComplement: string;
-  contactNumbers: string;
-  briefDescription: string;
-  implementingAgency: string;
-  costLgu: string;
-  costDost: string;
-  costCooperators: string;
-  costTotal: string;
-  generalObjective: string;
-  specificObjectives: string[];
-  methodology: string;
-  beneficiaries: string;
-  expectedOutputs: PrePisExpectedOutputs;
-  partnerFunding: string;
-  partnerGrant: string;
-  partnerOthers: string;
-  schedulePreImplementation: string;
-  scheduleImplementation: string;
-  scheduleOperation: string;
-  projectLocation: string;
-  rdDirective: string;
-  rdExpectedOutput: string;
-  rdStartDate: string;
-  rdCompletionDate: string;
-  gadRows: PrePisGadRow[];
+  dateAssistanceApproved: string;
+  assetsLand: string;
+  assetsBuilding: string;
+  assetsEquipment: string;
+  assetsWorkingCapital: string;
+  employment: PisEmploymentMatrix;
+  productionVolumeLocal: string;
+  productionVolumeExport: string;
+  productionDetails: string;
+  grossSalesLocal: string;
+  grossSalesExport: string;
+  exportDestinations: string;
+  /** Assistance option ids from FORM_008_ASSISTANCE_OPTIONS */
+  dostAssistance: string[];
+  assistanceSpecify: string;
+  preparedBy: string;
+  datePrepared: string;
 }
 
 export interface SignedPrePisDocument {
@@ -609,23 +652,36 @@ export interface PisOngoingFiling {
   semester: PisSemester;
   projectCode: string;
   projectTitle: string;
+  /** Fill only if changed from Pre-PIS */
   firmName: string;
   ownerName: string;
+  ownerSex: string;
+  ownerBirthday: string;
+  orgType: string;
+  businessAddress: string;
+  landline: string;
+  fax: string;
+  mobilePhone: string;
+  email: string;
   assetsLand: string;
   assetsBuilding: string;
   assetsEquipment: string;
   assetsWorkingCapital: string;
-  employmentDirectMale: string;
-  employmentDirectFemale: string;
-  employmentIndirectMale: string;
-  employmentIndirectFemale: string;
+  employment: PisEmploymentMatrix;
+  /** Legacy simple counts — migrated into employment when present */
+  employmentDirectMale?: string;
+  employmentDirectFemale?: string;
+  employmentIndirectMale?: string;
+  employmentIndirectFemale?: string;
   productionVolumeLocal: string;
   productionVolumeExport: string;
   productionDetails: string;
   grossSalesLocal: string;
   grossSalesExport: string;
   exportDestinations: string;
+  /** Assistance option ids from FORM_009_ASSISTANCE_OPTIONS */
   dostAssistance: string[];
+  assistanceSpecify: string;
   preparedBy: string;
   filedAt: string;
 }
