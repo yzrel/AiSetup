@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+release/
 
 # Local env files
 .env
@@ -30,3 +31,6 @@ Thumbs.db
 backend/target/
 backend/.jdk/
 backend/.mvn/wrapper/maven-wrapper.jar
+
+# Local H2 database
+backend/data/

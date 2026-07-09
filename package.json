@@ -10,6 +10,7 @@
     "prebackend": "npm run ensure:env",
     "dev": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-frontend.ps1",
     "build": "vite build",
+    "package:local": "powershell -ExecutionPolicy Bypass -File scripts/package-local.ps1",
     "preview": "vite preview",
     "backend:setup": "powershell -ExecutionPolicy Bypass -File backend/scripts/setup-jdk.ps1",
     "backend": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-backend.ps1",
