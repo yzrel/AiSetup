@@ -40,6 +40,11 @@ function dostRecipients(applicant: Applicant): {
   return { to, officeId };
 }
 
+function notificationView(moduleKey: string): AdminView {
+  if (moduleKey.startsWith("withdrawal-request")) return "landbank-withdrawal";
+  return (moduleKey as AdminView) || "landbank-withdrawal";
+}
+
 /**
  * Sends a module printable (generated document) to the applicant's PSTO and
  * the DOST regional records office, with a copy to the client.
@@ -47,12 +52,13 @@ function dostRecipients(applicant: Applicant): {
 export function sendPrintableToDost(options: {
   applicant: Applicant;
   user: AuthUser | null;
-  moduleKey: AdminView;
+  moduleKey: string;
   documentTitle: string;
   attachment?: OutboxAttachment | null;
 }): OutboxEmail {
   const { applicant, user, moduleKey, documentTitle, attachment } = options;
   const { to, officeId } = dostRecipients(applicant);
+  const view = notificationView(moduleKey);
 
   const email = emailOutboxStore.send({
     kind: "printable",
@@ -81,7 +87,7 @@ export function sendPrintableToDost(options: {
     kind: "action",
     title: `${documentTitle} received by email`,
     message: `${applicant.enterpriseName} sent the ${documentTitle} to DOST for review.`,
-    view: moduleKey,
+    view,
   });
   notificationStore.add({
     audience: "applicant",
@@ -89,7 +95,64 @@ export function sendPrintableToDost(options: {
     kind: "success",
     title: `${documentTitle} sent to DOST`,
     message: `Your ${documentTitle} was emailed to your PSTO and the DOST Region XII records office. A copy was sent to ${applicant.emailAddress || "your email"}.`,
-    view: moduleKey,
+    view,
+  });
+
+  return email;
+}
+
+/**
+ * Sends a generated printable primarily to the client for wet-ink signing,
+ * with a copy to the PSTO / regional records office.
+ */
+export function sendPrintableToClient(options: {
+  applicant: Applicant;
+  user: AuthUser | null;
+  moduleKey: string;
+  documentTitle: string;
+  attachment?: OutboxAttachment | null;
+}): OutboxEmail {
+  const { applicant, user, moduleKey, documentTitle, attachment } = options;
+  const { to: dostTo, officeId } = dostRecipients(applicant);
+  const view = notificationView(moduleKey);
+  const clientEmail = applicant.emailAddress?.trim();
+
+  const email = emailOutboxStore.send({
+    kind: "printable",
+    to: clientEmail ? [clientEmail] : dostTo,
+    cc: clientEmail ? dostTo : [],
+    subject: `[aiSETUP] Please sign — ${documentTitle} (${applicant.applicationId})`,
+    body:
+      `Good day ${applicant.applicantName},\n\n` +
+      `Please find attached the ${documentTitle} for ${applicant.enterpriseName} ` +
+      `(Application ID: ${applicant.applicationId}).\n\n` +
+      `Kindly print, sign, and upload the signed copy back through aiSETUP.\n\n` +
+      `Respectfully,\naiSETUP — DOST Region XII`,
+    attachments: attachment
+      ? [attachment]
+      : [{ fileName: `${documentTitle} - ${applicant.applicationId}.pdf` }],
+    sentBy: user?.email ?? applicant.emailAddress,
+    applicantId: applicant.id,
+    officeId,
+    module: moduleKey,
+  });
+
+  notificationStore.add({
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "action",
+    title: `Sign and return: ${documentTitle}`,
+    message: `Your ${documentTitle} was emailed for signature. Print, sign, and upload the signed copy in LandBank & Withdrawal.`,
+    view,
+  });
+  notificationStore.add({
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId,
+    kind: "info",
+    title: `${documentTitle} sent to client`,
+    message: `${documentTitle} for ${applicant.enterpriseName} was emailed to ${clientEmail || "the client"} for signature.`,
+    view,
   });
 
   return email;
@@ -119,11 +182,12 @@ export function getSignedDocument(
 export function saveSignedDocumentWithReceipts(options: {
   applicant: Applicant;
   user: AuthUser | null;
-  moduleKey: AdminView;
+  moduleKey: string;
   documentTitle: string;
   document: SignedDocumentRecord;
 }): void {
   const { applicant, user, moduleKey, documentTitle, document } = options;
+  const view = notificationView(moduleKey);
 
   const current = applicantStore.getById(applicant.id) ?? applicant;
   applicantStore.update(applicant.id, {
@@ -193,7 +257,7 @@ export function saveSignedDocumentWithReceipts(options: {
     kind: "info",
     title: `Signed ${documentTitle} on file`,
     message: `${applicant.enterpriseName} — signed ${documentTitle} uploaded by ${uploaderLabel}.`,
-    view: moduleKey,
+    view,
   });
   notificationStore.add({
     audience: "applicant",
@@ -201,7 +265,7 @@ export function saveSignedDocumentWithReceipts(options: {
     kind: "success",
     title: `Signed ${documentTitle} recorded`,
     message: `Your signed ${documentTitle} is on file. A receipt was emailed to ${applicant.emailAddress || "your email"} and to DOST staff.`,
-    view: moduleKey,
+    view,
   });
 }
 

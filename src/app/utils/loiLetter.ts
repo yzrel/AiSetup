@@ -180,10 +180,10 @@ export function buildLoiGenerationPayload(
     productServices: additional.productServices,
     projectDescription: additional.projectDescription,
     expectedOutcome: additional.expectedOutcome,
-    budget: additional.budget,
-    timeline: additional.timeline,
-    commitmentAmount: commitment.approvedAmount,
-    repaymentTerm: commitment.repaymentTerm,
+    budget: selectedProgram ? "" : additional.budget,
+    timeline: selectedProgram ? "" : additional.timeline,
+    commitmentAmount: selectedProgram ? "" : commitment.approvedAmount,
+    repaymentTerm: selectedProgram ? "" : commitment.repaymentTerm,
     productionPlanFile: productionPlanFile ?? String(md.productionPlanFile ?? ""),
 
     signature: signature.signature,
@@ -229,19 +229,29 @@ export function buildTemplateLoiBody(
     );
   }
 
-  if (payload.projectDescription?.trim() || payload.expectedOutcome?.trim()) {
+  // Project / budget paragraph: qualified SETUP clients only.
+  // Unqualified (recommended-program) LOIs must omit this section.
+  const isSetupQualified = payload.qualified === true && !hasProgram;
+  if (
+    isSetupQualified &&
+    (payload.projectDescription?.trim() ||
+      payload.expectedOutcome?.trim() ||
+      payload.budget?.trim() ||
+      payload.timeline?.trim())
+  ) {
     paragraphs.push(
-      `Our proposed project involves ${val(payload.projectDescription)}. We expect this initiative to ${val(payload.expectedOutcome)}, with an estimated budget of ${budget(payload.budget)} and a timeline of ${val(payload.timeline)}.`,
+      `Our proposed project involves ${val(payload.projectDescription)}. We expect this initiative to ${val(payload.expectedOutcome)},
+       with an estimated budget of ${budget(payload.budget)} and a timeline of ${val(payload.timeline)}.`,
     );
   }
 
-  if (hasProgram) {
+  if (isSetupQualified) {
     paragraphs.push(
-      `We commit to fully comply with all ${guidelinesLabel} guidelines and requirements of the Department of Science and Technology. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
+      `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
     );
   } else {
     paragraphs.push(
-      `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
+      `We commit to fully comply with all ${guidelinesLabel} guidelines and requirements of the Department of Science and Technology. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
     );
   }
 

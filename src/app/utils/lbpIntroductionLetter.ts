@@ -15,7 +15,7 @@ import { formatApprovalDisplayDate } from "./approvalLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { resolveApplicantOfficeId } from "./provincialOffice";
-import { getLandBankStored } from "./landBankWithdrawal";
+import { emptyLandBankForm, getLandBankStored } from "./landBankWithdrawal";
 
 const MODULE_KEY = "landBank";
 
@@ -248,12 +248,7 @@ export function saveLbpIntroductionDraft(
     moduleData: {
       ...applicant.moduleData,
       [MODULE_KEY]: {
-        form: landBank?.form ?? {
-          accountSnapshot: null,
-          withdrawalLetter: null,
-          withdrawalRemarks: "",
-          authorityLetterGenerated: false,
-        },
+        form: landBank?.form ?? emptyLandBankForm(),
         introductionLetter: {
           form,
           published: existing?.published ?? false,
@@ -301,12 +296,7 @@ export function publishLbpIntroduction(
     moduleData: {
       ...applicant.moduleData,
       [MODULE_KEY]: {
-        form: landBank?.form ?? {
-          accountSnapshot: null,
-          withdrawalLetter: null,
-          withdrawalRemarks: "",
-          authorityLetterGenerated: false,
-        },
+        form: landBank?.form ?? emptyLandBankForm(),
         introductionLetter: {
           form: { ...form },
           published: true,

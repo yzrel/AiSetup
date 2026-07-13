@@ -8,7 +8,6 @@ import {
   Banknote,
   Building2,
   CheckCircle,
-  ChevronRight,
   Download,
   FileText,
   RefreshCw,
@@ -49,13 +48,18 @@ import {
   getLandBankOverview,
   getLandBankStored,
   hasLandBankPrerequisite,
+  isTranche1Complete,
+  isTranche2Complete,
+  isWithdrawalRequestReady,
   saveLandBankDraft,
   submitLandBank,
   validateLandBankSubmit,
 } from "../utils/landBankWithdrawal";
 import { allowWhenDemo, gateOpen } from "../utils/demoMode";
+import { WithdrawalTranchePanel } from "./WithdrawalTranchePanel";
 
 type SectionId = "introduction" | "account" | "withdrawal" | "authority";
+type WithdrawalTrancheTab = 1 | 2;
 
 const SECTION_NAV: { id: SectionId; label: string }[] = [
   { id: "introduction", label: "LBP Introduction" },
@@ -121,9 +125,10 @@ export function LandBankAndWithdrawal({
 }: LandBankAndWithdrawalProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
   const [activeSection, setActiveSection] = useState<SectionId>("introduction");
-  const [withdrawalSubStep, setWithdrawalSubStep] = useState(1);
+  const [withdrawalTrancheTab, setWithdrawalTrancheTab] = useState<WithdrawalTrancheTab>(1);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [uploadDate, setUploadDate] = useState("");
+  const [authorityTranche, setAuthorityTranche] = useState<1 | 2>(1);
   const [lbpForm, setLbpForm] = useState<LbpIntroductionLetterForm | null>(null);
   const [lbpSaveNotice, setLbpSaveNotice] = useState("");
   const [lbpPublishNotice, setLbpPublishNotice] = useState("");
@@ -160,7 +165,9 @@ export function LandBankAndWithdrawal({
   const introPublished = hasLbpIntroductionPublished(applicant);
   const prerequisiteOk = hasLandBankPrerequisite(applicant);
   const accountReady = !!form?.accountSnapshot;
-  const withdrawalReady = !!form?.withdrawalLetter;
+  const withdrawalReady = form ? isWithdrawalRequestReady(form) : false;
+  const tranche1Ready = form ? isTranche1Complete(form.tranches.first) : false;
+  const tranche2Ready = form ? isTranche2Complete(form.tranches.second) : false;
   const authorityReady = !!(stored?.submitted || form?.authorityLetterGenerated);
   const uploadedBy = user?.email ?? "applicant";
 
@@ -170,14 +177,14 @@ export function LandBankAndWithdrawal({
   };
 
   const handleSaveDoc = (
-    field: "accountSnapshot" | "withdrawalLetter",
+    field: "accountSnapshot",
     doc: ModuleDocument,
   ) => {
     if (!applicant || !form) return;
     saveLandBankDraft(applicant.id, { ...form, [field]: doc });
   };
 
-  const handleRemoveDoc = (field: "accountSnapshot" | "withdrawalLetter") => {
+  const handleRemoveDoc = (field: "accountSnapshot") => {
     if (!applicant || !form) return;
     saveLandBankDraft(applicant.id, { ...form, [field]: null });
   };
@@ -240,22 +247,31 @@ export function LandBankAndWithdrawal({
       return;
     }
     if (!allowWhenDemo(withdrawalReady)) {
-      setSubmitErrors(["Upload your withdrawal request letter (PDF)."]);
+      setSubmitErrors([
+        "Complete 1st tranche: signed letter request, quotations, and equipment photos.",
+      ]);
       return;
     }
     setSubmitErrors([]);
-    setWithdrawalSubStep(3);
     scrollToSection("authority");
   };
 
   const handleAuthorityDownload = () => {
-    if (!applicant) return;
-    if (!allowWhenDemo(withdrawalReady)) {
-      setSubmitErrors(["Complete the withdrawal request letter before downloading authority."]);
+    if (!applicant || !form) return;
+    const ready =
+      authorityTranche === 1
+        ? isTranche1Complete(form.tranches.first)
+        : isTranche2Complete(form.tranches.second);
+    if (!allowWhenDemo(ready)) {
+      setSubmitErrors([
+        authorityTranche === 1
+          ? "Complete the 1st tranche letter request (signed letter, quotations, photos) before downloading authority."
+          : "Upload the signed 2nd tranche letter request before downloading authority.",
+      ]);
       scrollToSection("withdrawal");
       return;
     }
-    downloadAuthorityLetterPdf(applicant, applicant.applicationId);
+    downloadAuthorityLetterPdf(applicant, applicant.applicationId, authorityTranche);
     reload();
   };
 
@@ -552,7 +568,7 @@ export function LandBankAndWithdrawal({
         <SectionHeader
           number={12}
           title="Letter Request for Withdrawal"
-          description="Submit your Letter Request for Withdrawal to formally access disbursement funds for your SETUP project."
+          description="Generate and process Letter Requests for Withdrawal for the 1st and 2nd tranches using equipment from the project proposal budgetary requirement."
         />
         <div className={`${MODULE_SHELL} border border-gray-200`}>
           {moduleCardHeader(
@@ -560,11 +576,6 @@ export function LandBankAndWithdrawal({
             "Letter Request for Withdrawal",
           )}
           <div className="p-5 space-y-5">
-            <p className="text-sm text-gray-600">
-              Submit your Letter Request for Withdrawal to formally access disbursement funds
-              for your SETUP project.
-            </p>
-
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
                 <span className="text-sm font-semibold text-gray-700">Project Overview</span>
@@ -591,6 +602,20 @@ export function LandBankAndWithdrawal({
                       Approved Project Amount: {overview.approvedAmount}
                     </span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span className="text-gray-700">
+                      1st Tranche: {overview.tranche1Amount}
+                      {tranche1Ready ? " ✓" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span className="text-gray-700">
+                      2nd Tranche: {overview.tranche2Amount}
+                      {tranche2Ready ? " ✓" : ""}
+                    </span>
+                  </div>
                   <div className="col-span-2 flex items-center gap-2">
                     <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span className="text-gray-700">
@@ -609,117 +634,78 @@ export function LandBankAndWithdrawal({
                       Complete Module 11 account snapshot first
                     </div>
                   )}
-                  <span className="text-xs text-blue-600 italic hidden sm:inline">
-                    → Proceed to withdrawal letter upload
-                  </span>
                 </div>
               </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {[
-                { n: 1, label: "Fill out withdrawal request form" },
-                { n: 2, label: "Upload withdrawal letter (PDF)" },
-                { n: 3, label: "Request validation" },
-              ].map((sub, i) => (
-                <div key={sub.n} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setWithdrawalSubStep(sub.n)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors ${
-                      withdrawalSubStep === sub.n
-                        ? "bg-[#0C2461] text-white"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    }`}
-                  >
-                    <span
-                      className={`w-4 h-4 rounded-full flex items-center justify-center font-bold text-[10px] ${
-                        withdrawalSubStep === sub.n
-                          ? "bg-white text-[#0C2461]"
-                          : "bg-gray-300 text-gray-500"
-                      }`}
-                    >
-                      {sub.n}
-                    </span>
-                    <span className="hidden sm:inline">{sub.label}</span>
-                  </button>
-                  {i < 2 && <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
-                </div>
-              ))}
             </div>
 
             {applicant && form && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div className="md:col-span-3 border border-gray-200 rounded-lg p-4 space-y-3">
-                  <p className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2">
-                    Withdrawal request details
-                  </p>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Remarks</label>
-                    <textarea
-                      rows={2}
-                      value={form.withdrawalRemarks}
-                      onChange={(e) =>
-                        saveLandBankDraft(applicant.id, {
-                          ...form,
-                          withdrawalRemarks: e.target.value,
-                        })
+              <>
+                <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
+                  {(
+                    [
+                      { n: 1 as const, label: "1st Tranche", ready: tranche1Ready },
+                      { n: 2 as const, label: "2nd Tranche", ready: tranche2Ready },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.n}
+                      type="button"
+                      onClick={() => setWithdrawalTrancheTab(tab.n)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        withdrawalTrancheTab === tab.n
+                          ? "text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                      style={
+                        withdrawalTrancheTab === tab.n
+                          ? { background: DOST_BLUE }
+                          : undefined
                       }
-                      disabled={!!stored?.submitted}
-                      placeholder="Additional remarks for withdrawal request..."
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none disabled:opacity-60"
-                    />
-                  </div>
-                  <SignedDocumentUpload
-                    label="Withdrawal request letter (PDF)"
-                    document={form.withdrawalLetter}
-                    signedDate={uploadDate}
-                    onSignedDateChange={setUploadDate}
-                    onUpload={(doc) => handleSaveDoc("withdrawalLetter", doc)}
-                    onRemove={() => handleRemoveDoc("withdrawalLetter")}
-                    uploadedBy={uploadedBy}
-                    readOnly={!!stored?.submitted}
+                    >
+                      {tab.label}
+                      {tab.ready && <CheckCircle className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+
+                <WithdrawalTranchePanel
+                  applicant={applicant}
+                  user={user}
+                  form={form}
+                  tranche={withdrawalTrancheTab}
+                  readOnly={!!stored?.submitted}
+                  isStaff={isStaff}
+                />
+
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Remarks</label>
+                  <textarea
+                    rows={2}
+                    value={form.withdrawalRemarks}
+                    onChange={(e) =>
+                      saveLandBankDraft(applicant.id, {
+                        ...form,
+                        withdrawalRemarks: e.target.value,
+                      })
+                    }
+                    disabled={!!stored?.submitted}
+                    placeholder="Additional remarks for withdrawal request..."
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none disabled:opacity-60"
                   />
                 </div>
 
-                <div className="md:col-span-2 border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2 font-semibold text-sm text-gray-700 border-b border-gray-100 pb-2">
-                    <Shield className="w-4 h-4 text-green-500" />
-                    Authority Letter Preview
-                  </div>
-                  <div className="space-y-1.5 text-xs">
-                    {[
-                      { label: overview.accountHolder, amount: overview.approvedAmount },
-                      { label: overview.enterpriseName, amount: overview.approvedAmount },
-                      { label: "Remaining Balance", amount: overview.remainingBalance },
-                    ].map((row) => (
-                      <div
-                        key={row.label}
-                        className="flex items-center justify-between py-1 border-b border-gray-50 last:border-0"
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <CheckCircle className="w-3 h-3 text-blue-400 shrink-0" />
-                          <span className="text-gray-700 truncate">{row.label}</span>
-                        </div>
-                        <span className="font-semibold text-gray-800 shrink-0 ml-2">
-                          {row.amount}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {!stored?.submitted && (
-                    <button
-                      type="button"
-                      onClick={handleWithdrawalSubmit}
-                      disabled={!allowWhenDemo(withdrawalReady && accountReady)}
-                      className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      Submit Withdrawal Request
-                    </button>
-                  )}
-                </div>
-              </div>
+                {!stored?.submitted && (
+                  <button
+                    type="button"
+                    onClick={handleWithdrawalSubmit}
+                    disabled={!allowWhenDemo(withdrawalReady && accountReady)}
+                    className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Continue to Authority Letter
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -749,6 +735,32 @@ export function LandBankAndWithdrawal({
               present it at your LandBank branch with valid government-issued IDs.
             </p>
 
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { n: 1 as const, label: "1st Tranche", ready: tranche1Ready, amount: overview.tranche1Amount },
+                  { n: 2 as const, label: "2nd Tranche", ready: tranche2Ready, amount: overview.tranche2Amount },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.n}
+                  type="button"
+                  onClick={() => setAuthorityTranche(tab.n)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    authorityTranche === tab.n
+                      ? "text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                  style={
+                    authorityTranche === tab.n ? { background: DOST_BLUE } : undefined
+                  }
+                >
+                  {tab.label} ({tab.amount})
+                  {tab.ready && <CheckCircle className="w-3 h-3" />}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border border-gray-200 rounded-lg p-4 space-y-3">
                 <p className="font-semibold text-sm text-gray-700">Withdrawal Summary</p>
@@ -757,14 +769,21 @@ export function LandBankAndWithdrawal({
                     { icon: <User className="w-3.5 h-3.5" />, label: "Account Holder", value: overview.accountHolder },
                     { icon: <Building2 className="w-3.5 h-3.5" />, label: "Enterprise", value: overview.enterpriseName },
                     { icon: <Banknote className="w-3.5 h-3.5" />, label: "Approved Amount", value: overview.approvedAmount },
-                    { icon: <Banknote className="w-3.5 h-3.5" />, label: "Amount to Withdraw", value: overview.approvedAmount },
+                    {
+                      icon: <Banknote className="w-3.5 h-3.5" />,
+                      label: `Amount to Withdraw (T${authorityTranche})`,
+                      value:
+                        authorityTranche === 1
+                          ? overview.tranche1Amount
+                          : overview.tranche2Amount,
+                    },
                   ].map((row) => (
                     <div
                       key={row.label}
                       className="flex items-center gap-2 py-1 border-b border-gray-50 last:border-0"
                     >
                       <span className="text-blue-400">{row.icon}</span>
-                      <span className="text-gray-500 w-28 shrink-0">{row.label}:</span>
+                      <span className="text-gray-500 w-36 shrink-0">{row.label}:</span>
                       <span className="font-semibold text-gray-800">{row.value}</span>
                     </div>
                   ))}
@@ -777,15 +796,19 @@ export function LandBankAndWithdrawal({
                     Download Authority Letter
                   </p>
                   <p className="text-xs text-gray-500 mb-4">
-                    Download the authority letter and present it to your nearest LandBank branch
-                    together with valid IDs to process the withdrawal.
+                    Download the authority letter for the selected tranche and present it to
+                    your nearest LandBank branch together with valid IDs.
                   </p>
                 </div>
                 <div className="space-y-2">
                   <button
                     type="button"
                     onClick={handleAuthorityDownload}
-                    disabled={!allowWhenDemo(withdrawalReady)}
+                    disabled={
+                      !allowWhenDemo(
+                        authorityTranche === 1 ? tranche1Ready : tranche2Ready,
+                      )
+                    }
                     className="w-full flex items-center justify-center gap-2 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
                     style={{ background: DOST_BLUE }}
                   >
@@ -795,7 +818,11 @@ export function LandBankAndWithdrawal({
                   <button
                     type="button"
                     onClick={handleAuthorityDownload}
-                    disabled={!allowWhenDemo(withdrawalReady)}
+                    disabled={
+                      !allowWhenDemo(
+                        authorityTranche === 1 ? tranche1Ready : tranche2Ready,
+                      )
+                    }
                     className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />

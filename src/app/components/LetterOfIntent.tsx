@@ -296,8 +296,13 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     { label: "Products / Services", value: additional.productServices, passed: !!(additional.productServices) },
     { label: "Project Description", value: additional.projectDescription, passed: !!(additional.projectDescription) },
     { label: "Expected Outcome", value: additional.expectedOutcome, passed: !!(additional.expectedOutcome) },
-    { label: "Estimated Budget", value: additional.budget, passed: !!(additional.budget) },
-    { label: "Project Timeline", value: additional.timeline, passed: !!(additional.timeline) },
+    // Budget / timeline apply only to the SETUP seed-fund LOI
+    ...(!hasProgram
+      ? [
+          { label: "Estimated Budget", value: additional.budget, passed: !!(additional.budget) },
+          { label: "Project Timeline", value: additional.timeline, passed: !!(additional.timeline) },
+        ]
+      : []),
   ];
 
   const allValidationPassed = validationChecks.every((c) => c.passed);
@@ -452,8 +457,12 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         postalCode: additional.zipCode,
         productServices: additional.productServices,
         projectDescription: additional.projectDescription,
-        budget: additional.budget,
-        timeline: additional.timeline,
+        ...(hasProgram
+          ? {}
+          : {
+              budget: additional.budget,
+              timeline: additional.timeline,
+            }),
         tinNumber: additional.tinNumber,
         registrationType: additional.registrationType,
         registrationNumber: additional.registrationNumber,
@@ -710,22 +719,24 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                   hint="What measurable outcomes do you expect from this assistance?"
                   {...loiAi("expectedOutcome", (v) => setAdd("expectedOutcome", v))}
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>Estimated Budget (PHP) *</label>
-                    <input type="text" className={inputCls} placeholder="₱0.00" value={additional.budget} onChange={(e) => setAdd("budget", e.target.value)} />
+                {!hasProgram && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Estimated Budget (PHP) *</label>
+                      <input type="text" className={inputCls} placeholder="₱0.00" value={additional.budget} onChange={(e) => setAdd("budget", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Project Timeline *</label>
+                      <select className={inputCls} value={additional.timeline} onChange={(e) => setAdd("timeline", e.target.value)}>
+                        <option value="">Select timeline</option>
+                        <option>1–3 months</option>
+                        <option>3–6 months</option>
+                        <option>6–12 months</option>
+                        <option>More than 12 months</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className={labelCls}>Project Timeline *</label>
-                    <select className={inputCls} value={additional.timeline} onChange={(e) => setAdd("timeline", e.target.value)}>
-                      <option value="">Select timeline</option>
-                      <option>1–3 months</option>
-                      <option>3–6 months</option>
-                      <option>6–12 months</option>
-                      <option>More than 12 months</option>
-                    </select>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -735,7 +746,11 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </button>
               <button
                 onClick={() => setStep("validation")}
-                disabled={!allowWhenDemo(!!additional.projectDescription && !!additional.expectedOutcome && !!additional.budget && !!additional.timeline)}
+                disabled={!allowWhenDemo(
+                  !!additional.projectDescription &&
+                    !!additional.expectedOutcome &&
+                    (hasProgram || (!!additional.budget && !!additional.timeline)),
+                )}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >

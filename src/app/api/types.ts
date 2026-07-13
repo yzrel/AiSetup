@@ -736,11 +736,54 @@ export interface ModuleDocument {
   notes?: string;
 }
 
+export interface WithdrawalEquipmentRow {
+  id: string;
+  item: string;
+  amount: string;
+  /** Original Project Proposal budgetItems[].id when seeded from proposal */
+  sourceBudgetItemId?: string;
+}
+
+export interface WithdrawalLetterDraft {
+  letterDate: string;
+  addresseeName: string;
+  addresseeTitle: string;
+  officeLines: string[];
+  firmName: string;
+  ownerName: string;
+  ownerDesignation: string;
+  supplierName: string;
+  generatedAt?: string;
+}
+
+export type WithdrawalTrancheStatus = "draft" | "sent" | "signed" | "complete";
+
+export interface WithdrawalTranchePackage {
+  tranche: 1 | 2;
+  supplierName: string;
+  equipment: WithdrawalEquipmentRow[];
+  letterDraft?: WithdrawalLetterDraft;
+  /** Signed letter request uploaded after client signs */
+  signedLetter?: ModuleDocument | null;
+  /** Tranche 1: supplier quotations / canvass */
+  quotations?: ModuleDocument[];
+  /** Tranche 1: photos of acquired equipment */
+  equipmentPhotos?: ModuleDocument[];
+  status?: WithdrawalTrancheStatus;
+}
+
 export interface LandBankForm {
   accountSnapshot: ModuleDocument | null;
+  /**
+   * @deprecated Prefer `tranches.first.signedLetter`. Kept for migration of older records.
+   */
   withdrawalLetter: ModuleDocument | null;
   withdrawalRemarks: string;
   authorityLetterGenerated: boolean;
+  tranches: {
+    first: WithdrawalTranchePackage;
+    second: WithdrawalTranchePackage;
+  };
 }
 
 export interface LandBankStored {

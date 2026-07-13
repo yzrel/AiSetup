@@ -284,12 +284,40 @@ export function collectApplicantSubmittedFiles(
     label: "LandBank account snapshot",
     sourceModule: "LandBank & Withdrawal",
   });
-  pushModuleDocument(files, landBank?.form?.withdrawalLetter ?? null, {
-    id: "landbank-withdrawal",
+  const t1 = landBank?.form?.tranches?.first;
+  const t2 = landBank?.form?.tranches?.second;
+  pushModuleDocument(
+    files,
+    t1?.signedLetter ?? landBank?.form?.withdrawalLetter ?? null,
+    {
+      id: "landbank-withdrawal-t1",
+      category: "landbank",
+      label: "Withdrawal letter request (1st tranche)",
+      sourceModule: "LandBank & Withdrawal",
+    },
+  );
+  pushModuleDocument(files, t2?.signedLetter ?? null, {
+    id: "landbank-withdrawal-t2",
     category: "landbank",
-    label: "Withdrawal letter",
+    label: "Withdrawal letter request (2nd tranche)",
     sourceModule: "LandBank & Withdrawal",
   });
+  for (const [i, doc] of (t1?.quotations ?? []).entries()) {
+    pushModuleDocument(files, doc, {
+      id: `landbank-quotation-t1-${i}`,
+      category: "landbank",
+      label: `Equipment quotation (1st tranche) — ${doc.fileName}`,
+      sourceModule: "LandBank & Withdrawal",
+    });
+  }
+  for (const [i, doc] of (t1?.equipmentPhotos ?? []).entries()) {
+    pushModuleDocument(files, doc, {
+      id: `landbank-photo-t1-${i}`,
+      category: "landbank",
+      label: `Equipment photo (1st tranche) — ${doc.fileName}`,
+      sourceModule: "LandBank & Withdrawal",
+    });
+  }
 
   const procurement = getProcurementStored(applicant);
   for (const doc of procurement?.form?.documents ?? []) {

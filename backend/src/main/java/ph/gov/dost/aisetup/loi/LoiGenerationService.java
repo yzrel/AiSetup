@@ -97,6 +97,11 @@ public class LoiGenerationService {
         return r.getProgramName() != null && !r.getProgramName().isBlank();
     }
 
+    /** SETUP seed-fund LOI path: qualified applicant with no alternate program. */
+    private static boolean isSetupQualified(LoiGenerationRequest r) {
+        return Boolean.TRUE.equals(r.getQualified()) && !hasProgram(r);
+    }
+
     private static String programLabel(LoiGenerationRequest r) {
         return hasProgram(r)
                 ? r.getProgramName().trim()
@@ -116,10 +121,6 @@ public class LoiGenerationService {
                 Business nature: %s | Years of operation: %s | Asset size: %s
                 Core products: %s | Turnover: %s | Export classification: %s
                 Products/Services: %s
-                Project description: %s
-                Expected outcome: %s
-                Budget: %s | Timeline: %s
-                Commitment amount: %s | Repayment term: %s
                 Production plan file: %s
                 Target DOST program: %s
                 """.formatted(
@@ -146,15 +147,18 @@ public class LoiGenerationService {
                 val(r.getTurnover()),
                 val(r.getExportClassification()),
                 val(r.getProductServices()),
-                val(r.getProjectDescription()),
-                val(r.getExpectedOutcome()),
-                val(r.getBudget()),
-                val(r.getTimeline()),
-                val(r.getCommitmentAmount()),
-                val(r.getRepaymentTerm()),
                 val(r.getProductionPlanFile()),
                 programLabel(r)
         );
+
+        // Project / budget / refund terms: qualified SETUP LOIs only.
+        if (isSetupQualified(r)) {
+            facts += "Project description: " + val(r.getProjectDescription()) + "\n"
+                    + "Expected outcome: " + val(r.getExpectedOutcome()) + "\n"
+                    + "Budget: " + val(r.getBudget()) + " | Timeline: " + val(r.getTimeline()) + "\n"
+                    + "Commitment amount: " + val(r.getCommitmentAmount())
+                    + " | Repayment term: " + val(r.getRepaymentTerm()) + "\n";
+        }
 
         // Only present for program-targeted LOIs; the SETUP prompt is unchanged.
         if (hasProgram(r) && !isBlank(r.getProgramSummary())) {
@@ -162,15 +166,21 @@ public class LoiGenerationService {
         }
 
         String programName = programLabel(r);
-        String complianceLine = hasProgram(r)
-                ? "willingness to comply with DOST program guidelines and requirements"
-                : "willingness to comply with DOST guidelines and refund commitments";
+        String complianceLine = isSetupQualified(r)
+                ? "willingness to comply with DOST guidelines and refund commitments"
+                : "willingness to comply with DOST program guidelines and requirements";
+
+        String coverLine = isSetupQualified(r)
+                ? "Cover: intent to participate in %s, company background, products/services, technology upgrade needs, project summary, expected outcomes, budget and timeline when provided, and %s."
+                        .formatted(programName, complianceLine)
+                : "Cover: intent to participate in %s, company background, products/services, why this program fits the enterprise, and %s. Do NOT write a 'proposed project involves' paragraph and do NOT mention budget, cost, funding, seed funds, repayment, or timeline."
+                        .formatted(programName, complianceLine);
 
         return """
                 You are drafting the body of a formal Letter of Intent from a Philippine MSME to DOST Region XII for %s.
 
                 Write 3 to 5 formal paragraphs in English, written in the first person as the enterprise representative.
-                Cover: intent to participate in %s, company background, products/services, technology upgrade needs, project summary, expected outcomes, and %s.
+                %s
                 Do NOT invent facts not present in the data below. If a field is empty, use neutral phrasing or omit that detail.
                 Do NOT include letterhead, addressee, salutation, closing, or signature — body paragraphs only.
 
@@ -178,7 +188,7 @@ public class LoiGenerationService {
 
                 Applicant data:
                 %s
-                """.formatted(programName, programName, complianceLine, facts);
+                """.formatted(programName, coverLine, facts);
     }
 
     private List<String> buildTemplateParagraphs(LoiGenerationRequest r) {
@@ -204,16 +214,20 @@ public class LoiGenerationService {
 
         if (hasProgram(r) && !isBlank(r.getProgramSummary())) {
             String summary = r.getProgramSummary().trim().replaceAll("\\.+$", "");
-            paragraphs.add(String.format(
-                    "We are particularly interested in this program because %s%s. We believe this assistance directly addresses our enterprise's current needs.",
-                    Character.toLowerCase(summary.charAt(0)),
-                    summary.substring(1)
-            ));
+            if (!summary.isEmpty()) {
+                paragraphs.add(String.format(
+                        "We are particularly interested in this program because %s%s. We believe this assistance directly addresses our enterprise's current needs.",
+                        Character.toLowerCase(summary.charAt(0)),
+                        summary.substring(1)
+                ));
+            }
         }
 
-        if (!isBlank(r.getProjectDescription()) || !isBlank(r.getExpectedOutcome())) {
+        // Project / budget paragraph: qualified SETUP clients only.
+        // Unqualified (recommended-program) LOIs must omit this section.
+        if (isSetupQualified(r)) {
             paragraphs.add(String.format(
-                    "Our proposed project involves %s. We expect this initiative to %s, with an estimated budget of %s and a timeline of %s.",
+                    "Our proposed project involves %s. We expect this initiative to %s, with an estimated budget of %s and a timeline of %s",
                     val(r.getProjectDescription()),
                     val(r.getExpectedOutcome()),
                     formatBudget(r.getBudget()),
@@ -221,16 +235,16 @@ public class LoiGenerationService {
             ));
         }
 
-        if (hasProgram(r)) {
-            paragraphs.add(String.format(
-                    "We commit to fully comply with all %s guidelines and requirements of the Department of Science and Technology. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
-                    programLabel(r)
-            ));
-        } else {
+        if (isSetupQualified(r)) {
             paragraphs.add(String.format(
                     "We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to %s over %s at zero percent interest. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
                     formatBudget(r.getCommitmentAmount()),
                     val(r.getRepaymentTerm())
+            ));
+        } else {
+            paragraphs.add(String.format(
+                    "We commit to fully comply with all %s guidelines and requirements of the Department of Science and Technology. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
+                    programLabel(r)
             ));
         }
 
