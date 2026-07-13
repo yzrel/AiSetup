@@ -121,7 +121,45 @@ export function notifyTna1Reviewed(applicant: Applicant) {
     applicantId: applicant.id,
     kind: "success",
     title: `${formatFormMention("tna01")} approved`,
-    message: `DOST staff verified your ${formatFormMention("tna01")}. AI analysis and reports will follow.`,
+    message: `DOST staff verified your ${formatFormMention("tna01")}. It now awaits Provincial Director validation.`,
+    view: "tna1",
+  });
+}
+
+export function notifyTna1AwaitingDirector(applicant: Applicant) {
+  notificationStore.add({
+    id: `tna1-awaiting-director-${applicant.id}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "action",
+    title: `${formatFormMention("tna01")} awaiting director validation`,
+    message: `${applicant.enterpriseName}'s ${formatFormMention("tna01")} passed staff review and awaits Provincial Director validation for this PSTO.`,
+    view: "tna1",
+  });
+}
+
+export function notifyTna1DirectorValidated(
+  applicant: Applicant,
+  directorName: string,
+) {
+  notificationStore.add({
+    id: `tna1-director-validated-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title: `${formatFormMention("tna01")} validated`,
+    message: `${directorName} (Provincial Director) validated your ${formatFormMention("tna01")}. You may now proceed to TNA Form 02.`,
+    view: "tna1",
+  });
+  notificationStore.add({
+    id: `tna1-director-validated-staff-${applicant.id}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "success",
+    title: `${formatFormMention("tna01")} validated by Provincial Director`,
+    message: `${directorName} validated ${applicant.enterpriseName}'s ${formatFormMention("tna01")}.`,
     view: "tna1",
   });
 }

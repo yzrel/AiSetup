@@ -9,6 +9,13 @@ import { AuthUser, authStore } from "../store/authStore";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { normalizeRegistrationType } from "../utils/applicantPrefill";
+import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import {
+  BusinessPermitEntry,
+  loadBusinessPermits,
+  validateBusinessPermits,
+} from "../utils/businessPermits";
+import { isFoodSector } from "../utils/foodSector";
 
 const inputCls =
   "w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50";
@@ -40,11 +47,16 @@ export function MyAccount({ user }: { user: AuthUser }) {
     registrationType: "DTI",
     registrationNumber: "",
     tinNumber: "",
+    fdaNumber: "",
+    businessSector: "",
     province: "",
     address: "",
     companyStartDate: "",
     companyDescription: "",
   });
+  const [businessPermits, setBusinessPermits] = useState<BusinessPermitEntry[]>(
+    loadBusinessPermits(null),
+  );
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -76,11 +88,14 @@ export function MyAccount({ user }: { user: AuthUser }) {
       ),
       registrationNumber: String(md.registrationNumber ?? ""),
       tinNumber: String(md.tinNumber ?? ""),
+      fdaNumber: String(md.fdaNumber ?? ""),
+      businessSector: app.businessSector,
       province: String(md.province ?? ""),
       address: app.address,
       companyStartDate: String(md.companyStartDate ?? md.dateEstablished ?? ""),
       companyDescription: String(md.companyDescription ?? ""),
     });
+    setBusinessPermits(loadBusinessPermits(md));
   };
 
   useEffect(() => {
@@ -139,6 +154,15 @@ export function MyAccount({ user }: { user: AuthUser }) {
       return;
     }
 
+    const hasAnyPermit = businessPermits.some((p) => p.document);
+    if (hasAnyPermit) {
+      const permitError = validateBusinessPermits(businessPermits);
+      if (permitError) {
+        showNotice("err", permitError);
+        return;
+      }
+    }
+
     applicantStore.update(app.id, {
       enterpriseName: registration.enterpriseName,
       address: registration.address,
@@ -149,6 +173,8 @@ export function MyAccount({ user }: { user: AuthUser }) {
         registrationType: registration.registrationType,
         registrationNumber: registration.registrationNumber,
         tinNumber: registration.tinNumber,
+        fdaNumber: registration.fdaNumber,
+        businessPermits,
         province: registration.province,
         companyStartDate: registration.companyStartDate,
         dateEstablished: registration.companyStartDate,
@@ -501,6 +527,24 @@ export function MyAccount({ user }: { user: AuthUser }) {
                     }
                   />
                 </div>
+                {isFoodSector(registration.businessSector) && (
+                  <div>
+                    <label className={labelCls}>FDA License to Operate No.</label>
+                    <input
+                      className={inputCls}
+                      value={registration.fdaNumber}
+                      onChange={(e) =>
+                        setRegistration((p) => ({
+                          ...p,
+                          fdaNumber: e.target.value,
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Required for food sector enterprises.
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className={labelCls}>Province</label>
                   <select
@@ -572,6 +616,94 @@ export function MyAccount({ user }: { user: AuthUser }) {
                   />
                 </div>
               </div>
+
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">
+                    Business Permits — Last 3 Years
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Three consecutive years (e.g. 2023, 2024, 2025). PDF or
+                    image, max 8 MB each.
+                  </p>
+                </div>
+                {businessPermits.map((entry, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 sm:grid-cols-[110px_1fr] gap-3 items-start"
+                  >
+                    <div>
+                      <label className={labelCls}>Year</label>
+                      <input
+                        type="number"
+                        min={1900}
+                        max={2100}
+                        className={inputCls}
+                        value={entry.year}
+                        onChange={(e) =>
+                          setBusinessPermits((prev) =>
+                            prev.map((p, i) =>
+                              i === index ? { ...p, year: e.target.value } : p,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Permit File</label>
+                      {entry.document ? (
+                        <div className="flex items-center justify-between gap-3 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
+                          <span className="text-green-800 truncate">
+                            {entry.document.fileName}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBusinessPermits((prev) =>
+                                prev.map((p, i) =>
+                                  i === index ? { ...p, document: null } : p,
+                                ),
+                              )
+                            }
+                            className="text-red-600 text-xs font-semibold hover:underline shrink-0"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm file:font-semibold hover:file:bg-blue-100"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const doc = await readFileAsModuleDocument(
+                                file,
+                                user.email,
+                              );
+                              setBusinessPermits((prev) =>
+                                prev.map((p, i) =>
+                                  i === index ? { ...p, document: doc } : p,
+                                ),
+                              );
+                            } catch (err) {
+                              showNotice(
+                                "err",
+                                err instanceof Error
+                                  ? err.message
+                                  : "Could not read file.",
+                              );
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <button
                 type="button"
                 onClick={saveRegistration}

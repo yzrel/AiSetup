@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { REGION_12_LABEL } from "../constants/region12";
 import { Check, X } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";
@@ -32,9 +32,12 @@ const DOST_MID = "#1a3a7a";
 export function PrescreeningForm({
   user,
   onSubmitSuccess,
+  onProceedToLoi,
 }: {
   user?: AuthUser | null;
   onSubmitSuccess?: () => void;
+  /** Navigate to the Letter of Intent module after a program is selected */
+  onProceedToLoi?: () => void;
 }) {
   const { applicant, isStaff } = useStaffApplicant(user);
   const [activeTab, setActiveTab] = useState<
@@ -183,6 +186,11 @@ export function PrescreeningForm({
         classificationRange: formData.classificationRange,
         essentialPeriod: formData.essentialPeriod,
         turnover: formData.turnover,
+        // A qualified client proceeds with the standard SETUP LOI, so drop any
+        // recommended program picked while previously not qualified.
+        ...(result.qualified
+          ? { selectedProgramId: undefined, selectedProgramName: undefined }
+          : {}),
         prescreening: {
           failedReasons: result.failedReasons,
           recommendedProgramIds: result.recommendedProgramIds,
@@ -207,6 +215,30 @@ export function PrescreeningForm({
 
   const recommendedPrograms: DostProgram[] =
     evaluation?.recommendedPrograms ?? [];
+
+  const handleProgramInterest = (program: DostProgram) => {
+    if (!applicant) return;
+    // Record the chosen program and unlock the Letter of Intent module so
+    // the LOI content can be generated for this program. Any letter already
+    // generated for a different program (or for SETUP) is discarded so the
+    // client gets a fresh program-based letter instead of the stale one.
+    const md = { ...(applicant.moduleData ?? {}) };
+    const existingLetterProgramId = String(md.loiDocumentProgramId ?? "");
+    if (md.loiDocument && existingLetterProgramId !== program.id) {
+      delete md.loiDocument;
+      delete md.loiSubmittedAt;
+      delete md.loiDocumentProgramId;
+    }
+    applicantStore.update(applicant.id, {
+      currentModule: "letter-of-intent",
+      moduleData: {
+        ...md,
+        selectedProgramId: program.id,
+        selectedProgramName: `${program.name} (${program.tagline})`,
+      },
+    });
+    onProceedToLoi?.();
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
@@ -314,6 +346,11 @@ export function PrescreeningForm({
                   <DostProgramRecommendationCards
                     programs={recommendedPrograms}
                     contactEmail={contactEmail}
+                    onSelectProgram={
+                      applicant && onProceedToLoi
+                        ? handleProgramInterest
+                        : undefined
+                    }
                   />
                 </div>
               )}

@@ -582,9 +582,6 @@ export function RegisterPage({
           "Enter a valid TIN (e.g. 123-456-789-000)";
       if (!form.registrationType)
         errs.registrationType = "Select registration type";
-      if (!form.registrationNumber.trim())
-        errs.registrationNumber =
-          "Registration number is required";
       if (!form.companyStartDate)
         errs.companyStartDate =
           "Company start date is required";
@@ -1177,9 +1174,8 @@ export function RegisterPage({
                   </Field>
                   <Field
                     label="Registration Number"
-                    required
                     error={errors.registrationNumber}
-                    hint={`Your ${form.registrationType || "DTI/SEC/CDA"} certificate number`}
+                    hint={`Optional — your ${form.registrationType || "DTI/SEC/CDA"} certificate number. You can provide this later in the Enterprise Registration module.`}
                   >
                     <input
                       value={form.registrationNumber}

@@ -71,8 +71,10 @@ function requirementsStatus(applicant: Applicant): AssessmentStatus {
 }
 
 function tna1Status(applicant: Applicant): AssessmentStatus {
+  if (applicant.moduleData?.tna1?.directorValidated) return "completed";
+  // Staff-reviewed but not yet validated by the Provincial Director
+  if (applicant.moduleData?.tna1?.staffReviewed) return "pending";
   if (hasAssessment(applicant, "tna1")) return "completed";
-  if (applicant.moduleData?.tna1?.staffReviewed) return "completed";
   if (applicant.moduleData?.tna1?.submitted) return "pending";
   const idx = moduleIndex(applicant.currentModule);
   if (idx >= moduleIndex("tna1")) return "in_progress";

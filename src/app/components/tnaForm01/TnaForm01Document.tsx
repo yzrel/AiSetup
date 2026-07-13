@@ -845,7 +845,7 @@ export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
                 <p className="tna-form-signature-title">Validated by:</p>
                 <div className="tna-form-signature-line" />
                 <p className="tna-form-signature-label">
-                  Printed Name and Signature of PSTD
+                  Printed Name and Signature of PSTD / Provincial Director
                 </p>
                 <p className="tna-form-signature-name">{val(f, "validatedByName")}</p>
                 <p className="tna-form-signature-date">

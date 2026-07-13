@@ -45,6 +45,12 @@ public class LoiGenerationRequest {
     private String signature;
     private String dateSigned;
 
+    /** Selected recommended DOST program (defaults to SETUP 4.0 when empty) */
+    private String programId;
+    private String programName;
+    /** Short description of the assistance the selected program provides */
+    private String programSummary;
+
     public String getApplicantName() { return applicantName; }
     public void setApplicantName(String applicantName) { this.applicantName = applicantName; }
 
@@ -143,4 +149,13 @@ public class LoiGenerationRequest {
 
     public String getDateSigned() { return dateSigned; }
     public void setDateSigned(String dateSigned) { this.dateSigned = dateSigned; }
+
+    public String getProgramId() { return programId; }
+    public void setProgramId(String programId) { this.programId = programId; }
+
+    public String getProgramName() { return programName; }
+    public void setProgramName(String programName) { this.programName = programName; }
+
+    public String getProgramSummary() { return programSummary; }
+    public void setProgramSummary(String programSummary) { this.programSummary = programSummary; }
 }

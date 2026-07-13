@@ -55,6 +55,7 @@ import {
 } from "../utils/projectProposal";
 import type { ProposalAiField } from "../utils/projectProposal";
 import { ProjectProposalPreview, printProjectProposal } from "./ProjectProposalPreview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { notifyProjectProposalSubmitted } from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
@@ -787,6 +788,12 @@ export function ProjectProposal({
               submitted={submitted}
               onPrint={() => printProjectProposal(form, document, attachments, applicant?.applicationId)}
               compact
+            />
+            <DocumentDeliveryPanel
+              applicant={applicant}
+              user={user}
+              moduleKey="project-proposal"
+              documentTitle="Project Proposal (Form 001)"
             />
           </div>
         );

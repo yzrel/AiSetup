@@ -15,6 +15,8 @@ export interface RequirementDocumentDef {
   required: boolean;
   /** Shown when org type is not sole proprietorship */
   conditionalOrg?: boolean;
+  /** Required only when the applicant's priority sector is in this list */
+  conditionalSector?: string[];
 }
 
 /** Step 4 uploads aligned with SETUP Guidelines Revision 3.0 / RTEC Form 002 compliance IDs */
@@ -87,6 +89,13 @@ export const SUBMISSION_REQUIREMENT_DOCS: RequirementDocumentDef[] = [
     name: "ECC or Certificate of Non-Coverage (CNC) — if in environmentally critical area",
     required: false,
   },
+  {
+    id: "fda-certificate",
+    complianceId: "fda-certificate",
+    name: "FDA License to Operate / Certificate (food sector enterprises)",
+    required: false,
+    conditionalSector: ["Food Processing"],
+  },
 ];
 
 export interface StoredRequirementUpload {
@@ -110,10 +119,19 @@ export function buildRequirementUploadList(
   const storedById = new Map(stored.map((s) => [s.id, s]));
   const needsOrgDocs = isNonSingleProprietor(applicant);
 
-  return SUBMISSION_REQUIREMENT_DOCS.map((def) => {
+  return SUBMISSION_REQUIREMENT_DOCS.filter((def) => {
+    // Sector-conditional docs (e.g. FDA certificate) only appear for
+    // applicants in the matching priority sector — and are required for them.
+    if (def.conditionalSector) {
+      return def.conditionalSector.includes(applicant?.businessSector ?? "");
+    }
+    return true;
+  }).map((def) => {
     const prev = storedById.get(def.id);
     const required =
-      def.required || (def.conditionalOrg === true && needsOrgDocs);
+      def.required ||
+      (def.conditionalOrg === true && needsOrgDocs) ||
+      def.conditionalSector !== undefined;
     return {
       id: def.id,
       complianceId: def.complianceId,

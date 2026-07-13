@@ -77,7 +77,8 @@ export function staffCoversProvince(user: AuthUser, province: string): boolean {
 
 export function getApplicantsForStaff(user: AuthUser | null): Applicant[] {
   const all = applicantStore.getAll();
-  if (!user || (user.role !== "admin" && user.role !== "agent")) {
+  const staffRoles = ["admin", "agent", "provincial-director"];
+  if (!user || !staffRoles.includes(user.role)) {
     return all;
   }
   if (user.role === "admin") return all;

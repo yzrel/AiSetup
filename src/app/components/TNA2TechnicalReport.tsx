@@ -23,6 +23,7 @@ import {
   saveTna2Draft,
 } from "../utils/tnaForm02";
 import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { TnaForm02Editor } from "./TnaForm02Editor";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
@@ -265,13 +266,21 @@ export function TNA2TechnicalReport({
           )}
 
           {displayDoc && !editMode && (
-            <TnaForm02Preview
-              document={displayDoc}
-              applicationId={applicant?.applicationId}
-              aiGenerated={displayDoc.aiGenerated}
-              published={isStaff ? getTna2Draft(applicant)?.published : true}
-              onPrint={() => printTnaForm02(displayDoc, applicant?.applicationId)}
-            />
+            <>
+              <TnaForm02Preview
+                document={displayDoc}
+                applicationId={applicant?.applicationId}
+                aiGenerated={displayDoc.aiGenerated}
+                published={isStaff ? getTna2Draft(applicant)?.published : true}
+                onPrint={() => printTnaForm02(displayDoc, applicant?.applicationId)}
+              />
+              <DocumentDeliveryPanel
+                applicant={applicant}
+                user={user}
+                moduleKey="tna2"
+                documentTitle="TNA Form 02 Technical Report"
+              />
+            </>
           )}
 
           {!isStaff && published && onSubmitSuccess && (

@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DOST_REGION_12_OFFICE,
   REGION_12_LABEL,
@@ -18,12 +18,53 @@ import { DOSTMark } from './DOSTLogos';
 
 function autoSelectStaffApplicant() {
   const user = authStore.getUser();
-  if (!user || (user.role !== 'admin' && user.role !== 'agent')) return;
+  if (!user || !authStore.isStaff(user.role)) return;
   const scoped = getApplicantsForStaff(user);
   if (scoped.length > 0) {
     staffContextStore.setSelectedApplicant(scoped[0].id);
   }
 }
+
+/** Demo Provincial Director logins — one per PSTO office */
+const DIRECTOR_ACCOUNTS: Record<
+  string,
+  {
+    officeId: string;
+    firstName: string;
+    lastName: string;
+    office: string;
+    provinces: string[];
+  }
+> = {
+  'director.southcot@dost.gov.ph': {
+    officeId: 'south-cotabato',
+    firstName: 'Gisele Eve',
+    lastName: 'Siladan',
+    office: 'PSTO - South Cotabato',
+    provinces: ['South Cotabato'],
+  },
+  'director.cotabato@dost.gov.ph': {
+    officeId: 'cotabato',
+    firstName: 'Michael',
+    lastName: 'Mayo',
+    office: 'PSTO - Cotabato',
+    provinces: ['Cotabato', 'North Cotabato'],
+  },
+  'director.sk@dost.gov.ph': {
+    officeId: 'sultan-kudarat',
+    firstName: 'Zenaida',
+    lastName: 'Guiano',
+    office: 'PSTO - Sultan Kudarat',
+    provinces: ['Sultan Kudarat'],
+  },
+  'director.sargen@dost.gov.ph': {
+    officeId: 'gensan-sarangani',
+    firstName: 'Babai',
+    lastName: 'Tagitican',
+    office: 'PSTO - General Santos / Sarangani',
+    provinces: ['Sarangani', 'General Santos City'],
+  },
+};
 
 type PortalType = 'applicant' | 'staff';
 
@@ -86,6 +127,22 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           role: 'admin', enterpriseName: `${DOST_REGION_12_OFFICE} — Regional Office`, verified: true,
           portal: 'admin',
           officeId: 'regional',
+        });
+        autoSelectStaffApplicant();
+      } else if (DIRECTOR_ACCOUNTS[email.toLowerCase()] && password === 'admin123') {
+        const director = DIRECTOR_ACCOUNTS[email.toLowerCase()];
+        authStore.login({
+          id: `director-${director.officeId}`,
+          email,
+          firstName: director.firstName,
+          middleName: '',
+          lastName: director.lastName,
+          role: 'provincial-director',
+          enterpriseName: director.office,
+          verified: true,
+          portal: 'admin',
+          officeId: director.officeId,
+          assignedProvinces: director.provinces,
         });
         autoSelectStaffApplicant();
       } else {
@@ -318,6 +375,8 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 <>
                   <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
+                  <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Provincial Director:</span> <span className="font-mono">director.southcot@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Also: <span className="font-mono">director.cotabato</span>, <span className="font-mono">director.sk</span>, <span className="font-mono">director.sargen</span> @dost.gov.ph</p>
                  </>
               ) : (
                 <>

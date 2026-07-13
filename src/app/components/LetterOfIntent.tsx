@@ -38,6 +38,7 @@ import {
   buildLocalLoiDocument,
 } from "../utils/loiLetter";
 import { LoiDocumentPreview } from "./LoiDocumentPreview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 
 interface LetterOfIntentProps {
   user?: AuthUser | null;
@@ -130,6 +131,20 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   const { applicant, isStaff } = useStaffApplicant(user);
   const [step, setStep] = useState<StepId>("review");
 
+  // Selected recommended program (set when a non-qualified client chooses an
+  // alternative DOST program during prescreening). When present, the LOI is
+  // generated for that program and the SETUP-specific seed-fund commitment
+  // steps do not apply.
+  const selectedProgramName = String(
+    applicant?.moduleData?.selectedProgramName ?? "",
+  ).trim();
+  const hasProgram = !!selectedProgramName;
+
+  const steps = useMemo(
+    () => (hasProgram ? STEPS.filter((s) => s.id !== "commitment-refund") : STEPS),
+    [hasProgram],
+  );
+
   const [additional, setAdditional] = useState({
     dateEstablished: "",
     tinNumber: "",
@@ -201,7 +216,12 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     setAdditional((prev) => buildLoiAdditionalFromApplicant(app, prev));
 
     const saved = app.moduleData?.loiDocument as LoiDocumentResponse | undefined;
-    if (saved?.bodyParagraphs?.length) {
+    // Only restore a saved letter if it was generated for the currently
+    // selected program (or for SETUP when no program is selected). A letter
+    // generated for a different target must be re-generated.
+    const savedLetterProgramId = String(app.moduleData?.loiDocumentProgramId ?? "");
+    const currentProgramId = String(app.moduleData?.selectedProgramId ?? "");
+    if (saved?.bodyParagraphs?.length && savedLetterProgramId === currentProgramId) {
       setLoiDocument(saved);
       setStep("complete");
       if (saved.signature) {
@@ -216,7 +236,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         }));
       }
       const md = app.moduleData ?? {};
-      if (md.commitmentAmount || md.repaymentTerm) {
+      const restoredProgram = String(md.selectedProgramName ?? "").trim();
+      if (!restoredProgram && (md.commitmentAmount || md.repaymentTerm)) {
         setCommitmentRefund((prev) => ({
           ...prev,
           approvedAmount: String(md.commitmentAmount ?? prev.approvedAmount),
@@ -285,7 +306,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     generalAgreement.agreeTerms &&
     generalAgreement.agreeAccuracy &&
     generalAgreement.agreeCooperate &&
-    generalAgreement.agreeRefund &&
+    // The seed-fund refund clause only applies to the SETUP LOI
+    (hasProgram || generalAgreement.agreeRefund) &&
     generalAgreement.signature.trim().length > 2;
 
   const productionPlanComplete =
@@ -453,10 +475,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
           };
         })(),
         productionPlanNotes,
-        commitmentAmount: commitmentRefund.approvedAmount,
-        repaymentTerm: commitmentRefund.repaymentTerm,
+        ...(hasProgram
+          ? {}
+          : {
+              commitmentAmount: commitmentRefund.approvedAmount,
+              repaymentTerm: commitmentRefund.repaymentTerm,
+            }),
         loiSubmittedAt: new Date().toISOString(),
         loiDocument: document,
+        // Program this letter was generated for ("" = standard SETUP letter)
+        loiDocumentProgramId: String(applicant.moduleData?.selectedProgramId ?? ""),
       },
     });
   };
@@ -489,13 +517,27 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             </div>
             <div>
               <h1 className="text-xl font-black">Letter of Intent</h1>
-              <p className="text-white/60 text-sm">Submit your formal intent to participate in the SETUP Program</p>
+              <p className="text-white/60 text-sm">
+                {selectedProgramName
+                  ? `Submit your formal intent to participate in ${selectedProgramName}`
+                  : "Submit your formal intent to participate in the SETUP Program"}
+              </p>
             </div>
           </div>
-          <StepHeader current={step} steps={STEPS} />
+          <StepHeader current={step} steps={steps} />
           <StaffApplicantPicker user={user} label="Review applicant LOI" />
         </div>
         <StaffApplicantBanner user={user} />
+        {selectedProgramName && (
+          <div className="mx-6 mt-4 flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+            <Info className="w-4 h-4 mt-0.5 shrink-0" />
+            <p>
+              This Letter of Intent targets the recommended program{" "}
+              <strong>{selectedProgramName}</strong>. The generated letter
+              content will be based on this program.
+            </p>
+          </div>
+        )}
         <div className="px-6 pt-4">
           <AiAssistNotice message={loiAiNotice} />
         </div>
@@ -638,7 +680,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-blue-700">
-                Provide details about your technology project and how SETUP can support your enterprise growth.
+                Provide details about your technology project and how {hasProgram ? selectedProgramName : "SETUP"} can support your enterprise growth.
               </p>
             </div>
 
@@ -655,7 +697,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                   inputClassName={inputCls}
                   labelClassName={labelCls}
                   minHeight="min-h-[100px]"
-                  hint="Describe your project and how SETUP can help achieve your technology goals"
+                  hint={`Describe your project and how ${hasProgram ? selectedProgramName : "SETUP"} can help achieve your technology goals`}
                   {...loiAi("projectDescription", (v) => setAdd("projectDescription", v))}
                 />
                 <AiAssistTextarea
@@ -783,36 +825,52 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 space-y-5 text-sm text-gray-700 leading-relaxed">
               <div className="text-center border-b border-gray-200 pb-4">
                 <p className="font-black text-base text-gray-800">GENERAL AGREEMENT</p>
-                <p className="text-gray-500 text-xs mt-1">DOST SETUP 4.0 — Small Enterprise Technology Upgrading Program</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  {hasProgram
+                    ? `DOST Program — ${selectedProgramName}`
+                    : "DOST SETUP 4.0 — Small Enterprise Technology Upgrading Program"}
+                </p>
               </div>
 
               <p>
                 This Agreement is entered into by and between the <strong>Department of Science and Technology (DOST)</strong> and <strong>{applicant?.enterpriseName ?? "[Enterprise Name]"}</strong>, hereinafter referred to as the "Beneficiary Enterprise."
               </p>
-              <p>In consideration of the financial and technical assistance provided under the SETUP program, the Beneficiary Enterprise agrees to the following terms and conditions:</p>
+              <p>
+                In consideration of the technical{hasProgram ? "" : " and financial"} assistance provided under {hasProgram ? selectedProgramName : "the SETUP program"}, the Beneficiary Enterprise agrees to the following terms and conditions:
+              </p>
 
               <div className="space-y-3">
                 {[
                   {
                     key: "agreeTerms",
-                    title: "1. Compliance with SETUP Guidelines",
-                    text: "The Beneficiary Enterprise agrees to comply with all SETUP 4.0 policies, guidelines, implementing rules and regulations issued by DOST and its regional offices. Any violation shall be grounds for termination of assistance and demand for full reimbursement.",
+                    title: hasProgram
+                      ? "1. Compliance with Program Guidelines"
+                      : "1. Compliance with SETUP Guidelines",
+                    text: hasProgram
+                      ? `The Beneficiary Enterprise agrees to comply with all policies, guidelines, implementing rules and regulations of ${selectedProgramName} issued by DOST and its regional offices. Any violation shall be grounds for termination of assistance.`
+                      : "The Beneficiary Enterprise agrees to comply with all SETUP 4.0 policies, guidelines, implementing rules and regulations issued by DOST and its regional offices. Any violation shall be grounds for termination of assistance and demand for full reimbursement.",
                   },
                   {
                     key: "agreeAccuracy",
                     title: "2. Accuracy of Information",
-                    text: "The Beneficiary Enterprise certifies that all information provided in this Letter of Intent and supporting documents is true, accurate, and complete to the best of their knowledge. Any misrepresentation shall be subject to legal action and cancellation of the grant.",
+                    text: hasProgram
+                      ? "The Beneficiary Enterprise certifies that all information provided in this Letter of Intent and supporting documents is true, accurate, and complete to the best of their knowledge. Any misrepresentation shall be subject to legal action and cancellation of the assistance."
+                      : "The Beneficiary Enterprise certifies that all information provided in this Letter of Intent and supporting documents is true, accurate, and complete to the best of their knowledge. Any misrepresentation shall be subject to legal action and cancellation of the grant.",
                   },
                   {
                     key: "agreeCooperate",
                     title: "3. Cooperation and Monitoring",
                     text: "The Beneficiary Enterprise agrees to cooperate fully with DOST personnel during monitoring, evaluation, and audit activities, including providing access to financial records, production facilities, and project documentation as required.",
                   },
-                  {
-                    key: "agreeRefund",
-                    title: "4. Refund Obligation",
-                    text: "The Beneficiary Enterprise acknowledges that SETUP funds constitute a seed fund subject to repayment under a 0% interest scheme. The enterprise agrees to the scheduled repayment plan and submission of Post-Dated Checks (PDCs) as required by DOST policy.",
-                  },
+                  ...(hasProgram
+                    ? []
+                    : [
+                        {
+                          key: "agreeRefund",
+                          title: "4. Refund Obligation",
+                          text: "The Beneficiary Enterprise acknowledges that SETUP funds constitute a seed fund subject to repayment under a 0% interest scheme. The enterprise agrees to the scheduled repayment plan and submission of Post-Dated Checks (PDCs) as required by DOST policy.",
+                        },
+                      ]),
                 ].map((clause) => (
                   <label
                     key={clause.key}
@@ -861,7 +919,12 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             {/* Agreement progress indicator */}
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span className={`font-bold ${generalAgreementComplete ? "text-green-600" : "text-gray-400"}`}>
-                {[generalAgreement.agreeTerms, generalAgreement.agreeAccuracy, generalAgreement.agreeCooperate, generalAgreement.agreeRefund].filter(Boolean).length}/4 clauses agreed
+                {[
+                  generalAgreement.agreeTerms,
+                  generalAgreement.agreeAccuracy,
+                  generalAgreement.agreeCooperate,
+                  ...(hasProgram ? [] : [generalAgreement.agreeRefund]),
+                ].filter(Boolean).length}/{hasProgram ? 3 : 4} clauses agreed
               </span>
               {generalAgreement.signature.trim().length > 2
                 ? <span className="text-green-600">· Signature provided ✓</span>
@@ -957,7 +1020,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 <ul className="space-y-1.5">
                   {[
                     "Current production capacity and output volumes",
-                    "Technology gaps or bottlenecks to be addressed by SETUP",
+                    `Technology gaps or bottlenecks to be addressed by ${hasProgram ? selectedProgramName : "SETUP"}`,
                     "Proposed equipment or technology to be acquired",
                     "Expected increase in production after technology adoption",
                     "Quality assurance and product standards targets",
@@ -991,21 +1054,43 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 relative">
+              {hasProgram && generating && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm">
+                  <div className="text-center space-y-2">
+                    <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-sm font-semibold text-gray-700">Generating your Letter of Intent…</p>
+                  </div>
+                </div>
+              )}
               <button onClick={() => setStep("general-agreement")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
-              <button
-                onClick={() => {
-                  persistProductionPlanMeta(productionPlanDocument, productionPlanNotes);
-                  setStep("commitment-refund");
-                }}
-                disabled={!allowWhenDemo(productionPlanComplete)}
-                className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
-                style={{ background: DOST_BLUE }}
-              >
-                Proceed to Commitment of Refund →
-              </button>
+              {hasProgram ? (
+                <button
+                  onClick={() => {
+                    persistProductionPlanMeta(productionPlanDocument, productionPlanNotes);
+                    void handleFinalSubmit();
+                  }}
+                  disabled={!allowWhenDemo(productionPlanComplete) || generating}
+                  className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
+                  style={{ background: "#059669" }}
+                >
+                  {generating ? "Generating Letter of Intent…" : "Sign & Generate Letter of Intent →"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    persistProductionPlanMeta(productionPlanDocument, productionPlanNotes);
+                    setStep("commitment-refund");
+                  }}
+                  disabled={!allowWhenDemo(productionPlanComplete)}
+                  className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
+                  style={{ background: DOST_BLUE }}
+                >
+                  Proceed to Commitment of Refund →
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1013,7 +1098,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         {/* ────────────────────────────────────────────────────────────────────
             STEP 6 — Commitment of Refund
         ──────────────────────────────────────────────────────────────────── */}
-        {step === "commitment-refund" && (
+        {step === "commitment-refund" && !hasProgram && (
           <div className={MODULE_BODY}>
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
               <Banknote className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1180,6 +1265,13 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               applicationId={applicant?.applicationId}
             />
 
+            <DocumentDeliveryPanel
+              applicant={applicant}
+              user={user}
+              moduleKey="letter-of-intent"
+              documentTitle="Letter of Intent"
+            />
+
             {/* Summary strip */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
@@ -1196,11 +1288,19 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                     String(applicant?.moduleData?.productionPlanFile ?? "Uploaded")}
                 </p>
               </div>
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
-                <Banknote className="w-6 h-6 text-amber-600 mx-auto mb-1" />
-                <p className="text-xs font-bold text-amber-700">Commitment of Refund</p>
-                <p className="text-xs text-amber-500 mt-0.5">₱{commitmentRefund.approvedAmount} · {commitmentRefund.repaymentTerm}</p>
-              </div>
+              {hasProgram ? (
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
+                  <Info className="w-6 h-6 text-emerald-600 mx-auto mb-1" />
+                  <p className="text-xs font-bold text-emerald-700">Target Program</p>
+                  <p className="text-xs text-emerald-500 mt-0.5 truncate px-2">{selectedProgramName}</p>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
+                  <Banknote className="w-6 h-6 text-amber-600 mx-auto mb-1" />
+                  <p className="text-xs font-bold text-amber-700">Commitment of Refund</p>
+                  <p className="text-xs text-amber-500 mt-0.5">₱{commitmentRefund.approvedAmount} · {commitmentRefund.repaymentTerm}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 print:hidden">
@@ -1230,6 +1330,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                     const md = { ...applicant.moduleData };
                     delete md.loiDocument;
                     delete md.loiSubmittedAt;
+                    delete md.loiDocumentProgramId;
                     applicantStore.update(applicant.id, { moduleData: md });
                   }
                 }}

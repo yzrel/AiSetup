@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   Banknote,
@@ -25,6 +25,7 @@ import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
 import { LbpIntroductionLetterEditor } from "./LbpIntroductionLetterEditor";
 import { LbpIntroductionLetterPreview } from "./LbpIntroductionLetterPreview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import type { LbpIntroductionLetterForm, ModuleDocument } from "../api/types";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import {
@@ -432,12 +433,20 @@ export function LandBankAndWithdrawal({
             )}
 
             {(gateOpen(introPublished) || isStaff) && lbpForm && (
-              <LbpIntroductionLetterPreview
-                form={lbpForm}
-                applicationId={applicant?.applicationId}
-                onPrint={gateOpen(introPublished) || isStaff ? handleLbpDownload : undefined}
-                showToolbar={gateOpen(introPublished) || isStaff}
-              />
+              <>
+                <LbpIntroductionLetterPreview
+                  form={lbpForm}
+                  applicationId={applicant?.applicationId}
+                  onPrint={gateOpen(introPublished) || isStaff ? handleLbpDownload : undefined}
+                  showToolbar={gateOpen(introPublished) || isStaff}
+                />
+                <DocumentDeliveryPanel
+                  applicant={applicant}
+                  user={user}
+                  moduleKey="landbank-withdrawal"
+                  documentTitle="LBP Letter of Introduction"
+                />
+              </>
             )}
           </div>
         </div>

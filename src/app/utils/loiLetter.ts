@@ -4,6 +4,7 @@
 
 import { Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_CONTACTS, DostOfficeContact } from "../constants/setupBrochure";
+import { getProgramsByIds } from "../constants/dostProgramRecommendations";
 import type { LoIAdditionalFields } from "./applicantPrefill";
 import type { LoiGenerationRequest } from "../api/types";
 import type { LoiDocumentResponse } from "../api/types";
@@ -146,6 +147,10 @@ export function buildLoiGenerationPayload(
 ): LoiGenerationRequest {
   const md = applicant.moduleData ?? {};
 
+  const selectedProgram = getProgramsByIds([
+    String(md.selectedProgramId ?? ""),
+  ])[0];
+
   return {
     applicantName: applicant.applicantName,
     designation: applicant.designation,
@@ -183,7 +188,20 @@ export function buildLoiGenerationPayload(
 
     signature: signature.signature,
     dateSigned: signature.signedDate,
+
+    programId: String(md.selectedProgramId ?? ""),
+    programName: String(md.selectedProgramName ?? ""),
+    programSummary: selectedProgram?.summary ?? "",
   };
+}
+
+/** Display name of the program the LOI targets (defaults to SETUP 4.0). */
+export function loiProgramLabel(payload: {
+  programName?: string;
+}): string {
+  return payload.programName?.trim()
+    ? payload.programName.trim()
+    : "the Small Enterprise Technology Upgrading Program (SETUP) 4.0";
 }
 
 export function buildTemplateLoiBody(
@@ -195,10 +213,21 @@ export function buildTemplateLoiBody(
     return v.trim().startsWith("₱") ? v.trim() : `₱${v.trim()}`;
   };
 
+  const hasProgram = !!payload.programName?.trim();
+  const programLabel = loiProgramLabel(payload);
+  const guidelinesLabel = hasProgram ? programLabel : "DOST SETUP 4.0";
+
   const paragraphs: string[] = [
-    `We, ${val(payload.applicantName)}, ${val(payload.designation)} of ${val(payload.enterpriseName)}, hereby express our sincere intent to participate in the Small Enterprise Technology Upgrading Program (SETUP) 4.0 of the Department of Science and Technology.`,
+    `We, ${val(payload.applicantName)}, ${val(payload.designation)} of ${val(payload.enterpriseName)}, hereby express our sincere intent to participate in ${programLabel} of the Department of Science and Technology.`,
     `${val(payload.enterpriseName)} is a ${val(payload.msmeSize)} ${val(payload.businessType)} operating in the ${val(payload.businessSector)} sector with ${val(payload.yearsOfOperation)} years of operation. Our enterprise offers ${val(payload.productServices)} and seeks to upgrade our operations through appropriate science and technology interventions.`,
   ];
+
+  if (hasProgram && payload.programSummary?.trim()) {
+    const summary = payload.programSummary.trim().replace(/\.+$/, "");
+    paragraphs.push(
+      `We are particularly interested in this program because ${summary.charAt(0).toLowerCase()}${summary.slice(1)}. We believe this assistance directly addresses our enterprise's current needs.`,
+    );
+  }
 
   if (payload.projectDescription?.trim() || payload.expectedOutcome?.trim()) {
     paragraphs.push(
@@ -206,9 +235,15 @@ export function buildTemplateLoiBody(
     );
   }
 
-  paragraphs.push(
-    `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
-  );
+  if (hasProgram) {
+    paragraphs.push(
+      `We commit to fully comply with all ${guidelinesLabel} guidelines and requirements of the Department of Science and Technology. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
+    );
+  } else {
+    paragraphs.push(
+      `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
+    );
+  }
 
   if (payload.productionPlanFile?.trim()) {
     paragraphs.push(

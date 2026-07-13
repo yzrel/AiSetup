@@ -622,7 +622,11 @@ export function getRecommendedPrograms(
     ids.unshift("mpex");
   }
 
-  return ids.map((id) => DOST_PROGRAMS[id]).filter(Boolean);
+  // Recommendations are narrowed to programs available in the client's
+  // region (Region XII); nationally-run programs are excluded.
+  return ids
+    .map((id) => DOST_PROGRAMS[id])
+    .filter((p): p is DostProgram => Boolean(p) && p.scope === "region12");
 }
 
 export function getProgramsByIds(ids: string[]): DostProgram[] {

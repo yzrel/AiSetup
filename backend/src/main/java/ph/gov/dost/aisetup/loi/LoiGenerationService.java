@@ -93,6 +93,16 @@ public class LoiGenerationService {
         );
     }
 
+    private static boolean hasProgram(LoiGenerationRequest r) {
+        return r.getProgramName() != null && !r.getProgramName().isBlank();
+    }
+
+    private static String programLabel(LoiGenerationRequest r) {
+        return hasProgram(r)
+                ? r.getProgramName().trim()
+                : "the Small Enterprise Technology Upgrading Program (SETUP) 4.0";
+    }
+
     private String buildPrompt(LoiGenerationRequest r) {
         String facts = """
                 Enterprise: %s
@@ -111,6 +121,7 @@ public class LoiGenerationService {
                 Budget: %s | Timeline: %s
                 Commitment amount: %s | Repayment term: %s
                 Production plan file: %s
+                Target DOST program: %s
                 """.formatted(
                 val(r.getEnterpriseName()),
                 val(r.getApplicantName()),
@@ -141,14 +152,25 @@ public class LoiGenerationService {
                 val(r.getTimeline()),
                 val(r.getCommitmentAmount()),
                 val(r.getRepaymentTerm()),
-                val(r.getProductionPlanFile())
+                val(r.getProductionPlanFile()),
+                programLabel(r)
         );
 
+        // Only present for program-targeted LOIs; the SETUP prompt is unchanged.
+        if (hasProgram(r) && !isBlank(r.getProgramSummary())) {
+            facts += "Program assistance offered: " + r.getProgramSummary().trim() + "\n";
+        }
+
+        String programName = programLabel(r);
+        String complianceLine = hasProgram(r)
+                ? "willingness to comply with DOST program guidelines and requirements"
+                : "willingness to comply with DOST guidelines and refund commitments";
+
         return """
-                You are drafting the body of a formal Letter of Intent from a Philippine MSME to DOST Region XII for the SETUP 4.0 program.
+                You are drafting the body of a formal Letter of Intent from a Philippine MSME to DOST Region XII for %s.
 
                 Write 3 to 5 formal paragraphs in English, written in the first person as the enterprise representative.
-                Cover: intent to participate in SETUP 4.0, company background, products/services, technology upgrade needs, project summary, expected outcomes, and willingness to comply with DOST guidelines and refund commitments.
+                Cover: intent to participate in %s, company background, products/services, technology upgrade needs, project summary, expected outcomes, and %s.
                 Do NOT invent facts not present in the data below. If a field is empty, use neutral phrasing or omit that detail.
                 Do NOT include letterhead, addressee, salutation, closing, or signature — body paragraphs only.
 
@@ -156,17 +178,18 @@ public class LoiGenerationService {
 
                 Applicant data:
                 %s
-                """.formatted(facts);
+                """.formatted(programName, programName, complianceLine, facts);
     }
 
     private List<String> buildTemplateParagraphs(LoiGenerationRequest r) {
         List<String> paragraphs = new ArrayList<>();
 
         paragraphs.add(String.format(
-                "We, %s, %s of %s, hereby express our sincere intent to participate in the Small Enterprise Technology Upgrading Program (SETUP) 4.0 of the Department of Science and Technology.",
+                "We, %s, %s of %s, hereby express our sincere intent to participate in %s of the Department of Science and Technology.",
                 val(r.getApplicantName()),
                 val(r.getDesignation()),
-                val(r.getEnterpriseName())
+                val(r.getEnterpriseName()),
+                programLabel(r)
         ));
 
         paragraphs.add(String.format(
@@ -179,6 +202,15 @@ public class LoiGenerationService {
                 val(r.getProductServices())
         ));
 
+        if (hasProgram(r) && !isBlank(r.getProgramSummary())) {
+            String summary = r.getProgramSummary().trim().replaceAll("\\.+$", "");
+            paragraphs.add(String.format(
+                    "We are particularly interested in this program because %s%s. We believe this assistance directly addresses our enterprise's current needs.",
+                    Character.toLowerCase(summary.charAt(0)),
+                    summary.substring(1)
+            ));
+        }
+
         if (!isBlank(r.getProjectDescription()) || !isBlank(r.getExpectedOutcome())) {
             paragraphs.add(String.format(
                     "Our proposed project involves %s. We expect this initiative to %s, with an estimated budget of %s and a timeline of %s.",
@@ -189,11 +221,18 @@ public class LoiGenerationService {
             ));
         }
 
-        paragraphs.add(String.format(
-                "We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to %s over %s at zero percent interest. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
-                formatBudget(r.getCommitmentAmount()),
-                val(r.getRepaymentTerm())
-        ));
+        if (hasProgram(r)) {
+            paragraphs.add(String.format(
+                    "We commit to fully comply with all %s guidelines and requirements of the Department of Science and Technology. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
+                    programLabel(r)
+            ));
+        } else {
+            paragraphs.add(String.format(
+                    "We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to %s over %s at zero percent interest. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
+                    formatBudget(r.getCommitmentAmount()),
+                    val(r.getRepaymentTerm())
+            ));
+        }
 
         if (!isBlank(r.getProductionPlanFile())) {
             paragraphs.add(String.format(

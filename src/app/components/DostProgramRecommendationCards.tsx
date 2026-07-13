@@ -3,7 +3,7 @@
  */
 
 import { useState } from "react";
-import { ExternalLink, Eye } from "lucide-react";
+import { ExternalLink, Eye, FileText } from "lucide-react";
 import { DostProgram } from "../constants/dostProgramRecommendations";
 import { DOST_REGION_12_CONTACTS } from "../constants/setupBrochure";
 import { DostProgramPreviewDialog } from "./DostProgramPreviewDialog";
@@ -24,12 +24,15 @@ interface DostProgramRecommendationCardsProps {
   programs: DostProgram[];
   contactEmail?: string;
   compact?: boolean;
+  /** When provided, shows an "I'm interested" action that routes to the Letter of Intent */
+  onSelectProgram?: (program: DostProgram) => void;
 }
 
 export function DostProgramRecommendationCards({
   programs,
   contactEmail,
   compact = false,
+  onSelectProgram,
 }: DostProgramRecommendationCardsProps) {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const previewProgram =
@@ -90,6 +93,16 @@ export function DostProgramRecommendationCards({
                 <ExternalLink className="w-3.5 h-3.5" />
                 Official page
               </a>
+              {onSelectProgram && (
+                <button
+                  type="button"
+                  onClick={() => onSelectProgram(program)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white bg-green-600 hover:bg-green-700 transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  I'm interested — proceed to Letter of Intent
+                </button>
+              )}
             </div>
           </div>
         ))}

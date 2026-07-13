@@ -79,6 +79,11 @@ export interface LoiGenerationRequest {
   productionPlanFile?: string;
   signature?: string;
   dateSigned?: string;
+  /** Selected recommended DOST program (defaults to SETUP 4.0 when empty) */
+  programId?: string;
+  programName?: string;
+  /** Short description of the assistance the selected program provides */
+  programSummary?: string;
 }
 
 export interface LoiLetterhead {

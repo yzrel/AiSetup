@@ -132,7 +132,13 @@ export function AccountManagement({ user }: AccountManagementProps) {
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Monitor registered MSME accounts · Signed in as {user.firstName}{" "}
-            {user.lastName} ({user.role === "admin" ? "Administrator" : "DOST Agent"})
+            {user.lastName} (
+            {user.role === "admin"
+              ? "Administrator"
+              : user.role === "provincial-director"
+                ? "Provincial Director"
+                : "DOST Agent"}
+            )
           </p>
         </div>
       </div>

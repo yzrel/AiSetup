@@ -39,6 +39,7 @@ import {
 import { allowWhenDemo, gateOpen } from "../utils/demoMode";
 import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
 import { MoaAnnexDEditor } from "./MoaAnnexDEditor";
 import { getApprovalRoutingNote } from "../utils/moaAnnexD";
@@ -330,12 +331,20 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               )}
 
               {(step === "preview" || !showStaffWorkflow || step === "publish") && (
-                <ApprovalLetterPreview
-                  form={form}
-                  applicationId={applicant.applicationId}
-                  onPrint={handleDownload}
-                  showToolbar
-                />
+                <>
+                  <ApprovalLetterPreview
+                    form={form}
+                    applicationId={applicant.applicationId}
+                    onPrint={handleDownload}
+                    showToolbar
+                  />
+                  <DocumentDeliveryPanel
+                    applicant={applicant}
+                    user={user}
+                    moduleKey="approval-letter"
+                    documentTitle="Approval Letter (Notice of Approval)"
+                  />
+                </>
               )}
 
               {!showStaffWorkflow && gateOpen(isPublished) && !isAcknowledged && (

@@ -50,6 +50,7 @@ import { PisOngoingEditor } from "./PisOngoingEditor";
 import { PisOngoingPreview } from "./PisOngoingPreview";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { allowWhenDemo, gateOpen } from "../utils/demoMode";
 import { formatFormMention } from "../constants/setupForms";
 
@@ -386,6 +387,12 @@ export function ProjectInformationSheet({
                       draft={draft}
                       applicationId={applicant.applicationId}
                       onPrint={() => downloadPrePisPdf(applicant.applicationId)}
+                    />
+                    <DocumentDeliveryPanel
+                      applicant={applicant}
+                      user={user}
+                      moduleKey="project-information-sheet"
+                      documentTitle="Project Information Sheet (Pre-PIS)"
                     />
                   </>
                 )}

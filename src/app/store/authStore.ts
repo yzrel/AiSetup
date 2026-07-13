@@ -8,7 +8,12 @@ import { staffContextStore } from "./staffContextStore";
 import { clearAuthUiState, clearCurrentView } from "./navigationStore";
 import { isDemoModeActive } from "../utils/demoMode";
 
-export type UserRole = "applicant" | "client" | "agent" | "admin";
+export type UserRole =
+  | "applicant"
+  | "client"
+  | "agent"
+  | "provincial-director"
+  | "admin";
 
 export type LoginPortal = "client" | "admin";
 
@@ -30,7 +35,8 @@ export type AdminView =
   | "project-closeout"
   | "clients"
   | "account-management"
-  | "my-account";
+  | "my-account"
+  | "sent-emails";
 
 export type DashboardTab = "overview" | "analytics" | "alerts" | "registry";
 
@@ -54,36 +60,38 @@ export interface AuthUser {
 
 /** Views each role may access in the admin shell */
 const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
-  dashboard: ["admin", "agent", "client", "applicant"],
-  prescreening: ["admin", "agent", "client", "applicant"],
-  registration: ["admin", "agent", "client", "applicant"],
-  "letter-of-intent": ["admin", "agent", "client", "applicant"],
-  requirements: ["admin", "agent", "client", "applicant"],
-  tna1: ["admin", "agent", "client", "applicant"],
-  tna2: ["admin", "agent", "client", "applicant"],
-  "project-proposal": ["admin", "agent", "client", "applicant"],
-  "conduct-rtec": ["admin", "agent"],
-  "approval-letter": ["admin", "agent", "client", "applicant"],
-  "project-information-sheet": ["admin", "agent", "client", "applicant"],
-  "landbank-withdrawal": ["admin", "agent", "client", "applicant"],
-  "procurement-liquidation": ["admin", "agent", "client", "applicant"],
-  "refund-delinquent": ["admin", "agent", "client", "applicant"],
-  "project-closeout": ["admin", "agent", "client", "applicant"],
-  clients: ["admin", "agent"],
-  "account-management": ["admin", "agent"],
+  dashboard: ["admin", "agent", "provincial-director", "client", "applicant"],
+  prescreening: ["admin", "agent", "provincial-director", "client", "applicant"],
+  registration: ["admin", "agent", "provincial-director", "client", "applicant"],
+  "letter-of-intent": ["admin", "agent", "provincial-director", "client", "applicant"],
+  requirements: ["admin", "agent", "provincial-director", "client", "applicant"],
+  tna1: ["admin", "agent", "provincial-director", "client", "applicant"],
+  tna2: ["admin", "agent", "provincial-director", "client", "applicant"],
+  "project-proposal": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "conduct-rtec": ["admin", "agent", "provincial-director"],
+  "approval-letter": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "project-information-sheet": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "landbank-withdrawal": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "procurement-liquidation": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "refund-delinquent": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "project-closeout": ["admin", "agent", "provincial-director", "client", "applicant"],
+  clients: ["admin", "agent", "provincial-director"],
+  "account-management": ["admin", "agent", "provincial-director"],
   "my-account": ["client", "applicant"],
+  "sent-emails": ["admin", "agent", "provincial-director", "client", "applicant"],
 };
 
 const DASHBOARD_TAB_PERMISSIONS: Record<DashboardTab, UserRole[]> = {
-  overview: ["admin", "agent", "client", "applicant"],
-  analytics: ["admin", "agent"],
-  alerts: ["admin", "agent"],
-  registry: ["admin", "agent"],
+  overview: ["admin", "agent", "provincial-director", "client", "applicant"],
+  analytics: ["admin", "agent", "provincial-director"],
+  alerts: ["admin", "agent", "provincial-director"],
+  registry: ["admin", "agent", "provincial-director"],
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
   agent: "DOST Agent",
+  "provincial-director": "Provincial Director",
   client: "Client",
   applicant: "Applicant",
 };
@@ -179,7 +187,8 @@ export const authStore = {
     return false;
   },
 
-  isStaff: (role: UserRole) => role === "admin" || role === "agent",
+  isStaff: (role: UserRole) =>
+    role === "admin" || role === "agent" || role === "provincial-director",
 
   isClientRole: (role: UserRole) => role === "client" || role === "applicant",
 

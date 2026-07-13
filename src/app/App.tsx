@@ -23,6 +23,7 @@ import { ClientManagement } from "./components/ClientManagement";
 import { StaffClientBar } from "./components/StaffClientBar";
 import { NotificationBell } from "./components/NotificationPanel";
 import { MyAccount } from "./components/MyAccount";
+import { EmailOutbox } from "./components/EmailOutbox";
 import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
@@ -53,6 +54,7 @@ import {
   Menu,
   X,
   Shield,
+  Mail,
 } from "lucide-react";
 
 type ViewType = AdminView;
@@ -135,6 +137,11 @@ const menuGroups = [
         id: "dashboard" as ViewType,
         label: "Dashboard",
         icon: LayoutDashboard,
+      },
+      {
+        id: "sent-emails" as ViewType,
+        label: "Sent Emails",
+        icon: Mail,
       },
     ],
   },
@@ -341,6 +348,10 @@ const viewTitles: Record<
   "my-account": {
     title: "My Account",
     subtitle: "Profile, password & registration details",
+  },
+  "sent-emails": {
+    title: "Sent Emails",
+    subtitle: "Simulated email outbox — documents & receipts",
   },
 };
 
@@ -898,6 +909,7 @@ export default function App() {
                       navigate("registration");
                     }
                   }}
+                  onProceedToLoi={() => navigate("letter-of-intent")}
                 />
               )}
               {currentView === "registration" && (
@@ -1082,6 +1094,7 @@ export default function App() {
                 <AccountManagement user={user} />
               )}
               {currentView === "my-account" && <MyAccount user={user} />}
+              {currentView === "sent-emails" && <EmailOutbox user={user} />}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">

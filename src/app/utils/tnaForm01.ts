@@ -266,7 +266,7 @@ export function buildTna1DocumentSnapshot(
 ) {
   return {
     form: { ...form },
-    tables: {
+    tablevvfffs: {
       rawMaterials: tables.rawMaterials.map((r) => [...r]),
       production: tables.production.map((r) => [...r]),
       equipment: tables.equipment.map((r) => [...r]),

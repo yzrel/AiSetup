@@ -40,6 +40,7 @@ import { allowWhenDemo } from "../utils/demoMode";
 import { formatFormMention } from "../constants/setupForms";
 import { RtecReportEditor } from "./RtecReportEditor";
 import { RtecReportPreview } from "./RtecReportPreview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 
 const STEPS: ModuleStep[] = [
   { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
@@ -260,11 +261,19 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               )}
 
               {step === "preview" && (
-                <RtecReportPreview
-                  form={form}
-                  applicationId={applicant.applicationId}
-                  onPrint={handleDownload}
-                />
+                <>
+                  <RtecReportPreview
+                    form={form}
+                    applicationId={applicant.applicationId}
+                    onPrint={handleDownload}
+                  />
+                  <DocumentDeliveryPanel
+                    applicant={applicant}
+                    user={user}
+                    moduleKey="conduct-rtec"
+                    documentTitle="RTEC Report (Form 002)"
+                  />
+                </>
               )}
 
               <div className="pt-2 border-t border-gray-100 space-y-2">

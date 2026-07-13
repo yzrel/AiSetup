@@ -216,7 +216,8 @@ export function isApplicantViewLocked(
   applicant: Applicant | null,
   view: AdminView,
 ): boolean {
-  if (view === "dashboard" || view === "my-account") return false;
+  if (view === "dashboard" || view === "my-account" || view === "sent-emails")
+    return false;
 
   if (isRoutedToMpex(applicant)) {
     return view !== "requirements";

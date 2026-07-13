@@ -12,6 +12,13 @@ import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import {
+  BusinessPermitEntry,
+  loadBusinessPermits,
+  validateBusinessPermits,
+} from "../utils/businessPermits";
+import { isFoodSector } from "../utils/foodSector";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -26,12 +33,14 @@ function loadEnterpriseFormFromApplicant(app: Applicant | null) {
         dtiSec: "DTI" as const,
         registrationNumber: "",
         tinNumber: "",
+        fdaNumber: "",
         enterpriseAddress: "",
         province: "",
         postalCode: "",
         companyStartDate: "",
         companyDescription: "",
       },
+      businessPermits: loadBusinessPermits(null),
     };
   }
   const md = app.moduleData ?? {};
@@ -48,12 +57,14 @@ function loadEnterpriseFormFromApplicant(app: Applicant | null) {
       ) as "DTI" | "SEC" | "CDA",
       registrationNumber: String(md.registrationNumber ?? ""),
       tinNumber: String(md.tinNumber ?? ""),
+      fdaNumber: String(md.fdaNumber ?? ""),
       enterpriseAddress: app.address,
       province: String(md.province ?? ""),
       postalCode: String(md.postalCode ?? md.zipCode ?? ""),
       companyStartDate: String(md.companyStartDate ?? md.dateEstablished ?? ""),
       companyDescription: String(md.companyDescription ?? ""),
     },
+    businessPermits: loadBusinessPermits(md),
   };
 }
 
@@ -68,6 +79,7 @@ export function EnterpriseRegistration({
 }) {
   const { applicant, isStaff } = useStaffApplicant(user);
   const [saved, setSaved] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [contactInfo, setContactInfo] = useState({
     email: "",
     phone: "",
@@ -78,18 +90,24 @@ export function EnterpriseRegistration({
     dtiSec: "DTI" as "DTI" | "SEC" | "CDA",
     registrationNumber: "",
     tinNumber: "",
+    fdaNumber: "",
     enterpriseAddress: "",
     province: "",
     postalCode: "",
     companyStartDate: "",
     companyDescription: "",
   });
+  const [businessPermits, setBusinessPermits] = useState<BusinessPermitEntry[]>(
+    loadBusinessPermits(null),
+  );
 
   useEffect(() => {
     const loaded = loadEnterpriseFormFromApplicant(applicant);
     setContactInfo(loaded.contactInfo);
     setFormData(loaded.formData);
+    setBusinessPermits(loaded.businessPermits);
     setSaved(false);
+    setFormError(null);
   }, [applicant?.id]);
 
   useEffect(() => {
@@ -100,6 +118,7 @@ export function EnterpriseRegistration({
       const loaded = loadEnterpriseFormFromApplicant(app);
       setContactInfo(loaded.contactInfo);
       setFormData(loaded.formData);
+      setBusinessPermits(loaded.businessPermits);
     };
     return applicantStore.subscribe(reload);
   }, [applicant?.id]);
@@ -109,9 +128,54 @@ export function EnterpriseRegistration({
     value: (typeof formData)[K],
   ) => setFormData((prev) => ({ ...prev, [key]: value }));
 
+  const foodSector = isFoodSector(formData.businessSector);
+
+  const setPermitYear = (index: number, year: string) => {
+    setBusinessPermits((prev) =>
+      prev.map((entry, i) => (i === index ? { ...entry, year } : entry)),
+    );
+  };
+
+  const handlePermitFile = async (index: number, file: File | null) => {
+    if (!file) return;
+    try {
+      const doc = await readFileAsModuleDocument(
+        file,
+        user?.email || applicant?.emailAddress || "applicant",
+      );
+      setBusinessPermits((prev) =>
+        prev.map((entry, i) => (i === index ? { ...entry, document: doc } : entry)),
+      );
+      setFormError(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not read file.");
+    }
+  };
+
+  const removePermitFile = (index: number) => {
+    setBusinessPermits((prev) =>
+      prev.map((entry, i) => (i === index ? { ...entry, document: null } : entry)),
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!applicant) return;
+
+    if (!isDemoModeActive()) {
+      const permitError = validateBusinessPermits(businessPermits);
+      if (permitError) {
+        setFormError(permitError);
+        return;
+      }
+      if (foodSector && !formData.fdaNumber.trim()) {
+        setFormError(
+          "FDA License to Operate No. is required for food sector enterprises.",
+        );
+        return;
+      }
+    }
+    setFormError(null);
 
     applicantStore.update(applicant.id, {
       enterpriseName: formData.enterpriseName,
@@ -125,6 +189,8 @@ export function EnterpriseRegistration({
         registrationType: formData.dtiSec,
         registrationNumber: formData.registrationNumber,
         tinNumber: formData.tinNumber,
+        fdaNumber: formData.fdaNumber,
+        businessPermits,
         province: formData.province,
         postalCode: formData.postalCode,
         zipCode: formData.postalCode,
@@ -281,6 +347,91 @@ export function EnterpriseRegistration({
               />
             </div>
           </div>
+
+          {foodSector && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                FDA License to Operate No. *
+              </label>
+              <input
+                type="text"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.fdaNumber}
+                onChange={(e) => setField("fdaNumber", e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Required for food sector enterprises (Food Processing).
+              </p>
+            </div>
+          )}
+
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                Business Permits — Last 3 Years *
+              </p>
+              <p className="text-xs text-gray-500">
+                SETUP requires Mayor's / business permits for three consecutive
+                years (e.g. 2023, 2024, 2025). Upload one file per year (PDF or
+                image, max 8 MB).
+              </p>
+            </div>
+            {businessPermits.map((entry, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-1 sm:grid-cols-[110px_1fr] gap-3 items-start"
+              >
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Year
+                  </label>
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={entry.year}
+                    onChange={(e) => setPermitYear(index, e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Business permit file
+                  </label>
+                  {entry.document ? (
+                    <div className="flex items-center justify-between gap-3 bg-green-50 border border-green-200 rounded-md px-3 py-2 text-sm">
+                      <span className="text-green-800 truncate">
+                        {entry.document.fileName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removePermitFile(index)}
+                        className="text-red-600 text-xs font-semibold hover:underline shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-2 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm file:font-semibold hover:file:bg-blue-100"
+                      onChange={(e) =>
+                        handlePermitFile(index, e.target.files?.[0] ?? null)
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {formError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {formError}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

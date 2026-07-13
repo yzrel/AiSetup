@@ -25,8 +25,16 @@ import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyTna1Submitted, notifyTna1Reviewed, notifyTna1Resubmission } from "../utils/notificationHelpers";
+import {
+  notifyTna1Submitted,
+  notifyTna1Reviewed,
+  notifyTna1Resubmission,
+  notifyTna1AwaitingDirector,
+  notifyTna1DirectorValidated,
+} from "../utils/notificationHelpers";
+import { resolveApplicantOfficeId, getOfficeContact } from "../utils/provincialOffice";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
+import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
@@ -260,6 +268,9 @@ export function TechnologyNeedsAssessment1({
   const [siteVisitDate, setSiteVisitDate] = useState("");
   const [siteVisitNotes, setSiteVisitNotes] = useState("");
   const [staffApproved, setStaffApproved] = useState(false);
+  const [directorValidated, setDirectorValidated] = useState(false);
+  const [directorValidatedBy, setDirectorValidatedBy] = useState("");
+  const [directorValidatedAt, setDirectorValidatedAt] = useState("");
 
   const { bind: bindTnaAi, notice: tnaAiNotice } = useAiFieldSuggest("tna1");
   const tnaAiContext = useMemo(
@@ -303,6 +314,9 @@ export function TechnologyNeedsAssessment1({
     setTables(merged.tables);
     setApplicantSubmitted(!!saved?.submitted);
     setStaffApproved(!!saved?.staffReviewed);
+    setDirectorValidated(!!saved?.directorValidated);
+    setDirectorValidatedBy(String(saved?.directorValidatedBy ?? ""));
+    setDirectorValidatedAt(String(saved?.directorValidatedAt ?? ""));
     const doc = app?.moduleData?.tna1Document as { aiGenerated?: boolean } | undefined;
     setTnaAiGenerated(doc?.aiGenerated ?? null);
     if (saved?.siteVisitDate) setSiteVisitDate(String(saved.siteVisitDate));
@@ -391,11 +405,78 @@ export function TechnologyNeedsAssessment1({
         },
       });
       notifyTna1Reviewed(applicant);
+      notifyTna1AwaitingDirector(applicant);
       setStaffApproved(true);
       setStep("reports");
     },
     [applicant, user, staffNotes, siteVisitDate, siteVisitNotes, form, tables],
   );
+
+  // ── Provincial Director validation (per PSTO) ─────────────────────────────
+  const applicantOfficeId = applicant ? resolveApplicantOfficeId(applicant) : "";
+  const isDirectorForApplicant =
+    user?.role === "provincial-director" &&
+    !!user.officeId &&
+    user.officeId === applicantOfficeId;
+  const canDirectorValidate =
+    user?.role === "admin" || isDirectorForApplicant;
+
+  const handleDirectorValidate = useCallback(() => {
+    if (!applicant || !user) return;
+    const now = new Date().toISOString();
+    const dateOnly = now.slice(0, 10);
+    const directorName = `${user.firstName} ${user.lastName}`.trim();
+    const office = getOfficeContact(applicantOfficeId);
+    const validatedByLabel = office
+      ? `${directorName} — Provincial Director, ${office.name}`
+      : `${directorName} — Provincial Director`;
+
+    const savedForm = (applicant.moduleData?.tna1?.form ?? form) as Record<string, unknown>;
+    const updatedForm = {
+      ...savedForm,
+      validatedByName: validatedByLabel,
+      validatedDate: dateOnly,
+    };
+    const tna1Doc = applicant.moduleData?.tna1Document as
+      | { form?: Record<string, unknown> }
+      | undefined;
+
+    applicantStore.update(applicant.id, {
+      moduleData: {
+        ...applicant.moduleData,
+        tna1: {
+          ...(applicant.moduleData?.tna1 ?? {}),
+          form: updatedForm,
+          directorValidated: true,
+          directorValidatedBy: directorName,
+          directorValidatedByEmail: user.email,
+          directorValidatedOfficeId: user.officeId ?? applicantOfficeId,
+          directorValidatedAt: now,
+        },
+        ...(tna1Doc
+          ? {
+              tna1Document: {
+                ...tna1Doc,
+                form: {
+                  ...(tna1Doc.form ?? {}),
+                  validatedByName: validatedByLabel,
+                  validatedDate: dateOnly,
+                },
+              },
+            }
+          : {}),
+      },
+    });
+    setForm((f) => ({
+      ...f,
+      validatedByName: validatedByLabel,
+      validatedDate: dateOnly,
+    }));
+    setDirectorValidated(true);
+    setDirectorValidatedBy(directorName);
+    setDirectorValidatedAt(now);
+    notifyTna1DirectorValidated(applicant, directorName);
+  }, [applicant, user, form, applicantOfficeId]);
 
   const saveTnaDraft = useCallback(
     (submitted = false) => {
@@ -1547,6 +1628,13 @@ export function TechnologyNeedsAssessment1({
               onPrint={() => printTnaForm01(applicant?.applicationId)}
             />
 
+            <DocumentDeliveryPanel
+              applicant={applicant}
+              user={user}
+              moduleKey="tna1"
+              documentTitle="TNA Form 01"
+            />
+
             <div className="flex flex-col sm:flex-row gap-3 print:hidden">
               {!isStaff && (
                 <button
@@ -1774,7 +1862,7 @@ export function TechnologyNeedsAssessment1({
               text="Project Proposal (Form 001) and RTEC Report (Form 002) are prepared in their own modules after TNA Form 02 and documentary requirements."
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 {
                   label: "Form 01 on file",
@@ -1782,6 +1870,7 @@ export function TechnologyNeedsAssessment1({
                   icon: "📄",
                 },
                 { label: "Staff verification", done: staffApproved, icon: "🔍" },
+                { label: "Director validation", done: directorValidated, icon: "🏛️" },
               ].map((s, i) => (
                 <div
                   key={i}
@@ -1805,6 +1894,57 @@ export function TechnologyNeedsAssessment1({
                 </div>
               ))}
             </div>
+
+            {/* Provincial Director validation (per PSTO) */}
+            {directorValidated ? (
+              <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-300 rounded-xl p-4">
+                <span className="text-lg flex-shrink-0 mt-0.5">🏛️</span>
+                <div className="text-sm text-emerald-800">
+                  <p className="font-semibold mb-0.5">Validated by the Provincial Director</p>
+                  <p className="leading-relaxed">
+                    {directorValidatedBy || "Provincial Director"}
+                    {applicantOfficeId && getOfficeContact(applicantOfficeId)
+                      ? ` · ${getOfficeContact(applicantOfficeId)?.name}`
+                      : ""}
+                    {directorValidatedAt &&
+                      ` · ${new Date(directorValidatedAt).toLocaleString("en-PH")}`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-lg flex-shrink-0 mt-0.5">🏛️</span>
+                  <div className="text-sm text-amber-800">
+                    <p className="font-semibold mb-0.5">Awaiting Provincial Director validation</p>
+                    <p className="leading-relaxed">
+                      {formatFormMention("tna01")} must be validated by the Provincial
+                      Director of{" "}
+                      {getOfficeContact(applicantOfficeId)?.name || "the assigned PSTO"}{" "}
+                      before TNA 2 is unlocked.
+                    </p>
+                  </div>
+                </div>
+                {canDirectorValidate && (
+                  <button
+                    type="button"
+                    onClick={handleDirectorValidate}
+                    disabled={!allowWhenDemo(staffApproved)}
+                    className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
+                    style={{ background: DOST_BLUE }}
+                  >
+                    🏛️ Validate {formatFormMention("tna01")}
+                    {user?.role === "admin" ? " (admin override)" : ""}
+                  </button>
+                )}
+                {user?.role === "provincial-director" && !isDirectorForApplicant && (
+                  <p className="text-xs text-amber-700">
+                    This applicant belongs to a different PSTO — only the Provincial
+                    Director covering {getOfficeContact(applicantOfficeId)?.name || "their province"} can validate.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               {isStaff && (
@@ -1833,14 +1973,16 @@ export function TechnologyNeedsAssessment1({
                     TNA1 Module Complete
                   </p>
                   <p className="text-sm text-green-600">
-                    Next: generate and publish TNA Form 02 (Technical Report).
+                    {directorValidated
+                      ? "Next: generate and publish TNA Form 02 (Technical Report)."
+                      : "TNA 2 unlocks after Provincial Director validation."}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => onSubmitSuccess?.()}
-                disabled={!allowWhenDemo(staffApproved)}
+                disabled={!allowWhenDemo(staffApproved && directorValidated)}
                 className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 min-h-11 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 whitespace-nowrap disabled:opacity-40"
                 style={{ background: "#059669" }}
               >
