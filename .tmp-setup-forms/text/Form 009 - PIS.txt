@@ -1,0 +1,71 @@
+﻿SETUPForm 009-ProjectInformationSheetfor OngoingProjects
+ForthePeriod:
+ProjectTitle:
+ProjectCode:
+DEFINITIONS
+Indicateheretheexacttitleoftheproject
+NameofFirm:
+Fillthis uponly if therehas beenany change intheinformation provided earlier
+Owner/ContactPerson:
+Name:
+Sex:
+Birthday:
+Fill this uponly if therehas beenany change intheinformation provided earlier
+TypeofOrganization/Enterprise:
+Fill this uponly if therehasbeen any changeintheinformation provided earlier
+BusinessAddress:
+Fifithis uponly if therehasbeen any changeintheinformation provided earlier
+ContactDetails:Landline:
+Fax:
+Fifithis uponly if therehasbeenany change intheinformation provided earlier
+Mobilephoneno.:
+emailaddress;
+TotalAssets
+Land
+Building
+Equipment
+Working Capital
+TotalEmploymentGenerated
+Please indicatetotal employmentfortheperiodcovered;please be guided by the definition of employment i.e. 1man-month (20 working days) =1employment; sum ofdirect & indirect employment
+DirectEmployment:
+CompanyHire Regular Part-time PWD
+SeniorCitizen
+Sub-contractorHire Regular
+Part-time
+PWD
+SeniorCitizen
+Male
+Female
+Sub-total
+IndirectEmployment:
+Male
+Female
+Sub-total
+Backward
+Forward
+PWD
+SeniorCitizen
+TotalVolumeof Production:
+(pis.attachdetailsandspecifyunitperproductline)
+Totalvolumeofproductsproducedwithintheperiod
+Local
+Export
+TotalGrossSales(P.):
+Total value of products produced w/inthe period; Includeinventory losses;
+Local(P)
+Export(P)
+Country/iesofdestination
+AssistanceobtainedfromDOST(pleasecheck):
+A.1ProductionTechnology
+A.1.1. Process
+A.1.2. Equipment
+A.1.3QualityControl/
+LaboratoryTesting/Analysis
+A.2Packaging/Labeling
+A.3post-harvest
+A.4Marketingassistance
+A.5HumanResourceTraining(Pleasespecify)
+A.6ConsultancyServices(Pleasespecify)
+A.7 OtherServices:(FDAPemit,LGURegistration,BarCoding)
+Preparedby:
+PSTD/CASTD/CSTD

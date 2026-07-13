@@ -1,0 +1,102 @@
+﻿DOSTTNAFORM01-ApplicationforTechnologyNeedsAssessment
+NameofEnterprise:
+ContactPerson:
+PositionintheEnterprise:
+OfficeAddress:
+Tel.No.
+FaxNo.
+E-mailAddress:
+FactoryAddress:
+Tel.No.
+FaxNo.
+E-mailAddress:
+Website:
+GENERALAGREEMENTS:
+Theapplicantshall, at the earliestopportunity,makeavailabletoDOSTRegionalOffice No. XII(DOST XII)all information (manuals, procedures, etc.) required to establish the technological status of the selected core business functions and management systems;
+If DOST XIIisnotsatisfiedthatalltherequirementsforbusinessregistrationarecomplied with,itshallinformtheapplicantoftheobserveddeficienciesbeforestartingtheassessment;
+Whentherequiredinputstotheassessmentarealreadysuppliedbytheapplicant,includingAttachmentA,DOSTXII willassessthefirmthroughthecorebusinessfunctionsandmanagementsystems,whicheverisapplicable,toidentifytechnologicalneedsandverify compliance to standards vis-a-vis existing practices;
+When DOSTXII has completedthetechnologyassessment,areportwillbepreparedonthe results of the assessment with accompanying recommendations and opportunities for improvement.Thereportpreparedwilldefinethescopeofactivities,functions,management practices andlocations assessed.Theapplicant shall notclaim or otherwise imply that the report appliesto other locations, products or activities notcovered bythe report;
+TheapplicantagreesthatthereportwillnotbeuseduntilpermissionhasbeengrantedbyDOSTXII;
+Theapplicant agreesthatthereceipt oracknowledgmentofthereportendstheassessment stage; any technical assistance ensuing from the recommendations of the report will be viewed as a separate project.
+UNDERTAKING
+I agreetoundertakeand observetheaboveGeneralAgreementsasstipulatedby theDepartmentof
+ScienceandTechnologyRegionalOfficeNo. XII.
+SignatureoverPrintedName
+PositioninEnterprise
+Date
+AttachmentA
+EnterpriseProfile
+Name of EnterpriseProduction Site/Location_______________________________________________________________Business Permit No.__________________________________Year Registered Brief Enterprise Background
+Yearenterprisewasestablished:Initial
+_______________________________________________capitalization: _____________________
+EnterpriseRegistrationNo.
+_______YearRegistered
+Classificationaccordingtocapital (PhP)
+Present
+capitalization
+Classificationaccording to employment(number of employees) Micro 
+BusinessActivity (pleasespecifySECTORandCOMMODITY):
+Specificproductorservicetheenterpriseoffersitscustomers:
+Reasonswhyassistanceisbeingsought:
+Haveyouconsultedanyotherindividual/organizationforanyassistance?
+IfYes,whichcompany/agency?
+_____________________________________________________________________Pleasespecifythetypeofassistancesought
+IfNo,whynot?
+OrganizationalStructure
+Enterprise'splanforthenext5years?
+Next10years?
+Currentagreementsandalliancesundertaken
+BENCHMARKINFORMATION
+ProductionandSupplyChain
+RawMaterial
+RawMaterial
+Source
+UnitCost(P.)
+VolumeUsed/Year
+Production
+Product
+Volume of Production/Year
+Unit Cost of Production(.P.)
+AnnualCost of Production(.P.)
+ExistingFunctionalProductionEquipment
+TypeofEquipment
+Specifications
+Capacity
+No.of Units
+YearAcquired
+ProductionProblemsandConcerns
+ProductionWasteManagementSystem
+ProductionPlan
+PlantLay-Out
+Process Flow
+InventorySystem
+MaintenanceProgram
+cGMP/HACCPActivities
+Supplies/PurchasingSystem
+Marketing
+MarketingPlan
+MarketOutletsandNumber
+PromotionalStrategies
+MarketCompetitors
+Packaging
+NutritionEvaluation
+BarCode
+ProductLabel
+Expiry Date
+Finance
+CashFlowor otherrelateddocuments
+Source(s)ofcapital/credit
+AccountingSystem
+HumanResources
+Hiringand Criteria
+IncentivestoEmployees
+TrainingandDevelopment
+SafetyMeasuresPracticed
+OtherEmployeeWelfare
+OtherConcerns
+Prepared by:Validatedby:
+PrintedNameandSignature of Owner/Chair/Representative
+____________________Date
+PrintedNameandSignature of 
+PSTD/CASTD/CSTD
+______

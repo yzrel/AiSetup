@@ -1,0 +1,36 @@
+﻿SETUPForm013-TerminalReport(asof__________)
+Project Title:
+Project Cooperator:
+Project Duration:
+Amount of SETUP Assistance:
+Date Funds Released to the Cooperator:
+Refund Period:
+EXPECTEDOUTPUT VSACTUALACCOMPLISHMENT(INCLUDETRAINING AND/OR CONSULTANGY SERVICE/S PROVIDED):
+ExpectedOutput
+ActualAccomplishment
+Remarks/Justification
+LISTOFEQUIPMENT/FACILITIESPURCHASED/FABRICATEDWITH CORRESPONDING COST/VALUE:
+ApprovedS&TIntervention Related Equipment
+ActualExpenditure Related Equipment Acquired
+Remarks/Justification
+Qty
+Particulars
+Cost
+Qty
+Particulars
+Cost
+NON-EQUIPMENTITEMSPROVIDED(Packagingand/orLaboratory Analysis):
+ApprovedS&TIntervention
+ActualExpenditure Related Equipment Acquired
+Remarks/Justification
+Qty
+Particulars
+Cost
+Qty
+Particulars
+Cost
+Problems met and action taken during project implementation(including Phase I of the project implementation)
+ImpactofIntervention(basedontheobjectives)
+FinalRecommendation
+Preparedby:ReviewedandEndorsedby:Notedby:
+PSTD/CASTD/CSTDRPMORegionalDirector
