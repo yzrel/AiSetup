@@ -10,11 +10,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class FundReleaseService {
 
+    /** Minimal HTML escaping for values interpolated into generated documents. */
+    private static String escapeHtml(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
     public Map<String, Object> authorityLetter(String applicationId, Map<String, Object> payload) {
-        String holder = String.valueOf(payload.getOrDefault("accountHolder", "Account Holder"));
-        String enterprise = String.valueOf(payload.getOrDefault("enterpriseName", "Enterprise"));
-        String project = String.valueOf(payload.getOrDefault("projectTitle", "SETUP Project"));
-        String amount = String.valueOf(payload.getOrDefault("approvedAmount", "₱0"));
+        String holder = escapeHtml(String.valueOf(payload.getOrDefault("accountHolder", "Account Holder")));
+        String enterprise = escapeHtml(String.valueOf(payload.getOrDefault("enterpriseName", "Enterprise")));
+        String project = escapeHtml(String.valueOf(payload.getOrDefault("projectTitle", "SETUP Project")));
+        String amount = escapeHtml(String.valueOf(payload.getOrDefault("approvedAmount", "₱0")));
         String html = """
                 <html><body style='font-family:Georgia,serif;font-size:12px;line-height:1.6'>
                 <h2 style='text-align:center'>AUTHORITY TO WITHDRAW — SETUP FUND</h2>
@@ -22,7 +32,7 @@ public class FundReleaseService {
                 <p>This authorizes <strong>%s</strong> of <strong>%s</strong> to withdraw SETUP funds for
                 project <strong>%s</strong> in the amount of <strong>%s</strong>.</p>
                 </body></html>
-                """.formatted(applicationId, holder, enterprise, project, amount);
+                """.formatted(escapeHtml(applicationId), holder, enterprise, project, amount);
         return Map.of(
                 "applicationId", applicationId,
                 "documentType", "authority-letter",

@@ -19,6 +19,7 @@ import {
 import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyApprovalLetterPublished } from "../utils/notificationHelpers";
@@ -87,14 +88,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     loadForm(applicant);
   }, [applicant?.id, loadForm]);
 
-  useEffect(() => {
-    return applicantStore.subscribe(() => {
-      if (applicant) {
-        const updated = applicantStore.getById(applicant.id);
-        if (updated) loadForm(updated);
-      }
-    });
-  }, [applicant?.id, loadForm]);
+  useApplicantSubscription(applicant?.id, loadForm);
 
   const rtecReady = hasRtecReportPrerequisite(applicant);
   const stored = applicant ? getApprovalLetterStored(applicant) : null;

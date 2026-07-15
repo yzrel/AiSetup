@@ -17,6 +17,7 @@ import {
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import type { PisOngoingFiling, PrePisDraftForm, SignedPrePisDocument } from "../api/types";
 import { getSignedMoa } from "../utils/approvalLetter";
@@ -113,14 +114,7 @@ export function ProjectInformationSheet({
     loadDraft(applicant);
   }, [applicant?.id, loadDraft]);
 
-  useEffect(() => {
-    return applicantStore.subscribe(() => {
-      if (applicant) {
-        const updated = applicantStore.getById(applicant.id);
-        if (updated) loadDraft(updated);
-      }
-    });
-  }, [applicant?.id, loadDraft]);
+  useApplicantSubscription(applicant?.id, loadDraft);
 
   const ackReady = hasApprovalLetterAcknowledged(applicant);
   const approvalAcknowledged = ackReady;

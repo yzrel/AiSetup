@@ -14,6 +14,7 @@ public class AiCompletionService {
 
     private static final Logger log = LoggerFactory.getLogger(AiCompletionService.class);
     private static final int DEFAULT_MAX_TOKENS = 2048;
+    private static final int MAX_TOKENS_CAP = 4096;
 
     private final AnthropicClient anthropicClient;
     private final AnthropicProperties anthropicProperties;
@@ -26,7 +27,7 @@ public class AiCompletionService {
     public AiCompletionResponse complete(AiCompletionRequest request) {
         AiCompletionResponse response = new AiCompletionResponse();
         int maxTokens = request.getMaxTokens() != null && request.getMaxTokens() > 0
-                ? request.getMaxTokens()
+                ? Math.min(request.getMaxTokens(), MAX_TOKENS_CAP)
                 : DEFAULT_MAX_TOKENS;
 
         try {

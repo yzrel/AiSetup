@@ -14,6 +14,7 @@ import { getApprovalLetterForm } from "./approvalLetter";
 import { formatApprovalDisplayDate } from "./approvalLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
+import { printHtmlDocument } from "./printHtml";
 import { resolveApplicantOfficeId } from "./provincialOffice";
 import { emptyLandBankForm, getLandBankStored } from "./landBankWithdrawal";
 
@@ -219,7 +220,7 @@ export function syncLbpIntroductionFromUpstream(
     branchManagerTitle: "Branch Manager",
     landbankBranch: branch.landbankBranch,
     branchCityProvince: branch.branchCityProvince,
-    proponentName: approval.recipientName || pp.ownerName || applicant.applicantName,
+    proponentName: approval.recipientName || pp.proponentName || applicant.applicantName,
     enterpriseName: pp.firmName || approval.enterpriseName || applicant.enterpriseName,
     projectTitle: pp.projectTitle || approval.projectTitle,
     approvedAmount: amountNum > 0 ? `₱${formatPesoDisplay(amountNum)}` : amount,
@@ -341,16 +342,7 @@ export function printLbpIntroductionLetter(applicationId?: string) {
     window.print();
     return;
   }
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${getLbpIntroductionPrintStyles()}</style></head>
-    <body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+  printHtmlDocument(title, el.innerHTML, getLbpIntroductionPrintStyles());
 }
 
 export function downloadLbpIntroductionPdf(applicationId?: string) {

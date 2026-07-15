@@ -34,3 +34,7 @@ backend/.mvn/wrapper/maven-wrapper.jar
 
 # Local H2 database
 backend/data/
+
+# Local notes / reference material (not part of the app)
+Aisetup/
+.tmp-setup-forms/

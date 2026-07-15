@@ -19,6 +19,7 @@ import {
 import { getProjectProposalForm } from "./projectProposal";
 import { getApprovalLetterForm } from "./approvalLetter";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
+import { printHtmlDocument } from "./printHtml";
 
 const DEFAULT_OFFICE_LINES = [
   DOST_REGION_12_OFFICE.toUpperCase().replace("NO.", "NO."),
@@ -59,7 +60,7 @@ export function emptyWithdrawalLetterDraft(
     firmName:
       pp.firmName || applicant?.enterpriseName || approval.enterpriseName || "",
     ownerName:
-      pp.ownerName ||
+      pp.proponentName ||
       approval.recipientName ||
       applicant?.applicantName ||
       "",
@@ -187,14 +188,9 @@ export function downloadWithdrawalRequestLetterPdf(
 ): void {
   const title = `Letter-Request-Withdrawal-T${pkg.tranche}-${applicationId || "SETUP"}`;
   const html = buildWithdrawalRequestLetterHtml(draft, pkg);
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${a4PageRule(A4_MARGIN_LETTER)} body { font-family: 'Times New Roman', Times, serif; }</style>
-    </head><body>${html}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+  printHtmlDocument(
+    title,
+    html,
+    `${a4PageRule(A4_MARGIN_LETTER)} body { font-family: 'Times New Roman', Times, serif; }`,
+  );
 }

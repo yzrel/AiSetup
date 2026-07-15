@@ -19,6 +19,7 @@ import {
 import { AuthUser } from "../store/authStore";
 import { applicantStore } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
 import { ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
 import type { DelinquencyStatus, PDCEntry } from "../api/types";
 import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
@@ -160,14 +161,7 @@ export function RefundAndDelinquent({
   const staffMode = user ? isRefundStaff(user.role) : isStaff;
   const [step, setStep] = useState<StepId>("record-pdcs");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
-  const [, setTick] = useState(0);
-
-  const reload = useCallback(() => setTick((t) => t + 1), []);
-
-  useEffect(() => {
-    const unsub = applicantStore.subscribe(reload);
-    return unsub;
-  }, [reload, applicant?.id]);
+  useApplicantStoreVersion();
 
   useEffect(() => {
     if (applicant && !getRefundStored(applicant)) {

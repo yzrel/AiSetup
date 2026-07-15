@@ -11,6 +11,7 @@ import {
   saveMoaAnnexDDraft,
 } from "../utils/moaAnnexD";
 import { a4PageRule, A4_MARGIN_DEFAULT } from "../utils/printPage";
+import { escapeHtml, printHtmlDocument } from "../utils/printHtml";
 import type { MoaAnnexDForm } from "../api/types";
 
 interface MoaAnnexDEditorProps {
@@ -37,22 +38,19 @@ export function MoaAnnexDEditor({ applicantId, readOnly }: MoaAnnexDEditorProps)
 
   const printMoa = () => {
     const body = buildMoaAnnexDBody(form);
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>SETUP Annex D — MOA</title>
-      <style>
+    printHtmlDocument(
+      "SETUP Annex D — MOA",
+      `
+      <h1>MEMORANDUM OF AGREEMENT<br/>Regional Guidelines on SETUP (Revision 3.0) — Annex D</h1>
+      ${body.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}
+      `,
+      `
         ${a4PageRule(A4_MARGIN_DEFAULT)}
-        body { font-family: Georgia, serif; font-size: 12px; line-height: 1.6; padding: 0; width: 210mm; margin: 0 auto; }
+        body { font-family: Georgia, serif; font-size: 12px; line-height: 1.6; padding: 0; }
         h1 { text-align: center; font-size: 14px; }
         p { margin: 12px 0; text-align: justify; }
-      </style></head><body class="print-a4-sheet">
-      <h1>MEMORANDUM OF AGREEMENT<br/>Regional Guidelines on SETUP (Revision 3.0) — Annex D</h1>
-      ${body.map((p) => `<p>${p}</p>`).join("")}
-      </body></html>
-    `);
-    win.document.close();
-    win.print();
+      `,
+    );
   };
 
   return (

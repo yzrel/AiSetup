@@ -3,6 +3,7 @@
  */
 package ph.gov.dost.aisetup.persistence;
 
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,11 @@ public class ApplicantController {
         this.persistenceService = persistenceService;
     }
 
+    @GetMapping
+    public List<ApplicantRecordDto> list() {
+        return persistenceService.findAll();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApplicantRecordDto> get(@PathVariable String id) {
         return persistenceService.findById(id)
@@ -29,19 +35,20 @@ public class ApplicantController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApplicantRecordDto> save(
+    public ApplicantRecordDto save(
             @PathVariable String id,
             @RequestBody ApplicantRecordDto body) {
+        if (body.applicationId() == null || body.applicationId().isBlank()) {
+            throw new IllegalArgumentException("applicationId is required");
+        }
         ApplicantRecordDto dto = new ApplicantRecordDto(
                 id,
                 body.applicationId(),
                 body.enterpriseName(),
                 body.currentModule(),
                 body.moduleData(),
+                body.profile(),
                 body.updatedAt());
-        ApplicantRecord saved = persistenceService.save(dto);
-        return persistenceService.findById(saved.getId())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.internalServerError().build());
+        return persistenceService.save(dto);
     }
 }

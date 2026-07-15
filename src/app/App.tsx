@@ -28,10 +28,9 @@ import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
-// import { ClientPortal } from "./components/ClientPortal";
 import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
 import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage, loadLoginPortal, saveLoginPortal } from "./store/navigationStore";
-import { applicantStore } from "./store/applicantStore";
+import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
@@ -129,7 +128,15 @@ function TopbarLogo() {
   );
 }
 
-const menuGroups = [
+interface MenuItem {
+  id: ViewType;
+  label: string;
+  icon: typeof LayoutDashboard;
+  /** Step badge shown next to the label (e.g. "Step 1") */
+  module?: string;
+}
+
+const menuGroups: { label: string; items: MenuItem[] }[] = [
   {
     label: "Overview",
     items: [
@@ -528,6 +535,8 @@ export default function App() {
       setCurrentViewState(resolveViewForUser(restored));
     }
     setAuthReady(true);
+    // Non-blocking: pull persisted applicants so progress survives reloads
+    void applicantStore.hydrateFromBackend();
   }, []);
 
   // Subscribe to auth changes
@@ -667,15 +676,18 @@ export default function App() {
     ? resolveApplicantForUser(user)
     : null;
 
-  // Community client portal — disabled; applicants use aiSETUP application workflow
-  // if (authStore.usesClientPortal(user)) {
-  //   return (
-  //     <ClientPortal
-  //       user={user}
-  //       onLogout={() => authStore.logout()}
-  //     />
-  //   );
-  // }
+  /**
+   * Marks the given module complete: advances the applicant to the next
+   * module per MODULE_ORDER and navigates to it (or to `navigateTo`).
+   */
+  const advanceFrom = (module: ModuleStatus, navigateTo?: ViewType) => {
+    const next = MODULE_ORDER[MODULE_ORDER.indexOf(module) + 1];
+    const app = resolveApplicantForUser(user);
+    if (app && next) {
+      applicantStore.update(app.id, { currentModule: next });
+    }
+    navigate(navigateTo ?? ((next ?? module) as ViewType));
+  };
 
   const isRestrictedClient = authStore.isClientRole(user.role);
   const isStaff = authStore.isStaff(user.role);
@@ -904,10 +916,7 @@ export default function App() {
                   user={user}
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
-                    if (app?.qualified) {
-                      applicantStore.update(app.id, { currentModule: "registration" });
-                      navigate("registration");
-                    }
+                    if (app?.qualified) advanceFrom("prescreening");
                   }}
                   onProceedToLoi={() => navigate("letter-of-intent")}
                 />
@@ -916,65 +925,31 @@ export default function App() {
                 <EnterpriseRegistration
                   user={user}
                   onOpenAccount={() => navigate("my-account")}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, { currentModule: "letter-of-intent" });
-                    }
-                    navigate("letter-of-intent");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("registration")}
                 />
               )}
               {currentView === "letter-of-intent" && (
                 <LetterOfIntent
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, { currentModule: "tna1" });
-                    }
-                    navigate("tna1");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("letter-of-intent")}
                 />
               )}
               {currentView === "tna1" && (
                 <TechnologyNeedsAssessment1
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, { currentModule: "tna2" });
-                    }
-                    navigate("tna2");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("tna1")}
                 />
               )}
               {currentView === "tna2" && (
                 <TNA2TechnicalReport
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "project-proposal",
-                      });
-                    }
-                    navigate("project-proposal");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("tna2")}
                 />
               )}
               {currentView === "project-proposal" && (
                 <ProjectProposal
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "requirements",
-                      });
-                    }
-                    navigate("requirements");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("project-proposal")}
                 />
               )}
               {currentView === "requirements" && (
@@ -983,100 +958,48 @@ export default function App() {
                   onSubmitSuccess={() => {
                     const app = resolveApplicantForUser(user);
                     if (!app) return;
-                    const routing = app.moduleData?.routingDecision;
-                    if (routing === "mpex") {
+                    if (app.moduleData?.routingDecision === "mpex") {
                       navigate("dashboard");
                       return;
                     }
-                    applicantStore.update(app.id, {
-                      currentModule: "conduct-rtec",
-                    });
-                    navigate("dashboard");
+                    advanceFrom("requirements", "dashboard");
                   }}
                 />
               )}
               {currentView === "conduct-rtec" && (
                 <ConductOfRTEC
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "approval-letter",
-                      });
-                    }
-                    navigate("approval-letter");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("conduct-rtec")}
                 />
               )}
               {currentView === "approval-letter" && (
                 <ApprovalLetter
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "project-information-sheet",
-                      });
-                    }
-                    navigate("project-information-sheet");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("approval-letter")}
                 />
               )}
               {currentView === "project-information-sheet" && (
                 <ProjectInformationSheet
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "landbank-withdrawal",
-                      });
-                    }
-                    navigate("landbank-withdrawal");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("project-information-sheet")}
                 />
               )}
               {currentView === "landbank-withdrawal" && (
                 <LandBankAndWithdrawal
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "procurement-liquidation",
-                      });
-                    }
-                    navigate("procurement-liquidation");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("landbank-withdrawal")}
                 />
               )}
               {currentView === "procurement-liquidation" && (
                 <ProcurementAndLiquidation
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "refund-delinquent",
-                      });
-                    }
-                    navigate("refund-delinquent");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("procurement-liquidation")}
                 />
               )}
               {currentView === "refund-delinquent" && (
                 <RefundAndDelinquent
                   user={user}
-                  onSubmitSuccess={() => {
-                    const app = resolveApplicantForUser(user);
-                    if (app) {
-                      applicantStore.update(app.id, {
-                        currentModule: "project-closeout",
-                      });
-                    }
-                    navigate("project-closeout");
-                  }}
+                  onSubmitSuccess={() => advanceFrom("refund-delinquent")}
                 />
               )}
               {currentView === "project-closeout" && (

@@ -18,6 +18,7 @@ import {
 import { AuthUser } from "../store/authStore";
 import { applicantStore } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
 import { ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
 import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
@@ -73,14 +74,7 @@ export function ProcurementAndLiquidation({
   const [step, setStep] = useState<StepId>("procurement");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [, setTick] = useState(0);
-
-  const reload = useCallback(() => setTick((t) => t + 1), []);
-
-  useEffect(() => {
-    const unsub = applicantStore.subscribe(reload);
-    return unsub;
-  }, [reload, applicant?.id]);
+  useApplicantStoreVersion();
 
   const form = applicant ? getProcurementForm(applicant) : null;
   const stored = applicant ? getProcurementStored(applicant) : null;
@@ -111,7 +105,6 @@ export function ProcurementAndLiquidation({
       } else {
         addLiquidationDocument(applicant.id, moduleDoc);
       }
-      setTick((n) => n + 1);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Upload failed.");
     }

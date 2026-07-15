@@ -35,6 +35,7 @@ import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { SETUP_PRIORITY_SECTORS } from "../constants/setupBrochure";
 import { AuthUser } from "../store/authStore";
 import { getApplicantsForStaff } from "../utils/provincialOffice";
+import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -55,6 +56,17 @@ const moduleBadgeColors: Partial<Record<ModuleStatus, string>> =
     "refund-delinquent": "bg-red-100 text-red-700",
     completed: "bg-emerald-100 text-emerald-700",
   };
+
+/** lastUpdated is an ISO timestamp for new records, a friendly string for seeds. */
+function formatUpdated(value: string): string {
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return value;
+  return new Date(ms).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 function ModuleBadge({ module }: { module: ModuleStatus }) {
   return (
@@ -137,23 +149,14 @@ function EditField({
 function ApplicantDetail({
   applicant,
   onBack,
-  currentModule,
 }: {
   applicant: Applicant;
   onBack: () => void;
-  currentModule: ModuleStatus;
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ ...applicant });
   const [saved, setSaved] = useState(false);
-  const [, forceUpdate] = useState(0);
-
-  // subscribe to store
-  useEffect(
-    () =>
-      applicantStore.subscribe(() => forceUpdate((n) => n + 1)),
-    [],
-  );
+  useApplicantStoreVersion();
 
   const handleChange = (name: string, value: string) => {
     setForm((p) => ({ ...p, [name]: value }));
@@ -540,7 +543,6 @@ export function ApplicantListView({
   onNewApplicant?: () => void;
   user?: AuthUser | null;
 }) {
-  const [, forceUpdate] = useState(0);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(
     null,
@@ -549,11 +551,7 @@ export function ApplicantListView({
     "all" | ModuleStatus
   >("all");
 
-  useEffect(
-    () =>
-      applicantStore.subscribe(() => forceUpdate((n) => n + 1)),
-    [],
-  );
+  useApplicantStoreVersion();
 
   const allApplicants = user
     ? getApplicantsForStaff(user)
@@ -585,7 +583,6 @@ export function ApplicantListView({
       <ApplicantDetail
         applicant={selectedApplicant}
         onBack={() => setSelectedId(null)}
-        currentModule={module}
       />
     );
   }
@@ -816,7 +813,7 @@ export function ApplicantListView({
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1 text-[11px] text-gray-400">
                     <Calendar className="w-3 h-3 shrink-0" />
-                    {app.lastUpdated}
+                    {formatUpdated(app.lastUpdated)}
                   </div>
                 </td>
 

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.loi.ProvincialOfficeResolver;
 import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
 import ph.gov.dost.aisetup.tna1.dto.Tna1TablesDto;
@@ -21,6 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import static ph.gov.dost.aisetup.common.TextUtils.firstNonBlank;
+import static ph.gov.dost.aisetup.common.TextUtils.isBlank;
+import static ph.gov.dost.aisetup.common.TextUtils.safe;
+import static ph.gov.dost.aisetup.common.TextUtils.stringVal;
 
 @Service
 public class Tna2GenerationService {
@@ -38,25 +44,23 @@ public class Tna2GenerationService {
     }
 
     public Tna2DocumentResponse generate(Tna2GenerationRequest request) {
-        boolean aiGenerated;
-        Tna2DocumentResponse response;
+        AiTemplateFallback.Result<Tna2DocumentResponse> result = AiTemplateFallback.generate(
+                log,
+                "TNA Form 02",
+                () -> {
+                    JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
+                    Tna2DocumentResponse doc = objectMapper.treeToValue(aiNode, Tna2DocumentResponse.class);
+                    if (doc == null || isEmptyDocument(doc)) {
+                        throw new IllegalStateException("AI returned empty document");
+                    }
+                    return doc;
+                },
+                () -> buildTemplateDocument(request));
 
-        try {
-            JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
-            response = objectMapper.treeToValue(aiNode, Tna2DocumentResponse.class);
-            if (response == null || isEmptyDocument(response)) {
-                throw new IllegalStateException("AI returned empty document");
-            }
-            aiGenerated = true;
-        } catch (Exception e) {
-            log.info("Using template TNA Form 02 (AI unavailable): {}", e.getMessage());
-            response = buildTemplateDocument(request);
-            aiGenerated = false;
-        }
-
+        Tna2DocumentResponse response = result.value();
         enrichMetadata(request, response);
         response.setGeneratedAt(Instant.now().toString());
-        response.setAiGenerated(aiGenerated);
+        response.setAiGenerated(result.aiGenerated());
         return response;
     }
 
@@ -105,21 +109,21 @@ public class Tna2GenerationService {
                 TNA1 employees M/F: %s / %s
                 TNA1 equipment table rows: %s
                 """.formatted(
-                val(r.getApplicationId()),
-                val(r.getEnterpriseName()),
-                val(r.getApplicantName()),
-                val(r.getDesignation()),
-                val(r.getAddress()),
-                val(r.getProvince()),
-                val(r.getMsmeSize()),
-                val(r.getBusinessType()),
-                val(r.getBusinessSector()),
+                safe(r.getApplicationId()),
+                safe(r.getEnterpriseName()),
+                safe(r.getApplicantName()),
+                safe(r.getDesignation()),
+                safe(r.getAddress()),
+                safe(r.getProvince()),
+                safe(r.getMsmeSize()),
+                safe(r.getBusinessType()),
+                safe(r.getBusinessSector()),
                 stringVal(form.get("commodity")),
-                val(r.getProductServices()),
-                val(r.getProjectDescription()),
-                val(r.getExpectedOutcome()),
-                val(r.getBudget()),
-                val(r.getLoiBackground()),
+                safe(r.getProductServices()),
+                safe(r.getProjectDescription()),
+                safe(r.getExpectedOutcome()),
+                safe(r.getBudget()),
+                safe(r.getLoiBackground()),
                 stringVal(form.get("productionProblemsConcerns")),
                 stringVal(form.get("processFlow")),
                 stringVal(form.get("enterpriseBackground")),
@@ -281,7 +285,7 @@ public class Tna2GenerationService {
                 "Insufficient process controls for consistent product quality and shelf life"
         ));
 
-        String project = val(r.getProjectDescription());
+        String project = safe(r.getProjectDescription());
         doc.setProposedInterventions(List.of(
                 project.isBlank()
                         ? "Upgrade core production equipment aligned with SETUP program objectives."
@@ -465,7 +469,7 @@ public class Tna2GenerationService {
         if (tables != null && tables.getEquipment() != null) {
             int i = 0;
             for (List<String> row : tables.getEquipment()) {
-                if (row == null || row.stream().allMatch(this::isBlankString)) continue;
+                if (row == null || row.stream().allMatch(cell -> isBlank(cell))) continue;
                 Tna2EquipmentRowDto eq = new Tna2EquipmentRowDto();
                 eq.setName(row.size() > 0 ? row.get(0) : "Recommended equipment");
                 eq.setSpecifications(row.size() > 1 ? row.get(1) : "Per TNA assessment");
@@ -504,7 +508,7 @@ public class Tna2GenerationService {
         quality.setChange("Improvement expected");
 
         pi.setKpis(List.of(volume, quality));
-        String outcome = val(r.getExpectedOutcome());
+        String outcome = safe(r.getExpectedOutcome());
         pi.setOutcomes(List.of(
                 outcome.isBlank()
                         ? "Improved productivity and product quality through appropriate technology interventions."
@@ -545,26 +549,4 @@ public class Tna2GenerationService {
         return sb.toString();
     }
 
-    private static String stringVal(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private static String val(String value) {
-        return value == null || value.trim().isEmpty() ? "" : value.trim();
-    }
-
-    private static String firstNonBlank(String... values) {
-        for (String v : values) {
-            if (v != null && !v.trim().isEmpty()) return v.trim();
-        }
-        return "";
-    }
-
-    private static String safe(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    private boolean isBlankString(String value) {
-        return value == null || value.trim().isEmpty();
-    }
 }

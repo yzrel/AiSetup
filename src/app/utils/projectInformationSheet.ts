@@ -14,6 +14,7 @@ import { getApprovalLetterForm, getApprovalLetterStored, getSignedMoa } from "./
 import { getProjectProposalForm } from "./projectProposal";
 import { isDemoModeActive } from "./demoMode";
 import { a4PageRule, A4_MARGIN_DEFAULT, A4_MARGIN_PRE_PIS } from "./printPage";
+import { printHtmlDocument } from "./printHtml";
 import { formatFormMention } from "../constants/setupForms";
 import {
   emptyEmploymentMatrix,
@@ -104,7 +105,7 @@ export function buildPrePisDraft(applicant: Applicant | null): PrePisDraftForm {
     mobilePhone: isMobile ? contact : "",
     email: pp.email || applicant.emailAddress || "",
     yearEstablished: pp.yearEstablished,
-    dateAssistanceApproved: approval.letterDate || "",
+    dateAssistanceApproved: approval.approvalDate || "",
     assetsLand: "",
     assetsBuilding: "",
     assetsEquipment: "",
@@ -507,16 +508,7 @@ export function printPrePisPdf(applicationId?: string) {
     ? `SETUP-Form-008-PrePIS-${applicationId}`
     : "SETUP-Form-008-PrePIS";
   if (!el) return;
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${getPrePisPrintStyles()}</style></head>
-    <body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+  printHtmlDocument(title, el.innerHTML, getPrePisPrintStyles());
 }
 
 export function downloadPrePisPdf(applicationId?: string) {
@@ -540,16 +532,7 @@ export function printPisOngoingPdf(filingId: string, applicationId?: string) {
     ? `SETUP-Form-009-PIS-${applicationId}`
     : "SETUP-Form-009-PIS";
   if (!el) return;
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${getPisOngoingPrintStyles()}</style></head>
-    <body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+  printHtmlDocument(title, el.innerHTML, getPisOngoingPrintStyles());
 }
 
 export { DOST_BLUE as PIS_DOST_BLUE };

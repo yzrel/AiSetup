@@ -19,6 +19,7 @@ import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
 import { formatFormMention } from "../constants/setupForms";
 import { a4PageRule, A4_MARGIN_DEFAULT } from "./printPage";
+import { escapeHtml, printHtmlDocument } from "./printHtml";
 import { getSignedDocument, getSignedDocuments } from "./documentDelivery";
 import { sumWithdrawalEquipment } from "./withdrawalRequestLetter";
 
@@ -227,7 +228,7 @@ export function getLandBankOverview(applicant: Applicant | null): LandBankOvervi
   return {
     projectTitle: pp.projectTitle || approval.projectTitle || "—",
     enterpriseName: pp.firmName || applicant.enterpriseName || "—",
-    accountHolder: approval.recipientName || pp.ownerName || applicant.applicantName || "—",
+    accountHolder: approval.recipientName || pp.proponentName || applicant.applicantName || "—",
     approvedAmount: amount,
     remainingBalance: formatPeso(remaining),
     totalWithdrawal: formatPeso(withdrawn),
@@ -392,20 +393,20 @@ export function downloadAuthorityLetterPdf(
       <p style="text-align:center;font-size:11px;margin:0 0 4px;">Republic of the Philippines</p>
       <p style="text-align:center;font-weight:bold;margin:0 0 16px;">DEPARTMENT OF SCIENCE AND TECHNOLOGY</p>
       <p style="text-align:center;font-weight:bold;margin:0 0 24px;">AUTHORITY TO WITHDRAW — SETUP FUND (${trancheWord.toUpperCase()} TRANCHE)</p>
-      <p><strong>Reference:</strong> ${ref}</p>
+      <p><strong>Reference:</strong> ${escapeHtml(ref)}</p>
       <p><strong>Date:</strong> ${new Date().toLocaleDateString("en-PH", { dateStyle: "long" })}</p>
       <p style="margin-top:20px;">To: Land Bank of the Philippines</p>
       <p style="text-align:justify;margin-top:16px;">
-        This is to authorize <strong>${overview.accountHolder}</strong>, representing
-        <strong>${overview.enterpriseName}</strong>, to withdraw the ${trancheWord} tranche of SETUP
+        This is to authorize <strong>${escapeHtml(overview.accountHolder)}</strong>, representing
+        <strong>${escapeHtml(overview.enterpriseName)}</strong>, to withdraw the ${trancheWord} tranche of SETUP
         project funds from the dedicated savings account for the project titled
-        <strong>${overview.projectTitle}</strong>, in the amount of
-        <strong>${withdrawAmount}</strong>
-        ${pkg.supplierName ? ` for equipment procurement at <strong>${pkg.supplierName}</strong>` : ""},
+        <strong>${escapeHtml(overview.projectTitle)}</strong>, in the amount of
+        <strong>${escapeHtml(withdrawAmount)}</strong>
+        ${pkg.supplierName ? ` for equipment procurement at <strong>${escapeHtml(pkg.supplierName)}</strong>` : ""},
         subject to DOST SETUP guidelines and documentary requirements.
       </p>
       <p style="text-align:justify;margin-top:12px;">
-        Remaining project balance after this withdrawal: <strong>${overview.remainingBalance}</strong>.
+        Remaining project balance after this withdrawal: <strong>${escapeHtml(overview.remainingBalance)}</strong>.
       </p>
       <p style="margin-top:48px;font-weight:bold;">DOST REGION XII — SETUP 4.0</p>
       <p style="font-size:10px;color:#6b7280;margin-top:32px;text-align:center;">
@@ -414,16 +415,11 @@ export function downloadAuthorityLetterPdf(
     </div>
   `;
 
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${a4PageRule(A4_MARGIN_DEFAULT)} body { font-family: Georgia, serif; }</style></head>
-    <body>${html}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+  printHtmlDocument(
+    title,
+    html,
+    `${a4PageRule(A4_MARGIN_DEFAULT)} body { font-family: Georgia, serif; }`,
+  );
 }
 
 /** Proposal budget lines not yet assigned to either tranche (by sourceBudgetItemId). */

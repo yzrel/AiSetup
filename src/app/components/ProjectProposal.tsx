@@ -25,6 +25,7 @@ import { EditableTableResponsive } from "./ui/editable-table-responsive";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
@@ -290,14 +291,7 @@ export function ProjectProposal({
     loadApplicant(applicant);
   }, [applicant?.id, loadApplicant]);
 
-  useEffect(() => {
-    return applicantStore.subscribe(() => {
-      if (applicant) {
-        const updated = applicantStore.getById(applicant.id);
-        if (updated) loadApplicant(updated);
-      }
-    });
-  }, [applicant?.id, loadApplicant]);
+  useApplicantSubscription(applicant?.id, loadApplicant);
 
   const patchForm = (patch: Partial<ProjectProposalForm>) => {
     setForm((prev) => ({ ...prev, ...patch }));

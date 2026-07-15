@@ -65,7 +65,9 @@ export async function suggestAiField(
     if (err instanceof ApiError && err.status < 500) {
       throw err;
     }
-    throw new Error("Could not generate a suggestion for this field.");
+    throw new Error("Could not generate a suggestion for this field.", {
+      cause: err,
+    });
   }
 
   if (localFallback) {

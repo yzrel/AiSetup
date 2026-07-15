@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalDocumentResponse;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalGenerationRequest;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalRiskRowDto;
@@ -17,6 +18,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static ph.gov.dost.aisetup.common.TextUtils.firstNonBlank;
+import static ph.gov.dost.aisetup.common.TextUtils.safe;
+import static ph.gov.dost.aisetup.common.TextUtils.stringVal;
 
 @Service
 public class ProjectProposalGenerationService {
@@ -32,25 +37,24 @@ public class ProjectProposalGenerationService {
     }
 
     public ProjectProposalDocumentResponse generate(ProjectProposalGenerationRequest request) {
-        boolean aiGenerated;
-        ProjectProposalDocumentResponse response;
+        AiTemplateFallback.Result<ProjectProposalDocumentResponse> result = AiTemplateFallback.generate(
+                log,
+                "Project Proposal",
+                () -> {
+                    JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
+                    ProjectProposalDocumentResponse doc =
+                            objectMapper.treeToValue(aiNode, ProjectProposalDocumentResponse.class);
+                    if (doc == null || isEmptyDocument(doc)) {
+                        throw new IllegalStateException("AI returned empty document");
+                    }
+                    return doc;
+                },
+                () -> buildTemplateDocument(request));
 
-        try {
-            JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
-            response = objectMapper.treeToValue(aiNode, ProjectProposalDocumentResponse.class);
-            if (response == null || isEmptyDocument(response)) {
-                throw new IllegalStateException("AI returned empty document");
-            }
-            aiGenerated = true;
-        } catch (Exception e) {
-            log.info("Using template Project Proposal (AI unavailable): {}", e.getMessage());
-            response = buildTemplateDocument(request);
-            aiGenerated = false;
-        }
-
+        ProjectProposalDocumentResponse response = result.value();
         enrichMetadata(request, response);
         response.setGeneratedAt(Instant.now().toString());
-        response.setAiGenerated(aiGenerated);
+        response.setAiGenerated(result.aiGenerated());
         return response;
     }
 
@@ -95,15 +99,15 @@ public class ProjectProposalGenerationService {
                 Enterprise background (draft): %s
                 Attachments provided: %s
                 """.formatted(
-                val(r.getApplicationId()),
-                val(r.getEnterpriseName()),
-                val(r.getApplicantName()),
-                val(r.getProvince()),
-                val(r.getBusinessSector()),
-                val(r.getProductServices()),
-                val(r.getProjectDescription()),
-                val(r.getExpectedOutcome()),
-                val(r.getBudget()),
+                safe(r.getApplicationId()),
+                safe(r.getEnterpriseName()),
+                safe(r.getApplicantName()),
+                safe(r.getProvince()),
+                safe(r.getBusinessSector()),
+                safe(r.getProductServices()),
+                safe(r.getProjectDescription()),
+                safe(r.getExpectedOutcome()),
+                safe(r.getBudget()),
                 stringVal(form.get("projectTitle")),
                 stringVal(form.get("proponentName")),
                 stringVal(form.get("amountRequested")),
@@ -155,12 +159,12 @@ public class ProjectProposalGenerationService {
 
     private ProjectProposalDocumentResponse buildTemplateDocument(ProjectProposalGenerationRequest r) {
         Map<String, Object> form = r.getForm();
-        String ent = val(r.getEnterpriseName());
+        String ent = safe(r.getEnterpriseName());
         ProjectProposalDocumentResponse doc = new ProjectProposalDocumentResponse();
 
         doc.setGeneralObjective(firstNonBlank(
                 stringVal(form.get("generalObjective")),
-                val(r.getExpectedOutcome()),
+                safe(r.getExpectedOutcome()),
                 "To upgrade the technology and productivity of " + ent + " through DOST-SETUP assistance."
         ));
 
@@ -175,12 +179,12 @@ public class ProjectProposalGenerationService {
 
         doc.setEnterpriseBackground(firstNonBlank(
                 stringVal(form.get("enterpriseBackground")),
-                ent + " operates in " + val(r.getBusinessSector()) + " and seeks SETUP support for technology upgrading."
+                ent + " operates in " + safe(r.getBusinessSector()) + " and seeks SETUP support for technology upgrading."
         ));
 
         doc.setSkillsExpertise(firstNonBlank(
                 stringVal(form.get("skillsExpertise")),
-                val(r.getApplicantName()) + " leads enterprise operations with experience in production and client service."
+                safe(r.getApplicantName()) + " leads enterprise operations with experience in production and client service."
         ));
 
         doc.setPlantSiteNarrative(firstNonBlank(
@@ -188,7 +192,7 @@ public class ProjectProposalGenerationService {
                 "The enterprise is located at " + firstNonBlank(
                         stringVal(form.get("firmAddress")),
                         stringVal(form.get("proponentAddress")),
-                        val(r.getProvince())
+                        safe(r.getProvince())
                 ) + "."
         ));
 
@@ -204,7 +208,7 @@ public class ProjectProposalGenerationService {
 
         doc.setMarketSituation(firstNonBlank(
                 stringVal(form.get("marketSituation")),
-                "Market demand in " + val(r.getProvince()) + " supports expansion of " + ent + "'s products and services."
+                "Market demand in " + safe(r.getProvince()) + " supports expansion of " + ent + "'s products and services."
         ));
 
         doc.setProductDemandSupply(firstNonBlank(
@@ -244,7 +248,7 @@ public class ProjectProposalGenerationService {
         doc.setInterventionProblem(stringVal(form.get("interventionProblem")));
         doc.setInterventionProposed(firstNonBlank(
                 stringVal(form.get("interventionProposed")),
-                val(r.getProjectDescription())
+                safe(r.getProjectDescription())
         ));
         doc.setInterventionEquipment(stringVal(form.get("interventionEquipment")));
         doc.setInterventionImpact(firstNonBlank(
@@ -331,22 +335,4 @@ public class ProjectProposalGenerationService {
         return out;
     }
 
-    private static String stringVal(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private static String val(String value) {
-        return value == null || value.trim().isEmpty() ? "" : value.trim();
-    }
-
-    private static String firstNonBlank(String... values) {
-        for (String v : values) {
-            if (v != null && !v.trim().isEmpty()) return v.trim();
-        }
-        return "";
-    }
-
-    private static String safe(String value) {
-        return value == null ? "" : value.trim();
-    }
 }

@@ -27,6 +27,11 @@ public class ApplicantRecord {
     @Column(columnDefinition = "CLOB")
     private String moduleDataJson;
 
+    /** Top-level applicant fields (name, contact, sector, ...) so the frontend can rebuild the full record. */
+    @Lob
+    @Column(columnDefinition = "CLOB")
+    private String profileJson;
+
     private Instant updatedAt;
 
     public String getId() {
@@ -67,6 +72,14 @@ public class ApplicantRecord {
 
     public void setModuleDataJson(String moduleDataJson) {
         this.moduleDataJson = moduleDataJson;
+    }
+
+    public String getProfileJson() {
+        return profileJson;
+    }
+
+    public void setProfileJson(String profileJson) {
+        this.profileJson = profileJson;
     }
 
     public Instant getUpdatedAt() {

@@ -957,5 +957,7 @@ export interface ApiApplicantRecord {
   enterpriseName: string;
   currentModule: string;
   moduleData: Record<string, unknown>;
+  /** Top-level applicant fields (name, contact, sector, ...) for full rehydration. */
+  profile?: Record<string, unknown>;
   updatedAt?: string;
 }

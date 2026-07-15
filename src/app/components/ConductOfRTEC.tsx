@@ -20,6 +20,7 @@ import {
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import type { RtecReportForm } from "../api/types";
@@ -79,16 +80,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
     loadForm(applicant);
   }, [applicant?.id, loadForm]);
 
-  useEffect(() => {
-    return applicantStore.subscribe(() => {
-      if (applicant) {
-        const updated = applicantStore.getById(applicant.id);
-        if (updated) {
-          setForm(getRtecReportForm(updated));
-        }
-      }
-    });
-  }, [applicant?.id]);
+  useApplicantSubscription(applicant?.id, loadForm);
 
   const rtecReady = hasRtecPrerequisites(applicant);
   const ppReady = hasProjectProposalPrerequisite(applicant);

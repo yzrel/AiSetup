@@ -1,5 +1,5 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "aisetup",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -10,6 +10,9 @@
     "prebackend": "npm run ensure:env",
     "dev": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-frontend.ps1",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
     "package:local": "powershell -ExecutionPolicy Bypass -File scripts/package-local.ps1",
     "preview": "vite preview",
     "backend:setup": "powershell -ExecutionPolicy Bypass -File backend/scripts/setup-jdk.ps1",
@@ -75,11 +78,23 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "4.1.12",
+    "@types/node": "^26.1.1",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "4.7.0",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "jsdom": "^29.1.1",
     "sharp": "^0.35.1",
     "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0",
+    "vite": "6.3.5",
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "react": "18.3.1",

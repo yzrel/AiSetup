@@ -252,8 +252,11 @@ function useMergedData(
     formField: keyof ProjectProposalForm,
     docField?: keyof ProjectProposalDocumentResponse,
   ) => {
-    if (doc && docField && doc[docField]?.length) {
-      return doc[docField] as string[];
+    if (doc && docField) {
+      const docValue = doc[docField];
+      if (Array.isArray(docValue) && docValue.length) {
+        return docValue as string[];
+      }
     }
     const v = form[formField];
     return Array.isArray(v) ? (v as string[]) : [];
@@ -668,7 +671,10 @@ export function ProjectProposalDocument({
             </tr>
           </thead>
           <tbody>
-            {(riskRows.length ? riskRows : [{ risk: "", assumption: "", plan: "" }]).map(
+            {(riskRows.length
+              ? riskRows
+              : [{ id: "empty-risk-row", risk: "", assumption: "", plan: "" }]
+            ).map(
               (row) => (
                 <tr key={row.id}>
                   <td>{val(row.risk) || "\u00a0"}</td>

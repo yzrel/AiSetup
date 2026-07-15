@@ -7,6 +7,7 @@ import { FileText, CheckCircle, Clock } from "lucide-react";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
+import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW } from "./ModuleWorkflowLayout";
 import { formatFormMention } from "../constants/setupForms";
 import { notifyTna2Published } from "../utils/notificationHelpers";
@@ -65,14 +66,7 @@ export function TNA2TechnicalReport({
     loadApplicant(applicant);
   }, [applicant?.id, loadApplicant]);
 
-  useEffect(() => {
-    return applicantStore.subscribe(() => {
-      if (applicant) {
-        const updated = applicantStore.getById(applicant.id);
-        if (updated) loadApplicant(updated);
-      }
-    });
-  }, [applicant?.id, loadApplicant]);
+  useApplicantSubscription(applicant?.id, loadApplicant);
 
   const published = getPublishedTna2(applicant);
   const displayDoc = isStaff ? draft : published;

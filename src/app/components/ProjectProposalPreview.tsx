@@ -147,8 +147,11 @@ export function ProjectProposalPreview({
     formField: keyof ProjectProposalForm,
     docField?: keyof ProjectProposalDocumentResponse,
   ) => {
-    if (doc && docField && doc[docField]?.length) {
-      return doc[docField] as string[];
+    if (doc && docField) {
+      const docValue = doc[docField];
+      if (Array.isArray(docValue) && docValue.length) {
+        return docValue as string[];
+      }
     }
     const val = form[formField];
     return Array.isArray(val) ? (val as string[]) : [];

@@ -42,6 +42,12 @@ interface GeneratedReport {
   title: string;
   type: "tna" | "proposal" | "checklist" | "summary";
   sections: { heading: string; content: string }[];
+  summary?: string;
+  metadata?: {
+    generatedAt: string;
+    dataSource: string;
+    period: string;
+  };
 }
 
 type Lang = "en-PH" | "fil-PH";
@@ -209,6 +215,7 @@ function generateMockResponse(userText: string): string {
 function generateMockReport(type: string): GeneratedReport {
   const baseReport: GeneratedReport = {
     title: "",
+    type: "summary",
     summary: "",
     sections: [],
     metadata: {
@@ -328,7 +335,8 @@ export function DOSTChatbot() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // SpeechRecognition is a non-standard browser API without bundled TS types
+  const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
   // Speech synthesis ref
@@ -642,7 +650,7 @@ export function DOSTChatbot() {
               {/* Mute/unmute TTS */}
               <button
                 onClick={() => {
-                  voiceEnabled ? stopSpeaking() : null;
+                  if (voiceEnabled) stopSpeaking();
                   setVoiceEnabled((p) => !p);
                 }}
                 title={

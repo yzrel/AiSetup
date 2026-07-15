@@ -14,18 +14,12 @@ export class ApiError extends Error {
   }
 }
 
-function authHeaders(): HeadersInit {
-  const token = localStorage.getItem("aisetup_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    ...authHeaders(),
     ...init.headers,
   };
 
@@ -40,15 +34,8 @@ export async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
-/** Placeholder endpoints — wire to Spring Boot controllers when backend is ready */
 export const api = {
   health: () => apiFetch<{ status: string }>("/health"),
-
-  login: (email: string, password: string) =>
-    apiFetch<import("./types").ApiAuthResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
 
   getApplicant: (id: string) =>
     apiFetch<import("./types").ApiApplicant>(`/applicants/${id}`),
@@ -115,6 +102,9 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+
+  listApplicantRecords: () =>
+    apiFetch<import("./types").ApiApplicantRecord[]>("/applicants"),
 
   generateLbpIntroduction: (payload: Record<string, unknown>) =>
     apiFetch<{ applicationId: string; status: string; message: string }>(

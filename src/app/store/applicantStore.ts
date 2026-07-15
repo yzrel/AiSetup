@@ -11,7 +11,11 @@ import {
   greenValleyLateStageModuleData,
   techInnovationsProjectProposal,
 } from "../data/demoSeedModuleData";
-import { syncApplicantToBackend } from "../utils/applicantPersistence";
+import {
+  fetchBackendApplicants,
+  syncApplicantToBackend,
+} from "../utils/applicantPersistence";
+import { getLocalPassword, saveLocalPassword } from "../utils/localCredentials";
 // Simple in-memory store using a singleton + event-based reactivity
 
 export type ModuleStatus =
@@ -383,6 +387,62 @@ const seedApplicants: Applicant[] = [
 
 let applicants: Applicant[] = [...seedApplicants];
 let listeners: (() => void)[] = [];
+let hydrated = false;
+
+function parseWhen(value: string | undefined | null): number {
+  if (!value) return 0;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+/** Rebuild an Applicant from a persisted backend record (profile + moduleData). */
+function applicantFromRecord(
+  record: import("../api/types").ApiApplicantRecord,
+  local: Applicant | undefined,
+): Applicant {
+  const profile = (record.profile ?? {}) as Partial<Applicant>;
+  const moduleData = {
+    ...((record.moduleData ?? {}) as Record<string, any>),
+  };
+  // Passwords are stripped before sync; restore from this browser's mirror.
+  const localPassword = getLocalPassword(record.id) ?? local?.moduleData?.password;
+  if (localPassword && !moduleData.password) {
+    moduleData.password = localPassword;
+  }
+  const base: Applicant = local ?? {
+    id: record.id,
+    applicationId: record.applicationId,
+    applicantName: "",
+    designation: "",
+    enterpriseName: record.enterpriseName ?? "",
+    contactNumber: "",
+    emailAddress: "",
+    businessType: "",
+    businessNature: "",
+    businessSector: "",
+    yearsOfOperation: "",
+    enterpriseType: "",
+    msmeSize: "",
+    assetSize: "",
+    region: REGION_12_LABEL,
+    address: "",
+    currentModule: "prescreening",
+    qualified: false,
+    submittedAt: "",
+    lastUpdated: "",
+    moduleData: {},
+  };
+  return {
+    ...base,
+    ...profile,
+    id: record.id,
+    applicationId: record.applicationId ?? base.applicationId,
+    enterpriseName: record.enterpriseName ?? base.enterpriseName,
+    currentModule: (record.currentModule as ModuleStatus) ?? base.currentModule,
+    moduleData,
+    lastUpdated: record.updatedAt ?? base.lastUpdated,
+  };
+}
 
 export const applicantStore = {
   getAll: () => applicants,
@@ -444,27 +504,64 @@ export const applicantStore = {
     applicants.filter(a => a.currentModule === module),
 
   add: (data: Omit<Applicant, 'id' | 'applicationId' | 'submittedAt' | 'lastUpdated'>) => {
-    const now = new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
     const newApp: Applicant = {
       ...data,
       id: String(Date.now()),
       applicationId: generateAppId(),
-      submittedAt: now,
-      lastUpdated: now,
+      submittedAt: new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }),
+      lastUpdated: new Date().toISOString(),
     };
     applicants = [...applicants, newApp];
+    if (newApp.moduleData?.password) {
+      saveLocalPassword(newApp.id, String(newApp.moduleData.password));
+    }
+    syncApplicantToBackend(newApp);
     listeners.forEach(l => l());
     return newApp;
   },
 
   update: (id: string, updates: Partial<Applicant>) => {
-    const now = new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
     applicants = applicants.map(a =>
-      a.id === id ? { ...a, ...updates, lastUpdated: now } : a
+      a.id === id ? { ...a, ...updates, lastUpdated: new Date().toISOString() } : a
     );
     const updated = applicants.find(a => a.id === id);
-    if (updated) syncApplicantToBackend(updated);
+    if (updated) {
+      if (updated.moduleData?.password) {
+        saveLocalPassword(updated.id, String(updated.moduleData.password));
+      }
+      syncApplicantToBackend(updated);
+    }
     listeners.forEach(l => l());
+  },
+
+  /**
+   * One-shot boot hydration from the backend so registrations and module
+   * progress survive a page reload. Backend records win over stale local
+   * copies; local edits made while the fetch was in flight are kept.
+   */
+  hydrateFromBackend: async () => {
+    if (hydrated) return;
+    hydrated = true;
+    const records = await fetchBackendApplicants();
+    if (!records || records.length === 0) return;
+    let changed = false;
+    let next = [...applicants];
+    for (const record of records) {
+      if (!record?.id) continue;
+      const index = next.findIndex((a) => a.id === record.id);
+      const local = index >= 0 ? next[index] : undefined;
+      if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
+        continue; // local copy is newer (edited during hydration)
+      }
+      const merged = applicantFromRecord(record, local);
+      if (index >= 0) next[index] = merged;
+      else next = [...next, merged];
+      changed = true;
+    }
+    if (changed) {
+      applicants = next;
+      listeners.forEach((l) => l());
+    }
   },
 
   advanceModule: (id: string, nextModule: ModuleStatus) => {

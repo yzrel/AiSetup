@@ -6,7 +6,6 @@
 
 import { staffContextStore } from "./staffContextStore";
 import { clearAuthUiState, clearCurrentView } from "./navigationStore";
-import { isDemoModeActive } from "../utils/demoMode";
 
 export type UserRole =
   | "applicant"
@@ -192,11 +191,13 @@ export const authStore = {
 
   isClientRole: (role: UserRole) => role === "client" || role === "applicant",
 
+  // Demo mode may skip workflow validators, but staff-only views stay
+  // role-gated (RTEC and staff dashboards must never open to clients).
   canAccessView: (role: UserRole, view: AdminView) =>
-    isDemoModeActive() || (VIEW_PERMISSIONS[view]?.includes(role) ?? false),
+    VIEW_PERMISSIONS[view]?.includes(role) ?? false,
 
   canAccessDashboardTab: (role: UserRole, tab: DashboardTab) =>
-    isDemoModeActive() || (DASHBOARD_TAB_PERMISSIONS[tab]?.includes(role) ?? false),
+    DASHBOARD_TAB_PERMISSIONS[tab]?.includes(role) ?? false,
 
   getAllowedViews: (role: UserRole): AdminView[] =>
     (Object.keys(VIEW_PERMISSIONS) as AdminView[]).filter((view) =>

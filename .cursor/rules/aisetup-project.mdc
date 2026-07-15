@@ -1,0 +1,51 @@
+---
+description: Core aiSETUP project conventions (stack, domain, responsive UI, gates, print/AI)
+alwaysApply: true
+---
+
+# aiSETUP project conventions
+
+## Product / domain
+
+- Digitize **DOST SETUP** for **Region XII (SOCCSKSARGEN)**; case IDs like `LOI-YYYY-######`.
+- Modules follow `MODULE_ORDER`; use `formatFormMention` / `SETUP_FORMS` for titles — do **not** renumber forms vs the regional pack without an explicit DOST XII decision.
+- Qualification: `applicant.qualified` gates Enterprise+ SETUP. Unqualified clients who pick a recommended program get a **program LOI** (no seed-fund budget paragraph, no refund commitment) — not a SETUP LOI.
+- Keep FE/BE Region XII office maps in sync (`provincialOffice.ts` ↔ `ProvincialOfficeResolver`).
+
+## Stack / architecture
+
+- **FE:** React 18 + Vite + Tailwind 4 + shadcn under `src/app/components/ui/`; path alias `@` → `src`.
+- **BE:** Spring Boot 3.3 / Java 17, package `ph.gov.dost.aisetup.*`, servlet context-path `/api`.
+- Feature screen in `components/` + domain logic in `utils/` + case payload in `applicant.moduleData`; **normalize on read** for legacy shapes.
+- State: existing singleton stores + `subscribe` / `aisetup.*` storage keys. Do not introduce Redux.
+- Staff modules: `ModuleWorkflowLayout` + DOST blues from `moduleTheme.ts`.
+
+## Responsive UI (required)
+
+- **All screens and module UIs must be responsive** (mobile and desktop).
+- Prefer shared tokens: `MODULE_PAGE`, `FORM_GRID_2` / `FORM_GRID_3`, `ACTION_ROW` from `moduleTheme.ts`; use `useIsMobile` / `ResponsiveDataView` when lists/tables need mobile cards.
+- Mobile-first Tailwind (`sm:` / `md:` / `lg:`). No fixed-width desktop-only grids or horizontal overflow that breaks phones.
+- New UI must be usable on narrow viewports without a separate “mobile pass.”
+
+## Gates, demo, LandBank
+
+- Respect progress/publish gates (`applicantProgress`, staff publish before clients see official docs). RTEC remains staff-only.
+- Demo mode may unlock or skip validators but **must keep visible amber warnings**.
+- LandBank: drafts must persist and display; signed snapshot gates the withdrawal letter (unless demo). Use complete save helpers and tranche rules (T1/T2).
+
+## Official documents / print / AI
+
+- Print layout details live in existing `.cursor/rules/*-layout.mdc` files — follow those; don’t contradict them.
+- Official docs: A4, match annex layout, hide portal chrome on print. Prefer in-page `#…-print-root` + `window.print`; avoid popup `document.write` for long forms (freeze risk).
+- AI is optional: Anthropic with **template fallback**. Never overwrite user-entered or LOI-forwarded fields.
+
+## Commits
+
+- Commit messages start with `AISETUP - MM/DD/YYYY` (today's date), e.g. `AISETUP - 07/15/2026 : short summary`.
+- Never add `Co-authored-by: Cursor <cursoragent@cursor.com>` (or any co-author trailer) to commit messages.
+
+## Auth / safety
+
+- Auth is demo/client-side RBAC — do not assume Spring Security or Bearer enforcement on the backend.
+- Do not revive the disabled client community portal without a product decision.
+- Never commit secrets (`ANTHROPIC_API_KEY`, `.env`).

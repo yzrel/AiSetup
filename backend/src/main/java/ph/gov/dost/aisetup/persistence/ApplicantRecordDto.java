@@ -11,4 +11,5 @@ public record ApplicantRecordDto(
         String enterpriseName,
         String currentModule,
         Map<String, Object> moduleData,
+        Map<String, Object> profile,
         String updatedAt) {}

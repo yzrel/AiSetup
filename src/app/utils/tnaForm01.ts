@@ -66,12 +66,12 @@ export function buildTna1GenerationPayload(
   };
 }
 
-export function mergeAiTnaSuggestions(
-  currentForm: Record<string, unknown>,
+export function mergeAiTnaSuggestions<T extends Record<string, unknown>>(
+  currentForm: T,
   currentTables: TnaTables,
   response: Tna1DocumentResponse,
-): { form: Record<string, unknown>; tables: TnaTables } {
-  const form = { ...currentForm };
+): { form: T; tables: TnaTables } {
+  const form: Record<string, unknown> = { ...currentForm };
   const hasProductionPlanFile = !isBlank(form.productionPlanFileName);
   for (const [key, value] of Object.entries(response.form ?? {})) {
     if (key === "productionPlan" && hasProductionPlanFile) continue;
@@ -96,7 +96,7 @@ export function mergeAiTnaSuggestions(
     tables.equipment = response.tables.equipment.map((row) => [...row]);
   }
 
-  return { form, tables };
+  return { form: form as T, tables };
 }
 
 export function buildLocalTna1Document(

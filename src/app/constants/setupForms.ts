@@ -130,7 +130,7 @@ export function getSetupFormTitle(key: SetupFormKey): string {
 }
 
 export function getSetupFormRef(key: SetupFormKey): string {
-  const f = SETUP_FORMS[key];
+  const f: SetupFormMeta = SETUP_FORMS[key];
   if (f.program) {
     const annex = f.annex ? ` · ${f.annex}` : "";
     return `${f.program} Form ${f.number}${annex}`;

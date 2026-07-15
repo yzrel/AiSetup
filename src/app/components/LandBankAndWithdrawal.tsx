@@ -134,7 +134,7 @@ export function LandBankAndWithdrawal({
   const [lbpPublishNotice, setLbpPublishNotice] = useState("");
   const [, setTick] = useState(0);
 
-  const sectionRefs = useRef<Partial<Record<SectionId, HTMLDivElement | null>>>({});
+  const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
 

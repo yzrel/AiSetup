@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.tna1.dto.Tna1DocumentResponse;
 import ph.gov.dost.aisetup.tna1.dto.Tna1GenerationRequest;
 import ph.gov.dost.aisetup.tna1.dto.Tna1TablesDto;
@@ -18,6 +19,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static ph.gov.dost.aisetup.common.TextUtils.firstNonBlank;
+import static ph.gov.dost.aisetup.common.TextUtils.isBlank;
+import static ph.gov.dost.aisetup.common.TextUtils.safe;
+import static ph.gov.dost.aisetup.common.TextUtils.stringVal;
 
 @Service
 public class Tna1GenerationService {
@@ -62,30 +68,35 @@ public class Tna1GenerationService {
         this.anthropicClient = anthropicClient;
     }
 
-    public Tna1DocumentResponse generate(Tna1GenerationRequest request) {
-        Map<String, Object> suggestions = new LinkedHashMap<>();
-        Tna1TablesDto tableSuggestions = new Tna1TablesDto();
-        boolean aiGenerated;
+    private record Suggestions(Map<String, Object> form, Tna1TablesDto tables) {}
 
-        try {
-            JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
-            extractFormSuggestions(aiNode.path("form"), request.getForm(), suggestions);
-            extractTableSuggestions(aiNode.path("tables"), request.getTables(), tableSuggestions);
-            aiGenerated = !suggestions.isEmpty() || hasTableData(tableSuggestions);
-            if (!aiGenerated) {
-                throw new IllegalStateException("AI returned no suggestions");
-            }
-        } catch (Exception e) {
-            log.info("Using template TNA Form 01 suggestions (AI unavailable): {}", e.getMessage());
-            buildTemplateSuggestions(request, suggestions, tableSuggestions);
-            aiGenerated = false;
-        }
+    public Tna1DocumentResponse generate(Tna1GenerationRequest request) {
+        AiTemplateFallback.Result<Suggestions> result = AiTemplateFallback.generate(
+                log,
+                "TNA Form 01 suggestions",
+                () -> {
+                    Map<String, Object> form = new LinkedHashMap<>();
+                    Tna1TablesDto tables = new Tna1TablesDto();
+                    JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
+                    extractFormSuggestions(aiNode.path("form"), request.getForm(), form);
+                    extractTableSuggestions(aiNode.path("tables"), request.getTables(), tables);
+                    if (form.isEmpty() && !hasTableData(tables)) {
+                        throw new IllegalStateException("AI returned no suggestions");
+                    }
+                    return new Suggestions(form, tables);
+                },
+                () -> {
+                    Map<String, Object> form = new LinkedHashMap<>();
+                    Tna1TablesDto tables = new Tna1TablesDto();
+                    buildTemplateSuggestions(request, form, tables);
+                    return new Suggestions(form, tables);
+                });
 
         Tna1DocumentResponse response = new Tna1DocumentResponse();
-        response.setForm(suggestions);
-        response.setTables(tableSuggestions);
+        response.setForm(result.value().form());
+        response.setTables(result.value().tables());
         response.setGeneratedAt(Instant.now().toString());
-        response.setAiGenerated(aiGenerated);
+        response.setAiGenerated(result.aiGenerated());
         return response;
     }
 
@@ -174,25 +185,25 @@ public class Tna1GenerationService {
                 Sector (form): %s
                 Commodity (form): %s
                 """.formatted(
-                val(r.getApplicationId()),
-                val(r.getEnterpriseName()),
-                val(r.getApplicantName()),
-                val(r.getDesignation()),
-                val(r.getAddress()),
-                val(r.getProvince()),
-                val(r.getEmailAddress()),
-                val(r.getContactNumber()),
-                val(r.getMsmeSize()),
-                val(r.getBusinessType()),
-                val(r.getBusinessSector()),
-                val(r.getBusinessNature()),
-                val(r.getYearsOfOperation()),
-                val(r.getAssetSize()),
-                val(r.getProductServices()),
-                val(r.getProjectDescription()),
-                val(r.getExpectedOutcome()),
-                val(r.getCompanyDescription()),
-                val(r.getLoiBackground()),
+                safe(r.getApplicationId()),
+                safe(r.getEnterpriseName()),
+                safe(r.getApplicantName()),
+                safe(r.getDesignation()),
+                safe(r.getAddress()),
+                safe(r.getProvince()),
+                safe(r.getEmailAddress()),
+                safe(r.getContactNumber()),
+                safe(r.getMsmeSize()),
+                safe(r.getBusinessType()),
+                safe(r.getBusinessSector()),
+                safe(r.getBusinessNature()),
+                safe(r.getYearsOfOperation()),
+                safe(r.getAssetSize()),
+                safe(r.getProductServices()),
+                safe(r.getProjectDescription()),
+                safe(r.getExpectedOutcome()),
+                safe(r.getCompanyDescription()),
+                safe(r.getLoiBackground()),
                 stringVal(r.getForm().get("mainProduct")),
                 stringVal(r.getForm().get("sector")),
                 stringVal(r.getForm().get("commodity"))
@@ -240,24 +251,24 @@ public class Tna1GenerationService {
             Map<String, Object> suggestions,
             Tna1TablesDto tables
     ) {
-        String enterprise = val(r.getEnterpriseName());
+        String enterprise = safe(r.getEnterpriseName());
         String product = firstNonBlank(
                 stringVal(r.getForm().get("mainProduct")),
-                val(r.getProductServices()),
-                val(r.getBusinessNature())
+                safe(r.getProductServices()),
+                safe(r.getBusinessNature())
         );
-        String sector = firstNonBlank(stringVal(r.getForm().get("sector")), val(r.getBusinessSector()));
+        String sector = firstNonBlank(stringVal(r.getForm().get("sector")), safe(r.getBusinessSector()));
         String background = firstNonBlank(
-                val(r.getLoiBackground()),
-                val(r.getCompanyDescription()),
-                val(r.getProjectDescription())
+                safe(r.getLoiBackground()),
+                safe(r.getCompanyDescription()),
+                safe(r.getProjectDescription())
         );
-        String project = val(r.getProjectDescription());
-        String outcome = val(r.getExpectedOutcome());
+        String project = safe(r.getProjectDescription());
+        String outcome = safe(r.getExpectedOutcome());
 
         putIfEmpty(r.getForm(), suggestions, "enterpriseBackground",
                 background.isBlank()
-                        ? enterprise + " is a " + val(r.getMsmeSize()) + " enterprise in the " + sector + " sector engaged in " + product + "."
+                        ? enterprise + " is a " + safe(r.getMsmeSize()) + " enterprise in the " + sector + " sector engaged in " + product + "."
                         : background);
         putIfEmpty(r.getForm(), suggestions, "reasonsForAssistance",
                 project.isBlank()
@@ -341,7 +352,7 @@ public class Tna1GenerationService {
 
     private boolean isTableEmpty(List<List<String>> rows) {
         if (rows == null || rows.isEmpty()) return true;
-        return rows.stream().allMatch(row -> row == null || row.stream().allMatch(this::isBlankString));
+        return rows.stream().allMatch(row -> row == null || row.stream().allMatch(cell -> isBlank(cell)));
     }
 
     private boolean hasTableData(Tna1TablesDto tables) {
@@ -350,28 +361,4 @@ public class Tna1GenerationService {
                 || !isTableEmpty(tables.getEquipment());
     }
 
-    private static String stringVal(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private static boolean isBlank(Object value) {
-        if (value == null) return true;
-        if (value instanceof Boolean) return false;
-        return String.valueOf(value).trim().isEmpty();
-    }
-
-    private boolean isBlankString(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-
-    private static String val(String value) {
-        return value == null || value.trim().isEmpty() ? "" : value.trim();
-    }
-
-    private static String firstNonBlank(String... values) {
-        for (String v : values) {
-            if (v != null && !v.trim().isEmpty()) return v.trim();
-        }
-        return "";
-    }
 }

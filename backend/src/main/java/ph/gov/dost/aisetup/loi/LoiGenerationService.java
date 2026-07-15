@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
 import ph.gov.dost.aisetup.loi.dto.LetterheadDto;
 import ph.gov.dost.aisetup.loi.dto.LoiDocumentResponse;
@@ -19,6 +20,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+
+import static ph.gov.dost.aisetup.common.TextUtils.isBlank;
+import static ph.gov.dost.aisetup.common.TextUtils.safe;
 
 @Service
 public class LoiGenerationService {
@@ -39,16 +43,13 @@ public class LoiGenerationService {
         ProvincialOfficeResolver.ResolvedOffice thru = ProvincialOfficeResolver.resolveProvincialOffice(request.getProvince());
         String salutation = "Dear Regional Director " + ProvincialOfficeResolver.regionalDirectorSurname() + ":";
 
-        List<String> bodyParagraphs;
-        boolean aiGenerated;
-        try {
-            bodyParagraphs = anthropicClient.generateBodyParagraphs(buildPrompt(request));
-            aiGenerated = true;
-        } catch (Exception e) {
-            log.info("Using template LOI body (AI unavailable): {}", e.getMessage());
-            bodyParagraphs = buildTemplateParagraphs(request);
-            aiGenerated = false;
-        }
+        AiTemplateFallback.Result<List<String>> body = AiTemplateFallback.generate(
+                log,
+                "LOI body",
+                () -> anthropicClient.generateBodyParagraphs(buildPrompt(request)),
+                () -> buildTemplateParagraphs(request));
+        List<String> bodyParagraphs = body.value();
+        boolean aiGenerated = body.aiGenerated();
 
         SignatureDto signature = new SignatureDto(
                 safe(request.getSignature()),
@@ -260,14 +261,6 @@ public class LoiGenerationService {
 
     private static String val(String value) {
         return isBlank(value) ? "as indicated in our application" : value.trim();
-    }
-
-    private static String safe(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
     }
 
     private static String formatBudget(String budget) {

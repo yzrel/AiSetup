@@ -16,7 +16,9 @@ spring:
     show-sql: false
   h2:
     console:
-      enabled: true
+      # Disabled by default: the console exposes full SQL access (sa / no password).
+      # Opt in for local debugging only: H2_CONSOLE_ENABLED=true
+      enabled: ${H2_CONSOLE_ENABLED:false}
       path: /h2-console
 
 server:

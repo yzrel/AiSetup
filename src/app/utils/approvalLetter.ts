@@ -13,6 +13,7 @@ import { getProjectProposalForm } from "./projectProposal";
 import { getRtecReportForm, getRtecReportStored } from "./rtecReport";
 import { isDemoModeActive } from "./demoMode";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
+import { printHtmlDocument } from "./printHtml";
 
 const DOST_BLUE = "#0C2461";
 
@@ -154,8 +155,7 @@ export function buildApprovalLetterDraft(applicant: Applicant | null): ApprovalL
   const setupAmount =
     rtec.projectCostSetup ||
     pp.amountRequested ||
-    applicant.approvedAmount ||
-    "";
+    String(applicant.moduleData?.approvedAmount ?? "");
 
   const recipientName = (pp.contactPerson || applicant.applicantName || "").toUpperCase();
 
@@ -270,8 +270,9 @@ export function publishApprovalLetter(
         acknowledgedAt: undefined,
         updatedAt: now,
       } satisfies ApprovalLetterStored,
+      approvedAmount:
+        form.approvedAmount || applicant.moduleData?.approvedAmount,
     },
-    approvedAmount: form.approvedAmount || applicant.approvedAmount,
   });
 }
 
@@ -357,16 +358,7 @@ export function printApprovalLetter(applicationId?: string) {
     window.print();
     return;
   }
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(`
-    <html><head><title>${title}</title>
-    <style>${getApprovalLetterPrintStyles()}</style></head>
-    <body>${el.innerHTML}</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
+  printHtmlDocument(title, el.innerHTML, getApprovalLetterPrintStyles());
 }
 
 export function downloadApprovalLetterPdf(applicationId?: string) {
