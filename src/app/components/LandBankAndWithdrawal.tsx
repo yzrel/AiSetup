@@ -165,11 +165,19 @@ export function LandBankAndWithdrawal({
   const introPublished = hasLbpIntroductionPublished(applicant);
   const prerequisiteOk = hasLandBankPrerequisite(applicant);
   const accountReady = !!form?.accountSnapshot;
+  const withdrawalUnlocked = gateOpen(accountReady);
   const withdrawalReady = form ? isWithdrawalRequestReady(form) : false;
   const tranche1Ready = form ? isTranche1Complete(form.tranches.first) : false;
   const tranche2Ready = form ? isTranche2Complete(form.tranches.second) : false;
   const authorityReady = !!(stored?.submitted || form?.authorityLetterGenerated);
   const uploadedBy = user?.email ?? "applicant";
+
+  useEffect(() => {
+    const notes = form?.accountSnapshot?.notes?.trim();
+    if (notes) {
+      setUploadDate(notes);
+    }
+  }, [form?.accountSnapshot?.notes, form?.accountSnapshot?.uploadedAt]);
 
   const scrollToSection = (id: SectionId) => {
     setActiveSection(id);
@@ -673,7 +681,7 @@ export function LandBankAndWithdrawal({
                   user={user}
                   form={form}
                   tranche={withdrawalTrancheTab}
-                  readOnly={!!stored?.submitted}
+                  readOnly={!!stored?.submitted || !withdrawalUnlocked}
                   isStaff={isStaff}
                 />
 
@@ -688,7 +696,7 @@ export function LandBankAndWithdrawal({
                         withdrawalRemarks: e.target.value,
                       })
                     }
-                    disabled={!!stored?.submitted}
+                    disabled={!!stored?.submitted || !withdrawalUnlocked}
                     placeholder="Additional remarks for withdrawal request..."
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none disabled:opacity-60"
                   />

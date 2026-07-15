@@ -31,24 +31,27 @@ const DIRECTOR_ACCOUNTS: Record<
   {
     officeId: string;
     firstName: string;
+    middleName?: string;
     lastName: string;
     office: string;
     provinces: string[];
   }
 > = {
-  'director.southcot@dost.gov.ph': {
-    officeId: 'south-cotabato',
-    firstName: 'Gisele Eve',
-    lastName: 'Siladan',
-    office: 'PSTO - South Cotabato',
-    provinces: ['South Cotabato'],
-  },
   'director.cotabato@dost.gov.ph': {
     officeId: 'cotabato',
     firstName: 'Michael',
+    middleName: 'T.',
     lastName: 'Mayo',
     office: 'PSTO - Cotabato',
     provinces: ['Cotabato', 'North Cotabato'],
+  },
+  'director.southcot@dost.gov.ph': {
+    officeId: 'south-cotabato',
+    firstName: 'Gisele Eve',
+    middleName: 'O.',
+    lastName: 'Siladan',
+    office: 'PSTO - South Cotabato',
+    provinces: ['South Cotabato'],
   },
   'director.sk@dost.gov.ph': {
     officeId: 'sultan-kudarat',
@@ -135,7 +138,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
           id: `director-${director.officeId}`,
           email,
           firstName: director.firstName,
-          middleName: '',
+          middleName: director.middleName ?? '',
           lastName: director.lastName,
           role: 'provincial-director',
           enterpriseName: director.office,
@@ -375,8 +378,8 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
                 <>
                   <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-                  <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Provincial Director:</span> <span className="font-mono">director.southcot@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Also: <span className="font-mono">director.cotabato</span>, <span className="font-mono">director.sk</span>, <span className="font-mono">director.sargen</span> @dost.gov.ph</p>
+                  <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Provincial Director:</span> <span className="font-mono">director.cotabato@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Also: <span className="font-mono">director.southcot</span>, <span className="font-mono">director.sk</span>, <span className="font-mono">director.sargen</span> @dost.gov.ph</p>
                  </>
               ) : (
                 <>

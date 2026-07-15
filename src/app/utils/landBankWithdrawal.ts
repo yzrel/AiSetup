@@ -19,7 +19,7 @@ import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
 import { formatFormMention } from "../constants/setupForms";
 import { a4PageRule, A4_MARGIN_DEFAULT } from "./printPage";
-import { getSignedDocument } from "./documentDelivery";
+import { getSignedDocument, getSignedDocuments } from "./documentDelivery";
 import { sumWithdrawalEquipment } from "./withdrawalRequestLetter";
 
 const MODULE_KEY = "landBank";
