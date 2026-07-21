@@ -34,7 +34,7 @@ import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applica
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
-import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked } from "./utils/applicantProgress";
+import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack } from "./utils/applicantProgress";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -931,7 +931,15 @@ export default function App() {
               {currentView === "letter-of-intent" && (
                 <LetterOfIntent
                   user={user}
-                  onSubmitSuccess={() => advanceFrom("letter-of-intent")}
+                  onSubmitSuccess={() => {
+                    const app = resolveApplicantForUser(user);
+                    // Program-referral LOI ends here — do not open SETUP modules (TNA1…).
+                    if (app && isOnProgramTrack(app)) {
+                      navigate("dashboard");
+                      return;
+                    }
+                    advanceFrom("letter-of-intent");
+                  }}
                 />
               )}
               {currentView === "tna1" && (

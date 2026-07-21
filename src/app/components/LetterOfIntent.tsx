@@ -1268,6 +1268,12 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <p className="text-sm text-green-600 mt-1">
                 Your LOI has been submitted and recorded in the DOST aiSETUP system. Reference: <strong>{applicant?.applicationId}</strong>
               </p>
+              {hasProgram && (
+                <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-3 text-left">
+                  This is a program referral Letter of Intent for <strong>{selectedProgramName}</strong>, not a SETUP seed-fund application.
+                  Please coordinate with your Provincial Science and Technology Center (PSTC) for next steps under this program.
+                </p>
+              )}
               {generateError && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
                   {generateError}
@@ -1325,7 +1331,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
                 style={{ background: "#059669" }}
               >
-                Continue to Submit Requirements →
+                {hasProgram
+                  ? "Return to Dashboard →"
+                  : "Continue to Submit Requirements →"}
               </button>
               <button
                 type="button"

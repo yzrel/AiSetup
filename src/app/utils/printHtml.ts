@@ -66,7 +66,15 @@ export function printHtmlDocument(
     #${PRINT_ROOT_ID} { display: none; }
     @media print {
       body.${PRINT_BODY_CLASS} > *:not(#${PRINT_ROOT_ID}) { display: none !important; }
-      #${PRINT_ROOT_ID} { display: block; }
+      #${PRINT_ROOT_ID} {
+        display: block !important;
+        visibility: visible !important;
+        color: #111 !important;
+      }
+      #${PRINT_ROOT_ID} * {
+        visibility: visible !important;
+        color: #111 !important;
+      }
       ${styles}
     }
   `;

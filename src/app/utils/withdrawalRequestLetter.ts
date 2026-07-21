@@ -110,24 +110,26 @@ export function buildWithdrawalRequestLetterHtml(
     .map((r) => {
       const item = escapeHtml(r.item.trim() || "—");
       const amt = formatWithdrawalPhp(r.amount);
-      return `<li style="margin:4px 0;">${item} = <strong>${amt}</strong></li>`;
+      return `<li style="margin:4px 0; display:flex; justify-content:space-between; gap:24px;">
+        <span>${item}</span>
+        <span style="white-space:nowrap;">${amt}</span>
+      </li>`;
     })
     .join("");
 
+  // officeLines already include Department / REGIONAL OFFICE / address (see emptyWithdrawalLetterDraft).
   const officeBlock = [
     escapeHtml(draft.addresseeName),
     escapeHtml(draft.addresseeTitle),
-    "Department of Science and Technology",
     ...draft.officeLines.map((l) => escapeHtml(l)),
   ]
     .filter(Boolean)
     .map((l) => `<div>${l}</div>`)
     .join("");
 
+  // Annex sample (1st tranche) opens with "Once again…"; use the same lead for both tranches.
   const thankLead =
-    pkg.tranche === 2
-      ? "Once again, we thank you for the opportunity you have given"
-      : "We thank you for the opportunity you have given";
+    "Once again, we thank you for the opportunity you have given";
 
   return `
     <div style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #111; max-width: 700px;">
@@ -147,15 +149,18 @@ export function buildWithdrawalRequestLetterHtml(
         DOST-SETUP assistance for the purchase of the following equipment at
         <strong>${supplier}</strong>.
       </p>
-      <ul style="margin:8px 0 8px 28px; padding:0;">
+      <ul style="margin:8px 0 8px 28px; padding:0; list-style:disc;">
         ${equipmentLines || "<li>—</li>"}
       </ul>
-      <p style="margin:8px 0 16px 28px;"><strong>Total = ${formatWithdrawalPhp(total)}</strong></p>
+      <p style="margin:8px 0 16px 28px; display:flex; justify-content:space-between; gap:24px;">
+        <span><strong>Total =</strong></span>
+        <span style="white-space:nowrap;"><strong>${formatWithdrawalPhp(total)}</strong></span>
+      </p>
       <p style="text-align:justify; margin:0 0 14px; text-indent:36px;">
         Please find attached copy of canvass of equipment for reference.
       </p>
       <p style="margin:0 0 28px;">Thank you.</p>
-      <p style="margin:0 0 48px;">Very truly yours,</p>
+      <p style="margin:0 0 56px;">Very truly yours,</p>
       <p style="margin:0; font-weight:bold;">${escapeHtml(draft.ownerName.trim() || "—")}</p>
       <p style="margin:0;">${escapeHtml(draft.ownerDesignation.trim() || "Owner")}</p>
       <p style="margin:0;">${firm}</p>

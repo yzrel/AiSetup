@@ -207,6 +207,12 @@ export function isRoutedToMpex(applicant: Applicant | null): boolean {
   return applicant?.moduleData?.routingDecision === "mpex";
 }
 
+/** Unqualified applicant who selected a recommended non-SETUP program (program LOI track). */
+export function isOnProgramTrack(applicant: Applicant | null): boolean {
+  if (!applicant || applicant.qualified) return false;
+  return Boolean(String(applicant.moduleData?.selectedProgramId ?? "").trim());
+}
+
 export function getModuleIndex(module: ModuleStatus): number {
   const idx = MODULE_ORDER.indexOf(module);
   return idx === -1 ? 0 : idx;
@@ -221,6 +227,11 @@ export function isApplicantViewLocked(
 
   if (isRoutedToMpex(applicant)) {
     return view !== "requirements";
+  }
+
+  // Program referral track: only pre-screening + program LOI (no SETUP seed-fund modules).
+  if (isOnProgramTrack(applicant)) {
+    return view !== "prescreening" && view !== "letter-of-intent";
   }
 
   const viewModule = VIEW_TO_MODULE[view];
@@ -265,6 +276,8 @@ export function getApplicantDashboardStats(
     statusLabel = "Completed";
   } else if (isRoutedToMpex(applicant)) {
     statusLabel = "MPEX Track";
+  } else if (isOnProgramTrack(applicant)) {
+    statusLabel = "Program Referral";
   } else if (isAwaitingStaffReview(applicant)) {
     statusLabel = "Under DOST Review";
   } else if (

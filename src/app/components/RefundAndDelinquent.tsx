@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -14,6 +14,8 @@ import {
   Eye,
   FileText,
   RefreshCw,
+  Trash2,
+  Upload,
   User,
 } from "lucide-react";
 import { AuthUser } from "../store/authStore";
@@ -21,7 +23,7 @@ import { applicantStore } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
 import { ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
-import type { DelinquencyStatus, PDCEntry } from "../api/types";
+import type { DelinquencyStatus, ModuleDocument, PDCEntry, PDCStatus } from "../api/types";
 import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { getApprovalLetterForm } from "../utils/approvalLetter";
@@ -35,11 +37,15 @@ import {
   recordPdcs,
   saveRefundDraft,
   setDelinquencyStatus,
+  setPdcPaymentReceipt,
   submitRefund,
   syncRefundFromProposal,
+  updatePdcStatus,
   validateRefundSubmit,
 } from "../utils/refundDelinquent";
 import { allowWhenDemo } from "../utils/demoMode";
+import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { SubmittedFileActions } from "./SubmittedFileActions";
 
 const STEPS: ModuleStep[] = [
   { id: "record-pdcs", label: "Record PDCs", icon: <CreditCard className="w-4 h-4" /> },
@@ -49,6 +55,18 @@ const STEPS: ModuleStep[] = [
 ];
 
 type StepId = "record-pdcs" | "refund-schedule" | "payments" | "monitoring";
+
+const PDC_STATUS_COLOR = {
+  pending: "blue",
+  cleared: "green",
+  bounced: "red",
+} as const;
+
+const PDC_STATUS_LABEL: Record<PDCStatus, string> = {
+  pending: "Pending",
+  cleared: "Cleared (Paid)",
+  bounced: "Bounced",
+};
 
 function StatusBadge({
   label,
@@ -71,20 +89,177 @@ function StatusBadge({
   );
 }
 
-function PDCTable({ rows }: { rows: PDCEntry[] }) {
-  const statusColor = {
-    pending: "blue",
-    cleared: "green",
-    bounced: "red",
-  } as const;
-  const statusLabel = {
-    pending: "Pending",
-    cleared: "Cleared",
-    bounced: "Bounced",
+function PdcReceiptCell({
+  row,
+  editable,
+  uploadedBy,
+  onReceiptChange,
+  onError,
+}: {
+  row: PDCEntry;
+  editable: boolean;
+  uploadedBy: string;
+  onReceiptChange: (pdcId: string, receipt: ModuleDocument | null) => void;
+  onError: (message: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const doc = await readFileAsModuleDocument(file, uploadedBy);
+      onReceiptChange(row.id, doc);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not upload receipt.");
+    }
   };
+
+  return (
+    <div className="space-y-1.5 min-w-0">
+      {row.paymentReceipt?.dataUrl ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className="text-[11px] text-gray-700 truncate max-w-[120px]"
+            title={row.paymentReceipt.fileName}
+          >
+            {row.paymentReceipt.fileName}
+          </span>
+          <SubmittedFileActions
+            fileName={row.paymentReceipt.fileName}
+            mimeType={row.paymentReceipt.mimeType}
+            dataUrl={row.paymentReceipt.dataUrl}
+            compact
+          />
+          {editable && (
+            <button
+              type="button"
+              onClick={() => onReceiptChange(row.id, null)}
+              className="p-1 text-red-600 hover:bg-red-50 rounded"
+              title="Remove receipt"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      ) : editable ? (
+        <>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*,.pdf,application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              void handleFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-gray-200 text-[#0C2461] hover:bg-blue-50"
+          >
+            <Upload className="w-3 h-3" />
+            Upload receipt
+          </button>
+        </>
+      ) : (
+        <span className="text-[11px] text-gray-400">—</span>
+      )}
+    </div>
+  );
+}
+
+function PdcStatusControl({
+  row,
+  editable,
+  uploadedBy,
+  onStatusChange,
+  onReceiptChange,
+  onError,
+}: {
+  row: PDCEntry;
+  editable: boolean;
+  uploadedBy: string;
+  onStatusChange: (pdcId: string, status: PDCStatus) => void;
+  onReceiptChange: (pdcId: string, receipt: ModuleDocument | null) => void;
+  onError: (message: string) => void;
+}) {
+  const clearedPickerRef = useRef<HTMLInputElement>(null);
+
+  if (!editable) {
+    return (
+      <StatusBadge
+        label={PDC_STATUS_LABEL[row.status]}
+        color={PDC_STATUS_COLOR[row.status]}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <select
+        value={row.status}
+        aria-label={`${row.checkNumber} status`}
+        className="w-full max-w-[160px] text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-800"
+        onChange={(e) => {
+          const next = e.target.value as PDCStatus;
+          if (next === "cleared" && !row.paymentReceipt?.dataUrl) {
+            clearedPickerRef.current?.click();
+            return;
+          }
+          onStatusChange(row.id, next);
+        }}
+      >
+        <option value="pending">Pending</option>
+        <option value="cleared">Cleared (Paid)</option>
+        <option value="bounced">Bounced</option>
+      </select>
+      <input
+        ref={clearedPickerRef}
+        type="file"
+        accept="image/*,.pdf,application/pdf"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            const doc = await readFileAsModuleDocument(file, uploadedBy);
+            onReceiptChange(row.id, doc);
+          } catch (err) {
+            onError(err instanceof Error ? err.message : "Could not upload receipt.");
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+interface PDCTableProps {
+  rows: PDCEntry[];
+  editable?: boolean;
+  uploadedBy?: string;
+  onStatusChange?: (pdcId: string, status: PDCStatus) => void;
+  onReceiptChange?: (pdcId: string, receipt: ModuleDocument | null) => void;
+  onError?: (message: string) => void;
+}
+
+function PDCTable({
+  rows,
+  editable = false,
+  uploadedBy = "staff",
+  onStatusChange,
+  onReceiptChange,
+  onError,
+}: PDCTableProps) {
+  const handleStatus = onStatusChange ?? (() => undefined);
+  const handleReceipt = onReceiptChange ?? (() => undefined);
+  const handleError = onError ?? (() => undefined);
+  const showReceiptCol = editable || rows.some((r) => r.paymentReceipt);
+  const gridCols = showReceiptCol ? "grid-cols-6" : "grid-cols-5";
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
-      {/* Mobile cards */}
       <div className="md:hidden p-3 space-y-3">
         {rows.map((r) => (
           <div
@@ -93,7 +268,14 @@ function PDCTable({ rows }: { rows: PDCEntry[] }) {
           >
             <div className="flex justify-between items-start gap-2">
               <span className="font-semibold text-gray-800">{r.checkNumber}</span>
-              <StatusBadge label={statusLabel[r.status]} color={statusColor[r.status]} />
+              <PdcStatusControl
+                row={r}
+                editable={editable}
+                uploadedBy={uploadedBy}
+                onStatusChange={handleStatus}
+                onReceiptChange={handleReceipt}
+                onError={handleError}
+              />
             </div>
             <div className="grid grid-cols-2 gap-2 text-gray-600">
               <div>
@@ -108,38 +290,73 @@ function PDCTable({ rows }: { rows: PDCEntry[] }) {
                 <span className="text-[10px] font-bold uppercase text-gray-400 block">Account</span>
                 {r.accountNumber}
               </div>
+              {showReceiptCol && (
+                <div className="col-span-2">
+                  <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                    Bank receipt
+                  </span>
+                  <PdcReceiptCell
+                    row={r}
+                    editable={editable}
+                    uploadedBy={uploadedBy}
+                    onReceiptChange={handleReceipt}
+                    onError={handleError}
+                  />
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
-      {/* Desktop table */}
-      <div className="hidden md:block">
-      <div
-        className="text-white grid grid-cols-5 px-3 py-2 font-semibold gap-2"
-        style={{ background: DOST_BLUE }}
-      >
-        {["Check Number", "Due Date", "Account Number", "Amount", "Status"].map((h) => (
-          <span key={h}>{h}</span>
-        ))}
-      </div>
-      {rows.map((r) => (
+      <div className="hidden md:block overflow-x-auto">
         <div
-          key={r.id}
-          className="grid grid-cols-5 gap-2 px-3 py-2 border-t border-gray-100 hover:bg-gray-50"
+          className={`text-white grid ${gridCols} px-3 py-2 font-semibold gap-2 min-w-[640px]`}
+          style={{ background: DOST_BLUE }}
         >
-          <span className="font-medium text-gray-800">{r.checkNumber}</span>
-          <span className="text-gray-600">{r.dueDate}</span>
-          <span className="text-gray-600">{r.accountNumber}</span>
-          <span className="font-semibold text-gray-800">{r.amount}</span>
-          <StatusBadge label={statusLabel[r.status]} color={statusColor[r.status]} />
+          {(showReceiptCol
+            ? ["Check Number", "Due Date", "Account Number", "Amount", "Status", "Receipt"]
+            : ["Check Number", "Due Date", "Account Number", "Amount", "Status"]
+          ).map((h) => (
+            <span key={h}>{h}</span>
+          ))}
         </div>
-      ))}
+        {rows.map((r) => (
+          <div
+            key={r.id}
+            className={`grid ${gridCols} gap-2 px-3 py-2 border-t border-gray-100 hover:bg-gray-50 min-w-[640px] items-center`}
+          >
+            <span className="font-medium text-gray-800">{r.checkNumber}</span>
+            <span className="text-gray-600">{r.dueDate}</span>
+            <span className="text-gray-600">{r.accountNumber}</span>
+            <span className="font-semibold text-gray-800">{r.amount}</span>
+            <PdcStatusControl
+              row={r}
+              editable={editable}
+              uploadedBy={uploadedBy}
+              onStatusChange={handleStatus}
+              onReceiptChange={handleReceipt}
+              onError={handleError}
+            />
+            {showReceiptCol && (
+              <PdcReceiptCell
+                row={r}
+                editable={editable}
+                uploadedBy={uploadedBy}
+                onReceiptChange={handleReceipt}
+                onError={handleError}
+              />
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-const DELINQUENCY_LABELS: Record<DelinquencyStatus, { label: string; color: "green" | "amber" | "red" | "blue" | "gray" }> = {
+const DELINQUENCY_LABELS: Record<
+  DelinquencyStatus,
+  { label: string; color: "green" | "amber" | "red" | "blue" | "gray" }
+> = {
   "monitoring-required": { label: "Monitoring Required", color: "blue" },
   current: { label: "Payment Current", color: "green" },
   delayed: { label: "Payment Delayed", color: "amber" },
@@ -174,8 +391,11 @@ export function RefundAndDelinquent({
   const stored = applicant ? getRefundStored(applicant) : null;
   const prerequisiteOk = hasRefundPrerequisite(applicant);
   const refundTerm = applicant ? getApprovalLetterForm(applicant).refundTermYears : "";
-  const delinquency = form ? DELINQUENCY_LABELS[form.delinquencyStatus] : DELINQUENCY_LABELS.current;
+  const delinquency = form
+    ? DELINQUENCY_LABELS[form.delinquencyStatus]
+    : DELINQUENCY_LABELS.current;
   const uploadedBy = user?.email ?? "staff";
+  const pdcEditable = staffMode && !readOnly && !!applicant;
 
   const maxReached = stored?.submitted
     ? 3
@@ -184,6 +404,36 @@ export function RefundAndDelinquent({
       : form?.pdcs.length
         ? 1
         : 0;
+
+  const handlePdcError = useCallback((message: string) => {
+    setSubmitErrors([message]);
+  }, []);
+
+  const handlePdcStatusChange = useCallback(
+    (pdcId: string, status: PDCStatus) => {
+      if (!applicant || !pdcEditable) return;
+      const err = updatePdcStatus(applicant.id, pdcId, status);
+      if (err) {
+        setSubmitErrors([err]);
+        return;
+      }
+      setSubmitErrors([]);
+    },
+    [applicant, pdcEditable],
+  );
+
+  const handlePdcReceiptChange = useCallback(
+    (pdcId: string, receipt: ModuleDocument | null) => {
+      if (!applicant || !pdcEditable) return;
+      const err = setPdcPaymentReceipt(applicant.id, pdcId, receipt);
+      if (err) {
+        setSubmitErrors([err]);
+        return;
+      }
+      setSubmitErrors([]);
+    },
+    [applicant, pdcEditable],
+  );
 
   const handleRecordPdcs = () => {
     if (!applicant || readOnly) return;
@@ -220,6 +470,17 @@ export function RefundAndDelinquent({
     setSubmitErrors([]);
     onSubmitSuccess?.();
   };
+
+  const pdcTable = form ? (
+    <PDCTable
+      rows={form.pdcs}
+      editable={pdcEditable}
+      uploadedBy={uploadedBy}
+      onStatusChange={handlePdcStatusChange}
+      onReceiptChange={handlePdcReceiptChange}
+      onError={handlePdcError}
+    />
+  ) : null;
 
   const alerts = (
     <>
@@ -288,7 +549,13 @@ export function RefundAndDelinquent({
               </div>
               <span className="text-xs text-amber-700">One-year grace before PDCs take effect</span>
             </div>
-            <PDCTable rows={form.pdcs} />
+            {pdcEditable && (
+              <p className="text-xs text-gray-500">
+                Update PDC status as payments clear. Marking Cleared (Paid) requires a bank receipt
+                screenshot.
+              </p>
+            )}
+            {pdcTable}
             {!readOnly && (
               <button
                 type="button"
@@ -314,7 +581,16 @@ export function RefundAndDelinquent({
             <FileText className="w-4 h-4" />
             Generated Refund Schedule
           </div>
-          <div className="p-4 sm:p-5">
+          <div className="p-4 sm:p-5 space-y-5">
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-800">PDC status &amp; receipts</h3>
+              {pdcEditable && (
+                <p className="text-xs text-gray-500">
+                  Change status and upload bank receipt screenshots for cleared (paid) PDCs.
+                </p>
+              )}
+              {pdcTable}
+            </div>
             <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
               <div className="md:hidden p-3 space-y-3">
                 {form.refundSchedule.map((row, i) => (
@@ -342,31 +618,31 @@ export function RefundAndDelinquent({
                 ))}
               </div>
               <div className="hidden md:block">
-              <div
-                className="text-white grid grid-cols-4 px-3 py-2 font-semibold gap-2"
-                style={{ background: DOST_BLUE }}
-              >
-                {["Date", "Amount", "Balance", "Status"].map((h) => (
-                  <span key={h}>{h}</span>
-                ))}
-              </div>
-              {form.refundSchedule.map((row, i) => (
                 <div
-                  key={i}
-                  className="grid grid-cols-4 gap-2 px-3 py-2 border-t border-gray-100 text-gray-700"
+                  className="text-white grid grid-cols-4 px-3 py-2 font-semibold gap-2"
+                  style={{ background: DOST_BLUE }}
                 >
-                  <span>{row.date}</span>
-                  <span>{row.amount}</span>
-                  <span>{row.balance}</span>
-                  <span>{row.status}</span>
+                  {["Date", "Amount", "Balance", "Status"].map((h) => (
+                    <span key={h}>{h}</span>
+                  ))}
                 </div>
-              ))}
+                {form.refundSchedule.map((row, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-4 gap-2 px-3 py-2 border-t border-gray-100 text-gray-700"
+                  >
+                    <span>{row.date}</span>
+                    <span>{row.amount}</span>
+                    <span>{row.balance}</span>
+                    <span>{row.status}</span>
+                  </div>
+                ))}
               </div>
             </div>
             {!readOnly && (
               <button
                 type="button"
-                className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg"
               >
                 <Download className="w-4 h-4" />
                 Download Refund Schedule
@@ -385,14 +661,24 @@ export function RefundAndDelinquent({
             <CheckCircle className="w-4 h-4" />
             Payment Recording
           </div>
-          <div className="p-5 text-sm text-gray-600">
+          <div className="p-5 text-sm text-gray-600 space-y-3">
             <p>
               {form.lastPaymentDate
                 ? `Last payment recorded: ${form.lastPaymentDate}`
-                : "No payments recorded yet. PDCs will be cleared as scheduled payments are received."}
+                : "No payments recorded yet."}
+            </p>
+            <p>
+              Record payments by clearing PDCs on the{" "}
+              <strong>Record PDCs</strong> or <strong>Refund Schedule</strong> tabs and uploading
+              a bank receipt screenshot for each Cleared (Paid) check.
+            </p>
+            <p className="text-xs text-gray-500">
+              Cleared PDCs:{" "}
+              <strong>{form.pdcs.filter((p) => p.status === "cleared").length}</strong> /{" "}
+              {form.pdcs.length}
             </p>
             {staffMode && !readOnly && (
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="text-xs text-gray-500">
                 PSTO officers record payments against issued statements of account (SOA).
               </p>
             )}
@@ -450,9 +736,7 @@ export function RefundAndDelinquent({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border border-gray-200 rounded-lg p-4">
-                <h3 className="font-bold text-sm text-gray-800 mb-2">
-                  Enterprise Summary
-                </h3>
+                <h3 className="font-bold text-sm text-gray-800 mb-2">Enterprise Summary</h3>
                 <div className="text-xs space-y-1 text-gray-700">
                   <div className="flex justify-between">
                     <span>Enterprise</span>
@@ -467,17 +751,17 @@ export function RefundAndDelinquent({
                     <span>{form.pdcs.length}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span>Cleared (paid)</span>
+                    <span>{form.pdcs.filter((p) => p.status === "cleared").length}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span>Bounced checks</span>
-                    <span>
-                      {form.pdcs.filter((p) => p.status === "bounced").length}
-                    </span>
+                    <span>{form.pdcs.filter((p) => p.status === "bounced").length}</span>
                   </div>
                 </div>
               </div>
               <div className="border border-gray-200 rounded-lg p-4">
-                <h3 className="font-bold text-sm text-gray-800 mb-2">
-                  Monitoring Checklist
-                </h3>
+                <h3 className="font-bold text-sm text-gray-800 mb-2">Monitoring Checklist</h3>
                 <ul className="text-xs space-y-1.5 text-gray-700">
                   {[
                     "PDC schedule recorded",

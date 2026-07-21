@@ -21,7 +21,11 @@ export type AssessmentStage =
   | "refund-delinquent"
   | "project-closeout";
 
-export type AssessmentStatus = "pending" | "in_progress" | "completed";
+export type AssessmentStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "upcoming";
 
 export interface AssessmentTask {
   stage: AssessmentStage;
@@ -48,102 +52,6 @@ function hasAssessment(
   return records.some((r) => r.stage === stage);
 }
 
-function prescreeningStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "prescreening")) return "completed";
-  if (applicant.qualified) return "completed";
-  if (
-    applicant.currentModule !== "prescreening" ||
-    applicant.applicantName ||
-    applicant.businessSector
-  ) {
-    return "pending";
-  }
-  return "in_progress";
-}
-
-function requirementsStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "requirements")) return "completed";
-  if (applicant.moduleData?.staffDecision) return "completed";
-  if (applicant.moduleData?.documentsSubmitted) return "pending";
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx > moduleIndex("requirements")) return "in_progress";
-  return "completed";
-}
-
-function tna1Status(applicant: Applicant): AssessmentStatus {
-  if (applicant.moduleData?.tna1?.directorValidated) return "completed";
-  // Staff-reviewed but not yet validated by the Provincial Director
-  if (applicant.moduleData?.tna1?.staffReviewed) return "pending";
-  if (hasAssessment(applicant, "tna1")) return "completed";
-  if (applicant.moduleData?.tna1?.submitted) return "pending";
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx >= moduleIndex("tna1")) return "in_progress";
-  return "completed";
-}
-
-function tna2Status(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "tna2")) return "completed";
-  const doc = applicant.moduleData?.tna2Document;
-  if (doc?.published) return "completed";
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx >= moduleIndex("tna2")) return "pending";
-  return "completed";
-}
-
-function postProposalStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "post-proposal")) return "completed";
-  const idx = moduleIndex(applicant.currentModule);
-  const pisIdx = moduleIndex("project-information-sheet");
-  if (idx <= pisIdx) {
-    if (
-      applicant.currentModule === "conduct-rtec" ||
-      applicant.currentModule === "approval-letter" ||
-      applicant.currentModule === "project-information-sheet"
-    ) {
-      return "pending";
-    }
-  }
-  if (idx > pisIdx) return "completed";
-  return "completed";
-}
-
-function landbankStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "landbank-withdrawal")) return "completed";
-  if (hasLandBankComplete(applicant)) return "completed";
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx >= moduleIndex("landbank-withdrawal")) {
-    if (!hasLbpIntroductionPublished(applicant)) return "pending";
-    return "pending";
-  }
-  return "completed";
-}
-
-function procurementStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "procurement-liquidation")) return "completed";
-  if (hasProcurementComplete(applicant)) return "completed";
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx >= moduleIndex("procurement-liquidation")) return "pending";
-  return "completed";
-}
-
-function refundStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "refund-delinquent")) return "completed";
-  if (hasRefundComplete(applicant)) return "completed";
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx >= moduleIndex("refund-delinquent")) return "pending";
-  return "completed";
-}
-
-function closeoutStatus(applicant: Applicant): AssessmentStatus {
-  if (hasAssessment(applicant, "project-closeout")) return "completed";
-  if (hasCloseOutComplete(applicant) || applicant.currentModule === "completed") {
-    return "completed";
-  }
-  const idx = moduleIndex(applicant.currentModule);
-  if (idx >= moduleIndex("project-closeout")) return "pending";
-  return "completed";
-}
-
 const MODULE_ORDER: ModuleStatus[] = [
   "prescreening",
   "registration",
@@ -165,6 +73,123 @@ const MODULE_ORDER: ModuleStatus[] = [
 function moduleIndex(module: ModuleStatus): number {
   const idx = MODULE_ORDER.indexOf(module);
   return idx === -1 ? 0 : idx;
+}
+
+function prescreeningStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "prescreening")) return "completed";
+  if (applicant.qualified) return "completed";
+  if (applicant.currentModule === "prescreening") return "in_progress";
+  // Past or at later modules without qualification still needs staff review
+  return "pending";
+}
+
+function requirementsStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "requirements")) return "completed";
+  if (applicant.moduleData?.staffDecision) return "completed";
+  if (applicant.moduleData?.documentsSubmitted) return "pending";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("requirements")) return "in_progress";
+  return "upcoming";
+}
+
+function tna1Status(applicant: Applicant): AssessmentStatus {
+  if (applicant.moduleData?.tna1?.directorValidated) return "completed";
+  // Staff-reviewed but not yet validated by the Provincial Director
+  if (applicant.moduleData?.tna1?.staffReviewed) return "pending";
+  if (hasAssessment(applicant, "tna1")) return "completed";
+  if (applicant.moduleData?.tna1?.submitted) return "pending";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("tna1")) return "in_progress";
+  return "upcoming";
+}
+
+function tna2Status(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "tna2")) return "completed";
+  const doc = applicant.moduleData?.tna2Document;
+  if (doc?.published) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("tna2")) return "pending";
+  return "upcoming";
+}
+
+function postProposalStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "post-proposal")) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  const pisIdx = moduleIndex("project-information-sheet");
+  const rtecIdx = moduleIndex("conduct-rtec");
+  if (idx > pisIdx) return "completed";
+  if (idx >= rtecIdx) {
+    if (
+      applicant.currentModule === "conduct-rtec" ||
+      applicant.currentModule === "approval-letter" ||
+      applicant.currentModule === "project-information-sheet"
+    ) {
+      return "pending";
+    }
+    return "in_progress";
+  }
+  return "upcoming";
+}
+
+function landbankStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "landbank-withdrawal")) return "completed";
+  if (hasLandBankComplete(applicant)) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("landbank-withdrawal")) {
+    if (!hasLbpIntroductionPublished(applicant)) return "pending";
+    return "pending";
+  }
+  return "upcoming";
+}
+
+function procurementStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "procurement-liquidation")) return "completed";
+  if (hasProcurementComplete(applicant)) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("procurement-liquidation")) return "pending";
+  return "upcoming";
+}
+
+function refundStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "refund-delinquent")) return "completed";
+  if (hasRefundComplete(applicant)) return "completed";
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("refund-delinquent")) return "pending";
+  return "upcoming";
+}
+
+function closeoutStatus(applicant: Applicant): AssessmentStatus {
+  if (hasAssessment(applicant, "project-closeout")) return "completed";
+  if (hasCloseOutComplete(applicant) || applicant.currentModule === "completed") {
+    return "completed";
+  }
+  const idx = moduleIndex(applicant.currentModule);
+  if (idx >= moduleIndex("project-closeout")) return "pending";
+  return "upcoming";
+}
+
+/**
+ * Later checklist rows cannot stay completed while an earlier row is unfinished.
+ * Seed / moduleData flags may mark late stages done out of order — downgrade them.
+ */
+function enforceSequentialCompletion(tasks: AssessmentTask[]): AssessmentTask[] {
+  let priorIncomplete = false;
+  return tasks.map((task) => {
+    if (priorIncomplete) {
+      if (task.status === "completed") {
+        return { ...task, status: "upcoming" };
+      }
+      // Only the first incomplete stage stays actionable; later pending/in_progress → upcoming
+      if (task.status === "pending" || task.status === "in_progress") {
+        return { ...task, status: "upcoming" };
+      }
+      return task;
+    }
+    if (task.status !== "completed") {
+      priorIncomplete = true;
+    }
+    return task;
+  });
 }
 
 export function getAssessmentTasks(applicant: Applicant): AssessmentTask[] {
@@ -237,7 +262,7 @@ export function getAssessmentTasks(applicant: Applicant): AssessmentTask[] {
     },
   ];
 
-  return tasks;
+  return enforceSequentialCompletion(tasks);
 }
 
 export function needsStaffAssessment(applicant: Applicant): boolean {

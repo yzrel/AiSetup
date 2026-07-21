@@ -860,6 +860,8 @@ export interface PDCEntry {
   amount: string;
   status: PDCStatus;
   note?: string;
+  /** Bank receipt screenshot when status is cleared (paid). */
+  paymentReceipt?: ModuleDocument;
 }
 
 export interface RefundScheduleRow {

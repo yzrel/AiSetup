@@ -12,7 +12,11 @@ import type {
 
   DelinquencyStatus,
 
+  ModuleDocument,
+
   PDCEntry,
+
+  PDCStatus,
 
   RefundDelinquentForm,
 
@@ -152,17 +156,29 @@ export function buildRefundFromApproval(applicant: Applicant | null): RefundDeli
 
 
 
-  const pdcs: PDCEntry[] = computed.pdcs.map((p, i) => ({
+  const pdcs: PDCEntry[] = computed.pdcs.map((p, i) => {
 
-    ...p,
+    const prev =
 
-    id: base.pdcs[i]?.id ?? p.id ?? uid(),
+      base.pdcs.find((row) => row.id === p.id) ?? base.pdcs[i];
 
-    accountNumber: base.pdcs[i]?.accountNumber || accountNumber,
+    return {
 
-    status: base.pdcs[i]?.status ?? p.status,
+      ...p,
 
-  }));
+      id: prev?.id ?? p.id ?? uid(),
+
+      accountNumber: prev?.accountNumber || accountNumber,
+
+      status: prev?.status ?? p.status,
+
+      paymentReceipt: prev?.paymentReceipt,
+
+      note: prev?.note ?? p.note,
+
+    };
+
+  });
 
 
 
@@ -310,6 +326,138 @@ export function setDelinquencyStatus(
   const form = getRefundForm(applicant);
 
   saveRefundDraft(applicantId, { ...form, delinquencyStatus: status });
+
+}
+
+
+
+/** Cleared (paid) PDCs require a bank receipt screenshot. */
+
+export function validatePdcCleared(pdc: PDCEntry): string | null {
+
+  if (pdc.status === "cleared" && !pdc.paymentReceipt?.dataUrl) {
+
+    return `Upload a bank receipt to mark ${pdc.checkNumber || "PDC"} as Cleared (Paid).`;
+
+  }
+
+  return null;
+
+}
+
+
+
+export function updatePdcStatus(
+
+  applicantId: string,
+
+  pdcId: string,
+
+  status: PDCStatus,
+
+): string | null {
+
+  const applicant = applicantStore.getById(applicantId);
+
+  if (!applicant) return "Applicant not found.";
+
+  const form = getRefundForm(applicant);
+
+  const idx = form.pdcs.findIndex((p) => p.id === pdcId);
+
+  if (idx < 0) return "PDC not found.";
+
+  const current = form.pdcs[idx];
+
+  if (status === "cleared" && !current.paymentReceipt?.dataUrl) {
+
+    return validatePdcCleared({ ...current, status: "cleared" });
+
+  }
+
+  const next: PDCEntry = {
+
+    ...current,
+
+    status,
+
+    // Drop paid proof when leaving cleared so unpaid rows stay clean.
+
+    paymentReceipt:
+
+      status === "cleared" ? current.paymentReceipt : undefined,
+
+  };
+
+  const pdcs = form.pdcs.map((p, i) => (i === idx ? next : p));
+
+  const lastPaymentDate =
+
+    status === "cleared"
+
+      ? new Date().toISOString().slice(0, 10)
+
+      : form.lastPaymentDate;
+
+  saveRefundDraft(applicantId, { ...form, pdcs, lastPaymentDate });
+
+  return null;
+
+}
+
+
+
+export function setPdcPaymentReceipt(
+
+  applicantId: string,
+
+  pdcId: string,
+
+  receipt: ModuleDocument | null,
+
+): string | null {
+
+  const applicant = applicantStore.getById(applicantId);
+
+  if (!applicant) return "Applicant not found.";
+
+  const form = getRefundForm(applicant);
+
+  const idx = form.pdcs.findIndex((p) => p.id === pdcId);
+
+  if (idx < 0) return "PDC not found.";
+
+  const current = form.pdcs[idx];
+
+  const next: PDCEntry = {
+
+    ...current,
+
+    paymentReceipt: receipt ?? undefined,
+
+    // Attaching a receipt marks the PDC cleared (paid).
+
+    status: receipt ? "cleared" : current.status === "cleared" ? "pending" : current.status,
+
+  };
+
+  if (next.status === "cleared" && !next.paymentReceipt?.dataUrl) {
+
+    return validatePdcCleared(next);
+
+  }
+
+  const pdcs = form.pdcs.map((p, i) => (i === idx ? next : p));
+
+  const lastPaymentDate = receipt
+
+    ? new Date().toISOString().slice(0, 10)
+
+    : form.lastPaymentDate;
+
+  saveRefundDraft(applicantId, { ...form, pdcs, lastPaymentDate });
+
+  return null;
 
 }
 
