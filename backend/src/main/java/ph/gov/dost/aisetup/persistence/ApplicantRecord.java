@@ -6,9 +6,10 @@ package ph.gov.dost.aisetup.persistence;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "applicant_records")
@@ -23,13 +24,11 @@ public class ApplicantRecord {
     private String enterpriseName;
     private String currentModule;
 
-    @Lob
-    @Column(columnDefinition = "CLOB")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     private String moduleDataJson;
 
     /** Top-level applicant fields (name, contact, sector, ...) so the frontend can rebuild the full record. */
-    @Lob
-    @Column(columnDefinition = "CLOB")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     private String profileJson;
 
     private Instant updatedAt;

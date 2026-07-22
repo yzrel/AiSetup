@@ -3,6 +3,7 @@
  */
 
 import { applicantStore, Applicant } from "../store/applicantStore";
+import { publishModuleToBackendBestEffort } from "./applicantPersistence";
 import { EMPTY_TNA_TABLES } from "../store/tnaFormDefaults";
 import {
   TNA_FORM_02_FINDINGS_TEMPLATE,
@@ -524,6 +525,10 @@ export function publishTna2Document(
         ...applicant.moduleData,
         tna2Document: stored,
       },
+    });
+    // Record the publish server-side (module.publish audit event).
+    publishModuleToBackendBestEffort(applicantId, "tna2Document", {
+      ...stored,
     });
   }
   return stored;

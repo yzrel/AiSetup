@@ -2,9 +2,14 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-/** DTO shapes aligned with planned Spring Boot REST API */
+/** DTO shapes aligned with Spring Boot REST API */
 
-export type ApiRole = "applicant" | "agent" | "admin";
+export type ApiRole =
+  | "applicant"
+  | "client"
+  | "agent"
+  | "provincial-director"
+  | "admin";
 
 export interface ApiAuthResponse {
   token: string;
@@ -17,7 +22,25 @@ export interface ApiAuthResponse {
     role: ApiRole;
     enterpriseName?: string;
     applicationId?: string;
+    applicantId?: string;
+    officeId?: string;
+    assignedProvinces?: string[];
+    verified?: boolean;
+    portal?: "client" | "admin";
   };
+}
+
+export interface ApiRegisterRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  enterpriseName?: string;
+  applicantId: string;
+  applicationId: string;
+  phone?: string;
+  role?: "applicant" | "client";
 }
 
 export interface ApiApplicant {
@@ -43,6 +66,10 @@ export interface ApiTnaFormPayload {
     equipment: unknown[];
   };
   submitted: boolean;
+}
+
+export interface ApiTnaFormSaveResponse {
+  ok: boolean;
 }
 
 export interface LoiGenerationRequest {

@@ -12,10 +12,12 @@ import {
   techInnovationsProjectProposal,
 } from "../data/demoSeedModuleData";
 import {
+  fetchBackendApplicant,
   fetchBackendApplicants,
-  syncApplicantToBackend,
+  syncApplicantToBackendBestEffort,
 } from "../utils/applicantPersistence";
-import { getLocalPassword, saveLocalPassword } from "../utils/localCredentials";
+import { api } from "../api/client";
+import { authStore } from "./authStore";
 // Simple in-memory store using a singleton + event-based reactivity
 
 export type ModuleStatus =
@@ -95,7 +97,6 @@ const seedApplicants: Applicant[] = [
     lastUpdated: 'Apr 27, 2024',
     moduleData: {
       approvedAmount: '₱2,000,000',
-      password: 'Demo@1234',
       accountStatus: 'active',
       province: 'South Cotabato',
       zipCode: '9506',
@@ -174,7 +175,6 @@ const seedApplicants: Applicant[] = [
     submittedAt: 'Apr 15, 2024',
     lastUpdated: 'May 1, 2024',
     moduleData: {
-      password: 'Demo@1234',
       accountStatus: 'active',
       province: 'General Santos City',
       projectDescription: 'Cloud-based inventory and order management system for retail operations.',
@@ -325,7 +325,6 @@ const seedApplicants: Applicant[] = [
     submittedAt: 'Apr 20, 2024',
     lastUpdated: 'Apr 22, 2024',
     moduleData: {
-      password: 'Demo@1234',
       accountStatus: 'active',
       province: 'Sultan Kudarat',
     },
@@ -352,7 +351,6 @@ const seedApplicants: Applicant[] = [
     submittedAt: 'Apr 18, 2024',
     lastUpdated: 'Apr 24, 2024',
     moduleData: {
-      password: 'Demo@1234',
       accountStatus: 'active',
       province: 'Sarangani',
       documentsSubmitted: true,
@@ -404,11 +402,6 @@ function applicantFromRecord(
   const moduleData = {
     ...((record.moduleData ?? {}) as Record<string, any>),
   };
-  // Passwords are stripped before sync; restore from this browser's mirror.
-  const localPassword = getLocalPassword(record.id) ?? local?.moduleData?.password;
-  if (localPassword && !moduleData.password) {
-    moduleData.password = localPassword;
-  }
   const base: Applicant = local ?? {
     id: record.id,
     applicationId: record.applicationId,
@@ -454,38 +447,17 @@ export const applicantStore = {
       (a) => a.emailAddress.toLowerCase() === email.toLowerCase(),
     ),
 
-  verifyLogin: (email: string, password: string) => {
-    const applicant = applicantStore.getByEmail(email);
-    if (!applicant) return null;
-    if (!applicant.moduleData?.password) return null;
-    if (applicant.moduleData.password !== password) return null;
-    if (applicant.moduleData.accountStatus === 'blocked') return null;
-    return applicant;
-  },
+  // Credential checks live on the backend (POST /auth/login). The store only
+  // tracks display state; passwords never enter the applicant blob.
 
-  getLoginBlockReason: (email: string, password: string) => {
-    const applicant = applicantStore.getByEmail(email);
-    if (!applicant || !applicant.moduleData?.password) return 'not_found';
-    if (applicant.moduleData.accountStatus === 'blocked') return 'blocked';
-    if (applicant.moduleData.password !== password) return 'invalid_password';
-    return null;
-  },
-
-  /** Applicants who completed registration (have login credentials) */
+  /** Applicants who completed registration (have a portal account) */
   getRegisteredAccounts: () =>
-    applicants.filter((a) => !!a.moduleData?.password),
+    applicants.filter(
+      (a) => !!(a.moduleData?.accountStatus || a.moduleData?.registeredAt),
+    ),
 
   isAccountBlocked: (applicant: Applicant) =>
     applicant.moduleData?.accountStatus === 'blocked',
-
-  setPassword: (id: string, password: string) => {
-    const applicant = applicants.find((a) => a.id === id);
-    if (!applicant) return false;
-    applicantStore.update(id, {
-      moduleData: { ...applicant.moduleData, password },
-    });
-    return true;
-  },
 
   setAccountStatus: (id: string, status: 'active' | 'blocked') => {
     const applicant = applicants.find((a) => a.id === id);
@@ -493,6 +465,20 @@ export const applicantStore = {
     applicantStore.update(id, {
       moduleData: { ...applicant.moduleData, accountStatus: status },
     });
+    // Enforce on the server: blocked accounts cannot obtain a JWT.
+    void api
+      .adminSetEnabled({ applicantId: id, enabled: status !== 'blocked' })
+      .then(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c5b70a'},body:JSON.stringify({sessionId:'c5b70a',hypothesisId:'H-C',location:'applicantStore.ts:setAccountStatus',message:'adminSetEnabled OK',data:{applicantId:id,status},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+      })
+      .catch((err) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c5b70a'},body:JSON.stringify({sessionId:'c5b70a',hypothesisId:'H-C',location:'applicantStore.ts:setAccountStatus',message:'adminSetEnabled FAILED',data:{applicantId:id,status,error:String(err)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        console.warn('[aisetup] Failed to sync account status to backend:', err);
+      });
     return true;
   },
 
@@ -512,10 +498,7 @@ export const applicantStore = {
       lastUpdated: new Date().toISOString(),
     };
     applicants = [...applicants, newApp];
-    if (newApp.moduleData?.password) {
-      saveLocalPassword(newApp.id, String(newApp.moduleData.password));
-    }
-    syncApplicantToBackend(newApp);
+    syncApplicantToBackendBestEffort(newApp);
     listeners.forEach(l => l());
     return newApp;
   },
@@ -526,42 +509,71 @@ export const applicantStore = {
     );
     const updated = applicants.find(a => a.id === id);
     if (updated) {
-      if (updated.moduleData?.password) {
-        saveLocalPassword(updated.id, String(updated.moduleData.password));
-      }
-      syncApplicantToBackend(updated);
+      syncApplicantToBackendBestEffort(updated);
     }
     listeners.forEach(l => l());
   },
 
   /**
-   * One-shot boot hydration from the backend so registrations and module
-   * progress survive a page reload. Backend records win over stale local
-   * copies; local edits made while the fetch was in flight are kept.
+   * Boot / post-login hydration from the backend SoR.
+   * Staff receive the full list; applicants hydrate their own record.
+   * Pass {@code force} after login to re-run hydration.
    */
-  hydrateFromBackend: async () => {
-    if (hydrated) return;
+  hydrateFromBackend: async (force = false) => {
+    if (hydrated && !force) return;
     hydrated = true;
-    const records = await fetchBackendApplicants();
-    if (!records || records.length === 0) return;
-    let changed = false;
-    let next = [...applicants];
-    for (const record of records) {
-      if (!record?.id) continue;
-      const index = next.findIndex((a) => a.id === record.id);
-      const local = index >= 0 ? next[index] : undefined;
-      if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
-        continue; // local copy is newer (edited during hydration)
+    const user = authStore.getUser();
+    if (!user) return;
+
+    if (authStore.isStaff(user.role)) {
+      const records = await fetchBackendApplicants();
+      if (!records || records.length === 0) return;
+      let changed = false;
+      let next = [...applicants];
+      for (const record of records) {
+        if (!record?.id) continue;
+        const index = next.findIndex((a) => a.id === record.id);
+        const local = index >= 0 ? next[index] : undefined;
+        if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
+          continue;
+        }
+        const merged = applicantFromRecord(record, local);
+        if (index >= 0) next[index] = merged;
+        else next = [...next, merged];
+        changed = true;
       }
-      const merged = applicantFromRecord(record, local);
-      if (index >= 0) next[index] = merged;
-      else next = [...next, merged];
-      changed = true;
+      if (changed) {
+        applicants = next;
+        listeners.forEach((l) => l());
+      }
+      return;
     }
-    if (changed) {
-      applicants = next;
-      listeners.forEach((l) => l());
+
+    const applicantId = user.applicationId
+      ? applicants.find((a) => a.applicationId === user.applicationId)?.id
+      : user.id;
+    // Prefer linked applicant id from login payload when present on AuthUser.
+    const linkedId =
+      (user as { applicantId?: string }).applicantId ??
+      applicantId ??
+      user.id;
+    const record = await fetchBackendApplicant(linkedId);
+    // #region agent log
+    fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c5b70a'},body:JSON.stringify({sessionId:'c5b70a',hypothesisId:'H-D',location:'applicantStore.ts:hydrateFromBackend',message:'applicant hydration',data:{userId:user.id,userApplicantId:(user as {applicantId?:string}).applicantId??null,userApplicationId:user.applicationId??null,linkedId,recordFound:!!record,recordId:record?.id??null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    if (!record) return;
+    const index = applicants.findIndex((a) => a.id === record.id);
+    const local = index >= 0 ? applicants[index] : undefined;
+    if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
+      return;
     }
+    const merged = applicantFromRecord(record, local);
+    if (index >= 0) {
+      applicants = applicants.map((a, i) => (i === index ? merged : a));
+    } else {
+      applicants = [...applicants, merged];
+    }
+    listeners.forEach((l) => l());
   },
 
   advanceModule: (id: string, nextModule: ModuleStatus) => {

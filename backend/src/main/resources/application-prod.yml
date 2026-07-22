@@ -1,0 +1,11 @@
+# Production profile: no seed users, demo unlock disabled, require JWT_SECRET.
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+aisetup:
+  seed-users: false
+  demo-mode-enabled: false
+  security:
+    jwt-secret: ${JWT_SECRET}

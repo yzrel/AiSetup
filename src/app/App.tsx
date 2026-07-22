@@ -20,6 +20,7 @@ import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
 import { ProjectCloseOut } from "./components/ProjectCloseOut";
 import { AccountManagement } from "./components/AccountManagement";
 import { ClientManagement } from "./components/ClientManagement";
+import { ClientFilesAdmin } from "./components/ClientFilesAdmin";
 import { StaffClientBar } from "./components/StaffClientBar";
 import { NotificationBell } from "./components/NotificationPanel";
 import { MyAccount } from "./components/MyAccount";
@@ -50,6 +51,7 @@ import {
   Cpu,
   User,
   Users,
+  FolderOpen,
   Menu,
   X,
   Shield,
@@ -271,6 +273,12 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         module: "Admin",
       },
       {
+        id: "client-files" as ViewType,
+        label: "Client Files",
+        icon: FolderOpen,
+        module: "Admin",
+      },
+      {
         id: "account-management" as ViewType,
         label: "Account Management",
         icon: Settings,
@@ -347,6 +355,10 @@ const viewTitles: Record<
   clients: {
     title: "Clients",
     subtitle: "Overview, case files & assessment",
+  },
+  "client-files": {
+    title: "Client Files",
+    subtitle: "Attachments & generated documents by client",
   },
   "account-management": {
     title: "Account Management",
@@ -535,8 +547,8 @@ export default function App() {
       setCurrentViewState(resolveViewForUser(restored));
     }
     setAuthReady(true);
-    // Non-blocking: pull persisted applicants so progress survives reloads
-    void applicantStore.hydrateFromBackend();
+    // Pull persisted applicants when a session token is present
+    void applicantStore.hydrateFromBackend(!!restored);
   }, []);
 
   // Subscribe to auth changes
@@ -1020,6 +1032,9 @@ export default function App() {
               )}
               {currentView === "clients" && (
                 <ClientManagement user={user} onNavigate={navigate} />
+              )}
+              {currentView === "client-files" && (
+                <ClientFilesAdmin user={user} onNavigate={navigate} />
               )}
               {currentView === "account-management" && (
                 <AccountManagement user={user} />

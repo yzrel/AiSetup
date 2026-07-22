@@ -415,6 +415,8 @@ export function ProjectInformationSheet({
                           uploadedBy={uploadedBy}
                           dateLabel="Pre-PIS signed date"
                           staffOnly
+                          applicantId={applicant.id}
+                          moduleKey="prePis"
                         />
                         <button
                           type="button"

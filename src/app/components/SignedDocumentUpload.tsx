@@ -4,6 +4,7 @@
 
 import { useRef } from "react";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
+import { uploadFileToBackendBestEffort } from "../utils/applicantPersistence";
 import { FORM_GRID_2, ACTION_ROW } from "./moduleTheme";
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -32,6 +33,9 @@ interface SignedDocumentUploadProps {
   staffOnly?: boolean;
   dateLabel?: string;
   showVenue?: boolean;
+  /** When set, uploads are also mirrored into the backend file store. */
+  applicantId?: string;
+  moduleKey?: string;
 }
 
 export function SignedDocumentUpload({
@@ -50,6 +54,8 @@ export function SignedDocumentUpload({
   staffOnly,
   dateLabel = "Signed date",
   showVenue,
+  applicantId,
+  moduleKey,
 }: SignedDocumentUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -67,6 +73,9 @@ export function SignedDocumentUpload({
         uploadedAt: new Date().toISOString(),
         uploadedBy,
       });
+      if (applicantId) {
+        uploadFileToBackendBestEffort(applicantId, moduleKey ?? "general", file);
+      }
     };
     reader.readAsDataURL(file);
   };

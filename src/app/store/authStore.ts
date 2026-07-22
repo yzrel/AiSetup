@@ -6,6 +6,7 @@
 
 import { staffContextStore } from "./staffContextStore";
 import { clearAuthUiState, clearCurrentView } from "./navigationStore";
+import { clearAuthToken } from "../api/authToken";
 
 export type UserRole =
   | "applicant"
@@ -33,6 +34,7 @@ export type AdminView =
   | "refund-delinquent"
   | "project-closeout"
   | "clients"
+  | "client-files"
   | "account-management"
   | "my-account"
   | "sent-emails";
@@ -48,6 +50,8 @@ export interface AuthUser {
   role: UserRole;
   enterpriseName: string;
   applicationId?: string;
+  /** Backend applicant case id (may differ from auth user id). */
+  applicantId?: string;
   avatarUrl?: string;
   verified: boolean;
   /** Which portal the user signed in through */
@@ -75,6 +79,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "refund-delinquent": ["admin", "agent", "provincial-director", "client", "applicant"],
   "project-closeout": ["admin", "agent", "provincial-director", "client", "applicant"],
   clients: ["admin", "agent", "provincial-director"],
+  "client-files": ["admin", "agent", "provincial-director"],
   "account-management": ["admin", "agent", "provincial-director"],
   "my-account": ["client", "applicant"],
   "sent-emails": ["admin", "agent", "provincial-director", "client", "applicant"],
@@ -158,6 +163,7 @@ export const authStore = {
   logout: () => {
     currentUser = null;
     persistUser(null);
+    clearAuthToken();
     clearCurrentView();
     clearAuthUiState();
     staffContextStore.clearSelection();
@@ -191,8 +197,8 @@ export const authStore = {
 
   isClientRole: (role: UserRole) => role === "client" || role === "applicant",
 
-  // Demo mode may skip workflow validators, but staff-only views stay
-  // role-gated (RTEC and staff dashboards must never open to clients).
+  // Demo mode may skip workflow validators on the FE when the server allows it.
+  // Staff-only views stay role-gated (RTEC and staff dashboards must never open to clients).
   canAccessView: (role: UserRole, view: AdminView) =>
     VIEW_PERMISSIONS[view]?.includes(role) ?? false,
 

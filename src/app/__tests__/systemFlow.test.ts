@@ -102,7 +102,6 @@ import { DOST_PROGRAMS } from "../constants/dostProgramRecommendations";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────────
 
-const PASSWORD = "Test@1234";
 const QUALIFYING_PRESCREENING = {
   businessSector: "Food Processing",
   businessNature: "Registered with DTI or SEC for manufacturing",
@@ -141,7 +140,6 @@ function registerApplicant(email: string): Applicant {
     currentModule: "prescreening",
     qualified: false,
     moduleData: {
-      password: PASSWORD,
       accountStatus: "active",
       province: "South Cotabato",
       tinNumber: "123-456-789-000",
@@ -222,10 +220,9 @@ describe("system flow: registration through project close-out", () => {
 
     expect(registered.applicationId).toMatch(/^LOI-\d{4}-\d{6}$/);
     expect(registered.currentModule).toBe("prescreening");
-    expect(
-      applicantStore.verifyLogin(registered.emailAddress, PASSWORD)?.id,
-    ).toBe(id);
-    expect(applicantStore.verifyLogin(registered.emailAddress, "wrong")).toBeNull();
+    // Credentials live server-side (POST /auth/login); the store only tracks the account record.
+    expect(applicantStore.getByEmail(registered.emailAddress)?.id).toBe(id);
+    expect(applicantStore.isAccountBlocked(registered)).toBe(false);
     // Future modules are locked while in prescreening
     expect(isApplicantViewLocked(registered, "tna1")).toBe(true);
     expect(isApplicantViewLocked(registered, "prescreening")).toBe(false);

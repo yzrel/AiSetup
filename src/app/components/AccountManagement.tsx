@@ -21,6 +21,7 @@ import {
   Save,
   UserCog,
 } from "lucide-react";
+import { api, ApiError } from "../api/client";
 import {
   applicantStore,
   Applicant,
@@ -53,7 +54,9 @@ export function AccountManagement({ user }: AccountManagementProps) {
 
   const refresh = () =>
     setAccounts(
-      getApplicantsForStaff(user).filter((a) => a.moduleData?.password),
+      getApplicantsForStaff(user).filter(
+        (a) => !!(a.moduleData?.accountStatus || a.moduleData?.registeredAt),
+      ),
     );
 
   useEffect(() => {
@@ -90,7 +93,7 @@ export function AccountManagement({ user }: AccountManagementProps) {
     setMessage(null);
   };
 
-  const handlePasswordReset = () => {
+  const handlePasswordReset = async () => {
     if (!selected) return;
     if (newPassword.length < 8) {
       setMessage({ type: "error", text: "Password must be at least 8 characters." });
@@ -100,7 +103,21 @@ export function AccountManagement({ user }: AccountManagementProps) {
       setMessage({ type: "error", text: "Passwords do not match." });
       return;
     }
-    applicantStore.setPassword(selected.id, newPassword);
+    try {
+      await api.adminResetPassword({
+        applicantId: selected.id,
+        newPassword,
+      });
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text:
+          err instanceof ApiError
+            ? err.message
+            : "Could not reach the server to reset the password.",
+      });
+      return;
+    }
     setMessage({ type: "success", text: "Password updated successfully." });
     setNewPassword("");
     setConfirmPassword("");

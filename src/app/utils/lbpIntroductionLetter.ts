@@ -3,6 +3,7 @@
  */
 
 import { applicantStore, Applicant } from "../store/applicantStore";
+import { publishModuleToBackendBestEffort } from "./applicantPersistence";
 import { isDemoModeActive } from "./demoMode";
 import type { LbpIntroductionLetterForm, LbpIntroductionLetterStored } from "../api/types";
 import {
@@ -293,18 +294,19 @@ export function publishLbpIntroduction(
 
   const landBank = getLandBankStored(applicant);
   const now = new Date().toISOString();
+  const introductionLetter = {
+    form: { ...form },
+    published: true,
+    publishedAt: now,
+    publishedBy,
+    updatedAt: now,
+  };
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
       [MODULE_KEY]: {
         form: landBank?.form ?? emptyLandBankForm(),
-        introductionLetter: {
-          form: { ...form },
-          published: true,
-          publishedAt: now,
-          publishedBy,
-          updatedAt: now,
-        },
+        introductionLetter,
         submitted: landBank?.submitted,
         submittedAt: landBank?.submittedAt,
         submittedBy: landBank?.submittedBy,
@@ -312,6 +314,14 @@ export function publishLbpIntroduction(
       },
     },
   });
+  // Server-side merge into landBank.introductionLetter; the letter carries its
+  // own published flag, so the module-level flag stays untouched.
+  publishModuleToBackendBestEffort(
+    applicantId,
+    MODULE_KEY,
+    { introductionLetter, updatedAt: now },
+    false,
+  );
   return [];
 }
 

@@ -39,6 +39,7 @@ import { resolveApplicantOfficeId, getOfficeContact } from "../utils/provincialO
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice } from "./AiAssistField";
 import { aiGenerateNotice } from "../utils/demoMode";
+import { syncTna1FormToBackendBestEffort } from "../utils/applicantPersistence";
 
 import type { Tna1Doc, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
 import { DOST_BLUE, DOST_MID, StepHeader } from "./tna1/tna1Ui";
@@ -300,20 +301,35 @@ export function TechnologyNeedsAssessment1({
   const saveTnaDraft = useCallback(
     (submitted = false) => {
       if (!applicant) return;
+      const nextModuleData = {
+        ...applicant.moduleData,
+        tna1: {
+          form,
+          tables,
+          submitted,
+          submittedAt: submitted
+            ? new Date().toISOString()
+            : applicant.moduleData?.tna1?.submittedAt,
+          updatedAt: new Date().toISOString(),
+        },
+      };
       applicantStore.update(applicant.id, {
         ...(submitted ? { currentModule: "tna1" as const } : {}),
         businessSector: String(form.sector ?? applicant.businessSector),
-        moduleData: {
-          ...applicant.moduleData,
-          tna1: {
-            form,
-            tables,
-            submitted,
-            submittedAt: submitted ? new Date().toISOString() : applicant.moduleData?.tna1?.submittedAt,
-            updatedAt: new Date().toISOString(),
-          },
-        },
+        moduleData: nextModuleData,
       });
+      const synced = applicantStore.getById(applicant.id);
+      if (synced) {
+        syncTna1FormToBackendBestEffort(synced, {
+          form: form as Record<string, unknown>,
+          tables: {
+            rawMaterials: tables.rawMaterials ?? [],
+            production: tables.production ?? [],
+            equipment: tables.equipment ?? [],
+          },
+          submitted,
+        });
+      }
       setSaveNotice(submitted ? "TNA Form 01 submitted." : "Draft saved.");
       setTimeout(() => setSaveNotice(""), 3000);
     },

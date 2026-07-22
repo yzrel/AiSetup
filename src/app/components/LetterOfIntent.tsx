@@ -631,7 +631,21 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                     <ReadonlyField label="Business Type" value={applicant.businessType} />
                     <ReadonlyField label="Business Sector" value={applicant.businessSector} />
                     <ReadonlyField label="Business Nature" value={applicant.businessNature} />
-                    <ReadonlyField label="MSME Size" value={applicant.msmeSize} />
+                    <div>
+                      <label className={labelCls}>MSME Size *</label>
+                      <select
+                        className={inputCls}
+                        value={applicant.msmeSize}
+                        onChange={(e) =>
+                          applicantStore.update(applicant.id, { msmeSize: e.target.value })
+                        }
+                      >
+                        <option value="">Select size</option>
+                        <option>Micro</option>
+                        <option>Small</option>
+                        <option>Medium</option>
+                      </select>
+                    </div>
                     <div>
                       <label className={labelCls}>Registration Type *</label>
                       <select className={inputCls} value={additional.registrationType} onChange={(e) => setAdd("registrationType", e.target.value)}>
@@ -662,7 +676,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
 
                 <button
                   onClick={() => setStep("additional")}
-                  disabled={!allowWhenDemo(!!additional.dateEstablished && !!additional.tinNumber && !!additional.registrationType && !!additional.registrationNumber && !!additional.productServices)}
+                  disabled={!allowWhenDemo(!!additional.dateEstablished && !!additional.tinNumber && !!applicant.msmeSize && !!additional.registrationType && !!additional.registrationNumber && !!additional.productServices)}
                   className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                   style={{ background: DOST_BLUE }}
                 >

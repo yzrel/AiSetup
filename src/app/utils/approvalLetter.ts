@@ -3,6 +3,7 @@
  */
 
 import { applicantStore, Applicant, MODULE_ORDER } from "../store/applicantStore";
+import { publishModuleToBackendBestEffort } from "./applicantPersistence";
 import type { ApprovalLetterForm, ApprovalLetterStored, SignedMoaDocument } from "../api/types";
 import {
   DOST_REGION_12_ADDRESS,
@@ -273,6 +274,13 @@ export function publishApprovalLetter(
       approvedAmount:
         form.approvedAmount || applicant.moduleData?.approvedAmount,
     },
+  });
+  // Record the publish server-side (module.publish audit event).
+  publishModuleToBackendBestEffort(applicantId, "approvalLetter", {
+    form: { ...form, published: true },
+    publishedAt: now,
+    acknowledged: false,
+    updatedAt: now,
   });
 }
 

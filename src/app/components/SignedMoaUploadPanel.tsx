@@ -136,6 +136,8 @@ export function SignedMoaUploadPanel({
         dateLabel="MOA signed date"
         showVenue
         staffOnly={staffOnly}
+        applicantId={applicant.id}
+        moduleKey="signedMoa"
       />
       <div className={ACTION_ROW}>
         <button

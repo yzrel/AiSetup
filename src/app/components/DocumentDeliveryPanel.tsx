@@ -195,6 +195,8 @@ export function DocumentDeliveryPanel({
         onUpload={handleUpload}
         onRemove={handleRemove}
         uploadedBy={user?.email ?? applicant.emailAddress}
+        applicantId={applicant.id}
+        moduleKey={moduleKey}
       />
       {signedDoc && (
         <p className="flex items-center gap-1.5 text-xs text-green-700">

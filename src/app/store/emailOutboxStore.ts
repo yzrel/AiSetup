@@ -1,9 +1,9 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Simulated email outbox. The system is not wired to a live SMTP server yet;
- * every "sent" email is recorded here so clients and DOST staff can see the
- * delivery trail (printables sent to DOST, signed-document receipts, etc.).
+ * Local email outbox only — SMTP delivery is disabled until a mail server is configured.
+ * Every "sent" email is recorded here so clients and DOST staff can review the trail
+ * (printables, signed-document receipts, etc.). Nothing is delivered outside the browser.
  */
 
 import { AuthUser, authStore } from "./authStore";

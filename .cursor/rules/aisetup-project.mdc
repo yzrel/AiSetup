@@ -15,7 +15,7 @@ alwaysApply: true
 ## Stack / architecture
 
 - **FE:** React 18 + Vite + Tailwind 4 + shadcn under `src/app/components/ui/`; path alias `@` → `src`.
-- **BE:** Spring Boot 3.3 / Java 17, package `ph.gov.dost.aisetup.*`, servlet context-path `/api`.
+- **BE:** Spring Boot 3.5 / Java 17, package `ph.gov.dost.aisetup.*`, servlet context-path `/api`, Spring Security + JWT.
 - Feature screen in `components/` + domain logic in `utils/` + case payload in `applicant.moduleData`; **normalize on read** for legacy shapes.
 - State: existing singleton stores + `subscribe` / `aisetup.*` storage keys. Do not introduce Redux.
 - Staff modules: `ModuleWorkflowLayout` + DOST blues from `moduleTheme.ts`.
@@ -46,6 +46,8 @@ alwaysApply: true
 
 ## Auth / safety
 
-- Auth is demo/client-side RBAC — do not assume Spring Security or Bearer enforcement on the backend.
+- Auth is **server-side**: Spring Security + JWT Bearer on `/api/**` (except `/health`, `/auth/login`, `/auth/register`).
+- FE must send `Authorization: Bearer <token>` via `api/client.ts`; do not revive hardcoded client-only login checks.
+- Demo unlock is disabled when `VITE_APP_ENV=production` or `aisetup.demo-mode-enabled=false` (prod profile).
 - Do not revive the disabled client community portal without a product decision.
-- Never commit secrets (`ANTHROPIC_API_KEY`, `.env`).
+- Never commit secrets (`ANTHROPIC_API_KEY`, `JWT_SECRET`, `.env`).

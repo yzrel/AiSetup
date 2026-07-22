@@ -552,6 +552,8 @@ export function LandBankAndWithdrawal({
                 uploadedBy={uploadedBy}
                 readOnly={stored?.submitted}
                 dateLabel="Account opened on"
+                applicantId={applicant.id}
+                moduleKey="landBank"
               />
             )}
 

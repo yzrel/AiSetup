@@ -1,0 +1,25 @@
+# MySQL deployment profile: SPRING_PROFILES_ACTIVE=mysql (combine with prod: "prod,mysql").
+# Flyway picks vendor-specific scripts automatically via db/migration/{vendor}
+# (db/migration/mysql uses LONGTEXT / DATETIME(6)).
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/aisetup?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:aisetup}
+    password: ${MYSQL_PASSWORD:aisetup}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  h2:
+    console:
+      enabled: false
+
+aisetup:
+  cors:
+    allowed-origins: ${AISETUP_CORS_ORIGINS:http://localhost:5173}

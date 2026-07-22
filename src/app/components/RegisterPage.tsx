@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   User,
   Mail,
@@ -37,6 +37,9 @@ import { DemoModeBanner } from "./DemoModeBanner";
 import { DemoModeLogoTrigger } from "./DemoModeLogoTrigger";
 import { DOSTMark } from "./DOSTLogos";
 import { isDemoModeActive } from "../utils/demoMode";
+import { api, ApiError } from "../api/client";
+import { clearAuthToken, setAuthToken } from "../api/authToken";
+import { syncApplicantToBackend } from "../utils/applicantPersistence";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -359,34 +362,65 @@ function OTPVerify({
   onVerify,
   placeholder,
   type = "text",
+  demoHint,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   verified: boolean;
-  onSend: () => void;
-  onVerify: (otp: string) => void;
+  onSend: () => Promise<{ demo?: boolean; message?: string } | void>;
+  onVerify: (otp: string) => Promise<void>;
   placeholder?: string;
   type?: string;
+  /** Amber demo warning when this channel is not configured. */
+  demoHint?: boolean;
 }) {
   const [otp, setOtp] = useState("");
   const [sent, setSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
-  const send = () => {
-    if (!value) return;
-    onSend();
-    setSent(true);
-    setCountdown(60);
-    const t = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(t);
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
+  const send = async () => {
+    if (!value || busy || verified) return;
+    setBusy(true);
+    setError("");
+    setInfo("");
+    try {
+      const result = await onSend();
+      setSent(true);
+      setCountdown(60);
+      if (result?.message) setInfo(result.message);
+      const t = setInterval(() => {
+        setCountdown((c) => {
+          if (c <= 1) {
+            clearInterval(t);
+            return 0;
+          }
+          return c - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not send OTP");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    if (!otp || busy || verified) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onVerify(otp);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Could not verify OTP",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -407,13 +441,15 @@ function OTPVerify({
         />
         <button
           type="button"
-          onClick={send}
-          disabled={!value || countdown > 0 || verified}
+          onClick={() => void send()}
+          disabled={!value || countdown > 0 || verified || busy}
           className="shrink-0 text-xs font-bold px-3 py-2.5 rounded-xl bg-[#0C2461] text-white hover:bg-blue-800 disabled:opacity-40 transition-colors whitespace-nowrap"
         >
           {countdown > 0
             ? `Resend (${countdown}s)`
-            : "Send OTP"}
+            : busy
+              ? "Sending…"
+              : "Send OTP"}
         </button>
       </div>
 
@@ -422,7 +458,7 @@ function OTPVerify({
         <div className="flex gap-2">
           <input
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
             maxLength={6}
             placeholder="Enter 6-digit OTP"
             className={
@@ -432,17 +468,29 @@ function OTPVerify({
           />
           <button
             type="button"
-            onClick={() => onVerify(otp)}
-            className="shrink-0 text-xs font-bold px-3 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={() => void verify()}
+            disabled={otp.length !== 6 || busy}
+            className="shrink-0 text-xs font-bold px-3 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
           >
-            Verify
+            {busy ? "…" : "Verify"}
           </button>
         </div>
       )}
 
-      {sent && !verified && (
-        <p className="text-[10px] text-gray-400">
-          Demo: use OTP <strong>123456</strong> to verify
+      {sent && !verified && demoHint && (
+        <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+          Demo: delivery is not configured — use OTP <strong>123456</strong> to
+          verify
+        </p>
+      )}
+
+      {info && !verified && !demoHint && (
+        <p className="text-[10px] text-gray-500">{info}</p>
+      )}
+
+      {error && (
+        <p className="text-[10px] text-red-600 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 shrink-0" /> {error}
         </p>
       )}
 
@@ -517,6 +565,27 @@ export function RegisterPage({
     // Step 4 — done
   });
 
+  const [otpDelivery, setOtpDelivery] = useState<{
+    smtpEnabled: boolean;
+    smsEnabled: boolean;
+    demoModeEnabled: boolean;
+  }>({ smtpEnabled: false, smsEnabled: false, demoModeEnabled: true });
+
+  useEffect(() => {
+    void api
+      .health()
+      .then((h) =>
+        setOtpDelivery({
+          smtpEnabled: !!h.smtpEnabled,
+          smsEnabled: !!h.smsEnabled,
+          demoModeEnabled: h.demoModeEnabled !== false,
+        }),
+      )
+      .catch(() => {
+        /* keep defaults: demo hints until health is reachable */
+      });
+  }, []);
+
   const set = (key: string, value: any) =>
     setForm((p) => ({ ...p, [key]: value }));
   const clearErr = (key: string) =>
@@ -528,11 +597,19 @@ export function RegisterPage({
 
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (): boolean => {
-    if (isDemoModeActive()) {
-      setErrors({});
-      return true;
-    }
     const errs: Record<string, string> = {};
+    // Demo mode may skip most field validators, but email/SMS OTP must still
+    // succeed server-side — keep those checks so registration does not fail later.
+    if (isDemoModeActive()) {
+      if (step === 2 || step === 4) {
+        if (!form.emailVerified)
+          errs.emailVerified = "Please verify your email address";
+        if (!form.phoneVerified)
+          errs.phoneVerified = "Please verify your mobile number";
+      }
+      setErrors(errs);
+      return Object.keys(errs).length === 0;
+    }
     if (step === 1) {
       if (!form.firstName.trim())
         errs.firstName = "First name is required";
@@ -605,9 +682,9 @@ export function RegisterPage({
     setShowPrivacy(true);
   };
 
-  const handleAgree = () => {
+  const handleAgree = async () => {
     setShowPrivacy(false);
-    // Save to applicant store and log in
+    // Save to applicant store, then create backend auth user + case blob
     const app = applicantStore.add({
       applicantName: `${form.firstName} ${form.lastName}`,
       designation: "Owner/Applicant",
@@ -630,7 +707,6 @@ export function RegisterPage({
         tinNumber: form.tinNumber,
         registrationType: form.registrationType,
         registrationNumber: form.registrationNumber,
-        password: form.password,
         firstName: form.firstName,
         middleName: form.middleName,
         lastName: form.lastName,
@@ -648,20 +724,34 @@ export function RegisterPage({
       },
     });
 
-    // Registration complete — applicant signs in on the login page next
-    // authStore.login({
-    //   id: app.id,
-    //   email: form.email,
-    //   firstName: form.firstName,
-    //   middleName: form.middleName,
-    //   lastName: form.lastName,
-    //   role: "applicant",
-    //   enterpriseName: form.companyName,
-    //   applicationId: app.applicationId,
-    //   avatarUrl: form.selfie,
-    //   verified: true,
-    //   portal: "admin",
-    // });
+    try {
+      const auth = await api.register({
+        email: form.email.trim(),
+        password: form.password,
+        firstName: form.firstName,
+        middleName: form.middleName,
+        lastName: form.lastName,
+        enterpriseName: form.companyName,
+        applicantId: app.id,
+        applicationId: app.applicationId,
+        phone: form.phone.trim(),
+        role: "applicant",
+      });
+      setAuthToken(auth.token);
+      await syncApplicantToBackend(app);
+    } catch (err) {
+      console.warn(
+        "[aisetup] Registration backend sync failed:",
+        err instanceof ApiError ? err.message : err,
+      );
+      window.alert(
+        err instanceof ApiError
+          ? `Account created locally, but server registration failed: ${err.message}. Start the backend and try signing in after re-registering if needed.`
+          : "Account created locally, but the server could not be reached. Start the backend (npm run backend) before signing in.",
+      );
+    } finally {
+      clearAuthToken();
+    }
 
     onSuccess();
   };
@@ -926,14 +1016,29 @@ export function RegisterPage({
                     value={form.email}
                     onChange={(v) => {
                       set("email", v);
+                      set("emailVerified", false);
                       clearErr("email");
                       clearErr("emailVerified");
                     }}
                     verified={form.emailVerified}
-                    onSend={() => {}}
-                    onVerify={(otp) => {
-                      if (otp === "123456")
-                        set("emailVerified", true);
+                    demoHint={
+                      otpDelivery.demoModeEnabled &&
+                      !otpDelivery.smtpEnabled
+                    }
+                    onSend={async () => {
+                      const result = await api.sendOtp({
+                        channel: "email",
+                        target: form.email.trim(),
+                      });
+                      return result;
+                    }}
+                    onVerify={async (otp) => {
+                      await api.verifyOtp({
+                        channel: "email",
+                        target: form.email.trim(),
+                        code: otp,
+                      });
+                      set("emailVerified", true);
                     }}
                     placeholder="juan@example.com"
                     type="email"
@@ -952,14 +1057,29 @@ export function RegisterPage({
                     value={form.phone}
                     onChange={(v) => {
                       set("phone", v);
+                      set("phoneVerified", false);
                       clearErr("phone");
                       clearErr("phoneVerified");
                     }}
                     verified={form.phoneVerified}
-                    onSend={() => {}}
-                    onVerify={(otp) => {
-                      if (otp === "123456")
-                        set("phoneVerified", true);
+                    demoHint={
+                      otpDelivery.demoModeEnabled &&
+                      !otpDelivery.smsEnabled
+                    }
+                    onSend={async () => {
+                      const result = await api.sendOtp({
+                        channel: "sms",
+                        target: form.phone.trim(),
+                      });
+                      return result;
+                    }}
+                    onVerify={async (otp) => {
+                      await api.verifyOtp({
+                        channel: "sms",
+                        target: form.phone.trim(),
+                        code: otp,
+                      });
+                      set("phoneVerified", true);
                     }}
                     placeholder="09171234567"
                     type="tel"

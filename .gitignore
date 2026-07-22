@@ -35,6 +35,8 @@ backend/.mvn/wrapper/maven-wrapper.jar
 # Local H2 database
 backend/data/
 
-# Local notes / reference material (not part of the app)
-Aisetup/
+# Local notes / reference material (not part of the app).
+# Anchored to repo root so it does not case-collide with
+# backend/src/main/java/ph/gov/dost/aisetup/ on Windows.
+/Aisetup/
 .tmp-setup-forms/

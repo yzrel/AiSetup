@@ -4,11 +4,21 @@
 
 const STORAGE_KEY = "aisetup.demoMode";
 
+/** Production builds never allow demo unlock (VITE_APP_ENV=production). */
+export function isDemoModeAllowedByBuild(): boolean {
+  return import.meta.env.VITE_APP_ENV !== "production";
+}
+
 let enabled = false;
 let listeners: (() => void)[] = [];
 
 function loadFromSession() {
   try {
+    if (!isDemoModeAllowedByBuild()) {
+      enabled = false;
+      sessionStorage.removeItem(STORAGE_KEY);
+      return;
+    }
     enabled = sessionStorage.getItem(STORAGE_KEY) === "1";
   } catch {
     enabled = false;
@@ -17,13 +27,13 @@ function loadFromSession() {
 
 function persist() {
   try {
-    if (enabled) {
+    if (enabled && isDemoModeAllowedByBuild()) {
       sessionStorage.setItem(STORAGE_KEY, "1");
     } else {
       sessionStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    // ignore storage errors in demo
+    // ignore storage errors
   }
 }
 
@@ -42,9 +52,15 @@ function alertIfEnabled(wasEnabled: boolean) {
 loadFromSession();
 
 export const demoModeStore = {
-  isEnabled: () => enabled,
+  isEnabled: () => enabled && isDemoModeAllowedByBuild(),
 
   setEnabled: (value: boolean) => {
+    if (!isDemoModeAllowedByBuild()) {
+      enabled = false;
+      persist();
+      notify();
+      return;
+    }
     const wasEnabled = enabled;
     enabled = value;
     persist();
@@ -53,6 +69,10 @@ export const demoModeStore = {
   },
 
   toggle: () => {
+    if (!isDemoModeAllowedByBuild()) {
+      window.alert("Demo mode is disabled in production builds.");
+      return;
+    }
     const wasEnabled = enabled;
     enabled = !enabled;
     persist();

@@ -3,18 +3,17 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import {
-  DOST_REGION_12_OFFICE,
-  REGION_12_LABEL,
-} from "../constants/region12";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2, Shield } from 'lucide-react';
-import { authStore } from '../store/authStore';
+import { authStore, type AuthUser, type UserRole } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
 import { getApplicantsForStaff } from '../utils/provincialOffice';
 import { staffContextStore } from '../store/staffContextStore';
 import { DemoModeBanner } from './DemoModeBanner';
 import { DemoModeLogoTrigger } from './DemoModeLogoTrigger';
 import { DOSTMark } from './DOSTLogos';
+import { api, ApiError } from '../api/client';
+import { setAuthToken } from '../api/authToken';
+import { isDemoModeAllowedByBuild } from '../store/demoModeStore';
 
 function autoSelectStaffApplicant() {
   const user = authStore.getUser();
@@ -25,49 +24,25 @@ function autoSelectStaffApplicant() {
   }
 }
 
-/** Demo Provincial Director logins — one per PSTO office */
-const DIRECTOR_ACCOUNTS: Record<
-  string,
-  {
-    officeId: string;
-    firstName: string;
-    middleName?: string;
-    lastName: string;
-    office: string;
-    provinces: string[];
-  }
-> = {
-  'director.cotabato@dost.gov.ph': {
-    officeId: 'cotabato',
-    firstName: 'Michael',
-    middleName: 'T.',
-    lastName: 'Mayo',
-    office: 'PSTO - Cotabato',
-    provinces: ['Cotabato', 'North Cotabato'],
-  },
-  'director.southcot@dost.gov.ph': {
-    officeId: 'south-cotabato',
-    firstName: 'Gisele Eve',
-    middleName: 'O.',
-    lastName: 'Siladan',
-    office: 'PSTO - South Cotabato',
-    provinces: ['South Cotabato'],
-  },
-  'director.sk@dost.gov.ph': {
-    officeId: 'sultan-kudarat',
-    firstName: 'Zenaida',
-    lastName: 'Guiano',
-    office: 'PSTO - Sultan Kudarat',
-    provinces: ['Sultan Kudarat'],
-  },
-  'director.sargen@dost.gov.ph': {
-    officeId: 'gensan-sarangani',
-    firstName: 'Babai',
-    lastName: 'Tagitican',
-    office: 'PSTO - General Santos / Sarangani',
-    provinces: ['Sarangani', 'General Santos City'],
-  },
-};
+function mapApiUserToAuthUser(
+  apiUser: import('../api/types').ApiAuthResponse['user'],
+): AuthUser {
+  return {
+    id: apiUser.applicantId || apiUser.id,
+    email: apiUser.email,
+    firstName: apiUser.firstName,
+    middleName: apiUser.middleName ?? '',
+    lastName: apiUser.lastName,
+    role: apiUser.role as UserRole,
+    enterpriseName: apiUser.enterpriseName ?? '',
+    applicationId: apiUser.applicationId,
+    applicantId: apiUser.applicantId,
+    verified: apiUser.verified ?? true,
+    portal: apiUser.portal ?? 'admin',
+    officeId: apiUser.officeId,
+    assignedProvinces: apiUser.assignedProvinces,
+  };
+}
 
 type PortalType = 'applicant' | 'staff';
 
@@ -112,85 +87,37 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
     setError('');
     if (!email || !password) { setError('Please enter your email and password.'); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
+    try {
+      const response = await api.login({ email: email.trim(), password });
+      setAuthToken(response.token);
+      const user = mapApiUserToAuthUser(response.user);
 
-    if (portalType === 'staff') {
-      if (email === 'agent@dost.gov.ph' && password === 'admin123') {
-        authStore.login({
-          id: 'agent-001', email, firstName: 'DOST', middleName: '', lastName: 'Agent',
-          role: 'agent', enterpriseName: `${DOST_REGION_12_OFFICE} — Provincial S&T Center`, verified: true,
-          portal: 'admin',
-          officeId: 'south-cotabato',
-          assignedProvinces: ['South Cotabato'],
-        });
-        autoSelectStaffApplicant();
-      } else if (email === 'admin@dost.gov.ph' && password === 'admin123') {
-        authStore.login({
-          id: 'admin-001', email, firstName: 'DOST', middleName: '', lastName: 'Admin',
-          role: 'admin', enterpriseName: `${DOST_REGION_12_OFFICE} — Regional Office`, verified: true,
-          portal: 'admin',
-          officeId: 'regional',
-        });
-        autoSelectStaffApplicant();
-      } else if (DIRECTOR_ACCOUNTS[email.toLowerCase()] && password === 'admin123') {
-        const director = DIRECTOR_ACCOUNTS[email.toLowerCase()];
-        authStore.login({
-          id: `director-${director.officeId}`,
-          email,
-          firstName: director.firstName,
-          middleName: director.middleName ?? '',
-          lastName: director.lastName,
-          role: 'provincial-director',
-          enterpriseName: director.office,
-          verified: true,
-          portal: 'admin',
-          officeId: director.officeId,
-          assignedProvinces: director.provinces,
-        });
-        autoSelectStaffApplicant();
-      } else {
+      if (portalType === 'staff' && !authStore.isStaff(user.role)) {
+        setAuthToken(null);
         setError('Invalid credentials. Only authorized DOST personnel can access this portal.');
+        return;
       }
-    } else if (portalType === 'applicant') {
-      const blockReason = applicantStore.getLoginBlockReason(email, password);
-      const applicant = applicantStore.verifyLogin(email, password);
-      if (applicant) {
-        authStore.login({
-          id: applicant.id,
-          email: applicant.emailAddress,
-          firstName: String(applicant.moduleData.firstName ?? applicant.applicantName.split(' ')[0]),
-          middleName: String(applicant.moduleData.middleName ?? ''),
-          lastName: String(applicant.moduleData.lastName ?? applicant.applicantName.split(' ').slice(1).join(' ')),
-          role: 'applicant',
-          enterpriseName: applicant.enterpriseName,
-          applicationId: applicant.applicationId,
-          avatarUrl: applicant.moduleData.selfie,
-          verified: true,
-          portal: 'admin',
-        });
-      } else if (blockReason === 'blocked') {
-        setError('This account has been blocked by DOST Region XII. Please contact the DOST XII office in Koronadal City for assistance.');
-      } else {
-        setError('Invalid email or password. Please register first or check your credentials.');
+      if (portalType === 'applicant' && authStore.isStaff(user.role)) {
+        setAuthToken(null);
+        setError('Please use the Staff Portal tab for DOST accounts.');
+        return;
       }
-    }
 
-  /* Client community portal — disabled
-    } else {
-      if (email && password.length >= 6) {
-        authStore.login({
-          id: 'client-001', email,
-          firstName: 'Applicant', middleName: '', lastName: 'User',
-          role: 'client', enterpriseName: 'My Enterprise', verified: true,
-          portal: 'client',
-        });
-      } else {
-        setError('Invalid email or password. Please check your credentials.');
+      // Blocked accounts are rejected server-side (401 with a specific message).
+      authStore.login(user);
+      await applicantStore.hydrateFromBackend(true);
+      if (authStore.isStaff(user.role)) {
+        autoSelectStaffApplicant();
       }
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Unable to reach the server. Start the backend (npm run backend) and try again.';
+      setError(message);
+    } finally {
+      setLoading(false);
     }
-  */
-
-    setLoading(false);
   };
 
   const isStaff = portalType === 'staff';
@@ -372,8 +299,9 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
               </div>
             )}
 
+            {isDemoModeAllowedByBuild() && (
             <div className={`mt-4 rounded-xl p-3 border ${isStaff ? 'bg-purple-50/50 border-purple-100' : 'bg-gray-50 border-gray-200'}`}>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Demo Credentials</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Dev credentials (seeded users)</p>
               {isStaff ? (
                 <>
                   <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
@@ -384,10 +312,11 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
               ) : (
                 <>
                   <p className="text-[11px] text-gray-500">Use your registered email and password</p>
-                  <p className="text-[11px] text-gray-500 mt-1">Demo: <span className="font-mono">juan@abcfood.com</span> / <span className="font-mono">Demo@1234</span></p>
+                  <p className="text-[11px] text-gray-500 mt-1">Seeded: <span className="font-mono">juan@abcfood.com</span> / <span className="font-mono">Demo@1234</span></p>
                  </>
               )}
             </div>
+            )}
           </div>
         </div>
 

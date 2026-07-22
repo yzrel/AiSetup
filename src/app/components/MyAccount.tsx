@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { User, Lock, Building2, CheckCircle, AlertCircle } from "lucide-react";
+import { api, ApiError } from "../api/client";
 import { applicantStore } from "../store/applicantStore";
 import { AuthUser, authStore } from "../store/authStore";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
@@ -189,18 +190,7 @@ export function MyAccount({ user }: { user: AuthUser }) {
     showNotice("ok", "Registration details updated.");
   };
 
-  const savePassword = () => {
-    const app = resolveApplicantForUser(user);
-    if (!app) {
-      showNotice("err", "No account record found.");
-      return;
-    }
-
-    const stored = String(app.moduleData?.password ?? "");
-    if (passwordForm.currentPassword !== stored) {
-      showNotice("err", "Current password is incorrect.");
-      return;
-    }
+  const savePassword = async () => {
     if (passwordForm.newPassword.length < 8) {
       showNotice("err", "New password must be at least 8 characters.");
       return;
@@ -218,7 +208,21 @@ export function MyAccount({ user }: { user: AuthUser }) {
       return;
     }
 
-    applicantStore.setPassword(app.id, passwordForm.newPassword);
+    try {
+      // Current-password verification happens server-side.
+      await api.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+    } catch (err) {
+      showNotice(
+        "err",
+        err instanceof ApiError
+          ? err.message
+          : "Could not change the password. Please try again.",
+      );
+      return;
+    }
     setPasswordForm({
       currentPassword: "",
       newPassword: "",
