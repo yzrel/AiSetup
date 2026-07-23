@@ -39,7 +39,8 @@ import { DOSTMark } from "./DOSTLogos";
 import { isDemoModeActive } from "../utils/demoMode";
 import { api, ApiError } from "../api/client";
 import { clearAuthToken, setAuthToken } from "../api/authToken";
-import { syncApplicantToBackend } from "../utils/applicantPersistence";
+import { syncApplicantToBackend, uploadFileToBackend } from "../utils/applicantPersistence";
+import { dataUrlToFile } from "../utils/readFileAsDataUrl";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -739,6 +740,10 @@ export function RegisterPage({
       });
       setAuthToken(auth.token);
       await syncApplicantToBackend(app);
+      const selfieFile = dataUrlToFile(form.selfie, "registration-selfie.jpg");
+      if (selfieFile) {
+        await uploadFileToBackend(app.id, "selfie", selfieFile);
+      }
     } catch (err) {
       console.warn(
         "[aisetup] Registration backend sync failed:",

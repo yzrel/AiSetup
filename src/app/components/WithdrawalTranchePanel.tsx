@@ -26,7 +26,7 @@ import type {
 } from "../api/types";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { SubmittedFileActions } from "./SubmittedFileActions";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import {
   availableProposalBudgetItems,
   budgetRowToWithdrawalEquipment,
@@ -164,7 +164,12 @@ export function WithdrawalTranchePanel({
     if (!files?.length || readOnly) return;
     const docs: ModuleDocument[] = [];
     for (const file of Array.from(files)) {
-      docs.push(await readFileAsModuleDocument(file, uploadedBy));
+      docs.push(
+        await readAndUploadModuleDocument(file, uploadedBy, {
+          applicantId: applicant.id,
+          moduleKey: `withdrawal-t${tranche}-${field}`,
+        }),
+      );
     }
     patchPkg({ [field]: [...(pkg[field] ?? []), ...docs] });
   };
@@ -433,6 +438,7 @@ export function WithdrawalTranchePanel({
             docs={pkg.quotations ?? []}
             inputId={`wd-quotes-t${tranche}`}
             readOnly={readOnly}
+            applicantId={applicant.id}
             onUpload={(files) => handleMultiUpload("quotations", files)}
             onRemove={(i) => handleRemoveMulti("quotations", i)}
           />
@@ -443,6 +449,7 @@ export function WithdrawalTranchePanel({
             inputId={`wd-photos-t${tranche}`}
             accept="image/*,.pdf"
             readOnly={readOnly}
+            applicantId={applicant.id}
             onUpload={(files) => handleMultiUpload("equipmentPhotos", files)}
             onRemove={(i) => handleRemoveMulti("equipmentPhotos", i)}
           />
@@ -459,6 +466,7 @@ function MultiDocUploadBlock({
   inputId,
   accept = ".pdf,image/*,.doc,.docx",
   readOnly,
+  applicantId,
   onUpload,
   onRemove,
 }: {
@@ -468,6 +476,7 @@ function MultiDocUploadBlock({
   inputId: string;
   accept?: string;
   readOnly?: boolean;
+  applicantId?: string;
   onUpload: (files: FileList | null) => void;
   onRemove: (index: number) => void;
 }) {
@@ -516,6 +525,8 @@ function MultiDocUploadBlock({
                 fileName={d.fileName}
                 mimeType={d.mimeType}
                 dataUrl={d.dataUrl}
+                fileId={d.fileId}
+                applicantId={applicantId}
                 compact
               />
               {!readOnly && (

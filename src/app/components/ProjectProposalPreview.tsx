@@ -11,6 +11,7 @@ import type {
 } from "../api/types";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
 import { printProjectProposalPdf } from "../utils/projectProposalPrint";
+import { StoredFileImage } from "./StoredFilePreview";
 import {
   PreviewFieldRow,
   PreviewSection,
@@ -25,6 +26,7 @@ interface ProjectProposalPreviewProps {
   document?: ProjectProposalDocumentResponse | null;
   attachments?: ProjectProposalAttachment[];
   applicationId?: string;
+  applicantId?: string;
   aiGenerated?: boolean;
   submitted?: boolean;
   onPrint?: () => void;
@@ -97,9 +99,11 @@ function Table({
 function AttachmentFigure({
   attachment,
   label,
+  applicantId,
 }: {
   attachment?: ProjectProposalAttachment;
   label: string;
+  applicantId?: string;
 }) {
   if (!attachment) {
     return (
@@ -113,8 +117,9 @@ function AttachmentFigure({
     <div className="space-y-1">
       <p className="text-xs font-semibold text-gray-600">{label}</p>
       {isImage ? (
-        <img
-          src={attachment.dataUrl}
+        <StoredFileImage
+          applicantId={applicantId}
+          file={attachment}
           alt={attachment.fileName}
           className="max-h-64 mx-auto border border-gray-200 rounded"
         />
@@ -130,6 +135,7 @@ export function ProjectProposalPreview({
   document: doc,
   attachments = [],
   applicationId,
+  applicantId,
   aiGenerated,
   submitted,
   onPrint,
@@ -251,6 +257,7 @@ export function ProjectProposalPreview({
           <AttachmentFigure
             attachment={findAttachment("orgChart")}
             label={PROPOSAL_ATTACHMENT_LABELS.orgChart}
+            applicantId={applicantId}
           />
           <div className="mt-4">
             <p className="text-xs font-bold text-gray-500 uppercase mb-1">B.2 Skills and Expertise</p>
@@ -268,6 +275,7 @@ export function ProjectProposalPreview({
             <AttachmentFigure
               attachment={findAttachment("vicinityMap")}
               label={PROPOSAL_ATTACHMENT_LABELS.vicinityMap}
+              applicantId={applicantId}
             />
           </div>
         </Section>
@@ -335,6 +343,7 @@ export function ProjectProposalPreview({
             <AttachmentFigure
               attachment={findAttachment("plantLayout")}
               label={PROPOSAL_ATTACHMENT_LABELS.plantLayout}
+              applicantId={applicantId}
             />
           </div>
         </Section>
@@ -395,6 +404,7 @@ export function ProjectProposalPreview({
             <AttachmentFigure
               attachment={findAttachment("financialReports")}
               label={PROPOSAL_ATTACHMENT_LABELS.financialReports}
+              applicantId={applicantId}
             />
           </div>
         </Section>
@@ -462,6 +472,7 @@ export function printProjectProposal(
   document?: ProjectProposalDocumentResponse | null,
   attachments?: ProjectProposalAttachment[],
   applicationId?: string,
+  applicantId?: string,
 ) {
-  printProjectProposalPdf(form, document, attachments, applicationId);
+  void printProjectProposalPdf(form, document, attachments, applicationId, applicantId);
 }

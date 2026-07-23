@@ -19,6 +19,7 @@ import {
   resolveApplicantOfficeId,
 } from "./provincialOffice";
 import type { SignedDocumentValue } from "../components/SignedDocumentUpload";
+import { syncModuleKeyToBackendBestEffort } from "./applicantPersistence";
 
 const REGIONAL_RECORDS_EMAIL = "records@region12.dost.gov.ph";
 
@@ -190,15 +191,21 @@ export function saveSignedDocumentWithReceipts(options: {
   const view = notificationView(moduleKey);
 
   const current = applicantStore.getById(applicant.id) ?? applicant;
+  const nextSignedDocuments = {
+    ...getSignedDocuments(current),
+    [moduleKey]: document,
+  };
   applicantStore.update(applicant.id, {
     moduleData: {
       ...current.moduleData,
-      signedDocuments: {
-        ...getSignedDocuments(current),
-        [moduleKey]: document,
-      },
+      signedDocuments: nextSignedDocuments,
     },
   });
+
+  // Targeted module-row write so wet-ink uploads survive even if the legacy
+  // whole-blob PUT is oversized (shared by LOI, TNA, proposal, RTEC, etc.).
+  const updated = applicantStore.getById(applicant.id) ?? current;
+  syncModuleKeyToBackendBestEffort(updated, "signedDocuments", nextSignedDocuments);
 
   const { to, officeId } = dostRecipients(applicant);
   const uploadedByStaff = !!user && authStore.isStaff(user.role);
@@ -283,4 +290,6 @@ export function removeSignedDocument(
       signedDocuments: docs,
     },
   });
+  const updated = applicantStore.getById(applicant.id) ?? current;
+  syncModuleKeyToBackendBestEffort(updated, "signedDocuments", docs);
 }

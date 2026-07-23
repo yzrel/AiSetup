@@ -117,6 +117,8 @@ export function TNA2TechnicalReport({
 
   const handleDraftChange = (updated: Tna2DocumentResponse) => {
     setDraft(updated);
+    if (!applicant) return;
+    saveTna2Draft(applicant.id, updated);
   };
 
   const handlePublish = () => {
@@ -188,6 +190,15 @@ export function TNA2TechnicalReport({
               >
                 {generating ? "Generating…" : "Generate with AI"}
               </button>
+              {draft && (
+                <button
+                  type="button"
+                  onClick={handleSaveEdits}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 text-sm font-bold hover:bg-gray-50"
+                >
+                  Save Draft
+                </button>
+              )}
               {draft && (
                 <button
                   type="button"

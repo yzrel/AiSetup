@@ -328,6 +328,8 @@ function SubmittedFileRow({
             fileName={file.fileName}
             mimeType={file.mimeType}
             dataUrl={file.dataUrl}
+            fileId={file.serverFileId}
+            applicantId={applicantId}
             compact
           />
         )}

@@ -109,6 +109,140 @@ export interface StoredRequirementUpload {
   dataUrl?: string;
   fileSizeBytes?: number;
   uploadedAt?: string;
+  /** Backend file_uploads id when mirrored via the file API. */
+  fileId?: string;
+}
+
+export type RequirementReviewStatus = "ok" | "flagged" | "";
+
+export interface RequirementStaffRemark {
+  status: RequirementReviewStatus;
+  remark: string;
+}
+
+/** Persisted staff document-review draft (OK / Flag / remarks) under moduleData. */
+export interface RequirementStaffReview {
+  remarks: Record<string, RequirementStaffRemark>;
+  staffNotes?: string;
+  staffName?: string;
+  updatedAt?: string;
+}
+
+export const REQUIREMENT_STAFF_REVIEW_KEY = "requirementStaffReview";
+
+export function getRequirementAdditionalNotes(
+  applicant: Applicant | null | undefined,
+): string {
+  return typeof applicant?.moduleData?.requirementAdditionalNotes === "string"
+    ? applicant.moduleData.requirementAdditionalNotes
+    : "";
+}
+
+export function getRequirementRevisionNotes(
+  applicant: Applicant | null | undefined,
+): string {
+  return typeof applicant?.moduleData?.requirementRevisionNotes === "string"
+    ? applicant.moduleData.requirementRevisionNotes
+    : "";
+}
+
+export function getRequirementStaffDecisionDraft(
+  applicant: Applicant | null | undefined,
+): "approved" | "needs-revision" | "" {
+  const draft = applicant?.moduleData?.requirementStaffDecisionDraft;
+  if (draft === "approved" || draft === "needs-revision") return draft;
+  const saved = applicant?.moduleData?.staffDecision;
+  if (saved === "approved" || saved === "needs-revision") return saved;
+  return "";
+}
+
+export function persistRequirementNotes(
+  applicantId: string,
+  patch: {
+    additionalNotes?: string;
+    revisionNotes?: string;
+    staffDecisionDraft?: "approved" | "needs-revision" | "";
+  },
+  store: {
+    getById: (id: string) => Applicant | undefined;
+    update: (id: string, patch: Partial<Applicant>) => void;
+  },
+): void {
+  const applicant = store.getById(applicantId);
+  if (!applicant) return;
+  store.update(applicantId, {
+    moduleData: {
+      ...applicant.moduleData,
+      ...(patch.additionalNotes !== undefined
+        ? { requirementAdditionalNotes: patch.additionalNotes }
+        : {}),
+      ...(patch.revisionNotes !== undefined
+        ? { requirementRevisionNotes: patch.revisionNotes }
+        : {}),
+      ...(patch.staffDecisionDraft !== undefined
+        ? { requirementStaffDecisionDraft: patch.staffDecisionDraft }
+        : {}),
+    },
+  });
+}
+
+export function getRequirementStaffReview(
+  applicant: Applicant | null | undefined,
+): RequirementStaffReview {
+  const raw = applicant?.moduleData?.[REQUIREMENT_STAFF_REVIEW_KEY] as
+    | RequirementStaffReview
+    | undefined;
+  const remarks: Record<string, RequirementStaffRemark> = {};
+  if (raw?.remarks && typeof raw.remarks === "object") {
+    for (const [id, entry] of Object.entries(raw.remarks)) {
+      const status =
+        entry?.status === "ok" || entry?.status === "flagged" ? entry.status : "";
+      remarks[id] = {
+        status,
+        remark: typeof entry?.remark === "string" ? entry.remark : "",
+      };
+    }
+  }
+  return {
+    remarks,
+    staffNotes: typeof raw?.staffNotes === "string" ? raw.staffNotes : "",
+    staffName: typeof raw?.staffName === "string" ? raw.staffName : "",
+    updatedAt: typeof raw?.updatedAt === "string" ? raw.updatedAt : undefined,
+  };
+}
+
+/**
+ * Persist in-progress staff OK/Flag marks so they survive refresh / navigation.
+ * Uses a dedicated moduleData object (staff-owned on the backend merge path).
+ */
+export function persistRequirementStaffReview(
+  applicantId: string,
+  patch: {
+    remarks?: Record<string, RequirementStaffRemark>;
+    staffNotes?: string;
+    staffName?: string;
+  },
+  store: {
+    getById: (id: string) => Applicant | undefined;
+    update: (id: string, patch: Partial<Applicant>) => void;
+  },
+): void {
+  const applicant = store.getById(applicantId);
+  if (!applicant) return;
+  const prev = getRequirementStaffReview(applicant);
+  const next: RequirementStaffReview = {
+    remarks: patch.remarks ?? prev.remarks,
+    staffNotes:
+      patch.staffNotes !== undefined ? patch.staffNotes : prev.staffNotes,
+    staffName: patch.staffName !== undefined ? patch.staffName : prev.staffName,
+    updatedAt: new Date().toISOString(),
+  };
+  store.update(applicantId, {
+    moduleData: {
+      ...applicant.moduleData,
+      [REQUIREMENT_STAFF_REVIEW_KEY]: next,
+    },
+  });
 }
 
 export function buildRequirementUploadList(
@@ -143,6 +277,7 @@ export function buildRequirementUploadList(
       dataUrl: prev?.dataUrl,
       fileSizeBytes: prev?.fileSizeBytes,
       uploadedAt: prev?.uploadedAt,
+      fileId: prev?.fileId,
     };
   });
 }
@@ -172,6 +307,7 @@ export function persistRequirementUploads(
           dataUrl,
           fileSizeBytes,
           uploadedAt,
+          fileId,
         }) => ({
           id,
           complianceId,
@@ -183,6 +319,7 @@ export function persistRequirementUploads(
           dataUrl,
           fileSizeBytes,
           uploadedAt,
+          fileId,
         }),
       ),
       documents: uploads.filter((u) => u.uploaded),

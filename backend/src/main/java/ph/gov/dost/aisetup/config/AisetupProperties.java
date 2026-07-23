@@ -14,6 +14,7 @@ public class AisetupProperties {
     private boolean seedUsers = true;
     private boolean demoModeEnabled = true;
     private String uploadDir = "./data/uploads";
+    private final RateLimit rateLimit = new RateLimit();
 
     public Security getSecurity() {
         return security;
@@ -25,6 +26,10 @@ public class AisetupProperties {
 
     public Sms getSms() {
         return sms;
+    }
+
+    public RateLimit getRateLimit() {
+        return rateLimit;
     }
 
     public boolean isSeedUsers() {
@@ -131,6 +136,57 @@ public class AisetupProperties {
 
         public boolean isConfigured() {
             return apiKey != null && !apiKey.isBlank();
+        }
+    }
+
+    public static class RateLimit {
+        /** OTP sends allowed per client IP per window. */
+        private int otpPerIp = 10;
+        /** OTP sends allowed per email/phone target per window. */
+        private int otpPerTarget = 5;
+        private int otpWindowMinutes = 15;
+        /** AI /complete calls allowed per staff user per window. */
+        private int aiPerUser = 30;
+        private int aiWindowMinutes = 60;
+
+        public int getOtpPerIp() {
+            return otpPerIp;
+        }
+
+        public void setOtpPerIp(int otpPerIp) {
+            this.otpPerIp = otpPerIp;
+        }
+
+        public int getOtpPerTarget() {
+            return otpPerTarget;
+        }
+
+        public void setOtpPerTarget(int otpPerTarget) {
+            this.otpPerTarget = otpPerTarget;
+        }
+
+        public int getOtpWindowMinutes() {
+            return otpWindowMinutes;
+        }
+
+        public void setOtpWindowMinutes(int otpWindowMinutes) {
+            this.otpWindowMinutes = otpWindowMinutes;
+        }
+
+        public int getAiPerUser() {
+            return aiPerUser;
+        }
+
+        public void setAiPerUser(int aiPerUser) {
+            this.aiPerUser = aiPerUser;
+        }
+
+        public int getAiWindowMinutes() {
+            return aiWindowMinutes;
+        }
+
+        public void setAiWindowMinutes(int aiWindowMinutes) {
+            this.aiWindowMinutes = aiWindowMinutes;
         }
     }
 }

@@ -10,7 +10,7 @@ import { AuthUser, authStore } from "../store/authStore";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { normalizeRegistrationType } from "../utils/applicantPrefill";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import {
   BusinessPermitEntry,
   loadBusinessPermits,
@@ -628,7 +628,7 @@ export function MyAccount({ user }: { user: AuthUser }) {
                   </p>
                   <p className="text-xs text-gray-400">
                     Three consecutive years (e.g. 2023, 2024, 2025). PDF or
-                    image, max 8 MB each.
+                    image, max 15 MB each.
                   </p>
                 </div>
                 {businessPermits.map((entry, index) => (
@@ -683,9 +683,15 @@ export function MyAccount({ user }: { user: AuthUser }) {
                             const file = e.target.files?.[0];
                             if (!file) return;
                             try {
-                              const doc = await readFileAsModuleDocument(
+                              const doc = await readAndUploadModuleDocument(
                                 file,
                                 user.email,
+                                applicantId
+                                  ? {
+                                      applicantId,
+                                      moduleKey: "businessPermits",
+                                    }
+                                  : undefined,
                               );
                               setBusinessPermits((prev) =>
                                 prev.map((p, i) =>

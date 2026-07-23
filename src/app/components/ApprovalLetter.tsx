@@ -8,7 +8,6 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Download,
   Eye,
   FileText,
   RefreshCw,
@@ -20,13 +19,12 @@ import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
-import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
+import { ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyApprovalLetterPublished } from "../utils/notificationHelpers";
 import type { ApprovalLetterForm } from "../api/types";
 import {
   acknowledgeApprovalLetter,
-  downloadApprovalLetterPdf,
   getApprovalLetterForm,
   getApprovalLetterStored,
   getSignedMoa,
@@ -34,6 +32,7 @@ import {
   publishApprovalLetter,
   saveApprovalLetterDraft,
   syncApprovalLetterFromRtec,
+  ensureApprovalLetterPublished,
   validateApprovalLetterAcknowledge,
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
@@ -42,7 +41,6 @@ import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
-import { MoaAnnexDEditor } from "./MoaAnnexDEditor";
 import { getApprovalRoutingNote } from "../utils/moaAnnexD";
 import { formatFormMention } from "../constants/setupForms";
 
@@ -92,16 +90,35 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
 
   const rtecReady = hasRtecReportPrerequisite(applicant);
   const stored = applicant ? getApprovalLetterStored(applicant) : null;
-  const isPublished = !!stored?.published || !!form?.published;
+  const assessedPublished = (
+    (applicant?.moduleData?.assessments ?? []) as { decision?: string }[]
+  ).some((a) => a.decision === "approval-published");
+  // Assessment recovers cases where a stale store update wiped published=true.
+  const isPublished =
+    !!stored?.published || !!form?.published || assessedPublished;
   const isAcknowledged = !!stored?.acknowledged;
   const signedMoa = getSignedMoa(applicant);
   const uploadedBy = user?.email ?? "staff";
+
+  // Repair wiped publish flag so refresh/logout keep MOA unlocked.
+  useEffect(() => {
+    if (!applicant || !form || !assessedPublished) return;
+    if (stored?.published) return;
+    ensureApprovalLetterPublished(applicant.id, { ...form, published: true });
+    setForm((prev) => (prev ? { ...prev, published: true } : prev));
+  }, [applicant?.id, assessedPublished, stored?.published]);
 
   const handleSave = () => {
     if (!applicant || !form) return;
     saveApprovalLetterDraft(applicant.id, form);
     setSaveNotice("Draft saved.");
     setTimeout(() => setSaveNotice(""), 3000);
+  };
+
+  const handleFormChange = (next: ApprovalLetterForm) => {
+    setForm(next);
+    if (!applicant) return;
+    saveApprovalLetterDraft(applicant.id, next);
   };
 
   const handleSync = () => {
@@ -113,10 +130,6 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
-  const handleDownload = () => {
-    downloadApprovalLetterPdf(applicant?.applicationId);
-  };
-
   const handlePublish = () => {
     if (!applicant || !form) return;
     const errors = validateApprovalLetterPublish(form);
@@ -126,9 +139,12 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     }
     setSubmitErrors([]);
     publishApprovalLetter(applicant.id, form);
+    // Re-read after publish — appending assessment with the pre-publish
+    // applicant would overwrite approvalLetter.published back to false.
+    const publishedApplicant = applicantStore.getById(applicant.id) ?? applicant;
     if (user && authStore.isStaff(user.role)) {
       applicantStore.update(applicant.id, {
-        ...appendStaffAssessment(applicant, {
+        ...appendStaffAssessment(publishedApplicant, {
           stage: "post-proposal",
           decision: "approval-published",
           assessedBy: user.email,
@@ -137,7 +153,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
         }),
       });
     }
-    notifyApprovalLetterPublished(applicant);
+    notifyApprovalLetterPublished(publishedApplicant);
     setPublishNotice("Notice of Approval published to applicant.");
     setTimeout(() => setPublishNotice(""), 5000);
     setForm({ ...form, published: true });
@@ -235,8 +251,6 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     </div>
                   ) : (
                     applicant && (
-                      <>
-                      <MoaAnnexDEditor key={applicant.id} applicantId={applicant.id} />
                       <SignedMoaUploadPanel
                         applicant={applicant}
                         uploadedBy={uploadedBy}
@@ -244,7 +258,6 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                         requireAcknowledged={false}
                         onSaved={() => setMoaRefresh((n) => n + 1)}
                       />
-                      </>
                     )
                   )}
 
@@ -257,19 +270,6 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                       })}
                     </p>
                   )}
-                </div>
-              )}
-
-              {showStaffWorkflow && step === "overview" && isPublished && applicant && (
-                <div className="space-y-3 border border-gray-100 rounded-xl p-4 bg-gray-50/50">
-                  <p className="text-sm font-semibold text-gray-800">Signed MOA</p>
-                  <SignedMoaUploadPanel
-                    applicant={applicant}
-                    uploadedBy={uploadedBy}
-                    isAcknowledged={isAcknowledged}
-                    requireAcknowledged={false}
-                    onSaved={() => setMoaRefresh((n) => n + 1)}
-                  />
                 </div>
               )}
 
@@ -320,7 +320,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                       {getApprovalRoutingNote(form)}
                     </div>
                   )}
-                  <ApprovalLetterEditor form={form} onChange={setForm} />
+                  <ApprovalLetterEditor form={form} onChange={handleFormChange} />
                 </>
               )}
 
@@ -329,8 +329,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   <ApprovalLetterPreview
                     form={form}
                     applicationId={applicant.applicationId}
-                    onPrint={handleDownload}
-                    showToolbar
+                    showToolbar={false}
                   />
                   <DocumentDeliveryPanel
                     applicant={applicant}
@@ -421,16 +420,6 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   >
                     <Save className="w-4 h-4" />
                     Save Draft
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    disabled={!allowWhenDemo(rtecReady)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
-                    style={{ background: DOST_BLUE }}
-                  >
-                    <Download className="w-4 h-4" />
-                    Download PDF
                   </button>
                   {(step === "publish" || step === "preview") && !isPublished && (
                     <button

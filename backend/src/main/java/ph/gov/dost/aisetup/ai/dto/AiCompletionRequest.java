@@ -4,10 +4,12 @@
 package ph.gov.dost.aisetup.ai.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class AiCompletionRequest {
 
     @NotBlank
+    @Size(max = 8000)
     private String prompt;
 
     private Integer maxTokens;

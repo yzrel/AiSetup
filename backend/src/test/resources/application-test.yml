@@ -26,3 +26,9 @@ aisetup:
   seed-users: true
   demo-mode-enabled: true
   upload-dir: ./data/test-uploads
+  rate-limit:
+    otp-per-ip: 200
+    otp-per-target: 50
+    otp-window-minutes: 15
+    ai-per-user: 100
+    ai-window-minutes: 60

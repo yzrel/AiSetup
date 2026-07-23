@@ -25,11 +25,11 @@ import { EditableTableResponsive } from "./ui/editable-table-responsive";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
-import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, ACTION_ROW } from "./moduleTheme";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { api, ApiError } from "../api/client";
 import type {
   ProjectProposalAttachment,
@@ -62,6 +62,8 @@ import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { getPublishedTna2 } from "../utils/tnaForm02";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
+import { StoredFileImage } from "./StoredFilePreview";
 import {
   AiAssistNotice,
   AiAssistStringList,
@@ -148,12 +150,14 @@ function AttachmentUpload({
   required,
   onUpload,
   onRemove,
+  applicantId,
 }: {
   kind: ProjectProposalAttachmentKind;
   attachment?: ProjectProposalAttachment;
   required?: boolean;
   onUpload: (att: ProjectProposalAttachment) => void;
   onRemove: () => void;
+  applicantId?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -183,26 +187,53 @@ function AttachmentUpload({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              onUpload({
-                id: uid(),
-                kind,
-                fileName: file.name,
-                mimeType: file.type || "application/octet-stream",
-                dataUrl: String(reader.result ?? ""),
-                uploadedAt: new Date().toISOString(),
-              });
-            };
-            reader.readAsDataURL(file);
+            void (async () => {
+              try {
+                const doc = await readAndUploadModuleDocument(
+                  file,
+                  "applicant",
+                  applicantId
+                    ? {
+                        applicantId,
+                        moduleKey: `project-proposal-${kind}`,
+                      }
+                    : undefined,
+                );
+                // #region agent log
+                fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a4e6b2'},body:JSON.stringify({sessionId:'a4e6b2',runId:'pre-fix',hypothesisId:'H-C',location:'ProjectProposal.tsx:onUpload',message:'attachment uploaded',data:{kind,fileName:doc.fileName,fileId:doc.fileId??null,hasDataUrl:!!doc.dataUrl,applicantId:applicantId??null},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                onUpload({
+                  id: uid(),
+                  kind,
+                  fileName: doc.fileName,
+                  mimeType: doc.mimeType,
+                  dataUrl: doc.dataUrl,
+                  uploadedAt: doc.uploadedAt,
+                  fileId: doc.fileId,
+                });
+              } catch (err) {
+                alert(err instanceof Error ? err.message : "Upload failed.");
+              }
+            })();
           }}
         />
         {attachment ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-[#0C2461]">📎 {attachment.fileName}</p>
             {attachment.mimeType.startsWith("image/") && (
-              <img src={attachment.dataUrl} alt={attachment.fileName} className="max-h-32 mx-auto rounded border" />
+              <StoredFileImage
+                applicantId={applicantId}
+                file={attachment}
+                alt={attachment.fileName}
+                className="max-h-32 mx-auto rounded border"
+              />
             )}
+            {/* #region agent log */}
+            {(() => {
+              fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a4e6b2'},body:JSON.stringify({sessionId:'a4e6b2',runId:'post-fix',hypothesisId:'H-B',location:'ProjectProposal.tsx:AttachmentUpload',message:'attachment preview state',data:{kind,fileName:attachment.fileName,mimeType:attachment.mimeType,hasDataUrl:!!attachment.dataUrl,dataUrlLen:attachment.dataUrl?.length??0,fileId:attachment.fileId??null,applicantId:applicantId??null,canResolveViaFileId:!!(applicantId&&attachment.fileId)},timestamp:Date.now()})}).catch(()=>{});
+              return null;
+            })()}
+            {/* #endregion */}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1 text-gray-500">
@@ -291,10 +322,39 @@ export function ProjectProposal({
     loadApplicant(applicant);
   }, [applicant?.id, loadApplicant]);
 
-  useApplicantSubscription(applicant?.id, loadApplicant);
+  const formRef = useRef(form);
+  const attachmentsRef = useRef(attachments);
+  const documentRef = useRef(document);
+  formRef.current = form;
+  attachmentsRef.current = attachments;
+  documentRef.current = document;
+
+  const persistProposalDraft = (showNotice: boolean) => {
+    if (!applicant) return;
+    saveProjectProposalDraft(
+      applicant.id,
+      formRef.current,
+      attachmentsRef.current,
+      documentRef.current ?? undefined,
+    );
+    if (showNotice) {
+      setSaveNotice("Draft saved.");
+      setTimeout(() => setSaveNotice(""), 3000);
+    }
+  };
+
+  const scheduleProposalDraft = useDebouncedCallback(
+    () => persistProposalDraft(false),
+    400,
+  );
 
   const patchForm = (patch: Partial<ProjectProposalForm>) => {
-    setForm((prev) => ({ ...prev, ...patch }));
+    setForm((prev) => {
+      const next = { ...prev, ...patch };
+      formRef.current = next;
+      return next;
+    });
+    scheduleProposalDraft();
   };
 
   const ai = (field: ProposalAiField) => {
@@ -316,18 +376,25 @@ export function ProjectProposal({
   };
 
   const handleSaveDraft = () => {
-    if (!applicant) return;
-    saveProjectProposalDraft(applicant.id, form, attachments, document ?? undefined);
-    setSaveNotice("Draft saved.");
-    setTimeout(() => setSaveNotice(""), 3000);
+    persistProposalDraft(true);
   };
 
   const setAttachment = (att: ProjectProposalAttachment) => {
-    setAttachments((prev) => [...prev.filter((a) => a.kind !== att.kind), att]);
+    setAttachments((prev) => {
+      const next = [...prev.filter((a) => a.kind !== att.kind), att];
+      attachmentsRef.current = next;
+      return next;
+    });
+    scheduleProposalDraft();
   };
 
   const removeAttachment = (kind: ProjectProposalAttachmentKind) => {
-    setAttachments((prev) => prev.filter((a) => a.kind !== kind));
+    setAttachments((prev) => {
+      const next = prev.filter((a) => a.kind !== kind);
+      attachmentsRef.current = next;
+      return next;
+    });
+    scheduleProposalDraft();
   };
 
   const handleGenerate = async () => {
@@ -502,6 +569,7 @@ export function ProjectProposal({
                 attachment={attachments.find((a) => a.kind === "orgChart")}
                 onUpload={setAttachment}
                 onRemove={() => removeAttachment("orgChart")}
+                applicantId={applicant?.id}
               />
               <div className="mt-4">
                 <AiAssistTextarea
@@ -547,6 +615,7 @@ export function ProjectProposal({
                   attachment={attachments.find((a) => a.kind === "vicinityMap")}
                   onUpload={setAttachment}
                   onRemove={() => removeAttachment("vicinityMap")}
+                  applicantId={applicant?.id}
                 />
               </div>
             </div>
@@ -625,7 +694,7 @@ export function ProjectProposal({
                 <AiAssistTextarea label="Expected Impact" value={form.interventionImpact} onChange={(interventionImpact) => patchForm({ interventionImpact })} minHeight="min-h-[60px]" {...ai("interventionImpact")} />
               </div>
               <div className="mt-4">
-                <AttachmentUpload kind="plantLayout" required attachment={attachments.find((a) => a.kind === "plantLayout")} onUpload={setAttachment} onRemove={() => removeAttachment("plantLayout")} />
+                <AttachmentUpload kind="plantLayout" required attachment={attachments.find((a) => a.kind === "plantLayout")} onUpload={setAttachment} onRemove={() => removeAttachment("plantLayout")} applicantId={applicant?.id} />
               </div>
               <div className="mt-4">
                 <TableEditor label="Intervention Cost Table" headers={["Equipment", "Qty", "Unit Cost", "Total"]} rows={form.interventionCostTable} onChange={(interventionCostTable) => patchForm({ interventionCostTable })} />
@@ -678,7 +747,7 @@ export function ProjectProposal({
             <TableEditor label="Return on Investment" headers={["Year", "Net Income", "Investment", "ROI"]} rows={form.roiTable} onChange={(roiTable) => patchForm({ roiTable })} />
             <div><AiAssistTextarea label="Financial Analysis Narrative" value={form.financialAnalysis} onChange={(financialAnalysis) => patchForm({ financialAnalysis })} {...ai("financialAnalysis")} /></div>
             <div><label className={labelCls}>Financial Constraints Note</label><input className={inputCls} value={form.financialConstraintsNote} onChange={(e) => patchForm({ financialConstraintsNote: e.target.value })} /></div>
-            <AttachmentUpload kind="financialReports" attachment={attachments.find((a) => a.kind === "financialReports")} onUpload={setAttachment} onRemove={() => removeAttachment("financialReports")} />
+            <AttachmentUpload kind="financialReports" attachment={attachments.find((a) => a.kind === "financialReports")} onUpload={setAttachment} onRemove={() => removeAttachment("financialReports")} applicantId={applicant?.id} />
             <div>
               <label className={labelCls}>Budgetary Requirement</label>
               <div className="space-y-2">
@@ -766,7 +835,7 @@ export function ProjectProposal({
                 <Sparkles className="w-4 h-4" />
                 {generating ? "Generating…" : "Generate with AI"}
               </button>
-              <button type="button" onClick={() => printProjectProposal(form, document, attachments, applicant?.applicationId)} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50">
+              <button type="button" onClick={() => printProjectProposal(form, document, attachments, applicant?.applicationId, applicant?.id)} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50">
                 <FileText className="w-4 h-4" /> Print / PDF
               </button>
             </div>
@@ -778,9 +847,10 @@ export function ProjectProposal({
               document={document}
               attachments={attachments}
               applicationId={applicant?.applicationId}
+              applicantId={applicant?.id}
               aiGenerated={document?.aiGenerated}
               submitted={submitted}
-              onPrint={() => printProjectProposal(form, document, attachments, applicant?.applicationId)}
+              onPrint={() => printProjectProposal(form, document, attachments, applicant?.applicationId, applicant?.id)}
               compact
             />
             <DocumentDeliveryPanel
@@ -881,6 +951,14 @@ export function ProjectProposal({
                 ← Back
               </button>
             )}
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={!applicant}
+              className="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-all text-sm disabled:opacity-40 flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" /> Save draft
+            </button>
             {!isLastStep ? (
               <button
                 type="button"
@@ -896,14 +974,6 @@ export function ProjectProposal({
               </button>
             ) : (
               <>
-                <button
-                  type="button"
-                  onClick={handleSaveDraft}
-                  disabled={!applicant}
-                  className="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-all text-sm disabled:opacity-40 flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" /> Save draft
-                </button>
                 {!submitted && (
                   <button
                     type="button"

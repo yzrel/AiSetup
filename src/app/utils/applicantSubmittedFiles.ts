@@ -217,8 +217,9 @@ function pushModuleDocument(
     dataUrl: doc.dataUrl,
     uploadedAt: doc.uploadedAt,
     sourceModule: opts.sourceModule,
-    viewable: !!doc.dataUrl,
+    viewable: !!(doc.dataUrl || doc.fileId),
     kind: "upload",
+    serverFileId: doc.fileId,
   });
 }
 
@@ -266,8 +267,9 @@ function pushAttachment(
     dataUrl: att.dataUrl,
     uploadedAt: att.uploadedAt,
     sourceModule: "Project Proposal",
-    viewable: !!att.dataUrl,
+    viewable: !!(att.dataUrl || att.fileId),
     kind: "upload",
+    serverFileId: att.fileId,
   });
 }
 
@@ -285,8 +287,9 @@ function pushProcurementDoc(
     dataUrl: doc.dataUrl,
     uploadedAt: doc.uploadedAt,
     sourceModule: "Procurement & Liquidation",
-    viewable: !!doc.dataUrl,
+    viewable: !!(doc.dataUrl || doc.fileId),
     kind: "upload",
+    serverFileId: doc.fileId,
   });
 }
 
@@ -445,12 +448,13 @@ export function runGeneratedPrint(
         stored.document,
         stored.attachments,
         appId,
+        applicant.id,
       );
     }
     return;
   }
   if (printKey === "rtec") {
-    printRtecReportPdf(getRtecReportForm(applicant), appId);
+    void printRtecReportPdf(getRtecReportForm(applicant), appId, applicant.id);
   }
 }
 
@@ -809,9 +813,10 @@ export function collectApplicantSubmittedFiles(
       dataUrl: doc.dataUrl,
       uploadedAt: doc.uploadedAt,
       sourceModule: meta?.sourceModule ?? key,
-      viewable: !!doc.dataUrl,
+      viewable: !!(doc.dataUrl || doc.fileId),
       kind: "upload",
       navigateView: meta?.navigateView,
+      serverFileId: doc.fileId,
     });
   }
 

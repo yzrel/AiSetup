@@ -5,6 +5,7 @@ package ph.gov.dost.aisetup.workflow;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Server-side MODULE_ORDER mirrored from the FE applicantStore.
@@ -28,6 +29,50 @@ public final class ModuleOrder {
             "project-closeout",
             "completed");
 
+    /**
+     * Staff-draft keys hidden from applicants until {@code published == true}.
+     * Shared by visibility filtering.
+     */
+    public static final List<String> PUBLISH_GATED_KEYS = List.of(
+            "tna2Document",
+            "tna2",
+            "rtecReport",
+            "conductRtec",
+            "approvalLetter",
+            "noticeOfApproval",
+            "lbpIntroduction",
+            "lbpIntroductionLetter");
+
+    /**
+     * Keys applicants may never invent or overwrite on full PUT / module PATCH.
+     * (Excludes {@code tna2} form data which applicants still edit.)
+     * Note: {@code signedDocuments} is client-writable — wet-ink LOI / proposal /
+     * TNA / withdrawal uploads belong to the applicant (or staff acting for them).
+     * Staff-only attestation remains {@code signedMoa}.
+     */
+    public static final List<String> STAFF_OWNED_MODULE_KEYS = List.of(
+            "tna2Document",
+            "rtecReport",
+            "conductRtec",
+            "approvalLetter",
+            "noticeOfApproval",
+            "lbpIntroduction",
+            "lbpIntroductionLetter",
+            "signedMoa",
+            "requirementStaffReview");
+
+    /** Module keys applicants must not PATCH (staff owns these documents). */
+    private static final Set<String> STAFF_ONLY_MODULE_KEYS = Set.of(
+            "conduct-rtec",
+            "rtecReport",
+            "rtec",
+            "conductRtec",
+            "tna2Document",
+            "approvalLetter",
+            "noticeOfApproval",
+            "lbpIntroduction",
+            "lbpIntroductionLetter",
+            "signedMoa");
     private ModuleOrder() {}
 
     public static int indexOf(String module) {
@@ -39,11 +84,13 @@ public final class ModuleOrder {
         return module != null && ORDER.contains(module);
     }
 
-    /** Staff-only module keys that applicants must not mutate. */
+    /** Staff-only module keys that applicants must not mutate via module PATCH. */
     public static boolean isStaffOnlyModule(String moduleKey) {
-        return "conduct-rtec".equals(moduleKey)
-                || "rtecReport".equals(moduleKey)
-                || "rtec".equals(moduleKey);
+        return moduleKey != null && STAFF_ONLY_MODULE_KEYS.contains(moduleKey);
+    }
+
+    public static boolean isPublishGatedKey(String moduleKey) {
+        return moduleKey != null && PUBLISH_GATED_KEYS.contains(moduleKey);
     }
 
     public static boolean isPublished(Map<String, Object> moduleData, String... paths) {

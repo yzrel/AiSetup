@@ -28,6 +28,7 @@ export function resolveApplicantForUser(
 
   return (
     applicantStore.getById(user.id) ??
+    (user.applicantId ? applicantStore.getById(user.applicantId) : null) ??
     applicantStore.getByEmail(user.email) ??
     (user.applicationId
       ? applicantStore.getAll().find((a) => a.applicationId === user.applicationId)

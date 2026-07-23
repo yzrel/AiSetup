@@ -8,6 +8,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,11 +24,14 @@ import ph.gov.dost.aisetup.auth.dto.ChangePasswordRequest;
 import ph.gov.dost.aisetup.auth.dto.LoginRequest;
 import ph.gov.dost.aisetup.auth.dto.RegisterRequest;
 import ph.gov.dost.aisetup.otp.OtpService;
+import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
+import ph.gov.dost.aisetup.persistence.ApplicantRecordRepository;
 
 @Service
 public class AuthService {
 
     private final UserAccountRepository userAccountRepository;
+    private final ApplicantRecordRepository applicantRecordRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
@@ -33,11 +39,13 @@ public class AuthService {
 
     public AuthService(
             UserAccountRepository userAccountRepository,
+            ApplicantRecordRepository applicantRecordRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             ObjectMapper objectMapper,
             OtpService otpService) {
         this.userAccountRepository = userAccountRepository;
+        this.applicantRecordRepository = applicantRecordRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
@@ -53,9 +61,6 @@ public class AuthService {
             throw new BadCredentialsException("Invalid email or password");
         }
         if (!account.isEnabled()) {
-            // #region agent log
-            try { java.nio.file.Files.writeString(java.nio.file.Path.of("c:/Yzrel/AiSetup/debug-c5b70a.log"), "{\"sessionId\":\"c5b70a\",\"hypothesisId\":\"H-C\",\"location\":\"AuthService.login\",\"message\":\"login REJECTED (account disabled)\",\"data\":{\"email\":\"" + account.getEmail() + "\",\"applicantId\":\"" + account.getApplicantId() + "\"},\"timestamp\":" + System.currentTimeMillis() + "}\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND); } catch (Exception ignored) {}
-            // #endregion
             throw new BadCredentialsException(
                     "This account has been blocked by DOST Region XII. Please contact the DOST XII office for assistance.");
         }
@@ -66,7 +71,7 @@ public class AuthService {
     public AuthResponse registerApplicant(RegisterRequest request) {
         String role = request.getRole() == null || request.getRole().isBlank()
                 ? "applicant"
-                : request.getRole().trim().toLowerCase();
+                : request.getRole().trim().toLowerCase(Locale.ROOT);
         if (!"applicant".equals(role) && !"client".equals(role)) {
             throw new IllegalArgumentException("Public registration is limited to applicant accounts");
         }
@@ -74,23 +79,106 @@ public class AuthService {
             throw new IllegalArgumentException("An account with this email already exists");
         }
         otpService.requireVerifiedForRegistration(request.getEmail(), request.getPhone());
+
+        String applicantId = request.getApplicantId().trim();
+        String applicationId = request.getApplicationId().trim();
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        bindApplicantCase(applicantId, applicationId, email, request.getPhone());
+
         Instant now = Instant.now();
         UserAccount account = new UserAccount();
         account.setId(UUID.randomUUID().toString());
-        account.setEmail(request.getEmail().trim().toLowerCase());
+        account.setEmail(email);
         account.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         account.setFirstName(request.getFirstName().trim());
         account.setMiddleName(request.getMiddleName() != null ? request.getMiddleName().trim() : "");
         account.setLastName(request.getLastName().trim());
         account.setRole(role);
         account.setEnterpriseName(request.getEnterpriseName());
-        account.setApplicantId(request.getApplicantId());
-        account.setApplicationId(request.getApplicationId());
+        account.setApplicantId(applicantId);
+        account.setApplicationId(applicationId);
         account.setEnabled(true);
         account.setCreatedAt(now);
         account.setUpdatedAt(now);
         userAccountRepository.save(account);
         return toAuthResponse(account);
+    }
+
+    /**
+     * Prevents case takeover: reject already-bound applicant ids; when a case
+     * blob already exists, require matching email (and phone when present).
+     * New registrations may bind a fresh id before the case blob is synced.
+     */
+    private void bindApplicantCase(String applicantId, String applicationId, String email, String phone) {
+        if (userAccountRepository.existsByApplicantId(applicantId)) {
+            throw new IllegalArgumentException(
+                    "This applicant case is already linked to an account");
+        }
+        Optional<ApplicantRecordDto> existing = applicantRecordRepository
+                .findById(applicantId)
+                .map(entity -> new ApplicantRecordDto(
+                        entity.getId(),
+                        entity.getApplicationId(),
+                        entity.getEnterpriseName(),
+                        entity.getCurrentModule(),
+                        readJsonMap(entity.getModuleDataJson()),
+                        readJsonMap(entity.getProfileJson()),
+                        entity.getUpdatedAt() != null ? entity.getUpdatedAt().toString() : null));
+
+        if (existing.isEmpty()) {
+            applicantRecordRepository.findByApplicationId(applicationId).ifPresent(other -> {
+                if (!applicantId.equals(other.getId())) {
+                    throw new IllegalArgumentException(
+                            "This application ID is already assigned to another case");
+                }
+            });
+            return;
+        }
+
+        ApplicantRecordDto record = existing.get();
+        if (record.applicationId() != null
+                && !record.applicationId().isBlank()
+                && !record.applicationId().equalsIgnoreCase(applicationId)) {
+            throw new IllegalArgumentException("applicationId does not match the existing case");
+        }
+        String profileEmail = profileString(record.profile(), "emailAddress", "email");
+        if (profileEmail != null && !profileEmail.equalsIgnoreCase(email)) {
+            throw new IllegalArgumentException(
+                    "Email does not match the existing applicant case profile");
+        }
+        String profilePhone = profileString(record.profile(), "contactNumber", "phone");
+        if (phone != null
+                && !phone.isBlank()
+                && profilePhone != null
+                && !normalizePhone(profilePhone).equals(normalizePhone(phone))) {
+            throw new IllegalArgumentException(
+                    "Mobile number does not match the existing applicant case profile");
+        }
+    }
+
+    private String profileString(Map<String, Object> profile, String... keys) {
+        if (profile == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = profile.get(key);
+            if (value instanceof String s && !s.isBlank()) {
+                return s.trim();
+            }
+        }
+        return null;
+    }
+
+    private static String normalizePhone(String raw) {
+        return raw.replaceAll("\\D", "");
+    }
+
+    private Map<String, Object> readJsonMap(String json) {
+        try {
+            return objectMapper.readValue(json != null ? json : "{}", new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            return Map.of();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -131,11 +219,7 @@ public class AuthService {
     }
 
     private UserAccount requireApplicantAccount(String applicantId) {
-        java.util.Optional<UserAccount> found = userAccountRepository.findByApplicantId(applicantId);
-        // #region agent log
-        try { java.nio.file.Files.writeString(java.nio.file.Path.of("c:/Yzrel/AiSetup/debug-c5b70a.log"), "{\"sessionId\":\"c5b70a\",\"hypothesisId\":\"H-C\",\"location\":\"AuthService.requireApplicantAccount\",\"message\":\"applicant account lookup\",\"data\":{\"applicantId\":\"" + applicantId + "\",\"found\":" + found.isPresent() + ",\"role\":\"" + found.map(UserAccount::getRole).orElse("-") + "\",\"enabled\":" + found.map(UserAccount::isEnabled).orElse(null) + "},\"timestamp\":" + System.currentTimeMillis() + "}\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND); } catch (Exception ignored) {}
-        // #endregion
-        return found
+        return userAccountRepository.findByApplicantId(applicantId)
                 .filter(a -> "applicant".equals(a.getRole()) || "client".equals(a.getRole()))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No applicant account found for id: " + applicantId));

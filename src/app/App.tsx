@@ -35,7 +35,7 @@ import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applica
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
-import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack } from "./utils/applicantProgress";
+import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -63,24 +63,45 @@ type ViewType = AdminView;
 function resolveViewForUser(user: AuthUser | null): ViewType {
   if (!user) return "dashboard";
 
+  if (authStore.isClientRole(user.role)) {
+    const app = resolveApplicantForUser(user);
+    if (app?.currentModule) {
+      const progressView = moduleToApplicantView(app.currentModule);
+      const progressIdx = getModuleIndex(app.currentModule);
+      const saved = loadCurrentView();
+      // Keep a saved view only when it is at or ahead of persisted progress
+      // and still unlocked (e.g. user was browsing an earlier-completed step).
+      // Never keep a saved "prescreening" when the case has already advanced.
+      if (
+        saved &&
+        saved !== "prescreening" &&
+        authStore.canAccessView(user.role, saved) &&
+        canApplicantAccessView(app, saved)
+      ) {
+        const savedModule = MODULE_ORDER.find((m) => moduleToApplicantView(m) === saved);
+        const savedIdx = savedModule ? getModuleIndex(savedModule) : -1;
+        if (savedIdx >= progressIdx) {
+          return saved;
+        }
+      }
+      return progressView === "dashboard" ? "dashboard" : progressView;
+    }
+  }
+
   const saved = loadCurrentView();
   if (saved && authStore.canAccessView(user.role, saved)) {
     if (
       authStore.isClientRole(user.role) &&
       !canApplicantAccessView(resolveApplicantForUser(user), saved)
     ) {
-      /* saved view no longer accessible for this applicant */
-    } else {
+      /* fall through — applicant not hydrated yet or view locked */
+    } else if (!authStore.isClientRole(user.role)) {
       return saved;
     }
   }
 
   if (authStore.isClientRole(user.role)) {
-    const app = resolveApplicantForUser(user);
-    const target = app
-      ? moduleToApplicantView(app.currentModule)
-      : "prescreening";
-    return target === "dashboard" ? "dashboard" : target;
+    return "prescreening";
   }
 
   return authStore.getDefaultView(user.role);
@@ -521,6 +542,8 @@ export default function App() {
     authStore.getUser(),
   );
   const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
+  /** Bumps when applicantStore hydrates/updates so sidebar unlocks after refresh. */
+  const [, setApplicantStoreEpoch] = useState(0);
 
   const setAuthPage = (page: "landing" | "login" | "register") => {
     setAuthPageState(page);
@@ -548,13 +571,26 @@ export default function App() {
     }
     setAuthReady(true);
     // Pull persisted applicants when a session token is present
-    void applicantStore.hydrateFromBackend(!!restored);
+    void applicantStore.hydrateFromBackend(!!restored).then(() => {
+      const nextView = resolveViewForUser(restored);
+      if (restored && authStore.isClientRole(restored.role) && nextView) {
+        setCurrentViewState(nextView);
+        saveCurrentView(nextView);
+      }
+      setApplicantStoreEpoch((n) => n + 1);
+    });
   }, []);
 
   // Subscribe to auth changes
   useEffect(
     () =>
       authStore.subscribe(() => setUser(authStore.getUser())),
+    [],
+  );
+
+  useEffect(
+    () =>
+      applicantStore.subscribe(() => setApplicantStoreEpoch((n) => n + 1)),
     [],
   );
 

@@ -118,6 +118,19 @@ export const api = {
   getApplicant: (id: string) =>
     apiFetch<import("./types").ApiApplicantRecord>(`/applicants/${id}`),
 
+  updateApplicantHeader: (
+    id: string,
+    payload: {
+      enterpriseName?: string;
+      currentModule?: string;
+      profile?: Record<string, unknown>;
+    },
+  ) =>
+    apiFetch<import("./types").ApiApplicantRecord>(`/applicants/${id}/header`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
   saveTnaForm: (payload: import("./types").ApiTnaFormPayload) =>
     apiFetch<import("./types").ApiTnaFormSaveResponse>(
       `/applicants/${payload.applicantId}/tna1`,
@@ -253,6 +266,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+
+  acknowledgeApprovalLetter: (applicantId: string, conformeSignedName: string) =>
+    apiFetch<import("./types").ApiApplicantRecord>(
+      `/applicants/${applicantId}/approval-letter/acknowledge`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ conformeSignedName }),
+      },
+    ),
 
   listApplicantRecords: () =>
     apiFetch<import("./types").ApiApplicantRecord[]>("/applicants"),

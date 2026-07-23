@@ -5,11 +5,14 @@
 import { useState } from "react";
 import { Download, Eye, X } from "lucide-react";
 import { ACTION_ROW } from "./moduleTheme";
+import { useStoredFileSrc } from "../utils/storedFilePreview";
 
 export interface SubmittedFileActionsProps {
   fileName: string;
   mimeType?: string;
   dataUrl?: string;
+  fileId?: string;
+  applicantId?: string;
   compact?: boolean;
 }
 
@@ -28,12 +31,15 @@ export function SubmittedFileActions({
   fileName,
   mimeType,
   dataUrl,
+  fileId,
+  applicantId,
   compact,
 }: SubmittedFileActionsProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const viewable = !!dataUrl;
+  const { src, loading } = useStoredFileSrc(applicantId, { dataUrl, fileId });
+  const viewable = Boolean(src || (fileId && applicantId) || dataUrl);
 
-  if (!viewable) {
+  if (!viewable && !loading) {
     return (
       <span
         className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg"
@@ -48,20 +54,29 @@ export function SubmittedFileActions({
     ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-gray-200 text-[#0C2461] hover:bg-blue-50"
     : "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-[#0C2461] hover:bg-blue-50";
 
+  const href = src ?? dataUrl;
+
   return (
     <>
       <div className={`${ACTION_ROW} flex-shrink-0`}>
-        <button type="button" onClick={() => setPreviewOpen(true)} className={btnClass}>
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          disabled={loading && !href}
+          className={btnClass}
+        >
           <Eye className="w-3.5 h-3.5" />
-          View
+          {loading && !href ? "Loading…" : "View"}
         </button>
-        <a href={dataUrl} download={fileName} className={btnClass}>
-          <Download className="w-3.5 h-3.5" />
-          Download
-        </a>
+        {href ? (
+          <a href={href} download={fileName} className={btnClass}>
+            <Download className="w-3.5 h-3.5" />
+            Download
+          </a>
+        ) : null}
       </div>
 
-      {previewOpen && (
+      {previewOpen && href && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
           onClick={() => setPreviewOpen(false)}
@@ -74,7 +89,7 @@ export function SubmittedFileActions({
               <p className="text-sm font-semibold text-gray-800 truncate pr-4">{fileName}</p>
               <div className="flex items-center gap-2 shrink-0">
                 <a
-                  href={dataUrl}
+                  href={href}
                   download={fileName}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#0C2461] hover:underline"
                 >
@@ -93,13 +108,13 @@ export function SubmittedFileActions({
             <div className="flex-1 overflow-auto p-4 bg-gray-50 min-h-[200px]">
               {isPdf(mimeType, fileName) ? (
                 <iframe
-                  src={dataUrl}
+                  src={href}
                   title={fileName}
                   className="w-full h-[70vh] border border-gray-200 rounded-lg bg-white"
                 />
               ) : isImage(mimeType, fileName) ? (
                 <img
-                  src={dataUrl}
+                  src={href}
                   alt={fileName}
                   className="max-w-full max-h-[70vh] mx-auto rounded-lg border border-gray-200"
                 />
@@ -107,7 +122,7 @@ export function SubmittedFileActions({
                 <div className="text-center py-12 text-sm text-gray-600">
                   <p className="mb-3">Preview is not available for this file type.</p>
                   <a
-                    href={dataUrl}
+                    href={href}
                     download={fileName}
                     className="inline-flex items-center gap-2 text-[#0C2461] font-semibold hover:underline"
                   >

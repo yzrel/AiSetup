@@ -13,10 +13,12 @@ import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { RTEC_DOST_BLUE } from "../utils/rtecReport";
 import { PreviewFieldRow, PreviewTable } from "./PreviewLayout";
+import { StoredFileImage } from "./StoredFilePreview";
 
 interface RtecReportPreviewProps {
   form: RtecReportForm;
   applicationId?: string;
+  applicantId?: string;
   onPrint?: () => void;
   compact?: boolean;
 }
@@ -74,11 +76,13 @@ function Table({
 function AttachmentImg({
   attachment,
   label,
+  applicantId,
 }: {
   attachment?: ProjectProposalAttachment;
   label: string;
+  applicantId?: string;
 }) {
-  if (!attachment?.dataUrl) {
+  if (!attachment?.dataUrl && !attachment?.fileId) {
     return (
       <p className="text-xs text-gray-400 italic border border-dashed border-gray-200 rounded p-4 text-center">
         {label} — not attached
@@ -89,7 +93,12 @@ function AttachmentImg({
     <div className="text-center">
       <p className="text-xs font-semibold text-gray-500 mb-2">{label}</p>
       {attachment.mimeType.startsWith("image/") ? (
-        <img src={attachment.dataUrl} alt={label} className="max-h-56 mx-auto border rounded" />
+        <StoredFileImage
+          applicantId={applicantId}
+          file={attachment}
+          alt={label}
+          className="max-h-56 mx-auto border rounded"
+        />
       ) : (
         <p className="text-xs text-gray-600">📎 {attachment.fileName}</p>
       )}
@@ -139,6 +148,7 @@ function Section({
 export function RtecReportPreview({
   form,
   applicationId,
+  applicantId,
   onPrint,
   compact,
 }: RtecReportPreviewProps) {
@@ -279,6 +289,7 @@ export function RtecReportPreview({
             <AttachmentImg
               attachment={findAtt("orgChart")}
               label={PROPOSAL_ATTACHMENT_LABELS.orgChart}
+              applicantId={applicantId}
             />
             <div className="mt-4">
               <p className="text-xs font-bold text-gray-500 mb-1">
@@ -335,6 +346,7 @@ export function RtecReportPreview({
           <AttachmentImg
             attachment={findAtt("plantLayout")}
             label={PROPOSAL_ATTACHMENT_LABELS.plantLayout}
+            applicantId={applicantId}
           />
           <Footer page="5" />
         </div>

@@ -7,6 +7,7 @@
 
 import { useRef } from "react";
 import { moduleStepPillClass } from "../moduleTheme";
+import { readAndUploadModuleDocument } from "../../utils/readFileAsDataUrl";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
 export const DOST_BLUE = "#0C2461";
@@ -148,12 +149,17 @@ export function FileAttachmentField({
   fileName,
   onFile,
   hint,
+  applicantId,
+  moduleKey,
 }: {
   label: string;
   accept?: string;
   fileName: string;
   onFile: (name: string, dataUrl: string) => void;
   hint?: string;
+  /** When set, also mirrors the file into POST /applicants/{id}/files. */
+  applicantId?: string;
+  moduleKey?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -172,9 +178,20 @@ export function FileAttachmentField({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => onFile(file.name, String(reader.result ?? ""));
-            reader.readAsDataURL(file);
+            void (async () => {
+              try {
+                const doc = await readAndUploadModuleDocument(
+                  file,
+                  "applicant",
+                  applicantId
+                    ? { applicantId, moduleKey: moduleKey ?? "tna1" }
+                    : undefined,
+                );
+                onFile(doc.fileName, doc.dataUrl ?? "");
+              } catch {
+                onFile("", "");
+              }
+            })();
           }}
         />
         {fileName ? (

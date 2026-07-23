@@ -4,7 +4,6 @@
 package ph.gov.dost.aisetup.workflow;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.auth.SecurityUtils;
@@ -17,17 +16,6 @@ import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
  */
 @Service
 public class ClientVisibilityService {
-
-    /** Staff-draft keys hidden from applicants until {@code published == true}. */
-    private static final List<String> PUBLISH_GATED_KEYS = List.of(
-            "tna2Document",
-            "tna2",
-            "rtecReport",
-            "conductRtec",
-            "approvalLetter",
-            "noticeOfApproval",
-            "lbpIntroduction",
-            "lbpIntroductionLetter");
 
     public ApplicantRecordDto forViewer(ApplicantRecordDto dto) {
         if (dto == null) {
@@ -52,7 +40,7 @@ public class ClientVisibilityService {
             return moduleData != null ? moduleData : Map.of();
         }
         Map<String, Object> filtered = new LinkedHashMap<>(moduleData);
-        for (String key : PUBLISH_GATED_KEYS) {
+        for (String key : ModuleOrder.PUBLISH_GATED_KEYS) {
             Object value = filtered.get(key);
             if (value instanceof Map<?, ?> map && !isPublished(map)) {
                 filtered.remove(key);
@@ -77,32 +65,57 @@ public class ClientVisibilityService {
 
     /**
      * Applicants hydrate a filtered blob (unpublished staff docs removed), so a
-     * later whole-blob save from them must not erase those hidden staff drafts.
-     * Re-injects gated keys from the stored record when missing from the incoming
-     * payload. Staff saves pass through untouched.
+     * later whole-blob save from them must not erase or overwrite those drafts.
+     * Staff-owned keys always come from the stored record when present; applicants
+     * cannot invent them. Nested LandBank staff fields are similarly protected.
      */
     public Map<String, Object> preserveHiddenModules(
             Map<String, Object> incoming, Map<String, Object> existing) {
         UserPrincipal principal = SecurityUtils.requirePrincipal();
-        if (principal.isStaff() || existing == null || existing.isEmpty()) {
+        if (principal.isStaff()) {
             return incoming;
         }
         Map<String, Object> merged = new LinkedHashMap<>(incoming != null ? incoming : Map.of());
-        for (String key : PUBLISH_GATED_KEYS) {
-            if (!merged.containsKey(key) && existing.get(key) instanceof Map<?, ?>) {
+        // Always strip applicant-forged MOA attestation; restore from stored only.
+        for (String key : ModuleOrder.STAFF_OWNED_MODULE_KEYS) {
+            if (existing != null && existing.get(key) instanceof Map<?, ?>) {
+                merged.put(key, existing.get(key));
+            } else {
+                merged.remove(key);
+            }
+        }
+        // Publish-gated keys that are not staff-owned (e.g. tna2) are filtered from
+        // applicant hydration while unpublished — a missing key on their whole-blob
+        // save means "never seen", not "deleted", so restore the staff draft.
+        for (String key : ModuleOrder.PUBLISH_GATED_KEYS) {
+            if (!merged.containsKey(key)
+                    && existing != null
+                    && existing.get(key) instanceof Map<?, ?>) {
                 merged.put(key, existing.get(key));
             }
         }
-        Object existingLandBank = existing.get("landBank");
-        if (existingLandBank instanceof Map<?, ?> exLb
-                && exLb.get("introductionLetter") instanceof Map<?, ?> letter) {
-            Object incomingLandBank = merged.get("landBank");
-            if (incomingLandBank instanceof Map<?, ?> inLb && !inLb.containsKey("introductionLetter")) {
-                Map<String, Object> lbMerged = new LinkedHashMap<>();
-                inLb.forEach((k, v) -> lbMerged.put(String.valueOf(k), v));
-                lbMerged.put("introductionLetter", letter);
-                merged.put("landBank", lbMerged);
+        Object existingLandBank = existing != null ? existing.get("landBank") : null;
+        Object incomingLandBank = merged.get("landBank");
+        if (incomingLandBank instanceof Map<?, ?> inLb) {
+            Map<String, Object> lbMerged = new LinkedHashMap<>();
+            inLb.forEach((k, v) -> lbMerged.put(String.valueOf(k), v));
+            lbMerged.remove("signedMoa");
+            lbMerged.remove("signedMoaSnapshot");
+            lbMerged.remove("introductionLetter");
+            if (existingLandBank instanceof Map<?, ?> exLb) {
+                if (exLb.get("introductionLetter") instanceof Map<?, ?> letter) {
+                    lbMerged.put("introductionLetter", letter);
+                }
+                if (exLb.containsKey("signedMoa")) {
+                    lbMerged.put("signedMoa", exLb.get("signedMoa"));
+                }
+                if (exLb.containsKey("signedMoaSnapshot")) {
+                    lbMerged.put("signedMoaSnapshot", exLb.get("signedMoaSnapshot"));
+                }
             }
+            merged.put("landBank", lbMerged);
+        } else if (existingLandBank instanceof Map<?, ?>) {
+            merged.put("landBank", existingLandBank);
         }
         return merged;
     }

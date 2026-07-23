@@ -48,7 +48,7 @@ public class UserAccount {
     @Column(name = "office_id")
     private String officeId;
 
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "assigned_provinces_json")
     private String assignedProvincesJson;
 

@@ -9,15 +9,21 @@ import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.auth.SecurityUtils;
 import ph.gov.dost.aisetup.auth.UserPrincipal;
 import ph.gov.dost.aisetup.config.AisetupProperties;
+import ph.gov.dost.aisetup.files.FileUploadRepository;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
 
 @Service
 public class WorkflowGateService {
 
-    private final AisetupProperties properties;
+    /** Server-side MOA attestation: staff upload under this module key. */
+    public static final String SIGNED_MOA_MODULE_KEY = "signedMoa";
 
-    public WorkflowGateService(AisetupProperties properties) {
+    private final AisetupProperties properties;
+    private final FileUploadRepository fileUploadRepository;
+
+    public WorkflowGateService(AisetupProperties properties, FileUploadRepository fileUploadRepository) {
         this.properties = properties;
+        this.fileUploadRepository = fileUploadRepository;
     }
 
     public boolean isDemoBypassAllowed() {
@@ -50,7 +56,6 @@ public class WorkflowGateService {
         String from = existing.currentModule();
         String to = incoming.currentModule();
         if (to == null || to.equals(from)) {
-            assertApplicantCannotMutateStaffOnly(incoming.moduleData());
             return;
         }
         if (!ModuleOrder.isKnown(to)) {
@@ -62,8 +67,7 @@ public class WorkflowGateService {
             throw new AccessDeniedException(
                     "Cannot skip modules: current=" + from + ", requested=" + to);
         }
-        assertPublishGates(to, incoming.moduleData(), existing.moduleData(), existing.currentModule());
-        assertApplicantCannotMutateStaffOnly(incoming.moduleData());
+        assertPublishGates(to, existing.moduleData(), existing.currentModule());
     }
 
     public void assertStaffOnlyModuleWrite(String moduleKey) {
@@ -72,7 +76,18 @@ public class WorkflowGateService {
         }
     }
 
-    public void assertLandBankWithdrawalAllowed(Map<String, Object> moduleData) {
+    /** Publishing any module document requires a staff principal. */
+    public void assertCanPublish(Boolean published) {
+        if (Boolean.TRUE.equals(published)) {
+            SecurityUtils.requireStaff();
+        }
+    }
+
+    /**
+     * LandBank withdrawal requires a staff-uploaded signed MOA file in the store
+     * (not client-writable moduleData flags). Demo mode and staff bypass remain.
+     */
+    public void assertLandBankWithdrawalAllowed(String applicantId) {
         if (isDemoBypassAllowed()) {
             return;
         }
@@ -80,17 +95,14 @@ public class WorkflowGateService {
         if (principal.isStaff()) {
             return;
         }
-        boolean signedMoa = ModuleOrder.isPublished(moduleData, "signedDocuments")
-                || hasSignedMoaSnapshot(moduleData);
-        if (!signedMoa) {
+        if (!fileUploadRepository.existsByApplicantIdAndModuleKey(applicantId, SIGNED_MOA_MODULE_KEY)) {
             throw new AccessDeniedException(
-                    "LandBank withdrawal requires a signed MOA snapshot (or demo mode on the server)");
+                    "LandBank withdrawal requires a staff-uploaded signed MOA (or demo mode on the server)");
         }
     }
 
     private void assertPublishGates(
             String targetModule,
-            Map<String, Object> incomingModuleData,
             Map<String, Object> existingModuleData,
             String existingCurrentModule) {
         if (isDemoBypassAllowed()) {
@@ -101,49 +113,11 @@ public class WorkflowGateService {
         if (ModuleOrder.indexOf(targetModule) >= ModuleOrder.indexOf("approval-letter")) {
             boolean pastRtec =
                     ModuleOrder.indexOf(existingCurrentModule) >= ModuleOrder.indexOf("conduct-rtec");
-            boolean rtecPublished = ModuleOrder.isPublished(incomingModuleData, "rtecReport")
-                    || ModuleOrder.isPublished(existingModuleData, "rtecReport");
+            boolean rtecPublished = ModuleOrder.isPublished(existingModuleData, "rtecReport");
             if (!pastRtec && !rtecPublished) {
                 throw new AccessDeniedException(
                         "Approval and later modules require RTEC progress or a published RTEC report");
             }
         }
-    }
-
-    private void assertApplicantCannotMutateStaffOnly(Map<String, Object> moduleData) {
-        UserPrincipal principal = SecurityUtils.requirePrincipal();
-        if (principal.isStaff() || moduleData == null) {
-            return;
-        }
-        if (moduleData.containsKey("rtecReport") || moduleData.containsKey("conductRtec")) {
-            // Applicants may retain previously published copies but staff owns writes —
-            // full PUT from applicant still accepted for other keys; staff-only keys
-            // are stripped by persistence when needed. Hard deny direct module PATCH.
-        }
-    }
-
-    private boolean hasSignedMoaSnapshot(Map<String, Object> moduleData) {
-        if (moduleData == null) {
-            return false;
-        }
-        Object landbank = moduleData.get("landBank");
-        if (landbank instanceof Map<?, ?> map) {
-            Object snap = map.get("signedMoaSnapshot");
-            if (snap instanceof Map<?, ?> s && !s.isEmpty()) {
-                return true;
-            }
-            Object signed = map.get("signedMoa");
-            if (signed instanceof Boolean b && b) {
-                return true;
-            }
-        }
-        Object signedDocs = moduleData.get("signedDocuments");
-        if (signedDocs instanceof Map<?, ?> docs) {
-            Object moa = docs.get("moa");
-            if (moa instanceof Map<?, ?> m && m.get("fileName") != null) {
-                return true;
-            }
-        }
-        return false;
     }
 }

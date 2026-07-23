@@ -9,6 +9,7 @@ import type {
   ProjectProposalForm,
 } from "../api/types";
 import { ProjectProposalDocument } from "../components/projectProposal/ProjectProposalDocument";
+import { hydrateStoredFileDataUrls } from "./storedFilePreview";
 
 const PRINT_BODY_CLASS = "project-proposal-printing";
 const PRINT_ROOT_ID = "project-proposal-print-root";
@@ -36,16 +37,22 @@ function waitForImages(root: HTMLElement): Promise<void> {
  * Renders the official SETUP Form 001 document at body level and prints in-page.
  * The on-screen preview is not modified or cloned.
  */
-export function printProjectProposalPdf(
+export async function printProjectProposalPdf(
   form: ProjectProposalForm,
   document?: ProjectProposalDocumentResponse | null,
   attachments?: ProjectProposalAttachment[],
   applicationId?: string,
+  applicantId?: string,
 ) {
   const previousTitle = window.document.title;
   window.document.title = applicationId
     ? `SETUP-Form-001-${applicationId}`
     : "SETUP Form 001 — Project Proposal";
+
+  const { items: hydratedAttachments, revoke } = await hydrateStoredFileDataUrls(
+    applicantId,
+    attachments ?? [],
+  );
 
   const printRoot = window.document.createElement("div");
   printRoot.id = PRINT_ROOT_ID;
@@ -56,7 +63,8 @@ export function printProjectProposalPdf(
     <ProjectProposalDocument
       form={form}
       document={document}
-      attachments={attachments}
+      attachments={hydratedAttachments}
+      applicantId={applicantId}
     />,
   );
 
@@ -67,6 +75,7 @@ export function printProjectProposalPdf(
     reactRoot?.unmount();
     reactRoot = null;
     printRoot.remove();
+    revoke();
     window.document.body.classList.remove(PRINT_BODY_CLASS);
     window.document.title = previousTitle;
     window.removeEventListener("afterprint", cleanup);

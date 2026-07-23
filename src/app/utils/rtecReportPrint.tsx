@@ -5,6 +5,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { RtecReportForm } from "../api/types";
 import { RtecReportDocument } from "../components/rtecReport/RtecReportDocument";
+import { hydrateStoredFileDataUrls } from "./storedFilePreview";
 
 const PRINT_BODY_CLASS = "rtec-report-printing";
 const PRINT_ROOT_ID = "rtec-report-print-root";
@@ -32,18 +33,33 @@ function waitForImages(root: HTMLElement): Promise<void> {
  * Renders the official SETUP Form 002 RTEC Report at body level and prints in-page.
  * The on-screen preview is not modified or cloned.
  */
-export function printRtecReportPdf(form: RtecReportForm, applicationId?: string) {
+export async function printRtecReportPdf(
+  form: RtecReportForm,
+  applicationId?: string,
+  applicantId?: string,
+) {
   const previousTitle = window.document.title;
   window.document.title = applicationId
     ? `SETUP-Form-002-RTEC-${applicationId}`
     : "SETUP Form 002 — RTEC Report";
+
+  const { items: hydratedRefs, revoke } = await hydrateStoredFileDataUrls(
+    applicantId,
+    form.attachmentRefs ?? [],
+  );
+  const hydratedForm: RtecReportForm = {
+    ...form,
+    attachmentRefs: hydratedRefs,
+  };
 
   const printRoot = window.document.createElement("div");
   printRoot.id = PRINT_ROOT_ID;
   window.document.body.appendChild(printRoot);
 
   let reactRoot: Root | null = createRoot(printRoot);
-  reactRoot.render(<RtecReportDocument form={form} />);
+  reactRoot.render(
+    <RtecReportDocument form={hydratedForm} applicantId={applicantId} />,
+  );
 
   let cleaned = false;
   const cleanup = () => {
@@ -52,6 +68,7 @@ export function printRtecReportPdf(form: RtecReportForm, applicationId?: string)
     reactRoot?.unmount();
     reactRoot = null;
     printRoot.remove();
+    revoke();
     window.document.body.classList.remove(PRINT_BODY_CLASS);
     window.document.title = previousTitle;
     window.removeEventListener("afterprint", cleanup);

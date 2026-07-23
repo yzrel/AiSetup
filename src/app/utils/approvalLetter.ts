@@ -2,7 +2,9 @@
  * Author: Yzrel Jade B. Eborde
  */
 
+import { toast } from "sonner";
 import { applicantStore, Applicant, MODULE_ORDER } from "../store/applicantStore";
+import { api } from "../api/client";
 import { publishModuleToBackendBestEffort } from "./applicantPersistence";
 import type { ApprovalLetterForm, ApprovalLetterStored, SignedMoaDocument } from "../api/types";
 import {
@@ -194,6 +196,7 @@ export function getApprovalLetterForm(applicant: Applicant | null): ApprovalLett
     return {
       ...stored.form,
       signatoryName: stored.form.signatoryName?.trim() || DOST_REGION_12_DIRECTOR_NAME,
+      published: Boolean(stored.published || stored.form.published),
     };
   }
   return buildApprovalLetterDraft(applicant);
@@ -215,10 +218,18 @@ export function syncApprovalLetterFromRtec(
     recipientDesignation: existing.recipientDesignation?.trim()
       ? existing.recipientDesignation
       : draft.recipientDesignation,
-    enterpriseName: draft.enterpriseName,
-    enterpriseAddress: draft.enterpriseAddress,
-    projectTitle: draft.projectTitle,
-    approvedAmount: draft.approvedAmount,
+    enterpriseName: existing.enterpriseName?.trim()
+      ? existing.enterpriseName
+      : draft.enterpriseName,
+    enterpriseAddress: existing.enterpriseAddress?.trim()
+      ? existing.enterpriseAddress
+      : draft.enterpriseAddress,
+    projectTitle: existing.projectTitle?.trim()
+      ? existing.projectTitle
+      : draft.projectTitle,
+    approvedAmount: existing.approvedAmount?.trim()
+      ? existing.approvedAmount
+      : draft.approvedAmount,
     pstoDirectorTitle: existing.pstoDirectorTitle?.trim()
       ? existing.pstoDirectorTitle
       : draft.pstoDirectorTitle,
@@ -284,6 +295,33 @@ export function publishApprovalLetter(
   });
 }
 
+/** Restore published=true when a stale assessment overwrite wiped the flag. */
+export function ensureApprovalLetterPublished(
+  applicantId: string,
+  form: ApprovalLetterForm,
+): void {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return;
+  const existing = getApprovalLetterStored(applicant);
+  if (existing?.published) return;
+  const now = new Date().toISOString();
+  applicantStore.update(applicantId, {
+    moduleData: {
+      ...applicant.moduleData,
+      approvalLetter: {
+        form: { ...form, published: true },
+        published: true,
+        publishedAt: existing?.publishedAt ?? now,
+        acknowledged: existing?.acknowledged ?? false,
+        acknowledgedAt: existing?.acknowledgedAt,
+        updatedAt: now,
+      } satisfies ApprovalLetterStored,
+      approvedAmount:
+        form.approvedAmount || applicant.moduleData?.approvedAmount,
+    },
+  });
+}
+
 export function acknowledgeApprovalLetter(
   applicantId: string,
   conformeSignedName: string,
@@ -308,6 +346,14 @@ export function acknowledgeApprovalLetter(
         updatedAt: now,
       } satisfies ApprovalLetterStored,
     },
+  });
+  // approvalLetter is staff-owned on regular sync paths, so the acknowledgment
+  // must go through its dedicated backend endpoint to persist server-side.
+  void api.acknowledgeApprovalLetter(applicantId, conformeSignedName).catch((err) => {
+    toast.error("Could not save your acknowledgment to the server", {
+      description:
+        err instanceof Error ? err.message : "Please try again or contact your PSTO.",
+    });
   });
 }
 

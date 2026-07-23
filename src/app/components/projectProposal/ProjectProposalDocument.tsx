@@ -46,11 +46,13 @@ import {
   isOptionChecked,
 } from "../../constants/projectProposalLayout";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
+import { StoredFileImage } from "../StoredFilePreview";
 
 export interface ProjectProposalDocumentProps {
   form: ProjectProposalForm;
   document?: ProjectProposalDocumentResponse | null;
   attachments?: ProjectProposalAttachment[];
+  applicantId?: string;
 }
 
 function val(value: unknown): string {
@@ -197,9 +199,11 @@ function DataTable({
 function AttachmentFigure({
   attachment,
   label,
+  applicantId,
 }: {
   attachment?: ProjectProposalAttachment;
   label: string;
+  applicantId?: string;
 }) {
   if (!attachment) {
     return (
@@ -213,7 +217,11 @@ function AttachmentFigure({
     <div className="pp-form-attachment">
       <p className="pp-form-attachment-label">{label}</p>
       {isImage ? (
-        <img src={attachment.dataUrl} alt={attachment.fileName} />
+        <StoredFileImage
+          applicantId={applicantId}
+          file={attachment}
+          alt={attachment.fileName}
+        />
       ) : (
         <p className="pp-form-attachment-file">{attachment.fileName}</p>
       )}
@@ -272,6 +280,7 @@ export function ProjectProposalDocument({
   form,
   document: doc,
   attachments = [],
+  applicantId,
 }: ProjectProposalDocumentProps) {
   const { narrative, bullets, riskRows } = useMergedData(form, doc);
 
@@ -502,6 +511,7 @@ export function ProjectProposalDocument({
         <AttachmentFigure
           attachment={findAttachment("orgChart")}
           label={PROPOSAL_ATTACHMENT_LABELS.orgChart}
+          applicantId={applicantId}
         />
         <p className="pp-form-numbered-label">
           2. Skills and expertise of employee/owner (proponent)
@@ -517,6 +527,7 @@ export function ProjectProposalDocument({
         <AttachmentFigure
           attachment={findAttachment("vicinityMap")}
           label={PROPOSAL_ATTACHMENT_LABELS.vicinityMap}
+          applicantId={applicantId}
         />
       </FormBlock>
 
@@ -585,6 +596,7 @@ export function ProjectProposalDocument({
         <AttachmentFigure
           attachment={findAttachment("plantLayout")}
           label={PROPOSAL_ATTACHMENT_LABELS.plantLayout}
+          applicantId={applicantId}
         />
         <SubHeading>D. Cost and specification of S&T Intervention-Related Equipment</SubHeading>
         <DataTable

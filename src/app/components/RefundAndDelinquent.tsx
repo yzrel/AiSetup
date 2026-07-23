@@ -44,7 +44,7 @@ import {
   validateRefundSubmit,
 } from "../utils/refundDelinquent";
 import { allowWhenDemo } from "../utils/demoMode";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { SubmittedFileActions } from "./SubmittedFileActions";
 
 const STEPS: ModuleStep[] = [
@@ -93,12 +93,14 @@ function PdcReceiptCell({
   row,
   editable,
   uploadedBy,
+  applicantId,
   onReceiptChange,
   onError,
 }: {
   row: PDCEntry;
   editable: boolean;
   uploadedBy: string;
+  applicantId?: string;
   onReceiptChange: (pdcId: string, receipt: ModuleDocument | null) => void;
   onError: (message: string) => void;
 }) {
@@ -107,7 +109,10 @@ function PdcReceiptCell({
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
     try {
-      const doc = await readFileAsModuleDocument(file, uploadedBy);
+      const doc = await readAndUploadModuleDocument(file, uploadedBy, {
+        applicantId,
+        moduleKey: "refund",
+      });
       onReceiptChange(row.id, doc);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Could not upload receipt.");
@@ -116,7 +121,7 @@ function PdcReceiptCell({
 
   return (
     <div className="space-y-1.5 min-w-0">
-      {row.paymentReceipt?.dataUrl ? (
+      {row.paymentReceipt?.dataUrl || row.paymentReceipt?.fileId ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             className="text-[11px] text-gray-700 truncate max-w-[120px]"
@@ -128,6 +133,8 @@ function PdcReceiptCell({
             fileName={row.paymentReceipt.fileName}
             mimeType={row.paymentReceipt.mimeType}
             dataUrl={row.paymentReceipt.dataUrl}
+            fileId={row.paymentReceipt.fileId}
+            applicantId={applicantId}
             compact
           />
           {editable && (
@@ -173,6 +180,7 @@ function PdcStatusControl({
   row,
   editable,
   uploadedBy,
+  applicantId,
   onStatusChange,
   onReceiptChange,
   onError,
@@ -180,6 +188,7 @@ function PdcStatusControl({
   row: PDCEntry;
   editable: boolean;
   uploadedBy: string;
+  applicantId?: string;
   onStatusChange: (pdcId: string, status: PDCStatus) => void;
   onReceiptChange: (pdcId: string, receipt: ModuleDocument | null) => void;
   onError: (message: string) => void;
@@ -203,7 +212,7 @@ function PdcStatusControl({
         className="w-full max-w-[160px] text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-800"
         onChange={(e) => {
           const next = e.target.value as PDCStatus;
-          if (next === "cleared" && !row.paymentReceipt?.dataUrl) {
+          if (next === "cleared" && !row.paymentReceipt?.dataUrl && !row.paymentReceipt?.fileId) {
             clearedPickerRef.current?.click();
             return;
           }
@@ -224,7 +233,10 @@ function PdcStatusControl({
           e.target.value = "";
           if (!file) return;
           try {
-            const doc = await readFileAsModuleDocument(file, uploadedBy);
+            const doc = await readAndUploadModuleDocument(file, uploadedBy, {
+              applicantId,
+              moduleKey: "refund",
+            });
             onReceiptChange(row.id, doc);
           } catch (err) {
             onError(err instanceof Error ? err.message : "Could not upload receipt.");
@@ -239,6 +251,7 @@ interface PDCTableProps {
   rows: PDCEntry[];
   editable?: boolean;
   uploadedBy?: string;
+  applicantId?: string;
   onStatusChange?: (pdcId: string, status: PDCStatus) => void;
   onReceiptChange?: (pdcId: string, receipt: ModuleDocument | null) => void;
   onError?: (message: string) => void;
@@ -248,6 +261,7 @@ function PDCTable({
   rows,
   editable = false,
   uploadedBy = "staff",
+  applicantId,
   onStatusChange,
   onReceiptChange,
   onError,
@@ -272,6 +286,7 @@ function PDCTable({
                 row={r}
                 editable={editable}
                 uploadedBy={uploadedBy}
+                applicantId={applicantId}
                 onStatusChange={handleStatus}
                 onReceiptChange={handleReceipt}
                 onError={handleError}
@@ -299,6 +314,7 @@ function PDCTable({
                     row={r}
                     editable={editable}
                     uploadedBy={uploadedBy}
+                    applicantId={applicantId}
                     onReceiptChange={handleReceipt}
                     onError={handleError}
                   />
@@ -333,6 +349,7 @@ function PDCTable({
               row={r}
               editable={editable}
               uploadedBy={uploadedBy}
+              applicantId={applicantId}
               onStatusChange={handleStatus}
               onReceiptChange={handleReceipt}
               onError={handleError}
@@ -342,6 +359,7 @@ function PDCTable({
                 row={r}
                 editable={editable}
                 uploadedBy={uploadedBy}
+                applicantId={applicantId}
                 onReceiptChange={handleReceipt}
                 onError={handleError}
               />
@@ -476,6 +494,7 @@ export function RefundAndDelinquent({
       rows={form.pdcs}
       editable={pdcEditable}
       uploadedBy={uploadedBy}
+      applicantId={applicant?.id}
       onStatusChange={handlePdcStatusChange}
       onReceiptChange={handlePdcReceiptChange}
       onError={handlePdcError}

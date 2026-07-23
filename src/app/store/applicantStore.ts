@@ -468,15 +468,7 @@ export const applicantStore = {
     // Enforce on the server: blocked accounts cannot obtain a JWT.
     void api
       .adminSetEnabled({ applicantId: id, enabled: status !== 'blocked' })
-      .then(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c5b70a'},body:JSON.stringify({sessionId:'c5b70a',hypothesisId:'H-C',location:'applicantStore.ts:setAccountStatus',message:'adminSetEnabled OK',data:{applicantId:id,status},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-      })
       .catch((err) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c5b70a'},body:JSON.stringify({sessionId:'c5b70a',hypothesisId:'H-C',location:'applicantStore.ts:setAccountStatus',message:'adminSetEnabled FAILED',data:{applicantId:id,status,error:String(err)},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         console.warn('[aisetup] Failed to sync account status to backend:', err);
       });
     return true;
@@ -558,9 +550,6 @@ export const applicantStore = {
       applicantId ??
       user.id;
     const record = await fetchBackendApplicant(linkedId);
-    // #region agent log
-    fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c5b70a'},body:JSON.stringify({sessionId:'c5b70a',hypothesisId:'H-D',location:'applicantStore.ts:hydrateFromBackend',message:'applicant hydration',data:{userId:user.id,userApplicantId:(user as {applicantId?:string}).applicantId??null,userApplicationId:user.applicationId??null,linkedId,recordFound:!!record,recordId:record?.id??null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!record) return;
     const index = applicants.findIndex((a) => a.id === record.id);
     const local = index >= 0 ? applicants[index] : undefined;

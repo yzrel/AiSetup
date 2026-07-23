@@ -61,6 +61,12 @@ aisetup:
   seed-users: ${AISETUP_SEED_USERS:true}
   demo-mode-enabled: ${AISETUP_DEMO_MODE:true}
   upload-dir: ${AISETUP_UPLOAD_DIR:./data/uploads}
+  rate-limit:
+    otp-per-ip: 10
+    otp-per-target: 5
+    otp-window-minutes: 15
+    ai-per-user: 30
+    ai-window-minutes: 60
   mail:
     from: ${MAIL_FROM:}
     username: ${SMTP_USERNAME:}

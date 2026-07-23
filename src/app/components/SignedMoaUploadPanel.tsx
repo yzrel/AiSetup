@@ -41,9 +41,11 @@ export function SignedMoaUploadPanel({
   const [pendingFile, setPendingFile] = useState<{
     fileName: string;
     mimeType: string;
-    dataUrl: string;
+    dataUrl?: string;
     uploadedAt: string;
     uploadedBy: string;
+    fileId?: string;
+    hasFileContent?: boolean;
   } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState("");

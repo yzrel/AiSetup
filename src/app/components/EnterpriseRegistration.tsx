@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
@@ -12,13 +12,14 @@ import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import {
   BusinessPermitEntry,
   loadBusinessPermits,
   validateBusinessPermits,
 } from "../utils/businessPermits";
 import { isFoodSector } from "../utils/foodSector";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -101,61 +102,120 @@ export function EnterpriseRegistration({
     loadBusinessPermits(null),
   );
 
+  const formDataRef = useRef(formData);
+  const businessPermitsRef = useRef(businessPermits);
+  formDataRef.current = formData;
+  businessPermitsRef.current = businessPermits;
+
   useEffect(() => {
     const loaded = loadEnterpriseFormFromApplicant(applicant);
     setContactInfo(loaded.contactInfo);
     setFormData(loaded.formData);
     setBusinessPermits(loaded.businessPermits);
+    formDataRef.current = loaded.formData;
+    businessPermitsRef.current = loaded.businessPermits;
     setSaved(false);
     setFormError(null);
   }, [applicant?.id]);
 
-  useEffect(() => {
+  const persistEnterpriseDetails = (opts?: { markSaved?: boolean }) => {
     if (!applicant) return;
-    const reload = () => {
-      const app = applicantStore.getById(applicant.id);
-      if (!app) return;
-      const loaded = loadEnterpriseFormFromApplicant(app);
-      setContactInfo(loaded.contactInfo);
-      setFormData(loaded.formData);
-      setBusinessPermits(loaded.businessPermits);
-    };
-    return applicantStore.subscribe(reload);
-  }, [applicant?.id]);
+    const data = formDataRef.current;
+    const permits = businessPermitsRef.current;
+    setFormError(null);
+    applicantStore.update(applicant.id, {
+      enterpriseName: data.enterpriseName,
+      businessSector: data.businessSector,
+      address: data.enterpriseAddress,
+      businessType: data.dtiSec,
+      region: data.province || applicant.region,
+      currentModule: "registration",
+      moduleData: {
+        ...applicant.moduleData,
+        registrationType: data.dtiSec,
+        registrationNumber: data.registrationNumber,
+        tinNumber: data.tinNumber,
+        fdaNumber: data.fdaNumber,
+        businessPermits: permits,
+        province: data.province,
+        postalCode: data.postalCode,
+        zipCode: data.postalCode,
+        companyStartDate: data.companyStartDate,
+        dateEstablished: data.companyStartDate,
+        companyDescription: data.companyDescription,
+        registrationDraftSavedAt: new Date().toISOString(),
+      },
+    });
+    if (opts?.markSaved !== false) setSaved(true);
+  };
+
+  const scheduleDraftPersist = useDebouncedCallback(() => {
+    persistEnterpriseDetails({ markSaved: false });
+  }, 400);
 
   const setField = <K extends keyof typeof formData>(
     key: K,
     value: (typeof formData)[K],
-  ) => setFormData((prev) => ({ ...prev, [key]: value }));
+  ) => {
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      formDataRef.current = next;
+      return next;
+    });
+    scheduleDraftPersist();
+  };
 
   const foodSector = isFoodSector(formData.businessSector);
 
   const setPermitYear = (index: number, year: string) => {
-    setBusinessPermits((prev) =>
-      prev.map((entry, i) => (i === index ? { ...entry, year } : entry)),
-    );
+    setBusinessPermits((prev) => {
+      const next = prev.map((entry, i) =>
+        i === index ? { ...entry, year } : entry,
+      );
+      businessPermitsRef.current = next;
+      return next;
+    });
+    scheduleDraftPersist();
   };
 
   const handlePermitFile = async (index: number, file: File | null) => {
     if (!file) return;
     try {
-      const doc = await readFileAsModuleDocument(
+      const doc = await readAndUploadModuleDocument(
         file,
         user?.email || applicant?.emailAddress || "applicant",
+        applicant?.id
+          ? { applicantId: applicant.id, moduleKey: "businessPermits" }
+          : undefined,
       );
-      setBusinessPermits((prev) =>
-        prev.map((entry, i) => (i === index ? { ...entry, document: doc } : entry)),
-      );
+      setBusinessPermits((prev) => {
+        const next = prev.map((entry, i) =>
+          i === index ? { ...entry, document: doc } : entry,
+        );
+        businessPermitsRef.current = next;
+        return next;
+      });
       setFormError(null);
+      scheduleDraftPersist();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not read file.");
     }
   };
 
   const removePermitFile = (index: number) => {
-    setBusinessPermits((prev) =>
-      prev.map((entry, i) => (i === index ? { ...entry, document: null } : entry)),
-    );
+    setBusinessPermits((prev) => {
+      const next = prev.map((entry, i) =>
+        i === index ? { ...entry, document: null } : entry,
+      );
+      businessPermitsRef.current = next;
+      return next;
+    });
+    scheduleDraftPersist();
+  };
+
+  const handleSaveDraft = () => {
+    if (!applicant) return;
+    persistEnterpriseDetails({ markSaved: true });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -175,31 +235,7 @@ export function EnterpriseRegistration({
         return;
       }
     }
-    setFormError(null);
-
-    applicantStore.update(applicant.id, {
-      enterpriseName: formData.enterpriseName,
-      businessSector: formData.businessSector,
-      address: formData.enterpriseAddress,
-      businessType: formData.dtiSec,
-      region: formData.province || applicant.region,
-      currentModule: "registration",
-      moduleData: {
-        ...applicant.moduleData,
-        registrationType: formData.dtiSec,
-        registrationNumber: formData.registrationNumber,
-        tinNumber: formData.tinNumber,
-        fdaNumber: formData.fdaNumber,
-        businessPermits,
-        province: formData.province,
-        postalCode: formData.postalCode,
-        zipCode: formData.postalCode,
-        companyStartDate: formData.companyStartDate,
-        dateEstablished: formData.companyStartDate,
-        companyDescription: formData.companyDescription,
-      },
-    });
-    setSaved(true);
+    persistEnterpriseDetails({ markSaved: true });
   };
 
   return (
@@ -374,7 +410,7 @@ export function EnterpriseRegistration({
               <p className="text-xs text-gray-500">
                 SETUP requires Mayor's / business permits for three consecutive
                 years (e.g. 2023, 2024, 2025). Upload one file per year (PDF or
-                image, max 8 MB).
+                image, max 15 MB).
               </p>
             </div>
             {businessPermits.map((entry, index) => (
@@ -518,10 +554,18 @@ export function EnterpriseRegistration({
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={!applicant}
+              className="w-full sm:w-auto border border-gray-300 text-gray-800 py-3 px-8 rounded-md hover:bg-gray-50 transition-colors font-medium disabled:opacity-40"
+            >
+              Save Draft
+            </button>
+            <button
               type="submit"
               className="w-full sm:w-auto bg-green-600 text-white py-3 px-8 rounded-md hover:bg-green-700 transition-colors font-medium"
             >
-              Save Enterprise Details
+              Save &amp; Continue
             </button>
             {allowWhenDemo(saved) && onSubmitSuccess && (
               <button

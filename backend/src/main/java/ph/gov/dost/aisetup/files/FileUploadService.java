@@ -20,6 +20,8 @@ import ph.gov.dost.aisetup.auth.UserPrincipal;
 import ph.gov.dost.aisetup.config.AisetupProperties;
 import ph.gov.dost.aisetup.persistence.ApplicantPersistenceService;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
+import ph.gov.dost.aisetup.workflow.ModuleOrder;
+import ph.gov.dost.aisetup.workflow.WorkflowGateService;
 
 @Service
 public class FileUploadService {
@@ -46,6 +48,11 @@ public class FileUploadService {
     public Map<String, Object> upload(String applicantId, String moduleKey, MultipartFile file)
             throws IOException {
         SecurityUtils.requireCanAccessApplicant(applicantId);
+        String resolvedKey = moduleKey != null && !moduleKey.isBlank() ? moduleKey : "general";
+        if (WorkflowGateService.SIGNED_MOA_MODULE_KEY.equals(resolvedKey)
+                || ModuleOrder.isStaffOnlyModule(resolvedKey)) {
+            SecurityUtils.requireStaff();
+        }
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is required");
         }
@@ -67,7 +74,7 @@ public class FileUploadService {
         entity.setId(id);
         entity.setApplicantId(applicantId);
         entity.setApplicationId(applicant.applicationId());
-        entity.setModuleKey(moduleKey != null && !moduleKey.isBlank() ? moduleKey : "general");
+        entity.setModuleKey(resolvedKey);
         entity.setOriginalFilename(safeName);
         entity.setContentType(file.getContentType());
         entity.setSizeBytes(file.getSize());

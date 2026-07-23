@@ -24,11 +24,11 @@ public class ApplicantRecord {
     private String enterpriseName;
     private String currentModule;
 
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @JdbcTypeCode(SqlTypes.CLOB)
     private String moduleDataJson;
 
     /** Top-level applicant fields (name, contact, sector, ...) so the frontend can rebuild the full record. */
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @JdbcTypeCode(SqlTypes.CLOB)
     private String profileJson;
 
     private Instant updatedAt;

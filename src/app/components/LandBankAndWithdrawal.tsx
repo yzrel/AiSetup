@@ -204,9 +204,15 @@ export function LandBankAndWithdrawal({
     setTimeout(() => setLbpSaveNotice(""), 3000);
   };
 
+  const handleLbpChange = (next: LbpIntroductionLetterForm) => {
+    setLbpForm(next);
+    if (!applicant) return;
+    saveLbpIntroductionDraft(applicant.id, next);
+  };
+
   const handleLbpSync = () => {
     if (!applicant) return;
-    const synced = syncLbpIntroductionFromUpstream(applicant);
+    const synced = syncLbpIntroductionFromUpstream(applicant, lbpForm);
     setLbpForm(synced);
     saveLbpIntroductionDraft(applicant.id, synced);
     setLbpSaveNotice("Synced from approval letter and project proposal.");
@@ -433,7 +439,7 @@ export function LandBankAndWithdrawal({
                     Publish to applicant
                   </button>
                 </div>
-                <LbpIntroductionLetterEditor form={lbpForm} onChange={setLbpForm} />
+                <LbpIntroductionLetterEditor form={lbpForm} onChange={handleLbpChange} />
               </>
             )}
 

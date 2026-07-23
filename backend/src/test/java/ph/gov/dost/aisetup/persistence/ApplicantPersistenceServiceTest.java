@@ -62,7 +62,9 @@ class ApplicantPersistenceServiceTest {
                         huge,
                         Map.of(),
                         null)));
-        assertTrue(ex.getMessage().contains("moduleData"));
+        assertTrue(
+                ex.getMessage().contains("exceeds") || ex.getMessage().contains("moduleData"),
+                () -> "unexpected message: " + ex.getMessage());
     }
 
     @Test

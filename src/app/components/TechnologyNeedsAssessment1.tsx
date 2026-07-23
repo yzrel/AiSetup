@@ -6,7 +6,7 @@
  * step to the components in ./tna1/.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import {
@@ -40,6 +40,7 @@ import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice } from "./AiAssistField";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { syncTna1FormToBackendBestEffort } from "../utils/applicantPersistence";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 import type { Tna1Doc, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
 import { DOST_BLUE, DOST_MID, StepHeader } from "./tna1/tna1Ui";
@@ -122,9 +123,33 @@ export function TechnologyNeedsAssessment1({
     };
   };
 
-  const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
-  const setT = (key: string, rows: string[][]) =>
-    setTables(t => ({ ...t, [key]: rows }));
+  const formRef = useRef(form);
+  const tablesRef = useRef(tables);
+  const staffNotesRef = useRef(staffNotes);
+  const siteVisitDateRef = useRef(siteVisitDate);
+  const siteVisitNotesRef = useRef(siteVisitNotes);
+  formRef.current = form;
+  tablesRef.current = tables;
+  staffNotesRef.current = staffNotes;
+  siteVisitDateRef.current = siteVisitDate;
+  siteVisitNotesRef.current = siteVisitNotes;
+
+  const set = (k: string, v: unknown) => {
+    setForm((f) => {
+      const next = { ...f, [k]: v };
+      formRef.current = next;
+      return next;
+    });
+    scheduleTnaDraft();
+  };
+  const setT = (key: string, rows: string[][]) => {
+    setTables((t) => {
+      const next = { ...t, [key]: rows };
+      tablesRef.current = next;
+      return next;
+    });
+    scheduleTnaDraft();
+  };
 
   const loadApplicantData = useCallback((app: Applicant | null) => {
     if (!app) return;
@@ -132,6 +157,8 @@ export function TechnologyNeedsAssessment1({
     const merged = mergeTnaSavedData(app, saved);
     setForm(merged.form);
     setTables(merged.tables);
+    formRef.current = merged.form;
+    tablesRef.current = merged.tables;
     setApplicantSubmitted(!!saved?.submitted);
     setStaffApproved(!!saved?.staffReviewed);
     setDirectorValidated(!!saved?.directorValidated);
@@ -141,6 +168,10 @@ export function TechnologyNeedsAssessment1({
     setTnaAiGenerated(doc?.aiGenerated ?? null);
     if (saved?.siteVisitDate) setSiteVisitDate(String(saved.siteVisitDate));
     if (saved?.siteVisitNotes) setSiteVisitNotes(String(saved.siteVisitNotes));
+    const draftNotes = String(
+      saved?.staffReviewNotesDraft ?? saved?.staffNotes ?? "",
+    );
+    if (draftNotes) setStaffNotes(draftNotes);
   }, []);
 
   useEffect(() => {
@@ -299,45 +330,90 @@ export function TechnologyNeedsAssessment1({
   }, [applicant, user, form, applicantOfficeId]);
 
   const saveTnaDraft = useCallback(
-    (submitted = false) => {
+    (submitted = false, opts?: { notice?: boolean }) => {
       if (!applicant) return;
+      const currentForm = formRef.current;
+      const currentTables = tablesRef.current;
       const nextModuleData = {
         ...applicant.moduleData,
         tna1: {
-          form,
-          tables,
+          ...(applicant.moduleData?.tna1 ?? {}),
+          form: currentForm,
+          tables: currentTables,
           submitted,
           submittedAt: submitted
             ? new Date().toISOString()
             : applicant.moduleData?.tna1?.submittedAt,
           updatedAt: new Date().toISOString(),
+          siteVisitDate: siteVisitDateRef.current || undefined,
+          siteVisitNotes: siteVisitNotesRef.current || undefined,
+          staffReviewNotesDraft: staffNotesRef.current || undefined,
         },
       };
       applicantStore.update(applicant.id, {
         ...(submitted ? { currentModule: "tna1" as const } : {}),
-        businessSector: String(form.sector ?? applicant.businessSector),
+        businessSector: String(currentForm.sector ?? applicant.businessSector),
         moduleData: nextModuleData,
       });
       const synced = applicantStore.getById(applicant.id);
       if (synced) {
         syncTna1FormToBackendBestEffort(synced, {
-          form: form as Record<string, unknown>,
+          form: currentForm as Record<string, unknown>,
           tables: {
-            rawMaterials: tables.rawMaterials ?? [],
-            production: tables.production ?? [],
-            equipment: tables.equipment ?? [],
+            rawMaterials: currentTables.rawMaterials ?? [],
+            production: currentTables.production ?? [],
+            equipment: currentTables.equipment ?? [],
           },
           submitted,
         });
       }
-      setSaveNotice(submitted ? "TNA Form 01 submitted." : "Draft saved.");
-      setTimeout(() => setSaveNotice(""), 3000);
+      if (opts?.notice !== false) {
+        setSaveNotice(submitted ? "TNA Form 01 submitted." : "Draft saved.");
+        setTimeout(() => setSaveNotice(""), 3000);
+      }
     },
-    [applicant, form, tables],
+    [applicant],
   );
 
+  const scheduleTnaDraft = useDebouncedCallback(() => {
+    saveTnaDraft(false, { notice: false });
+  }, 400);
+
+  const persistStaffReviewDraft = useDebouncedCallback(() => {
+    if (!applicant || !isStaff) return;
+    applicantStore.update(applicant.id, {
+      moduleData: {
+        ...applicant.moduleData,
+        tna1: {
+          ...(applicant.moduleData?.tna1 ?? {}),
+          form: formRef.current,
+          tables: tablesRef.current,
+          siteVisitDate: siteVisitDateRef.current || undefined,
+          siteVisitNotes: siteVisitNotesRef.current || undefined,
+          staffReviewNotesDraft: staffNotesRef.current || undefined,
+        },
+      },
+    });
+  }, 400);
+
+  const handleStaffNotesChange = (value: string) => {
+    staffNotesRef.current = value;
+    setStaffNotes(value);
+    persistStaffReviewDraft();
+  };
+  const handleSiteVisitDateChange = (value: string) => {
+    siteVisitDateRef.current = value;
+    setSiteVisitDate(value);
+    persistStaffReviewDraft();
+  };
+  const handleSiteVisitNotesChange = (value: string) => {
+    siteVisitNotesRef.current = value;
+    setSiteVisitNotes(value);
+    persistStaffReviewDraft();
+  };
+
   const goToStep = (next: string) => {
-    if (applicant && !isStaff) saveTnaDraft(false);
+    if (applicant) saveTnaDraft(false, { notice: false });
     setStep(next);
   };
 
@@ -473,11 +549,11 @@ export function TechnologyNeedsAssessment1({
     handleGenerateTna1,
     tnaAi,
     staffNotes,
-    setStaffNotes,
+    setStaffNotes: handleStaffNotesChange,
     siteVisitDate,
-    setSiteVisitDate,
+    setSiteVisitDate: handleSiteVisitDateChange,
     siteVisitNotes,
-    setSiteVisitNotes,
+    setSiteVisitNotes: handleSiteVisitNotesChange,
     persistStaffReview,
     staffApproved,
     directorValidated,
@@ -536,6 +612,20 @@ export function TechnologyNeedsAssessment1({
           />
           {saveNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{saveNotice}</p>
+          )}
+          {applicant && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => saveTnaDraft(false)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-[#0C2461] hover:bg-white/90"
+              >
+                Save Draft
+              </button>
+              <span className="text-[11px] text-white/70">
+                Saves progress without submitting.
+              </span>
+            </div>
           )}
           <StaffApplicantPicker user={user} label={`Review applicant ${formatFormMention("tna01")}`} />
         </div>

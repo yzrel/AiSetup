@@ -94,6 +94,8 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           <FileAttachmentField
             label="Production Plan Attachment"
             fileName={form.productionPlanFileName}
+            applicantId={ctx.applicant?.id}
+            moduleKey="tna1-productionPlan"
             onFile={(name, data) => {
               set("productionPlanFileName", name);
               set("productionPlanFileData", data);
@@ -109,6 +111,8 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
         <FileAttachmentField
           label="Plant Lay-Out"
           fileName={form.plantLayoutFileName}
+          applicantId={ctx.applicant?.id}
+          moduleKey="tna1-plantLayout"
           onFile={(name, data) => {
             set("plantLayoutFileName", name);
             set("plantLayoutFileData", data);
@@ -149,6 +153,8 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           <FileAttachmentField
             label=""
             fileName={form.processFlowFileName}
+            applicantId={ctx.applicant?.id}
+            moduleKey="tna1-processFlow"
             onFile={(name, data) => {
               set("processFlowFileName", name);
               set("processFlowFileData", data);

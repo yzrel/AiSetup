@@ -2,19 +2,26 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
-import { uploadFileToBackendBestEffort } from "../utils/applicantPersistence";
+import { api } from "../api/client";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
+import { useStoredFileSrc } from "../utils/storedFilePreview";
+import { StoredFileImage } from "./StoredFilePreview";
 import { FORM_GRID_2, ACTION_ROW } from "./moduleTheme";
 
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 15 * 1024 * 1024;
 
 export interface SignedDocumentValue {
   fileName: string;
   mimeType: string;
-  dataUrl: string;
+  /** Session preview; omitted from backend blob sync. */
+  dataUrl?: string;
   uploadedAt: string;
   uploadedBy: string;
+  fileId?: string;
+  /** Set when dataUrl was stripped for sync but bytes live in file_uploads. */
+  hasFileContent?: boolean;
 }
 
 interface SignedDocumentUploadProps {
@@ -38,6 +45,72 @@ interface SignedDocumentUploadProps {
   moduleKey?: string;
 }
 
+async function downloadStoredFile(
+  applicantId: string,
+  fileId: string,
+  fallbackName: string,
+): Promise<void> {
+  const { blob, fileName } = await api.downloadApplicantFile(applicantId, fileId);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName || fallbackName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function hasStoredFile(document: SignedDocumentValue | null): boolean {
+  if (!document) return false;
+  return Boolean(
+    document.dataUrl ||
+      document.fileId ||
+      document.hasFileContent ||
+      document.fileName,
+  );
+}
+
+function SignedFilePreview({
+  document,
+  applicantId,
+  label,
+}: {
+  document: SignedDocumentValue;
+  applicantId?: string;
+  label: string;
+}) {
+  const { src } = useStoredFileSrc(applicantId, document);
+  const isImage = document.mimeType.startsWith("image/");
+  const isPdf = document.mimeType === "application/pdf" || document.fileName.toLowerCase().endsWith(".pdf");
+
+  if (isImage) {
+    return (
+      <StoredFileImage
+        applicantId={applicantId}
+        file={document}
+        alt={label}
+        className="max-h-48 mx-auto rounded border border-gray-200"
+      />
+    );
+  }
+  if (isPdf && src) {
+    return (
+      <iframe
+        src={src}
+        title={label}
+        className="w-full h-64 border border-gray-200 rounded-lg"
+      />
+    );
+  }
+  if (!document.dataUrl && document.fileId && !src) {
+    return (
+      <p className="text-xs text-gray-500">
+        Preview loading from the server file store…
+      </p>
+    );
+  }
+  return null;
+}
+
 export function SignedDocumentUpload({
   label,
   document,
@@ -58,30 +131,57 @@ export function SignedDocumentUpload({
   moduleKey,
 }: SignedDocumentUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (file.size > MAX_BYTES) {
-      alert("File must be under 8 MB.");
+      alert("File must be under 15 MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      onUpload({
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        dataUrl: String(reader.result),
-        uploadedAt: new Date().toISOString(),
-        uploadedBy,
+    try {
+      const doc = await readAndUploadModuleDocument(file, uploadedBy, {
+        applicantId,
+        moduleKey: moduleKey ?? "general",
       });
-      if (applicantId) {
-        uploadFileToBackendBestEffort(applicantId, moduleKey ?? "general", file);
-      }
-    };
-    reader.readAsDataURL(file);
+      onUpload({
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        dataUrl: doc.dataUrl,
+        uploadedAt: doc.uploadedAt,
+        uploadedBy: doc.uploadedBy,
+        fileId: doc.fileId,
+        hasFileContent: Boolean(doc.fileId || doc.dataUrl),
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed.");
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!document) return;
+    if (document.dataUrl) {
+      const a = window.document.createElement("a");
+      a.href = document.dataUrl;
+      a.download = document.fileName;
+      a.click();
+      return;
+    }
+    if (!applicantId || !document.fileId) {
+      alert("File is stored on the server but preview is unavailable in this session.");
+      return;
+    }
+    setDownloadBusy(true);
+    try {
+      await downloadStoredFile(applicantId, document.fileId, document.fileName);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Download failed.");
+    } finally {
+      setDownloadBusy(false);
+    }
   };
 
   if (readOnly) {
-    if (!document) {
+    if (!hasStoredFile(document)) {
       return (
         <p className="text-sm text-gray-500 italic">No {label.toLowerCase()} uploaded yet.</p>
       );
@@ -93,31 +193,37 @@ export function SignedDocumentUpload({
           {label}
         </div>
         <p className="text-sm text-gray-600">
-          {document.fileName} · {new Date(document.uploadedAt).toLocaleDateString()}
+          {document!.fileName} · {new Date(document!.uploadedAt).toLocaleDateString()}
         </p>
         <p className="text-xs text-gray-500">
-          Uploaded by DOST staff ({document.uploadedBy})
+          Uploaded by DOST staff ({document!.uploadedBy})
         </p>
         {signedDate && (
           <p className="text-xs text-gray-500">
             {dateLabel}: {new Date(signedDate).toLocaleDateString("en-PH", { dateStyle: "long" })}
           </p>
         )}
-        <a
-          href={document.dataUrl}
-          download={document.fileName}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-[#0C2461] hover:underline"
-        >
-          <Download className="w-4 h-4" />
-          Download
-        </a>
-        {document.mimeType === "application/pdf" && (
-          <iframe
-            src={document.dataUrl}
-            title={label}
-            className="w-full h-64 border border-gray-200 rounded-lg"
-          />
+        {(document!.dataUrl || document!.fileId) && (
+          <button
+            type="button"
+            onClick={() => void handleDownload()}
+            disabled={downloadBusy}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#0C2461] hover:underline disabled:opacity-60"
+          >
+            <Download className="w-4 h-4" />
+            {downloadBusy ? "Downloading…" : "Download"}
+          </button>
         )}
+        {!document!.dataUrl && document!.fileId && (
+          <p className="text-xs text-gray-500">
+            Preview loads from the server file store after reload.
+          </p>
+        )}
+        <SignedFilePreview
+          document={document!}
+          applicantId={applicantId}
+          label={label}
+        />
       </div>
     );
   }
@@ -177,14 +283,24 @@ export function SignedDocumentUpload({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          if (file) void handleFile(file);
           e.target.value = "";
         }}
       />
-      {document ? (
+      {hasStoredFile(document) ? (
         <div className={`${ACTION_ROW} flex-wrap items-center bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2`}>
           <FileText className="w-4 h-4 text-emerald-700" />
-          <span className="text-sm text-emerald-800 flex-1">{document.fileName}</span>
+          <span className="text-sm text-emerald-800 flex-1">{document!.fileName}</span>
+          {(document!.dataUrl || document!.fileId) && (
+            <button
+              type="button"
+              onClick={() => void handleDownload()}
+              disabled={downloadBusy}
+              className="text-xs font-semibold text-[#0C2461] disabled:opacity-60"
+            >
+              {downloadBusy ? "…" : "Download"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -205,6 +321,13 @@ export function SignedDocumentUpload({
           <Upload className="w-4 h-4" />
           Upload signed scan (PDF or image)
         </button>
+      )}
+      {hasStoredFile(document) && (
+        <SignedFilePreview
+          document={document!}
+          applicantId={applicantId}
+          label={label}
+        />
       )}
     </div>
   );

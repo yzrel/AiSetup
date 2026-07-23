@@ -204,7 +204,7 @@ public class LoiGenerationService {
         ));
 
         paragraphs.add(String.format(
-                "%s is a %s %s operating in the %s sector with %s years of operation. Our enterprise offers %s and seeks to upgrade our operations through appropriate science and technology interventions.",
+                "%s is a %s %s operating in the %s sector with %s years of operation. %s and seeks to upgrade our operations through appropriate science and technology interventions.",
                 val(r.getEnterpriseName()),
                 val(r.getMsmeSize()),
                 val(r.getBusinessType()),

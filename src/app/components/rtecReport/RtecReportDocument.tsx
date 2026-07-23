@@ -53,9 +53,11 @@ import {
   isOptionChecked,
 } from "../../constants/rtecReportLayout";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
+import { StoredFileImage } from "../StoredFilePreview";
 
 export interface RtecReportDocumentProps {
   form: RtecReportForm;
+  applicantId?: string;
 }
 
 function val(value: unknown): string {
@@ -229,9 +231,11 @@ function ComplianceTable({ items }: { items: RtecComplianceItem[] }) {
 function AttachmentFigure({
   attachment,
   label,
+  applicantId,
 }: {
   attachment?: ProjectProposalAttachment;
   label: string;
+  applicantId?: string;
 }) {
   if (!attachment) {
     return (
@@ -245,7 +249,11 @@ function AttachmentFigure({
     <div className="rtec-form-attachment">
       <p className="rtec-form-attachment-label">{label}</p>
       {isImage ? (
-        <img src={attachment.dataUrl} alt={attachment.fileName} />
+        <StoredFileImage
+          applicantId={applicantId}
+          file={attachment}
+          alt={attachment.fileName}
+        />
       ) : (
         <p className="rtec-form-attachment-file">{attachment.fileName}</p>
       )}
@@ -295,7 +303,7 @@ function registrationRowValues(
   };
 }
 
-export function RtecReportDocument({ form }: RtecReportDocumentProps) {
+export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProps) {
   const pp = form.proposalSnapshot;
 
   const findAttachment = (kind: ProjectProposalAttachmentKind) =>
@@ -560,6 +568,7 @@ export function RtecReportDocument({ form }: RtecReportDocumentProps) {
         <AttachmentFigure
           attachment={findAttachment("orgChart")}
           label={PROPOSAL_ATTACHMENT_LABELS.orgChart}
+          applicantId={applicantId}
         />
         <FieldLabel>Skills and expertise of employee/owner (proponent)</FieldLabel>
         <NarrativeBlock text={pp.skillsExpertise} />
@@ -602,6 +611,7 @@ export function RtecReportDocument({ form }: RtecReportDocumentProps) {
         <AttachmentFigure
           attachment={findAttachment("plantLayout")}
           label={PROPOSAL_ATTACHMENT_LABELS.plantLayout}
+          applicantId={applicantId}
         />
         <FieldLabel>4. Cost and specification of S&T Intervention Related Equipment</FieldLabel>
         <DataTable columns={PP_INTERVENTION_COST_COLUMNS} rows={pp.interventionCostTable} />

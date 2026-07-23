@@ -330,8 +330,11 @@ export interface ProjectProposalAttachment {
   kind: ProjectProposalAttachmentKind;
   fileName: string;
   mimeType: string;
-  dataUrl: string;
+  /** Session preview; omitted from backend blob sync (see stripHeavyPayloads). */
+  dataUrl?: string;
   uploadedAt: string;
+  /** Backend file_uploads id when mirrored via the file API. */
+  fileId?: string;
 }
 
 export interface ProjectProposalBudgetRow {
@@ -599,12 +602,15 @@ export interface ApprovalLetterStored {
 export interface SignedMoaDocument {
   fileName: string;
   mimeType: string;
-  dataUrl: string;
+  /** Session preview; omitted from backend blob sync. */
+  dataUrl?: string;
   uploadedAt: string;
   uploadedBy: string;
   moaSignedDate: string;
   signingVenue?: string;
   notes?: string;
+  fileId?: string;
+  hasFileContent?: boolean;
 }
 
 // ── SETUP Form 008 / 009 — Project Information Sheet ──────────────────────────
@@ -668,11 +674,14 @@ export interface PrePisDraftForm {
 export interface SignedPrePisDocument {
   fileName: string;
   mimeType: string;
-  dataUrl: string;
+  /** Session preview; omitted from backend blob sync. */
+  dataUrl?: string;
   uploadedAt: string;
   uploadedBy: string;
   prePisSignedDate: string;
   notes?: string;
+  fileId?: string;
+  hasFileContent?: boolean;
 }
 
 export type PisSemester = "1" | "2";
@@ -757,10 +766,14 @@ export interface LbpIntroductionLetterStored {
 export interface ModuleDocument {
   fileName: string;
   mimeType: string;
-  dataUrl: string;
+  /** Session preview; omitted from backend blob sync (see stripHeavyPayloads). */
+  dataUrl?: string;
   uploadedAt: string;
   uploadedBy: string;
   notes?: string;
+  /** Backend file_uploads id when mirrored via POST /applicants/{id}/files. */
+  fileId?: string;
+  hasFileContent?: boolean;
 }
 
 export interface WithdrawalEquipmentRow {
@@ -842,6 +855,8 @@ export interface ProcurementDocument {
   dataUrl?: string;
   fileSizeBytes?: number;
   uploadedBy?: string;
+  /** Backend file_uploads id when mirrored via the file API. */
+  fileId?: string;
 }
 
 export interface ProcurementStaffReview {

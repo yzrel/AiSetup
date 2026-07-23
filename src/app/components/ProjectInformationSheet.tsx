@@ -132,6 +132,18 @@ export function ProjectInformationSheet({
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
+  const handleDraftChange = (next: PrePisDraftForm) => {
+    setDraft(next);
+    if (!applicant) return;
+    savePrePisDraft(applicant.id, next);
+  };
+
+  const handleOngoingChange = (next: PisOngoingFiling) => {
+    setOngoingFiling(next);
+    if (!applicant) return;
+    savePisOngoingFiling(applicant.id, next);
+  };
+
   const handleSync = () => {
     if (!applicant || !draft) return;
     const synced = syncPrePisDraft(draft, applicant);
@@ -224,10 +236,10 @@ export function ProjectInformationSheet({
   return (
     <ModuleWorkflowLayout
       formKey={tab === "signing-day" ? "008" : "009"}
-      title={tab === "signing-day" ? "MOA Signing Day" : undefined}
+      title={tab === "signing-day" ? "Project Information Sheet" : undefined}
       subtitle={
         tab === "signing-day"
-          ? "Prepare and upload Pre-Implementation PIS before fund release. LandBank unlocks when the signed MOA is on file, PDCs are recorded, and staff complete signing day."
+          ? "Prepare and upload Pre-Implementation PIS before fund release. LandBank unlocks when the signed MOA is on file, PDCs are recorded, and staff complete this module."
           : "File one Project Information Sheet per semester during implementation (1st Semester: Jan–Jun; 2nd Semester: Jul–Dec)."
       }
       user={user}
@@ -252,8 +264,8 @@ export function ProjectInformationSheet({
               <div>
                 <p className="font-semibold">Notice of Approval required</p>
                 <p className="mt-1">
-                  The applicant must acknowledge the {formatFormMention("003")} before MOA
-                  signing day workflow begins.
+                  The applicant must acknowledge the {formatFormMention("003")} before the
+                  Project Information Sheet workflow begins.
                 </p>
               </div>
             </div>
@@ -268,7 +280,7 @@ export function ProjectInformationSheet({
           {applicant && ackReady && signingComplete && !isStaff && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800 flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
-              MOA signing day is complete. You may proceed to LandBank account setup.
+              Project Information Sheet is complete. You may proceed to LandBank account setup.
             </div>
           )}
         </>
@@ -287,7 +299,7 @@ export function ProjectInformationSheet({
               }`}
               style={tab === "signing-day" ? { background: DOST_BLUE } : undefined}
             >
-              MOA Signing Day
+              Project Information Sheet
             </button>
             <button
               type="button"
@@ -376,7 +388,7 @@ export function ProjectInformationSheet({
 
                 {demoStaffSteps && step === "prep" && (
                   <>
-                    <PrePisEditor draft={draft} onChange={setDraft} />
+                    <PrePisEditor draft={draft} onChange={handleDraftChange} />
                     <PrePisPreview
                       draft={draft}
                       applicationId={applicant.applicationId}
@@ -621,7 +633,7 @@ export function ProjectInformationSheet({
                 )}
                 {ongoingFiling && isStaff && (
                   <>
-                    <PisOngoingEditor filing={ongoingFiling} onChange={setOngoingFiling} />
+                    <PisOngoingEditor filing={ongoingFiling} onChange={handleOngoingChange} />
                     <div className="flex gap-2">
                       <button
                         type="button"

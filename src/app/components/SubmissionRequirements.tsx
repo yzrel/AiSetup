@@ -21,14 +21,22 @@ import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import {
   buildRequirementUploadList,
   countRequiredUploads,
+  getRequirementAdditionalNotes,
+  getRequirementRevisionNotes,
+  getRequirementStaffDecisionDraft,
+  getRequirementStaffReview,
+  persistRequirementNotes,
+  persistRequirementStaffReview,
   persistRequirementUploads,
+  type RequirementStaffRemark,
   type StoredRequirementUpload,
 } from "../utils/submissionRequirements";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import {
   getProprietorTrackLabel,
   isNonSingleProprietor,
 } from "../utils/proprietorTrack";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { SubmittedFileActions } from "./SubmittedFileActions";
 
 interface SubmissionRequirementsProps {
@@ -140,7 +148,9 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const [documents, setDocuments] = useState<DocumentUpload[]>([]);
 
   // Staff remarks per document
-  const [staffRemarks, setStaffRemarks] = useState<Record<string, { status: "ok" | "flagged" | ""; remark: string }>>({});
+  const [staffRemarks, setStaffRemarks] = useState<
+    Record<string, RequirementStaffRemark>
+  >({});
   const [staffNotes, setStaffNotes]     = useState("");
   const [staffDecision, setStaffDecision] = useState<"approved" | "needs-revision" | "">("");
   const [staffName, setStaffName]       = useState("");
@@ -149,6 +159,23 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const [revisionNotes, setRevisionNotes] = useState("");
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const persistStaffRemarks = (
+    next: Record<string, RequirementStaffRemark>,
+    extra?: { staffNotes?: string; staffName?: string },
+  ) => {
+    setStaffRemarks(next);
+    if (!applicant) return;
+    persistRequirementStaffReview(
+      applicant.id,
+      {
+        remarks: next,
+        staffNotes: extra?.staffNotes,
+        staffName: extra?.staffName,
+      },
+      applicantStore,
+    );
+  };
 
   // Auto-load applicant from store
   useEffect(() => {
@@ -167,14 +194,72 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
       setRouteToMpex(true);
     }
 
-    const init: Record<string, { status: "ok" | "flagged" | ""; remark: string }> = {};
-    (applicant ? buildRequirementUploadList(applicant) : []).forEach(d => { init[d.id] = { status: "", remark: "" }; });
+    const storedReview = getRequirementStaffReview(applicant);
+    const init: Record<string, RequirementStaffRemark> = {};
+    (applicant ? buildRequirementUploadList(applicant) : []).forEach((d) => {
+      init[d.id] = storedReview.remarks[d.id] ?? { status: "", remark: "" };
+    });
     setStaffRemarks(init);
-  }, [applicant?.id, isStaff]);
+    setStaffNotes(storedReview.staffNotes ?? "");
+    setStaffName(
+      storedReview.staffName ||
+        (typeof applicant?.moduleData?.staffVerifiedBy === "string"
+          ? applicant.moduleData.staffVerifiedBy
+          : "") ||
+        "",
+    );
+    setAdditionalNotes(getRequirementAdditionalNotes(applicant));
+    setRevisionNotes(getRequirementRevisionNotes(applicant));
+    setStaffDecision(getRequirementStaffDecisionDraft(applicant));
+  }, [
+    applicant?.id,
+    isStaff,
+    applicant?.moduleData?.requirementStaffReview?.updatedAt,
+    applicant?.moduleData?.staffDecision,
+    applicant?.moduleData?.requirementAdditionalNotes,
+    applicant?.moduleData?.requirementRevisionNotes,
+    applicant?.moduleData?.requirementStaffDecisionDraft,
+  ]);
+
+  const persistApplicantNotesDraft = useDebouncedCallback(
+    (notes: string) => {
+      if (!applicant) return;
+      persistRequirementNotes(
+        applicant.id,
+        { additionalNotes: notes },
+        applicantStore,
+      );
+    },
+    400,
+  );
+
+  const persistRevisionNotesDraft = useDebouncedCallback(
+    (notes: string) => {
+      if (!applicant) return;
+      persistRequirementNotes(
+        applicant.id,
+        { revisionNotes: notes },
+        applicantStore,
+      );
+    },
+    400,
+  );
+
+  const handleSaveApplicantDraft = () => {
+    if (!applicant) return;
+    persistRequirementUploads(applicant.id, documents, applicantStore);
+    persistRequirementNotes(
+      applicant.id,
+      { additionalNotes, revisionNotes },
+      applicantStore,
+    );
+    setDraftSaved(true);
+    setTimeout(() => setDraftSaved(false), 2000);
+  };
 
   const advanceStep = (next: StepId) => {
-    const idx = STEPS.findIndex(s => s.id === next);
-    setMaxReached(m => Math.max(m, idx));
+    const idx = STEPS.findIndex((s) => s.id === next);
+    setMaxReached((m) => Math.max(m, idx));
     setStep(next);
   };
 
@@ -183,9 +268,10 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     const file = e.target.files?.[0];
     if (!file || !applicant) return;
     try {
-      const moduleDoc = await readFileAsModuleDocument(
+      const moduleDoc = await readAndUploadModuleDocument(
         file,
         applicant.emailAddress || applicant.applicantName,
+        { applicantId: applicant.id, moduleKey: `requirements-${id}` },
       );
       setDocuments((docs) => {
         const next = docs.map((d) =>
@@ -199,6 +285,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 dataUrl: moduleDoc.dataUrl,
                 fileSizeBytes: file.size,
                 uploadedAt: moduleDoc.uploadedAt,
+                fileId: moduleDoc.fileId,
               }
             : d,
         );
@@ -250,6 +337,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         documentsSubmitted: true,
         documentsSubmittedList: documents.filter(d => d.uploaded).map(d => d.name),
         requirementUploads: documents,
+        requirementAdditionalNotes: additionalNotes,
         requirementsSubmittedAt: new Date().toISOString(),
       },
     });
@@ -493,7 +581,17 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             {/* Additional Notes */}
             <div>
               <label className={labelCls}>Additional Notes</label>
-              <textarea rows={3} className={inputCls} placeholder="Any additional information or notes regarding your submission" value={additionalNotes} onChange={e => setAdditionalNotes(e.target.value)} />
+              <textarea
+                rows={3}
+                className={inputCls}
+                placeholder="Any additional information or notes regarding your submission"
+                value={additionalNotes}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setAdditionalNotes(value);
+                  persistApplicantNotesDraft(value);
+                }}
+              />
             </div>
 
             {/* Declaration */}
@@ -506,7 +604,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setDraftSaved(true); setTimeout(() => setDraftSaved(false), 2000); }}
+                onClick={handleSaveApplicantDraft}
                 className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm"
               >
                 {draftSaved ? "✓ Saved!" : "Save Draft"}
@@ -598,6 +696,8 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                                 fileName={doc.fileName ?? "document"}
                                 mimeType={doc.mimeType}
                                 dataUrl={doc.dataUrl}
+                                fileId={doc.fileId}
+                                applicantId={applicant?.id}
                                 compact
                               />
                             </div>
@@ -605,13 +705,31 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           <button
-                            onClick={() => setStaffRemarks(r => ({ ...r, [doc.id]: { ...r[doc.id], status: "ok" } }))}
+                            onClick={() =>
+                              persistStaffRemarks({
+                                ...staffRemarks,
+                                [doc.id]: {
+                                  ...(staffRemarks[doc.id] ?? { remark: "" }),
+                                  status: "ok",
+                                  remark: staffRemarks[doc.id]?.remark ?? "",
+                                },
+                              })
+                            }
                             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${sr.status === "ok" ? "bg-green-600 text-white border-green-600" : "text-green-700 border-green-300 hover:bg-green-50"}`}
                           >
                             <CheckCircle className="w-3 h-3" /> OK
                           </button>
                           <button
-                            onClick={() => setStaffRemarks(r => ({ ...r, [doc.id]: { ...r[doc.id], status: "flagged" } }))}
+                            onClick={() =>
+                              persistStaffRemarks({
+                                ...staffRemarks,
+                                [doc.id]: {
+                                  ...(staffRemarks[doc.id] ?? { remark: "" }),
+                                  status: "flagged",
+                                  remark: staffRemarks[doc.id]?.remark ?? "",
+                                },
+                              })
+                            }
                             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${sr.status === "flagged" ? "bg-red-500 text-white border-red-500" : "text-red-600 border-red-300 hover:bg-red-50"}`}
                           >
                             <AlertCircle className="w-3 h-3" /> Flag
@@ -625,7 +743,16 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                             className={inputCls + " text-xs"}
                             placeholder="Enter reason for flagging this document..."
                             value={sr.remark}
-                            onChange={e => setStaffRemarks(r => ({ ...r, [doc.id]: { ...r[doc.id], remark: e.target.value } }))}
+                            onChange={(e) =>
+                              persistStaffRemarks({
+                                ...staffRemarks,
+                                [doc.id]: {
+                                  ...(staffRemarks[doc.id] ?? { status: "flagged" }),
+                                  status: staffRemarks[doc.id]?.status || "flagged",
+                                  remark: e.target.value,
+                                },
+                              })
+                            }
                           />
                         </div>
                       )}
@@ -638,7 +765,23 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             {/* Staff overall notes */}
             <div>
               <label className={labelCls}>Staff Verification Notes</label>
-              <textarea rows={3} className={inputCls} placeholder="Overall findings, recommendations, or observations..." value={staffNotes} onChange={e => setStaffNotes(e.target.value)} />
+              <textarea
+                rows={3}
+                className={inputCls}
+                placeholder="Overall findings, recommendations, or observations..."
+                value={staffNotes}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setStaffNotes(value);
+                  if (applicant) {
+                    persistRequirementStaffReview(
+                      applicant.id,
+                      { remarks: staffRemarks, staffNotes: value, staffName },
+                      applicantStore,
+                    );
+                  }
+                }}
+              />
             </div>
 
             {/* Staff decision */}
@@ -646,14 +789,46 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               <label className={labelCls}>Verification Decision *</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${staffDecision === "approved" ? "border-green-400 bg-green-50" : "border-gray-200 hover:border-green-200"}`}>
-                  <input type="radio" name="staffDecision" value="approved" checked={staffDecision === "approved"} onChange={() => setStaffDecision("approved")} className="w-4 h-4 mt-0.5 text-green-600" />
+                  <input
+                    type="radio"
+                    name="staffDecision"
+                    value="approved"
+                    checked={staffDecision === "approved"}
+                    onChange={() => {
+                      setStaffDecision("approved");
+                      if (applicant) {
+                        persistRequirementNotes(
+                          applicant.id,
+                          { staffDecisionDraft: "approved" },
+                          applicantStore,
+                        );
+                      }
+                    }}
+                    className="w-4 h-4 mt-0.5 text-green-600"
+                  />
                   <div>
                     <p className="font-bold text-sm text-gray-800">✓ Approve Submission</p>
                     <p className="text-xs text-gray-500 mt-0.5">All documents are complete and verified. Proceed to application routing.</p>
                   </div>
                 </label>
                 <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${staffDecision === "needs-revision" ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-red-200"}`}>
-                  <input type="radio" name="staffDecision" value="needs-revision" checked={staffDecision === "needs-revision"} onChange={() => setStaffDecision("needs-revision")} className="w-4 h-4 mt-0.5 text-red-500" />
+                  <input
+                    type="radio"
+                    name="staffDecision"
+                    value="needs-revision"
+                    checked={staffDecision === "needs-revision"}
+                    onChange={() => {
+                      setStaffDecision("needs-revision");
+                      if (applicant) {
+                        persistRequirementNotes(
+                          applicant.id,
+                          { staffDecisionDraft: "needs-revision" },
+                          applicantStore,
+                        );
+                      }
+                    }}
+                    className="w-4 h-4 mt-0.5 text-red-500"
+                  />
                   <div>
                     <p className="font-bold text-sm text-gray-800">⚠ Request Revisions</p>
                     <p className="text-xs text-gray-500 mt-0.5">Some documents need correction or replacement before proceeding.</p>
@@ -666,7 +841,23 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Verifying Staff Name *</label>
-                <input type="text" className={inputCls} placeholder="e.g. Maria Santos" value={staffName} onChange={e => setStaffName(e.target.value)} />
+                <input
+                  type="text"
+                  className={inputCls}
+                  placeholder="e.g. Maria Santos"
+                  value={staffName}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setStaffName(value);
+                    if (applicant) {
+                      persistRequirementStaffReview(
+                        applicant.id,
+                        { remarks: staffRemarks, staffNotes, staffName: value },
+                        applicantStore,
+                      );
+                    }
+                  }}
+                />
               </div>
               <div>
                 <label className={labelCls}>Date of Verification</label>
@@ -696,25 +887,35 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               <button onClick={() => advanceStep("documents")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">← Back</button>
               <button
                 onClick={() => {
+                  if (!applicant) return;
                   recordRequirementsAssessment(
                     staffDecision,
                     staffNotes || undefined,
                   );
                   notifyRequirementsDecision(
-                    applicant!,
+                    applicant,
                     staffDecision === "approved" ? "approved" : "needs-revision",
                   );
-                  if (staffDecision === "approved") {
-                    applicantStore.update(applicant!.id, {
-                      moduleData: {
-                        ...applicant!.moduleData,
-                        staffVerifiedBy: staffName,
-                        staffDecision: "approved",
-                        requirementsApprovedAt: new Date().toISOString(),
-                      },
-                    });
-                  }
-                  advanceStep(staffDecision === "approved" ? "routing" : "changes-requested");
+                  const reviewPayload = {
+                    remarks: staffRemarks,
+                    staffNotes,
+                    staffName,
+                    updatedAt: new Date().toISOString(),
+                  };
+                  applicantStore.update(applicant.id, {
+                    moduleData: {
+                      ...applicant.moduleData,
+                      requirementStaffReview: reviewPayload,
+                      staffVerifiedBy: staffName,
+                      staffDecision,
+                      ...(staffDecision === "approved"
+                        ? { requirementsApprovedAt: new Date().toISOString() }
+                        : {}),
+                    },
+                  });
+                  advanceStep(
+                    staffDecision === "approved" ? "routing" : "changes-requested",
+                  );
                 }}
                 disabled={!allowWhenDemo(staffDecisionReady)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
@@ -796,7 +997,17 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
             {/* Client revision notes */}
             <div>
               <label className={labelCls}>Your Response / Revision Notes</label>
-              <textarea rows={3} className={inputCls} placeholder="Describe the changes you made or any clarifications..." value={revisionNotes} onChange={e => setRevisionNotes(e.target.value)} />
+              <textarea
+                rows={3}
+                className={inputCls}
+                placeholder="Describe the changes you made or any clarifications..."
+                value={revisionNotes}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setRevisionNotes(value);
+                  persistRevisionNotesDraft(value);
+                }}
+              />
             </div>
 
             <div className="flex gap-3">

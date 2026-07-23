@@ -38,7 +38,7 @@ import {
   validateProcurementSubmit,
 } from "../utils/procurementLiquidation";
 import { allowWhenDemo } from "../utils/demoMode";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { SubmittedFileActions } from "./SubmittedFileActions";
 
 const STEPS: ModuleStep[] = [
@@ -99,7 +99,10 @@ export function ProcurementAndLiquidation({
     const file = e.target.files?.[0];
     if (!file || !applicant) return;
     try {
-      const moduleDoc = await readFileAsModuleDocument(file, uploadedBy);
+      const moduleDoc = await readAndUploadModuleDocument(file, uploadedBy, {
+        applicantId: applicant.id,
+        moduleKey: kind,
+      });
       if (kind === "procurement") {
         addProcurementDocument(applicant.id, moduleDoc);
       } else {
@@ -210,6 +213,8 @@ export function ProcurementAndLiquidation({
                     fileName={d.fileName}
                     mimeType={d.mimeType}
                     dataUrl={d.dataUrl}
+                    fileId={d.fileId}
+                    applicantId={applicant.id}
                     compact
                   />
                 </div>
@@ -438,6 +443,8 @@ export function ProcurementAndLiquidation({
                     fileName={d.fileName}
                     mimeType={d.mimeType}
                     dataUrl={d.dataUrl}
+                    fileId={d.fileId}
+                    applicantId={applicant.id}
                     compact
                   />
                 </div>

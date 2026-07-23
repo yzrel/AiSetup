@@ -73,9 +73,11 @@ function TextInput({
 }
 
 function ComplianceStatusPicker({
+  itemId,
   status,
   onChange,
 }: {
+  itemId: string;
   status: RtecComplianceStatus;
   onChange: (s: RtecComplianceStatus) => void;
 }) {
@@ -97,7 +99,7 @@ function ComplianceStatusPicker({
         >
           <input
             type="radio"
-            name={`compliance-${opt.value}`}
+            name={`compliance-${itemId}`}
             checked={status === opt.value}
             onChange={() => onChange(opt.value)}
             className="sr-only"
@@ -123,8 +125,9 @@ function ComplianceSection({
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-600">
-        Mark each requirement as Complied, Not Complied, or N/A. Six items are auto-suggested
-        from uploaded documents when you sync from Project Proposal.
+        Mark each requirement as Complied, Not Complied, or N/A. Marks are saved
+        automatically. Sync from Project Proposal only fills blank items from
+        uploaded documents.
       </p>
       {items.map((item, i) => (
         <div
@@ -136,6 +139,7 @@ function ComplianceSection({
             {item.label}
           </p>
           <ComplianceStatusPicker
+            itemId={item.id}
             status={item.status}
             onChange={(s) => setStatus(item.id, s)}
           />

@@ -105,6 +105,7 @@ export function addProcurementDocument(
     dataUrl: moduleDoc.dataUrl,
     uploadedBy: moduleDoc.uploadedBy,
     uploadedAt: moduleDoc.uploadedAt.split("T")[0],
+    fileId: moduleDoc.fileId,
     amount,
   };
   saveProcurementDraft(applicantId, {
@@ -171,6 +172,7 @@ export function addLiquidationDocument(
     dataUrl: moduleDoc.dataUrl,
     uploadedBy: moduleDoc.uploadedBy,
     uploadedAt: moduleDoc.uploadedAt.split("T")[0],
+    fileId: moduleDoc.fileId,
   };
   saveProcurementDraft(applicantId, {
     ...form,

@@ -73,7 +73,13 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
       setForm(null);
       return;
     }
-    setForm(getRtecReportForm(app));
+    const stored = getRtecReportStored(app);
+    const next = getRtecReportForm(app);
+    setForm(next);
+    // Persist the first suggested draft so refresh does not rebuild from scratch.
+    if (!stored?.form) {
+      saveRtecReportDraft(app.id, next);
+    }
   }, []);
 
   useEffect(() => {
@@ -88,6 +94,12 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
   const stored = applicant ? getRtecReportStored(applicant) : null;
   const isComplete = !!stored?.submitted;
 
+  const handleFormChange = (next: RtecReportForm) => {
+    setForm(next);
+    if (!applicant) return;
+    saveRtecReportDraft(applicant.id, next);
+  };
+
   const handleSave = () => {
     if (!applicant || !form) return;
     saveRtecReportDraft(applicant.id, form);
@@ -101,7 +113,8 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
     const withCompliance = {
       ...synced,
       complianceItems: synced.complianceItems.map((item) => {
-        if (item.status) return item;
+        // Never replace an explicit staff mark (including "na") with a suggestion.
+        if (item.status?.trim()) return item;
         const draft = buildRtecReportDraft(applicant);
         const suggested = draft.complianceItems.find((c) => c.id === item.id);
         return suggested?.status ? { ...item, status: suggested.status } : item;
@@ -115,7 +128,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
 
   const handleDownload = () => {
     if (!form) return;
-    downloadRtecReportPdf(form, applicant?.applicationId);
+    downloadRtecReportPdf(form, applicant?.applicationId, applicant?.id);
   };
 
   const handleComplete = () => {
@@ -231,7 +244,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               {step === "compliance" && (
                 <RtecReportEditor
                   form={form}
-                  onChange={setForm}
+                  onChange={handleFormChange}
                   step="compliance"
                 />
               )}
@@ -239,7 +252,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               {step === "evaluation" && (
                 <RtecReportEditor
                   form={form}
-                  onChange={setForm}
+                  onChange={handleFormChange}
                   step="evaluation"
                 />
               )}
@@ -247,7 +260,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               {step === "recommendation" && (
                 <RtecReportEditor
                   form={form}
-                  onChange={setForm}
+                  onChange={handleFormChange}
                   step="recommendation"
                 />
               )}
@@ -257,6 +270,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   <RtecReportPreview
                     form={form}
                     applicationId={applicant.applicationId}
+                    applicantId={applicant.id}
                     onPrint={handleDownload}
                   />
                   <DocumentDeliveryPanel

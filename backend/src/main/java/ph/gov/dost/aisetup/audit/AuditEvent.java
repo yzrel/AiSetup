@@ -33,7 +33,7 @@ public class AuditEvent {
     @Column(name = "entity_id")
     private String entityId;
 
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @JdbcTypeCode(SqlTypes.CLOB)
     @Column(name = "detail_json")
     private String detailJson;
 

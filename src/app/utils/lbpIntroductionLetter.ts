@@ -205,9 +205,10 @@ export function hasLbpIntroductionPublished(applicant: Applicant | null): boolea
 
 export function syncLbpIntroductionFromUpstream(
   applicant: Applicant | null,
+  existing?: LbpIntroductionLetterForm | null,
 ): LbpIntroductionLetterForm {
   const base = emptyLbpIntroductionForm();
-  if (!applicant) return base;
+  if (!applicant) return existing ?? base;
 
   const approval = getApprovalLetterForm(applicant);
   const pp = getProjectProposalForm(applicant);
@@ -215,7 +216,7 @@ export function syncLbpIntroductionFromUpstream(
   const amount = approval.approvedAmount || pp.amountRequested || "₱0";
   const amountNum = parseFloat(String(amount).replace(/[^\d.]/g, "")) || 0;
 
-  return {
+  const draft: LbpIntroductionLetterForm = {
     ...base,
     branchManagerName: branch.branchManagerName,
     branchManagerTitle: "Branch Manager",
@@ -226,6 +227,25 @@ export function syncLbpIntroductionFromUpstream(
     projectTitle: pp.projectTitle || approval.projectTitle,
     approvedAmount: amountNum > 0 ? `₱${formatPesoDisplay(amountNum)}` : amount,
     approvedAmountWords: amountToWordsPeso(amountNum),
+  };
+
+  if (!existing) return draft;
+
+  const pick = (local: string, upstream: string) =>
+    local.trim() ? local : upstream;
+
+  return {
+    ...draft,
+    ...existing,
+    branchManagerName: pick(existing.branchManagerName, draft.branchManagerName),
+    branchManagerTitle: pick(existing.branchManagerTitle, draft.branchManagerTitle),
+    landbankBranch: pick(existing.landbankBranch, draft.landbankBranch),
+    branchCityProvince: pick(existing.branchCityProvince, draft.branchCityProvince),
+    proponentName: pick(existing.proponentName, draft.proponentName),
+    enterpriseName: pick(existing.enterpriseName, draft.enterpriseName),
+    projectTitle: pick(existing.projectTitle, draft.projectTitle),
+    approvedAmount: pick(existing.approvedAmount, draft.approvedAmount),
+    approvedAmountWords: pick(existing.approvedAmountWords, draft.approvedAmountWords),
   };
 }
 

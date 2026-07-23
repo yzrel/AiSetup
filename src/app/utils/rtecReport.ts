@@ -367,7 +367,22 @@ function withDefaultSignatures(form: RtecReportForm): RtecReportForm {
 
 export function getRtecReportForm(applicant: Applicant | null): RtecReportForm {
   const stored = getRtecReportStored(applicant);
-  if (stored?.form) return withDefaultSignatures(stored.form);
+  if (stored?.form) {
+    const savedById = new Map(
+      (stored.form.complianceItems ?? []).map((item) => [item.id, item]),
+    );
+    // Keep staff-saved statuses; only fill newly added checklist rows.
+    const complianceItems = emptyComplianceItems().map((item) => {
+      const saved = savedById.get(item.id);
+      if (saved?.status) return { ...item, status: saved.status };
+      if (saved) return { ...item, status: saved.status ?? "" };
+      return item;
+    });
+    return withDefaultSignatures({
+      ...stored.form,
+      complianceItems,
+    });
+  }
   return withDefaultSignatures(buildRtecReportDraft(applicant));
 }
 
@@ -378,12 +393,14 @@ export function syncRtecFromProjectProposal(
   const proposalSnapshot = getProjectProposalForm(applicant);
   const attachmentRefs = getProjectProposalAttachments(applicant);
   const costs = buildCostHeader(proposalSnapshot);
+  const pick = (local: string, upstream: string) =>
+    local.trim() ? local : upstream;
 
   return {
     ...existing,
-    projectCostProponent: costs.proponent,
-    projectCostSetup: costs.setup,
-    projectCostTotal: costs.total,
+    projectCostProponent: pick(existing.projectCostProponent, costs.proponent),
+    projectCostSetup: pick(existing.projectCostSetup, costs.setup),
+    projectCostTotal: pick(existing.projectCostTotal, costs.total),
     proposalSnapshot,
     attachmentRefs,
     constraintRows: existing.constraintRows.some((r) =>
@@ -396,8 +413,10 @@ export function syncRtecFromProjectProposal(
     )
       ? existing.fabricatorRows
       : buildFabricatorRows(proposalSnapshot),
-    ratioNarrative:
-      existing.ratioNarrative || proposalSnapshot.financialAnalysis,
+    ratioNarrative: pick(
+      existing.ratioNarrative,
+      proposalSnapshot.financialAnalysis,
+    ),
   };
 }
 
@@ -458,12 +477,20 @@ export function validateRtecReportSubmit(form: RtecReportForm): string[] {
   return errors;
 }
 
-export function printRtecReport(form: RtecReportForm, applicationId?: string) {
-  printRtecReportPdf(form, applicationId);
+export function printRtecReport(
+  form: RtecReportForm,
+  applicationId?: string,
+  applicantId?: string,
+) {
+  void printRtecReportPdf(form, applicationId, applicantId);
 }
 
-export function downloadRtecReportPdf(form: RtecReportForm, applicationId?: string) {
-  printRtecReportPdf(form, applicationId);
+export function downloadRtecReportPdf(
+  form: RtecReportForm,
+  applicationId?: string,
+  applicantId?: string,
+) {
+  void printRtecReportPdf(form, applicationId, applicantId);
 }
 
 export { DOST_BLUE as RTEC_DOST_BLUE };

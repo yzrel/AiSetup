@@ -17,7 +17,9 @@ import {
   Banknote,
   UserCheck,
   Info,
+  Save,
 } from "lucide-react";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { AuthUser, authStore } from "../store/authStore";
@@ -26,7 +28,7 @@ import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPick
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import type { ModuleDocument } from "../api/types";
-import { readFileAsModuleDocument } from "../utils/readFileAsDataUrl";
+import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
@@ -215,6 +217,19 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     if (!app) return;
     setAdditional((prev) => buildLoiAdditionalFromApplicant(app, prev));
 
+    const draft = app.moduleData?.loiDraft as
+      | {
+          generalAgreement?: typeof generalAgreement;
+          commitmentRefund?: typeof commitmentRefund;
+        }
+      | undefined;
+    if (draft?.generalAgreement) {
+      setGeneralAgreement((prev) => ({ ...prev, ...draft.generalAgreement }));
+    }
+    if (draft?.commitmentRefund) {
+      setCommitmentRefund((prev) => ({ ...prev, ...draft.commitmentRefund }));
+    }
+
     const saved = app.moduleData?.loiDocument as LoiDocumentResponse | undefined;
     // Only restore a saved letter if it was generated for the currently
     // selected program (or for SETUP when no program is selected). A letter
@@ -276,9 +291,107 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     loadApplicantData(applicant);
   }, [applicant?.id]);
 
-  const setAdd = (k: string, v: string) => setAdditional((prev) => ({ ...prev, [k]: v }));
-  const setGA = (k: string, v: boolean | string) => setGeneralAgreement((prev) => ({ ...prev, [k]: v }));
-  const setCR = (k: string, v: boolean | string) => setCommitmentRefund((prev) => ({ ...prev, [k]: v }));
+  const [draftNotice, setDraftNotice] = useState("");
+
+  const additionalRef = useRef(additional);
+  const generalAgreementRef = useRef(generalAgreement);
+  const commitmentRefundRef = useRef(commitmentRefund);
+  const productionPlanNotesRef = useRef(productionPlanNotes);
+  const productionPlanDocumentRef = useRef(productionPlanDocument);
+  const productionPlanFileRef = useRef(productionPlanFile);
+  additionalRef.current = additional;
+  generalAgreementRef.current = generalAgreement;
+  commitmentRefundRef.current = commitmentRefund;
+  productionPlanNotesRef.current = productionPlanNotes;
+  productionPlanDocumentRef.current = productionPlanDocument;
+  productionPlanFileRef.current = productionPlanFile;
+
+  const persistLoiDraft = (showNotice: boolean) => {
+    if (!applicant) return;
+    const add = additionalRef.current;
+    const ga = generalAgreementRef.current;
+    const cr = commitmentRefundRef.current;
+    const notes = productionPlanNotesRef.current;
+    const planFile = productionPlanFileRef.current;
+    const planDoc =
+      productionPlanDocumentRef.current ??
+      (applicant.moduleData?.productionPlanDocument as ModuleDocument | undefined);
+    applicantStore.update(applicant.id, {
+      currentModule: "letter-of-intent",
+      moduleData: {
+        ...applicant.moduleData,
+        dateEstablished: add.dateEstablished,
+        province: add.province,
+        zipCode: add.zipCode,
+        postalCode: add.zipCode,
+        productServices: add.productServices,
+        projectDescription: add.projectDescription,
+        ...(hasProgram
+          ? {}
+          : {
+              budget: add.budget,
+              timeline: add.timeline,
+            }),
+        tinNumber: add.tinNumber,
+        registrationType: add.registrationType,
+        registrationNumber: add.registrationNumber,
+        expectedOutcome: add.expectedOutcome,
+        productionPlanFile:
+          planFile?.name ??
+          planDoc?.fileName ??
+          applicant.moduleData?.productionPlanFile,
+        productionPlanDocument: planDoc
+          ? {
+              ...planDoc,
+              notes: notes.trim() || planDoc.notes || undefined,
+            }
+          : applicant.moduleData?.productionPlanDocument,
+        productionPlanNotes: notes,
+        ...(hasProgram
+          ? {}
+          : {
+              commitmentAmount: cr.approvedAmount,
+              repaymentTerm: cr.repaymentTerm,
+            }),
+        loiDraft: {
+          generalAgreement: ga,
+          commitmentRefund: cr,
+          savedAt: new Date().toISOString(),
+        },
+      },
+    });
+    if (showNotice) {
+      setDraftNotice("Draft saved.");
+      setTimeout(() => setDraftNotice(""), 3000);
+    }
+  };
+
+  const scheduleLoiDraft = useDebouncedCallback(() => persistLoiDraft(false), 400);
+
+  const setAdd = (k: string, v: string) => {
+    setAdditional((prev) => {
+      const next = { ...prev, [k]: v };
+      additionalRef.current = next;
+      return next;
+    });
+    scheduleLoiDraft();
+  };
+  const setGA = (k: string, v: boolean | string) => {
+    setGeneralAgreement((prev) => {
+      const next = { ...prev, [k]: v };
+      generalAgreementRef.current = next;
+      return next;
+    });
+    scheduleLoiDraft();
+  };
+  const setCR = (k: string, v: boolean | string) => {
+    setCommitmentRefund((prev) => {
+      const next = { ...prev, [k]: v };
+      commitmentRefundRef.current = next;
+      return next;
+    });
+    scheduleLoiDraft();
+  };
 
   const validationChecks = [
     { label: "Applicant Name", value: applicant?.applicantName ?? "", passed: !!(applicant?.applicantName) },
@@ -358,12 +471,12 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     const file = e.target.files?.[0];
     if (!file || !applicant) return;
     try {
-      const moduleDoc = await readFileAsModuleDocument(
-        file,
-        applicant.emailAddress || applicant.applicantName,
-      );
       const withNotes: ModuleDocument = {
-        ...moduleDoc,
+        ...(await readAndUploadModuleDocument(
+          file,
+          applicant.emailAddress || applicant.applicantName,
+          { applicantId: applicant.id, moduleKey: "productionPlan" },
+        )),
         notes: productionPlanNotes.trim() || undefined,
       };
       setProductionPlanFile(file);
@@ -498,6 +611,22 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     });
   };
 
+  /** Persist LOI form progress without generating / submitting the letter. */
+  const handleSaveDraft = () => {
+    persistLoiDraft(true);
+  };
+
+  const saveDraftButton = (
+    <button
+      type="button"
+      onClick={handleSaveDraft}
+      disabled={!applicant}
+      className="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-all text-sm disabled:opacity-40 inline-flex items-center gap-2"
+    >
+      <Save className="w-4 h-4" /> Save Draft
+    </button>
+  );
+
   const handleFinalSubmit = async () => {
     if (!applicant || generating) return;
     const document = await generateLoiDocument();
@@ -534,6 +663,9 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
             </div>
           </div>
           <StepHeader current={step} steps={steps} />
+          {draftNotice && (
+            <p className="text-xs text-emerald-200 mt-2 font-medium">{draftNotice}</p>
+          )}
           <StaffApplicantPicker user={user} label="Review applicant LOI" />
         </div>
         <StaffApplicantBanner user={user} />
@@ -674,14 +806,20 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setStep("additional")}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {saveDraftButton}
+                  <button
+                    onClick={() => {
+                      handleSaveDraft();
+                      setStep("additional");
+                    }}
                   disabled={!allowWhenDemo(!!additional.dateEstablished && !!additional.tinNumber && !!applicant.msmeSize && !!additional.registrationType && !!additional.registrationNumber && !!additional.productServices)}
-                  className="w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
+                  className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                   style={{ background: DOST_BLUE }}
                 >
                   Continue to Project Details →
                 </button>
+                </div>
               </>
             ) : (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-6 text-center">
@@ -754,12 +892,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setStep("review")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
+              {saveDraftButton}
               <button
-                onClick={() => setStep("validation")}
+                onClick={() => {
+                  handleSaveDraft();
+                  setStep("validation");
+                }}
                 disabled={!allowWhenDemo(
                   !!additional.projectDescription &&
                     !!additional.expectedOutcome &&
@@ -822,12 +964,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setStep("additional")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
+              {saveDraftButton}
               <button
-                onClick={() => setStep("general-agreement")}
+                onClick={() => {
+                  handleSaveDraft();
+                  setStep("general-agreement");
+                }}
                 disabled={!allowWhenDemo(allValidationPassed)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
@@ -960,12 +1106,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 : <span className="text-gray-400">· Signature required</span>}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setStep("validation")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
+              {saveDraftButton}
               <button
-                onClick={() => setStep("production-plan")}
+                onClick={() => {
+                  handleSaveDraft();
+                  setStep("production-plan");
+                }}
                 disabled={!allowWhenDemo(generalAgreementComplete)}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
@@ -1083,7 +1233,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </div>
             </div>
 
-            <div className="flex gap-3 relative">
+            <div className="flex flex-col sm:flex-row gap-3 relative">
               {hasProgram && generating && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm">
                   <div className="text-center space-y-2">
@@ -1095,6 +1245,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <button onClick={() => setStep("general-agreement")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
+              {saveDraftButton}
               {hasProgram ? (
                 <button
                   onClick={() => {
@@ -1110,6 +1261,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               ) : (
                 <button
                   onClick={() => {
+                    handleSaveDraft();
                     persistProductionPlanMeta(productionPlanDocument, productionPlanNotes);
                     setStep("commitment-refund");
                   }}
@@ -1247,7 +1399,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 : <span className="text-gray-400">· Signature required</span>}
             </div>
 
-            <div className="flex gap-3 relative">
+            <div className="flex flex-col sm:flex-row gap-3 relative">
               {generating && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm">
                   <div className="text-center space-y-2">
@@ -1259,6 +1411,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <button onClick={() => setStep("production-plan")} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm">
                 ← Back
               </button>
+              {saveDraftButton}
               <button
                 onClick={handleFinalSubmit}
                 disabled={!allowWhenDemo(commitmentComplete) || generating}

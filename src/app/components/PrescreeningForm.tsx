@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { REGION_12_LABEL } from "../constants/region12";
 import { Check, X } from "lucide-react";
 import { applicantStore } from "../store/applicantStore";
@@ -25,6 +25,7 @@ import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards
 import { getOfficeContact, resolveApplicantOfficeId } from "../utils/provincialOffice";
 import { allowWhenDemo } from "../utils/demoMode";
 import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -68,11 +69,91 @@ export function PrescreeningForm({
     essentialPeriod: "",
     turnover: "",
   });
+  const [draftNotice, setDraftNotice] = useState("");
+
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+
+  const persistPrescreeningDraft = (
+    data: typeof formData,
+    showNotice: boolean,
+  ) => {
+    const existing = applicant;
+    const payload = {
+      applicantName: data.applicantName,
+      designation: data.designation,
+      enterpriseName: data.enterpriseName,
+      contactNumber: data.contactNumber,
+      emailAddress: data.emailAddress,
+      businessType: data.businessType,
+      businessNature: data.businessNature,
+      businessSector: data.businessSector,
+      yearsOfOperation: data.yearsOfOperation,
+      enterpriseType: data.enterpriseType,
+      msmeSize: data.msmeSize,
+      assetSize: data.assetSize,
+      region: existing?.region ?? REGION_12_LABEL,
+      address: existing?.address ?? "",
+      currentModule: existing?.currentModule ?? "prescreening",
+      moduleData: {
+        ...existing?.moduleData,
+        coreProducts: data.coreProducts,
+        exportClassification: data.exportClassification,
+        classificationRange: data.classificationRange,
+        essentialPeriod: data.essentialPeriod,
+        turnover: data.turnover,
+        prescreeningDraftSavedAt: new Date().toISOString(),
+      },
+    };
+
+    if (existing) {
+      applicantStore.update(existing.id, payload);
+    } else if (
+      data.applicantName.trim() ||
+      data.enterpriseName.trim() ||
+      data.emailAddress.trim()
+    ) {
+      applicantStore.add({
+        applicantName: data.applicantName,
+        designation: data.designation,
+        enterpriseName: data.enterpriseName,
+        contactNumber: data.contactNumber,
+        emailAddress: data.emailAddress,
+        businessType: data.businessType,
+        businessNature: data.businessNature,
+        businessSector: data.businessSector,
+        yearsOfOperation: data.yearsOfOperation,
+        enterpriseType: data.enterpriseType,
+        msmeSize: data.msmeSize,
+        assetSize: data.assetSize,
+        region: REGION_12_LABEL,
+        address: "",
+        currentModule: "prescreening",
+        qualified: false,
+        moduleData: payload.moduleData,
+      });
+    }
+    if (showNotice) {
+      setDraftNotice("Draft saved.");
+      setTimeout(() => setDraftNotice(""), 3000);
+    }
+  };
+
+  const scheduleDraftPersist = useDebouncedCallback(() => {
+    persistPrescreeningDraft(formDataRef.current, false);
+  }, 400);
 
   const setField = <K extends keyof typeof formData>(
     key: K,
     value: (typeof formData)[K],
-  ) => setFormData((prev) => ({ ...prev, [key]: value }));
+  ) => {
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      formDataRef.current = next;
+      return next;
+    });
+    scheduleDraftPersist();
+  };
 
   const prescreeningInputFromForm = () => ({
     businessSector: formData.businessSector,
@@ -155,7 +236,11 @@ export function PrescreeningForm({
 
   useEffect(() => {
     loadApplicantPrescreening(applicant);
-  }, [applicant?.id, applicant?.lastUpdated]);
+  }, [applicant?.id]);
+
+  const handleSaveDraft = () => {
+    persistPrescreeningDraft(formData, true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -655,6 +740,13 @@ export function PrescreeningForm({
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  className="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium text-gray-700"
+                >
+                  Save Draft
+                </button>
+                <button
                   type="submit"
                   className="flex-1 bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition-colors font-medium"
                 >
@@ -676,6 +768,11 @@ export function PrescreeningForm({
                   Cancel
                 </button>
               </div>
+              {draftNotice && (
+                <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  {draftNotice}
+                </p>
+              )}
             </form>
         </div>
       )}

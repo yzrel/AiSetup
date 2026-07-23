@@ -45,7 +45,7 @@ public class FundReleaseService {
     public Map<String, Object> authorityLetter(String applicationId, Map<String, Object> payload) {
         ApplicantRecordDto applicant = requireApplicant(applicationId);
         SecurityUtils.requireCanAccessApplicant(applicant.id());
-        workflowGateService.assertLandBankWithdrawalAllowed(applicant.moduleData());
+        workflowGateService.assertLandBankWithdrawalAllowed(applicant.id());
 
         String holder = escapeHtml(String.valueOf(payload.getOrDefault("accountHolder", "Account Holder")));
         String enterprise = escapeHtml(String.valueOf(payload.getOrDefault("enterpriseName", "Enterprise")));
