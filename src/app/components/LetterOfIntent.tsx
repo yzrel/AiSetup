@@ -25,7 +25,7 @@ import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
-import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import type { ModuleDocument } from "../api/types";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
@@ -87,7 +87,7 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
 function StepHeader({ current, steps }: { current: StepId; steps: typeof STEPS }) {
   const currentIdx = steps.findIndex((s) => s.id === current);
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+    <div className={MODULE_STEP_SCROLL}>
       {steps.map((s, i) => {
         const done = i < currentIdx;
         const active = i === currentIdx;

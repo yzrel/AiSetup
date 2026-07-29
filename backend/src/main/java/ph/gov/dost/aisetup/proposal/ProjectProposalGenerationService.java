@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
+import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalDocumentResponse;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalGenerationRequest;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalRiskRowDto;
@@ -92,6 +93,7 @@ public class ProjectProposalGenerationService {
                 Project title: %s
                 Proponent: %s
                 Amount requested: %s
+                Employees male / female: %s / %s
                 Production problems: %s
                 Proposed intervention: %s
                 Intervention equipment: %s
@@ -111,6 +113,8 @@ public class ProjectProposalGenerationService {
                 stringVal(form.get("projectTitle")),
                 stringVal(form.get("proponentName")),
                 stringVal(form.get("amountRequested")),
+                stringVal(form.get("employeesMale")),
+                stringVal(form.get("employeesFemale")),
                 stringVal(form.get("interventionProblem")),
                 stringVal(form.get("interventionProposed")),
                 stringVal(form.get("interventionEquipment")),
@@ -123,6 +127,7 @@ public class ProjectProposalGenerationService {
                 You are a DOST SETUP program officer drafting SETUP Form 001 (Project Proposal) narratives for an MSME applicant.
 
                 Write formal, professional content aligned with DOST SETUP Form 001 section headings. Do NOT invent specific peso amounts or equipment models not supported by the data; use conservative language where estimates are needed.
+                %s
 
                 Return ONLY a valid JSON object (no markdown) with this structure:
                 {
@@ -147,6 +152,7 @@ public class ProjectProposalGenerationService {
                   "expectedOutputBullets": ["", ""],
                   "wasteManagement": "",
                   "financialAnalysis": "",
+                  "genderInvolvement": "",
                   "riskRows": [
                     { "id": "1", "risk": "", "assumption": "", "plan": "" }
                   ]
@@ -154,7 +160,7 @@ public class ProjectProposalGenerationService {
 
                 Applicant data:
                 %s
-                """.formatted(facts);
+                """.formatted(GadLanguagePolicy.WRITING_RULES, facts);
     }
 
     private ProjectProposalDocumentResponse buildTemplateDocument(ProjectProposalGenerationRequest r) {
@@ -274,6 +280,14 @@ public class ProjectProposalGenerationService {
         doc.setFinancialAnalysis(firstNonBlank(
                 stringVal(form.get("financialAnalysis")),
                 "Financial capacity will be supported by attached statements and projected cash flows from improved operations."
+        ));
+
+        doc.setGenderInvolvement(firstNonBlank(
+                stringVal(form.get("genderInvolvement")),
+                GadLanguagePolicy.involvementTemplate(
+                        ent,
+                        stringVal(form.get("employeesMale")),
+                        stringVal(form.get("employeesFemale")))
         ));
 
         doc.setRiskRows(buildDefaultRiskRows(form));

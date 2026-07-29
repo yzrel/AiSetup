@@ -96,9 +96,11 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
             fileName={form.productionPlanFileName}
             applicantId={ctx.applicant?.id}
             moduleKey="tna1-productionPlan"
-            onFile={(name, data) => {
+            onFile={(name, data, meta) => {
               set("productionPlanFileName", name);
               set("productionPlanFileData", data);
+              set("productionPlanFileId", meta?.fileId ?? "");
+              set("productionPlanFileMime", meta?.mimeType ?? "");
             }}
             hint="Prefilled from Letter of Intent when available. You may replace or clear the file."
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
@@ -113,9 +115,11 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           fileName={form.plantLayoutFileName}
           applicantId={ctx.applicant?.id}
           moduleKey="tna1-plantLayout"
-          onFile={(name, data) => {
+          onFile={(name, data, meta) => {
             set("plantLayoutFileName", name);
             set("plantLayoutFileData", data);
+            set("plantLayoutFileId", meta?.fileId ?? "");
+            set("plantLayoutFileMime", meta?.mimeType ?? "");
           }}
           hint="Upload floor plan or plant layout diagram (required attachment per TNA Form 01)."
         />
@@ -155,9 +159,11 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
             fileName={form.processFlowFileName}
             applicantId={ctx.applicant?.id}
             moduleKey="tna1-processFlow"
-            onFile={(name, data) => {
+            onFile={(name, data, meta) => {
               set("processFlowFileName", name);
               set("processFlowFileData", data);
+              set("processFlowFileId", meta?.fileId ?? "");
+              set("processFlowFileMime", meta?.mimeType ?? "");
             }}
           />
         )}

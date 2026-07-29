@@ -2,20 +2,10 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { DOST_REGION_12_CONTACTS } from "../constants/setupBrochure";
+import { DOST_REGION_12_CONTACTS, REGION_12_PROVINCE_TO_OFFICE } from "../constants/setupBrochure";
 import { REGION_12_PROVINCES } from "../constants/region12";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
-
-const PROVINCE_TO_OFFICE: Record<string, string> = {
-  "south cotabato": "south-cotabato",
-  cotabato: "cotabato",
-  "north cotabato": "cotabato",
-  "sultan kudarat": "sultan-kudarat",
-  sarangani: "gensan-sarangani",
-  "general santos city": "gensan-sarangani",
-  "general santos": "gensan-sarangani",
-};
 
 export function normalizeProvinceKey(value: string): string {
   return value.trim().toLowerCase();
@@ -24,7 +14,7 @@ export function normalizeProvinceKey(value: string): string {
 export function resolveOfficeIdForProvince(province: string): string {
   const key = normalizeProvinceKey(province);
   if (!key) return "regional";
-  return PROVINCE_TO_OFFICE[key] ?? "regional";
+  return REGION_12_PROVINCE_TO_OFFICE[key] ?? "regional";
 }
 
 export function getOfficeContact(officeId: string) {
@@ -98,4 +88,22 @@ export function getStaffProvinces(user: AuthUser | null): string[] {
     );
   }
   return [];
+}
+
+/** Sentinel for "all provinces within staff scope". */
+export const DASHBOARD_PROVINCE_ALL = "all";
+
+/**
+ * Narrow an already role-scoped applicant list to one province.
+ * Pass {@link DASHBOARD_PROVINCE_ALL} (or blank) to keep the full scoped list.
+ */
+export function filterApplicantsByProvince(
+  applicants: Applicant[],
+  provinceFilter: string,
+): Applicant[] {
+  const key = normalizeProvinceKey(provinceFilter);
+  if (!key || key === DASHBOARD_PROVINCE_ALL) return applicants;
+  return applicants.filter(
+    (a) => normalizeProvinceKey(resolveApplicantProvince(a)) === key,
+  );
 }

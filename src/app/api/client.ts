@@ -115,6 +115,30 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  listStaffUsers: () =>
+    apiFetch<import("./types").ApiStaffUser[]>("/auth/admin/staff"),
+
+  createStaffUser: (payload: import("./types").ApiCreateStaffRequest) =>
+    apiFetch<import("./types").ApiStaffUser>("/auth/admin/staff", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateStaffUser: (
+    userId: string,
+    payload: import("./types").ApiUpdateStaffRequest,
+  ) =>
+    apiFetch<import("./types").ApiStaffUser>(`/auth/admin/staff/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  resetStaffPassword: (userId: string, payload: { newPassword: string }) =>
+    apiFetch<{ ok: boolean }>(`/auth/admin/staff/${userId}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   getApplicant: (id: string) =>
     apiFetch<import("./types").ApiApplicantRecord>(`/applicants/${id}`),
 

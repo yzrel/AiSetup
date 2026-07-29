@@ -8,8 +8,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "users")
@@ -48,8 +46,8 @@ public class UserAccount {
     @Column(name = "office_id")
     private String officeId;
 
-    @JdbcTypeCode(SqlTypes.CLOB)
-    @Column(name = "assigned_provinces_json")
+    /** Integer.MAX_VALUE → LONGTEXT (MySQL) / CLOB (H2), matching Flyway vendor scripts. */
+    @Column(name = "assigned_provinces_json", length = Integer.MAX_VALUE)
     private String assignedProvincesJson;
 
     @Column(nullable = false)

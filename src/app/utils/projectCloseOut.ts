@@ -7,6 +7,7 @@ import type { ProjectCloseOutForm, ProjectCloseOutStored } from "../api/types";
 import { hasRefundComplete } from "./refundDelinquent";
 import { isDemoModeActive } from "./demoMode";
 import { formatFormMention } from "../constants/setupForms";
+import { normalizeFormModuleStored } from "./normalizeCriticalModuleData";
 
 const MODULE_KEY = "projectCloseOut";
 
@@ -25,7 +26,8 @@ export function emptyCloseOutForm(): ProjectCloseOutForm {
 
 export function getCloseOutStored(applicant: Applicant | null): ProjectCloseOutStored | null {
   if (!applicant?.moduleData?.[MODULE_KEY]) return null;
-  return applicant.moduleData[MODULE_KEY] as ProjectCloseOutStored;
+  const normalized = normalizeFormModuleStored(applicant.moduleData[MODULE_KEY]);
+  return (normalized as ProjectCloseOutStored | undefined) ?? null;
 }
 
 export function getCloseOutForm(applicant: Applicant | null): ProjectCloseOutForm {

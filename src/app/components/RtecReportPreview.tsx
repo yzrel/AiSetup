@@ -14,6 +14,7 @@ import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { RTEC_DOST_BLUE } from "../utils/rtecReport";
 import { PreviewFieldRow, PreviewTable } from "./PreviewLayout";
 import { StoredFileImage } from "./StoredFilePreview";
+import { isImageFile } from "../utils/storedFilePreview";
 
 interface RtecReportPreviewProps {
   form: RtecReportForm;
@@ -89,10 +90,15 @@ function AttachmentImg({
       </p>
     );
   }
+  const isImage = isImageFile(
+    attachment.mimeType,
+    attachment.fileName,
+    attachment.dataUrl,
+  );
   return (
     <div className="text-center">
       <p className="text-xs font-semibold text-gray-500 mb-2">{label}</p>
-      {attachment.mimeType.startsWith("image/") ? (
+      {isImage ? (
         <StoredFileImage
           applicantId={applicantId}
           file={attachment}

@@ -59,4 +59,41 @@ describe("stripHeavyPayloads", () => {
       },
     });
   });
+
+  it("preserves publish-gated document metadata while stripping heavy bodies", () => {
+    const heavy = `data:application/pdf;base64,${"C".repeat(600)}`;
+    const slim = stripHeavyPayloads({
+      approvalLetter: {
+        form: { projectTitle: "Setup" },
+        published: true,
+        publishedAt: "2026-07-20T00:00:00.000Z",
+        signedMoa: {
+          fileName: "moa.pdf",
+          mimeType: "application/pdf",
+          dataUrl: heavy,
+          uploadedAt: "2026-07-21T00:00:00.000Z",
+          uploadedBy: "staff",
+          moaSignedDate: "2026-07-21",
+          fileId: "moa-1",
+        },
+      },
+    });
+
+    expect(slim).toEqual({
+      approvalLetter: {
+        form: { projectTitle: "Setup" },
+        published: true,
+        publishedAt: "2026-07-20T00:00:00.000Z",
+        signedMoa: {
+          fileName: "moa.pdf",
+          mimeType: "application/pdf",
+          uploadedAt: "2026-07-21T00:00:00.000Z",
+          uploadedBy: "staff",
+          moaSignedDate: "2026-07-21",
+          fileId: "moa-1",
+          hasFileContent: true,
+        },
+      },
+    });
+  });
 });

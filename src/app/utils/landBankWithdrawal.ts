@@ -11,17 +11,16 @@ import type {
   WithdrawalEquipmentRow,
   WithdrawalTranchePackage,
 } from "../api/types";
-import { getApprovalLetterForm } from "./approvalLetter";
+import { getApprovalLetterForm, getSignedMoa } from "./approvalLetter";
 import { getProjectProposalForm } from "./projectProposal";
-import { isSigningDayComplete } from "./projectInformationSheet";
 import { isDemoModeActive } from "./demoMode";
 import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
-import { formatFormMention } from "../constants/setupForms";
 import { a4PageRule, A4_MARGIN_DEFAULT } from "./printPage";
 import { escapeHtml, printHtmlDocument } from "./printHtml";
 import { getSignedDocument, getSignedDocuments } from "./documentDelivery";
 import { sumWithdrawalEquipment } from "./withdrawalRequestLetter";
+import { normalizeLandBankStored } from "./normalizeCriticalModuleData";
 
 const MODULE_KEY = "landBank";
 
@@ -132,7 +131,8 @@ export function normalizeLandBankForm(
 
 export function getLandBankStored(applicant: Applicant | null): LandBankStored | null {
   if (!applicant?.moduleData?.[MODULE_KEY]) return null;
-  return applicant.moduleData[MODULE_KEY] as LandBankStored;
+  const normalized = normalizeLandBankStored(applicant.moduleData[MODULE_KEY]);
+  return (normalized as LandBankStored | undefined) ?? null;
 }
 
 export function getLandBankForm(applicant: Applicant | null): LandBankForm {
@@ -238,7 +238,7 @@ export function getLandBankOverview(applicant: Applicant | null): LandBankOvervi
 }
 
 export function hasLandBankPrerequisite(applicant: Applicant | null): boolean {
-  return isSigningDayComplete(applicant) && hasPdcsRecordedForDisbursement(applicant);
+  return !!getSignedMoa(applicant) && hasPdcsRecordedForDisbursement(applicant);
 }
 
 export function hasLandBankComplete(applicant: Applicant | null): boolean {
@@ -282,7 +282,7 @@ export function validateLandBankSubmit(applicant: Applicant | null): string[] {
   const errors: string[] = [];
   if (!hasLandBankPrerequisite(applicant)) {
     errors.push(
-      `Complete MOA signing day, ${formatFormMention("008")}, and post-dated check (PDC) recording before LandBank enrollment.`,
+      "Upload the signed MOA and record post-dated checks (PDCs) before LandBank enrollment.",
     );
   }
   if (!hasLbpIntroductionPublished(applicant)) {

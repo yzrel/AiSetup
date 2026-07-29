@@ -2,7 +2,11 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useStoredFileSrc, type StoredFileRef } from "../utils/storedFilePreview";
+import {
+  isImageFile,
+  useStoredFileSrc,
+  type StoredFileRef,
+} from "../utils/storedFilePreview";
 
 type StoredFileImageProps = {
   applicantId?: string;
@@ -22,6 +26,10 @@ export function StoredFileImage({
   loadingClassName = "text-xs text-gray-400 py-6",
 }: StoredFileImageProps) {
   const { src, loading, error } = useStoredFileSrc(applicantId, file);
+
+  if (!isImageFile(file?.mimeType, file?.fileName, file?.dataUrl) && !src) {
+    return null;
+  }
 
   if (loading) {
     return <p className={loadingClassName}>Loading preview…</p>;

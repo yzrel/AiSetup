@@ -17,6 +17,10 @@ import { getRtecReportForm, getRtecReportStored } from "./rtecReport";
 import { isDemoModeActive } from "./demoMode";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { printHtmlDocument } from "./printHtml";
+import {
+  mergeApprovalLetterPreservePublished,
+  normalizeApprovalLetterStored,
+} from "./normalizeCriticalModuleData";
 
 const DOST_BLUE = "#0C2461";
 
@@ -187,7 +191,7 @@ export function getApprovalLetterStored(
   applicant: Applicant | null,
 ): ApprovalLetterStored | null {
   if (!applicant?.moduleData?.approvalLetter) return null;
-  return applicant.moduleData.approvalLetter as ApprovalLetterStored;
+  return normalizeApprovalLetterStored(applicant.moduleData.approvalLetter);
 }
 
 export function getApprovalLetterForm(applicant: Applicant | null): ApprovalLetterForm {
@@ -249,17 +253,24 @@ export function saveApprovalLetterDraft(
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
   const existing = getApprovalLetterStored(applicant);
+  const nextStored = mergeApprovalLetterPreservePublished(existing, {
+    ...(existing ?? {
+      form,
+      published: false,
+      acknowledged: false,
+    }),
+    form: { ...form, published: existing?.published ?? false },
+    published: existing?.published ?? false,
+    publishedAt: existing?.publishedAt,
+    acknowledged: existing?.acknowledged ?? false,
+    acknowledgedAt: existing?.acknowledgedAt,
+    signedMoa: existing?.signedMoa,
+    updatedAt: new Date().toISOString(),
+  } satisfies ApprovalLetterStored);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
-      approvalLetter: {
-        form: { ...form, published: existing?.published ?? false },
-        published: existing?.published ?? false,
-        publishedAt: existing?.publishedAt,
-        acknowledged: existing?.acknowledged ?? false,
-        acknowledgedAt: existing?.acknowledgedAt,
-        updatedAt: new Date().toISOString(),
-      } satisfies ApprovalLetterStored,
+      approvalLetter: nextStored,
     },
   });
 }
@@ -270,29 +281,32 @@ export function publishApprovalLetter(
 ): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
+  const existing = getApprovalLetterStored(applicant);
   const now = new Date().toISOString();
+  const nextStored: ApprovalLetterStored = {
+    ...(existing ?? {}),
+    form: { ...form, published: true },
+    published: true,
+    publishedAt: now,
+    acknowledged: false,
+    acknowledgedAt: undefined,
+    signedMoa: existing?.signedMoa,
+    updatedAt: now,
+  };
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
-      approvalLetter: {
-        form: { ...form, published: true },
-        published: true,
-        publishedAt: now,
-        acknowledged: false,
-        acknowledgedAt: undefined,
-        updatedAt: now,
-      } satisfies ApprovalLetterStored,
+      approvalLetter: nextStored,
       approvedAmount:
         form.approvedAmount || applicant.moduleData?.approvedAmount,
     },
   });
   // Record the publish server-side (module.publish audit event).
-  publishModuleToBackendBestEffort(applicantId, "approvalLetter", {
-    form: { ...form, published: true },
-    publishedAt: now,
-    acknowledged: false,
-    updatedAt: now,
-  });
+  publishModuleToBackendBestEffort(
+    applicantId,
+    "approvalLetter",
+    nextStored as unknown as Record<string, unknown>,
+  );
 }
 
 /** Restore published=true when a stale assessment overwrite wiped the flag. */
@@ -309,11 +323,13 @@ export function ensureApprovalLetterPublished(
     moduleData: {
       ...applicant.moduleData,
       approvalLetter: {
+        ...(existing ?? {}),
         form: { ...form, published: true },
         published: true,
         publishedAt: existing?.publishedAt ?? now,
         acknowledged: existing?.acknowledged ?? false,
         acknowledgedAt: existing?.acknowledgedAt,
+        signedMoa: existing?.signedMoa,
         updatedAt: now,
       } satisfies ApprovalLetterStored,
       approvedAmount:
@@ -423,14 +439,29 @@ export function getSignedMoa(applicant: Applicant | null): SignedMoaDocument | n
   return getApprovalLetterStored(applicant)?.signedMoa ?? null;
 }
 
+/** Minimal approvalLetter shell so MOA can be saved even if the letter blob is missing. */
+function ensureApprovalLetterShell(applicant: Applicant): ApprovalLetterStored {
+  const existing = getApprovalLetterStored(applicant);
+  if (existing) return existing;
+  const form = getApprovalLetterForm(applicant);
+  return {
+    form,
+    published: Boolean(form.published),
+    acknowledged: false,
+  };
+}
+
+/**
+ * Persists signed MOA metadata under approvalLetter.signedMoa.
+ * Accepts partial drafts (empty fileName) so Save Draft can retain date/venue/notes.
+ */
 export function saveSignedMoa(
   applicantId: string,
   document: SignedMoaDocument,
 ): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
-  const existing = getApprovalLetterStored(applicant);
-  if (!existing) return;
+  const existing = ensureApprovalLetterShell(applicant);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
@@ -441,6 +472,14 @@ export function saveSignedMoa(
       } satisfies ApprovalLetterStored,
     },
   });
+}
+
+/** Alias for draft flush — same persistence path as saveSignedMoa. */
+export function saveSignedMoaDraft(
+  applicantId: string,
+  document: SignedMoaDocument,
+): void {
+  saveSignedMoa(applicantId, document);
 }
 
 export function removeSignedMoa(applicantId: string): void {

@@ -5,7 +5,7 @@
  * Tab contents live in ./dashboard/*.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -24,12 +24,18 @@ import { staffContextStore } from "../store/staffContextStore";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { getApplicantDashboardStats } from "../utils/applicantProgress";
 import {
+  DASHBOARD_PROVINCE_ALL,
+  filterApplicantsByProvince,
   getApplicantsForStaff,
   getOfficeContact,
+  getStaffProvinces,
   resolveApplicantOfficeId,
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
+import { getStaffDashboardUpdatedLabel } from "../utils/dashboardMetrics";
+import { FALLBACK_LAST_UPDATED } from "./dashboard/dashboardData";
 import { StatCard } from "./dashboard/widgets";
+import { DashboardProvinceFilter } from "./dashboard/DashboardProvinceFilter";
 import { ApplicantOverviewTab } from "./dashboard/ApplicantOverviewTab";
 import { StaffOverviewTab } from "./dashboard/StaffOverviewTab";
 import { AnalyticsTab } from "./dashboard/AnalyticsTab";
@@ -45,6 +51,7 @@ export function Dashboard({
   const allowedTabs = authStore.getAllowedDashboardTabs(user.role);
   const isClientView = authStore.isClientRole(user.role);
   const [, bump] = useState(0);
+  const [provinceFilter, setProvinceFilter] = useState(DASHBOARD_PROVINCE_ALL);
 
   useEffect(() => {
     const unsubs = [
@@ -57,7 +64,19 @@ export function Dashboard({
 
   const application = resolveApplicantForUser(user);
   const applicantStats = getApplicantDashboardStats(application);
-  const scopedApplicants = isClientView ? [] : getApplicantsForStaff(user);
+  const staffProvinces = useMemo(
+    () => (isClientView ? [] : getStaffProvinces(user)),
+    [isClientView, user],
+  );
+  const scopedApplicants = useMemo(() => {
+    if (isClientView) return [];
+    return filterApplicantsByProvince(
+      getApplicantsForStaff(user),
+      provinceFilter,
+    );
+    // bump refreshes when applicantStore / staffContext changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bump is intentional refresh token
+  }, [isClientView, user, provinceFilter, bump]);
   const staffActiveCount = scopedApplicants.filter(
     (a) => a.currentModule !== "completed",
   ).length;
@@ -77,6 +96,11 @@ export function Dashboard({
     allowedTabs[0] ?? "overview",
   );
 
+  const showProvinceFilter =
+    !isClientView &&
+    (activeTab === "overview" || activeTab === "analytics") &&
+    staffProvinces.length > 0;
+
   return (
     <div className="max-w-7xl mx-auto space-y-5">
       {/* ── Header ── */}
@@ -89,7 +113,7 @@ export function Dashboard({
             <Calendar className="w-3.5 h-3.5" />
             {isClientView
               ? `${user.enterpriseName}${user.applicationId ? ` · ${user.applicationId}` : ""}`
-              : "Last updated: April 28, 2026 · FY 2024–2025"}
+              : `Last updated: ${getStaffDashboardUpdatedLabel(scopedApplicants, FALLBACK_LAST_UPDATED)}`}
           </p>
         </div>
         {allowedTabs.length > 1 && (
@@ -125,6 +149,14 @@ export function Dashboard({
             </p>
           </div>
         </div>
+      )}
+
+      {showProvinceFilter && (
+        <DashboardProvinceFilter
+          provinces={staffProvinces}
+          value={provinceFilter}
+          onChange={setProvinceFilter}
+        />
       )}
 
       {/* ── Stat Cards ── */}
@@ -169,7 +201,11 @@ export function Dashboard({
             <StatCard
               label="Total Applicants"
               value={String(scopedApplicants.length)}
-              sub="In your scope"
+              sub={
+                provinceFilter === DASHBOARD_PROVINCE_ALL
+                  ? "In your scope"
+                  : provinceFilter
+              }
               icon={Users}
               color="bg-[#0C2461]"
               trend={`${staffActiveCount} active`}
@@ -216,13 +252,17 @@ export function Dashboard({
         (isClientView ? (
           <ApplicantOverviewTab user={user} onNavigate={onNavigate} />
         ) : (
-          <StaffOverviewTab user={user} onNavigate={onNavigate} />
+          <StaffOverviewTab
+            user={user}
+            onNavigate={onNavigate}
+            provinceFilter={provinceFilter}
+          />
         ))}
 
       {/* ── Analytics Tab (staff only) ── */}
       {activeTab === "analytics" &&
         authStore.canAccessDashboardTab(user.role, "analytics") && (
-          <AnalyticsTab user={user} />
+          <AnalyticsTab user={user} provinceFilter={provinceFilter} />
         )}
 
       {/* ── Alerts Tab ── */}

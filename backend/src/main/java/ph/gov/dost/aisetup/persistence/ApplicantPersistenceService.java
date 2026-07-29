@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveRequest;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveResponse;
+import ph.gov.dost.aisetup.workflow.ModuleOrder;
 
 @Service
 public class ApplicantPersistenceService {
@@ -57,7 +58,7 @@ public class ApplicantPersistenceService {
         entity.setId(dto.id());
         entity.setApplicationId(dto.applicationId());
         entity.setEnterpriseName(dto.enterpriseName());
-        entity.setCurrentModule(dto.currentModule());
+        entity.setCurrentModule(ModuleOrder.normalize(dto.currentModule()));
         Map<String, Object> merged = preserveServerOwnedKeys(
                 dto.moduleData(), entity.getModuleDataJson());
         // Dual-write: per-module rows (primary SoR) + legacy blob for rollback/compat.
@@ -88,7 +89,7 @@ public class ApplicantPersistenceService {
             entity.setEnterpriseName(enterpriseName);
         }
         if (currentModule != null) {
-            entity.setCurrentModule(currentModule);
+            entity.setCurrentModule(ModuleOrder.normalize(currentModule));
         }
         if (profile != null) {
             entity.setProfileJson(writePayload(profile, "profile"));
@@ -189,9 +190,18 @@ public class ApplicantPersistenceService {
         if (data != null) {
             merged.putAll(data);
         }
+        boolean alreadyPublished = existing instanceof Map<?, ?> ex
+                && ex.get("published") instanceof Boolean b
+                && b;
         if (Boolean.TRUE.equals(published)) {
             merged.put("published", true);
             merged.putIfAbsent("publishedAt", Instant.now().toString());
+        } else if (alreadyPublished) {
+            // No unpublish API — stale drafts must not demote published docs.
+            merged.put("published", true);
+            if (existing instanceof Map<?, ?> ex && ex.get("publishedAt") != null) {
+                merged.putIfAbsent("publishedAt", ex.get("publishedAt"));
+            }
         }
         moduleData.put(moduleKey, merged);
         upsertModuleRow(id, moduleKey, merged, published);
@@ -433,7 +443,7 @@ public class ApplicantPersistenceService {
                 entity.getId(),
                 entity.getApplicationId(),
                 entity.getEnterpriseName(),
-                entity.getCurrentModule(),
+                ModuleOrder.normalize(entity.getCurrentModule()),
                 resolveModuleData(entity),
                 readPayload(entity.getProfileJson()),
                 entity.getUpdatedAt() != null ? entity.getUpdatedAt().toString() : null);
@@ -461,7 +471,7 @@ public class ApplicantPersistenceService {
                 entity.getId(),
                 entity.getApplicationId(),
                 entity.getEnterpriseName(),
-                entity.getCurrentModule(),
+                ModuleOrder.normalize(entity.getCurrentModule()),
                 flattenCaseMeta(moduleData),
                 readPayload(entity.getProfileJson()),
                 entity.getUpdatedAt() != null ? entity.getUpdatedAt().toString() : null);

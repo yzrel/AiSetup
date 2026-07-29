@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
+import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
 import ph.gov.dost.aisetup.loi.dto.LetterheadDto;
 import ph.gov.dost.aisetup.loi.dto.LoiDocumentResponse;
@@ -184,12 +185,13 @@ public class LoiGenerationService {
                 %s
                 Do NOT invent facts not present in the data below. If a field is empty, use neutral phrasing or omit that detail.
                 Do NOT include letterhead, addressee, salutation, closing, or signature — body paragraphs only.
+                %s
 
                 Return ONLY a valid JSON array of strings, each string being one paragraph. No markdown, no code fences, no extra text.
 
                 Applicant data:
                 %s
-                """.formatted(programName, coverLine, facts);
+                """.formatted(programName, coverLine, GadLanguagePolicy.WRITING_RULES, facts);
     }
 
     private List<String> buildTemplateParagraphs(LoiGenerationRequest r) {

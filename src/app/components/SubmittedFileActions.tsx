@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Download, Eye, X } from "lucide-react";
 import { ACTION_ROW } from "./moduleTheme";
 import { useStoredFileSrc } from "../utils/storedFilePreview";
+import { isImageFile, isPdfFile } from "../utils/storedFilePreview";
 
 export interface SubmittedFileActionsProps {
   fileName: string;
@@ -14,17 +15,6 @@ export interface SubmittedFileActionsProps {
   fileId?: string;
   applicantId?: string;
   compact?: boolean;
-}
-
-function isPdf(mimeType?: string, fileName?: string): boolean {
-  if (mimeType?.includes("pdf")) return true;
-  return fileName?.toLowerCase().endsWith(".pdf") ?? false;
-}
-
-function isImage(mimeType?: string, fileName?: string): boolean {
-  if (mimeType?.startsWith("image/")) return true;
-  const lower = fileName?.toLowerCase() ?? "";
-  return [".jpg", ".jpeg", ".png", ".gif", ".webp"].some((ext) => lower.endsWith(ext));
 }
 
 export function SubmittedFileActions({
@@ -36,8 +26,14 @@ export function SubmittedFileActions({
   compact,
 }: SubmittedFileActionsProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const { src, loading } = useStoredFileSrc(applicantId, { dataUrl, fileId });
-  const viewable = Boolean(src || (fileId && applicantId) || dataUrl);
+  const { src, loading } = useStoredFileSrc(applicantId, {
+    dataUrl,
+    fileId,
+    fileName,
+  });
+  const viewable = Boolean(
+    src || dataUrl || (applicantId && (fileId || fileName)),
+  );
 
   if (!viewable && !loading) {
     return (
@@ -106,13 +102,13 @@ export function SubmittedFileActions({
               </div>
             </div>
             <div className="flex-1 overflow-auto p-4 bg-gray-50 min-h-[200px]">
-              {isPdf(mimeType, fileName) ? (
+              {isPdfFile(mimeType, fileName) ? (
                 <iframe
                   src={href}
                   title={fileName}
                   className="w-full h-[70vh] border border-gray-200 rounded-lg bg-white"
                 />
-              ) : isImage(mimeType, fileName) ? (
+              ) : isImageFile(mimeType, fileName) ? (
                 <img
                   src={href}
                   alt={fileName}

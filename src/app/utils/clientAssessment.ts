@@ -8,7 +8,12 @@ import { hasProcurementComplete } from "./procurementLiquidation";
 import { hasRefundComplete } from "./refundDelinquent";
 import { hasCloseOutComplete } from "./projectCloseOut";
 import { AdminView } from "../store/authStore";
-import type { Applicant, ModuleStatus } from "../store/applicantStore";
+import {
+  MODULE_ORDER,
+  normalizeCurrentModule,
+  type Applicant,
+  type ModuleStatus,
+} from "../store/applicantStore";
 
 export type AssessmentStage =
   | "prescreening"
@@ -52,27 +57,8 @@ function hasAssessment(
   return records.some((r) => r.stage === stage);
 }
 
-const MODULE_ORDER: ModuleStatus[] = [
-  "prescreening",
-  "registration",
-  "letter-of-intent",
-  "tna1",
-  "tna2",
-  "project-proposal",
-  "requirements",
-  "conduct-rtec",
-  "approval-letter",
-  "project-information-sheet",
-  "landbank-withdrawal",
-  "procurement-liquidation",
-  "refund-delinquent",
-  "project-closeout",
-  "completed",
-];
-
 function moduleIndex(module: ModuleStatus): number {
-  const idx = MODULE_ORDER.indexOf(module);
-  return idx === -1 ? 0 : idx;
+  return MODULE_ORDER.indexOf(normalizeCurrentModule(module));
 }
 
 function prescreeningStatus(applicant: Applicant): AssessmentStatus {
@@ -115,14 +101,14 @@ function tna2Status(applicant: Applicant): AssessmentStatus {
 function postProposalStatus(applicant: Applicant): AssessmentStatus {
   if (hasAssessment(applicant, "post-proposal")) return "completed";
   const idx = moduleIndex(applicant.currentModule);
-  const pisIdx = moduleIndex("project-information-sheet");
+  const approvalIdx = moduleIndex("approval-letter");
   const rtecIdx = moduleIndex("conduct-rtec");
-  if (idx > pisIdx) return "completed";
+  // Completed once past approval (LandBank and later).
+  if (idx > approvalIdx) return "completed";
   if (idx >= rtecIdx) {
     if (
       applicant.currentModule === "conduct-rtec" ||
-      applicant.currentModule === "approval-letter" ||
-      applicant.currentModule === "project-information-sheet"
+      applicant.currentModule === "approval-letter"
     ) {
       return "pending";
     }
@@ -237,7 +223,7 @@ export function getAssessmentTasks(applicant: Applicant): AssessmentTask[] {
       label: "LandBank & Withdrawal",
       status: landbankStatus(applicant),
       view: "landbank-withdrawal",
-      description: "Review withdrawal documents and authority letter.",
+      description: "View LandBank letters and withdrawal documents prepared by staff.",
     },
     {
       stage: "procurement-liquidation",

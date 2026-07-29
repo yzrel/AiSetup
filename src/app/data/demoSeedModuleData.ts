@@ -114,6 +114,7 @@ export function greenValleyLateStageModuleData() {
     password: DEMO_PASSWORD,
     accountStatus: "active",
     province: "South Cotabato",
+    gender: "Male",
     approvedAmount: "₱1,800,000",
     projectDescription:
       "Cold chain and vacuum packaging upgrade for processed vegetable products.",
@@ -133,6 +134,8 @@ export function greenValleyLateStageModuleData() {
         mainProduct: "Frozen and vacuum-packed vegetables",
         employeesMale: "15",
         employeesFemale: "20",
+        genderInvolvement:
+          "Green Valley Foods employs 15 male and 20 female workers in its operations. Women and men participate in production and packaging, and the SETUP intervention is intended to benefit the workforce equitably through skills upgrading and improved working conditions, consistent with DOST Gender and Development (GAD) principles.",
         productionProblemsConcerns:
           "Cold chain gaps and manual packaging limit export readiness.",
         processFlow:
@@ -210,6 +213,10 @@ export function greenValleyLateStageModuleData() {
         amountRequested: "Php 1,800,000.00",
         projectDuration: "18 months",
         projectLocation: "Koronadal City, South Cotabato",
+        employeesMale: "15",
+        employeesFemale: "20",
+        genderInvolvement:
+          "Green Valley Foods employs 15 male and 20 female workers in its operations. Women and men participate in production and packaging, and the SETUP intervention is intended to benefit the workforce equitably through skills upgrading and improved working conditions, consistent with DOST Gender and Development (GAD) principles.",
       },
       attachments: [],
       submitted: true,

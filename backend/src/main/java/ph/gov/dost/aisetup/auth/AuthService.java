@@ -21,14 +21,21 @@ import ph.gov.dost.aisetup.auth.dto.AdminSetEnabledRequest;
 import ph.gov.dost.aisetup.auth.dto.AuthResponse;
 import ph.gov.dost.aisetup.auth.dto.AuthUserDto;
 import ph.gov.dost.aisetup.auth.dto.ChangePasswordRequest;
+import ph.gov.dost.aisetup.auth.dto.CreateStaffRequest;
 import ph.gov.dost.aisetup.auth.dto.LoginRequest;
 import ph.gov.dost.aisetup.auth.dto.RegisterRequest;
+import ph.gov.dost.aisetup.auth.dto.StaffResetPasswordRequest;
+import ph.gov.dost.aisetup.auth.dto.StaffUserDto;
+import ph.gov.dost.aisetup.auth.dto.UpdateStaffRequest;
 import ph.gov.dost.aisetup.otp.OtpService;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordRepository;
 
 @Service
 public class AuthService {
+
+    private static final List<String> STAFF_ROLES =
+            List.of("admin", "agent", "provincial-director");
 
     private final UserAccountRepository userAccountRepository;
     private final ApplicantRecordRepository applicantRecordRepository;
@@ -218,11 +225,168 @@ public class AuthService {
         userAccountRepository.save(account);
     }
 
+    @Transactional(readOnly = true)
+    public List<StaffUserDto> listStaffUsers() {
+        return userAccountRepository.findByRoleInOrderByLastNameAscFirstNameAsc(STAFF_ROLES).stream()
+                .map(this::toStaffDto)
+                .toList();
+    }
+
+    @Transactional
+    public StaffUserDto createStaffUser(CreateStaffRequest request) {
+        String role = normalizeStaffRole(request.getRole());
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userAccountRepository.existsByEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException("An account with this email already exists");
+        }
+        Instant now = Instant.now();
+        UserAccount account = new UserAccount();
+        account.setId(UUID.randomUUID().toString());
+        account.setEmail(email);
+        account.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        account.setFirstName(request.getFirstName().trim());
+        account.setMiddleName(request.getMiddleName() != null ? request.getMiddleName().trim() : "");
+        account.setLastName(request.getLastName().trim());
+        account.setRole(role);
+        account.setOfficeId(blankToNull(request.getOfficeId()));
+        account.setAssignedProvincesJson(writeProvinces(request.getAssignedProvinces()));
+        account.setEnterpriseName(blankToNull(request.getEnterpriseName()));
+        account.setEnabled(true);
+        account.setCreatedAt(now);
+        account.setUpdatedAt(now);
+        userAccountRepository.save(account);
+        return toStaffDto(account);
+    }
+
+    @Transactional
+    public StaffUserDto updateStaffUser(
+            String userId, UpdateStaffRequest request, UserPrincipal actor) {
+        UserAccount account = requireStaffAccount(userId);
+        boolean targetingSelf = account.getId().equals(actor.getUserId());
+
+        if (request.getFirstName() != null) {
+            String firstName = request.getFirstName().trim();
+            if (firstName.isEmpty()) {
+                throw new IllegalArgumentException("firstName must not be blank");
+            }
+            account.setFirstName(firstName);
+        }
+        if (request.getMiddleName() != null) {
+            account.setMiddleName(request.getMiddleName().trim());
+        }
+        if (request.getLastName() != null) {
+            String lastName = request.getLastName().trim();
+            if (lastName.isEmpty()) {
+                throw new IllegalArgumentException("lastName must not be blank");
+            }
+            account.setLastName(lastName);
+        }
+        if (request.getEnterpriseName() != null) {
+            account.setEnterpriseName(blankToNull(request.getEnterpriseName()));
+        }
+        if (request.getOfficeId() != null) {
+            account.setOfficeId(blankToNull(request.getOfficeId()));
+        }
+        if (request.getAssignedProvinces() != null) {
+            account.setAssignedProvincesJson(writeProvinces(request.getAssignedProvinces()));
+        }
+
+        if (request.getRole() != null) {
+            String newRole = normalizeStaffRole(request.getRole());
+            if (targetingSelf && !"admin".equals(newRole)) {
+                throw new IllegalArgumentException("You cannot demote your own admin account");
+            }
+            if ("admin".equals(account.getRole())
+                    && !"admin".equals(newRole)
+                    && account.isEnabled()
+                    && userAccountRepository.countByRoleAndEnabledTrue("admin") <= 1) {
+                throw new IllegalArgumentException("Cannot demote the last enabled admin account");
+            }
+            account.setRole(newRole);
+        }
+
+        if (request.getEnabled() != null) {
+            boolean enabled = Boolean.TRUE.equals(request.getEnabled());
+            if (targetingSelf && !enabled) {
+                throw new IllegalArgumentException("You cannot disable your own account");
+            }
+            if (!enabled
+                    && "admin".equals(account.getRole())
+                    && account.isEnabled()
+                    && userAccountRepository.countByRoleAndEnabledTrue("admin") <= 1) {
+                throw new IllegalArgumentException("Cannot disable the last enabled admin account");
+            }
+            account.setEnabled(enabled);
+        }
+
+        account.setUpdatedAt(Instant.now());
+        userAccountRepository.save(account);
+        return toStaffDto(account);
+    }
+
+    @Transactional
+    public void resetStaffPassword(String userId, StaffResetPasswordRequest request) {
+        UserAccount account = requireStaffAccount(userId);
+        account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        account.setUpdatedAt(Instant.now());
+        userAccountRepository.save(account);
+    }
+
     private UserAccount requireApplicantAccount(String applicantId) {
         return userAccountRepository.findByApplicantId(applicantId)
                 .filter(a -> "applicant".equals(a.getRole()) || "client".equals(a.getRole()))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No applicant account found for id: " + applicantId));
+    }
+
+    private UserAccount requireStaffAccount(String userId) {
+        return userAccountRepository.findById(userId)
+                .filter(a -> STAFF_ROLES.contains(a.getRole()))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No staff account found for id: " + userId));
+    }
+
+    private static String normalizeStaffRole(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("role is required");
+        }
+        String role = raw.trim().toLowerCase(Locale.ROOT);
+        if (!STAFF_ROLES.contains(role)) {
+            throw new IllegalArgumentException(
+                    "Staff role must be admin, agent, or provincial-director");
+        }
+        return role;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private StaffUserDto toStaffDto(UserAccount account) {
+        StaffUserDto dto = new StaffUserDto();
+        dto.setId(account.getId());
+        dto.setEmail(account.getEmail());
+        dto.setFirstName(account.getFirstName());
+        dto.setMiddleName(account.getMiddleName() != null ? account.getMiddleName() : "");
+        dto.setLastName(account.getLastName());
+        dto.setRole(account.getRole());
+        dto.setEnterpriseName(account.getEnterpriseName());
+        dto.setOfficeId(account.getOfficeId());
+        dto.setAssignedProvinces(readProvinces(account.getAssignedProvincesJson()));
+        dto.setEnabled(account.isEnabled());
+        return dto;
+    }
+
+    private String writeProvinces(List<String> provinces) {
+        try {
+            return objectMapper.writeValueAsString(provinces != null ? provinces : List.of());
+        } catch (JsonProcessingException e) {
+            return "[]";
+        }
     }
 
     public AuthResponse toAuthResponse(UserAccount account) {

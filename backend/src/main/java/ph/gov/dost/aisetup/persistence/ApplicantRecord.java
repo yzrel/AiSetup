@@ -8,8 +8,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "applicant_records")
@@ -24,11 +22,12 @@ public class ApplicantRecord {
     private String enterpriseName;
     private String currentModule;
 
-    @JdbcTypeCode(SqlTypes.CLOB)
+    /** Integer.MAX_VALUE → LONGTEXT (MySQL) / CLOB (H2), matching Flyway vendor scripts. */
+    @Column(length = Integer.MAX_VALUE)
     private String moduleDataJson;
 
     /** Top-level applicant fields (name, contact, sector, ...) so the frontend can rebuild the full record. */
-    @JdbcTypeCode(SqlTypes.CLOB)
+    @Column(length = Integer.MAX_VALUE)
     private String profileJson;
 
     private Instant updatedAt;

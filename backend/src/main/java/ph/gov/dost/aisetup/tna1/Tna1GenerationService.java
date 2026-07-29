@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
+import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.tna1.dto.Tna1DocumentResponse;
 import ph.gov.dost.aisetup.tna1.dto.Tna1GenerationRequest;
 import ph.gov.dost.aisetup.tna1.dto.Tna1TablesDto;
@@ -56,6 +57,7 @@ public class Tna1GenerationService {
             "safetyMeasures",
             "employeeWelfare",
             "otherConcerns",
+            "genderInvolvement",
             "packNutritionRemarks",
             "packBarcodeRemarks",
             "packLabelRemarks",
@@ -220,6 +222,7 @@ public class Tna1GenerationService {
                 Fill ONLY the empty fields listed below. Use professional English appropriate for a government application.
                 Do NOT invent specific numbers, permits, or certifications not supported by the data. Use neutral phrasing when data is missing.
                 For table suggestions, provide 1-3 realistic placeholder rows based on the enterprise sector and product — use "To be verified" where exact figures are unknown.
+                %s
 
                 Return ONLY a valid JSON object with this shape:
                 {
@@ -240,6 +243,7 @@ public class Tna1GenerationService {
                 Applicant data:
                 %s
                 """.formatted(
+                GadLanguagePolicy.WRITING_RULES,
                 emptyFields.isEmpty() ? "(none)" : String.join(", ", emptyFields),
                 tablesNeeded.length() == 0 ? "(none)" : tablesNeeded,
                 facts
@@ -326,6 +330,11 @@ public class Tna1GenerationService {
                 "Statutory benefits and safe working conditions are provided to all employees.");
         putIfEmpty(r.getForm(), suggestions, "otherConcerns",
                 "None reported at this time.");
+        putIfEmpty(r.getForm(), suggestions, "genderInvolvement",
+                GadLanguagePolicy.involvementTemplate(
+                        enterprise,
+                        stringVal(r.getForm().get("employeesMale")),
+                        stringVal(r.getForm().get("employeesFemale"))));
 
         if (isTableEmpty(r.getTables().getRawMaterials())) {
             tables.setRawMaterials(List.of(

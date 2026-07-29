@@ -1,7 +1,8 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Static demo data and status configs shared by the dashboard tabs.
+ * Fallback / demo datasets used when live applicant aggregates are empty,
+ * plus status badge configs shared by the dashboard tabs.
  */
 
 import React from "react";
@@ -145,7 +146,7 @@ export const FALLBACK_PAYMENT_RECORDS: PaymentRecord[] = [
   },
 ];
 
-// ── Chart / table demo data ───────────────────────────────────────────────────
+// ── Chart / table fallback (used when live series is empty) ───────────────────
 
 export const pipelineData = [
   { stage: "Pre-Screen", count: 45, fill: "#0C2461" },
@@ -175,6 +176,16 @@ export const monthlyData = [
     approved: 18,
     released: 12,
   },
+];
+
+export const FALLBACK_FUND_DISBURSEMENT = [
+  { month: "Oct", amount: 5.2 },
+  { month: "Nov", amount: 6.8 },
+  { month: "Dec", amount: 4.1 },
+  { month: "Jan", amount: 9.4 },
+  { month: "Feb", amount: 8.7 },
+  { month: "Mar", amount: 11.2 },
+  { month: "Apr", amount: 12.0 },
 ];
 
 export const regionData = [
@@ -243,6 +254,87 @@ export const topSectors = [
   { sector: "Handicrafts", count: 9, pct: 15 },
 ];
 
+export const FALLBACK_PROGRAM_KPIS = [
+  { label: "Avg. Processing Time", value: "42 days" },
+  { label: "Approval Rate", value: "78%" },
+  { label: "Avg. Grant Amount", value: "₱2.3M" },
+  { label: "Enterprises Upgraded", value: "94" },
+  { label: "Jobs Created / Retained", value: "1,240" },
+];
+
+export const FALLBACK_REGISTRANT_GENDER = [
+  { name: "Male", count: 58, fill: "#0C2461" },
+  { name: "Female", count: 41, fill: "#00AEEF" },
+  { name: "Prefer not to say", count: 5, fill: "#94a3b8" },
+];
+
+export const FALLBACK_OWNER_SEX = [
+  { name: "Male", count: 62, fill: "#0C2461" },
+  { name: "Female", count: 31, fill: "#10b981" },
+  { name: "Unspecified", count: 11, fill: "#94a3b8" },
+];
+
+export const FALLBACK_WORKFORCE_GENDER = [
+  { name: "Male", count: 720, fill: "#0C2461" },
+  { name: "Female", count: 520, fill: "#00AEEF" },
+];
+
+export const FALLBACK_QUARTER_COMPARISON = [
+  {
+    label: "New Applications",
+    previous: 68,
+    current: 83,
+    previousLabel: "Q3",
+    currentLabel: "Q4",
+    unit: "",
+  },
+  {
+    label: "Approvals",
+    previous: 14,
+    current: 18,
+    previousLabel: "Q3",
+    currentLabel: "Q4",
+    unit: "",
+  },
+  {
+    label: "Funds Released",
+    previous: 29.4,
+    current: 42.0,
+    previousLabel: "Q3",
+    currentLabel: "Q4",
+    unit: "₱",
+    suffix: "M",
+  },
+  {
+    label: "Avg. Processing Days",
+    previous: 48,
+    current: 42,
+    previousLabel: "Q3",
+    currentLabel: "Q4",
+    unit: "",
+    lower: true,
+  },
+  {
+    label: "Rejection Rate",
+    previous: 28,
+    current: 22,
+    previousLabel: "Q3",
+    currentLabel: "Q4",
+    unit: "",
+    suffix: "%",
+    lower: true,
+  },
+  {
+    label: "Enterprises Graduated",
+    previous: 71,
+    current: 94,
+    previousLabel: "Q3",
+    currentLabel: "Q4",
+    unit: "",
+  },
+];
+
+export const FALLBACK_LAST_UPDATED = "April 28, 2026 · FY 2024–2025";
 // ── Status configs ────────────────────────────────────────────────────────────
 
 export const paymentStatusConfig: Record<

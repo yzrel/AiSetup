@@ -17,11 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
 import ph.gov.dost.aisetup.audit.AuditService;
 import ph.gov.dost.aisetup.auth.SecurityUtils;
 import ph.gov.dost.aisetup.persistence.dto.ApplicantHeaderUpdateRequest;
+import ph.gov.dost.aisetup.persistence.dto.ApplicantSaveRequest;
 import ph.gov.dost.aisetup.persistence.dto.ApprovalAcknowledgeRequest;
 import ph.gov.dost.aisetup.persistence.dto.ModulePatchRequest;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveRequest;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveResponse;
 import ph.gov.dost.aisetup.workflow.ClientVisibilityService;
+import ph.gov.dost.aisetup.workflow.ModuleDataIntegrityService;
 import ph.gov.dost.aisetup.workflow.WorkflowGateService;
 
 @RestController
@@ -31,16 +33,19 @@ public class ApplicantController {
     private final ApplicantPersistenceService persistenceService;
     private final WorkflowGateService workflowGateService;
     private final ClientVisibilityService clientVisibilityService;
+    private final ModuleDataIntegrityService moduleDataIntegrityService;
     private final AuditService auditService;
 
     public ApplicantController(
             ApplicantPersistenceService persistenceService,
             WorkflowGateService workflowGateService,
             ClientVisibilityService clientVisibilityService,
+            ModuleDataIntegrityService moduleDataIntegrityService,
             AuditService auditService) {
         this.persistenceService = persistenceService;
         this.workflowGateService = workflowGateService;
         this.clientVisibilityService = clientVisibilityService;
+        this.moduleDataIntegrityService = moduleDataIntegrityService;
         this.auditService = auditService;
     }
 
@@ -62,24 +67,23 @@ public class ApplicantController {
     @PutMapping("/{id}")
     public ApplicantRecordDto save(
             @PathVariable String id,
-            @RequestBody ApplicantRecordDto body) {
-        if (body.applicationId() == null || body.applicationId().isBlank()) {
-            throw new IllegalArgumentException("applicationId is required");
-        }
+            @Valid @RequestBody ApplicantSaveRequest body) {
+        moduleDataIntegrityService.assertCurrentModuleAllowed(body.getCurrentModule());
+        moduleDataIntegrityService.assertModuleDataShapes(body.getModuleData());
         ApplicantRecordDto existing = persistenceService.findById(id).orElse(null);
         // Applicants hydrate a publish-filtered blob; merge hidden staff drafts
         // back in so their whole-blob saves cannot erase or forge staff documents.
         Map<String, Object> moduleData = clientVisibilityService.preserveHiddenModules(
-                body.moduleData(),
+                body.getModuleData(),
                 existing != null ? existing.moduleData() : null);
         ApplicantRecordDto dto = new ApplicantRecordDto(
                 id,
-                body.applicationId(),
-                body.enterpriseName(),
-                body.currentModule(),
+                body.getApplicationId(),
+                body.getEnterpriseName(),
+                body.getCurrentModule(),
                 moduleData,
-                body.profile(),
-                body.updatedAt());
+                body.getProfile(),
+                body.getUpdatedAt());
         workflowGateService.assertSaveAllowed(dto, existing);
         if ("landbank-withdrawal".equals(dto.currentModule())) {
             workflowGateService.assertLandBankWithdrawalAllowed(id);
@@ -92,7 +96,7 @@ public class ApplicantController {
                 Map.of(
                         "applicationId", saved.applicationId(),
                         "currentModule", saved.currentModule() != null ? saved.currentModule() : ""));
-        return saved;
+        return clientVisibilityService.forViewer(saved);
     }
 
     /**
@@ -102,8 +106,9 @@ public class ApplicantController {
     @PutMapping("/{id}/header")
     public ResponseEntity<ApplicantRecordDto> updateHeader(
             @PathVariable String id,
-            @RequestBody ApplicantHeaderUpdateRequest body) {
+            @Valid @RequestBody ApplicantHeaderUpdateRequest body) {
         SecurityUtils.requireCanAccessApplicant(id);
+        moduleDataIntegrityService.assertCurrentModuleAllowed(body.getCurrentModule());
         ApplicantRecordDto existing = persistenceService.findById(id).orElse(null);
         if (existing == null) {
             return ResponseEntity.notFound().build();
@@ -136,7 +141,7 @@ public class ApplicantController {
                 Map.of(
                         "currentModule",
                         saved.currentModule() != null ? saved.currentModule() : ""));
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(clientVisibilityService.forViewer(saved));
     }
 
     @PutMapping("/{id}/modules/{moduleKey}")
@@ -148,13 +153,14 @@ public class ApplicantController {
         workflowGateService.assertStaffOnlyModuleWrite(moduleKey);
         workflowGateService.assertCanPublish(body.getPublished());
         Map<String, Object> data = sanitizeModulePatchData(moduleKey, body.getData());
+        moduleDataIntegrityService.assertModulePatchShape(moduleKey, data);
         ApplicantRecordDto saved = persistenceService.mergeModuleKey(id, moduleKey, data, body.getPublished());
         auditService.record(
                 Boolean.TRUE.equals(body.getPublished()) ? "module.publish" : "module.patch",
                 "applicant",
                 id,
                 Map.of("moduleKey", moduleKey));
-        return saved;
+        return clientVisibilityService.forViewer(saved);
     }
 
     /**
@@ -195,8 +201,9 @@ public class ApplicantController {
     }
 
     /**
-     * Non-staff landBank patches cannot set MOA attestation fields; those are
-     * established by staff upload ({@code signedMoa} file) / staff-owned keys.
+     * Defense-in-depth: {@code landBank} is also in staffOnlyPatchKeys, so
+     * non-staff PATCH is rejected before this runs. Keep stripping attestation /
+     * intro fields if a non-staff path ever reaches here.
      */
     private Map<String, Object> sanitizeModulePatchData(String moduleKey, Map<String, Object> data) {
         if (data == null || SecurityUtils.requirePrincipal().isStaff()) {

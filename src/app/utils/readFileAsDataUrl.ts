@@ -4,6 +4,7 @@
 
 import type { ModuleDocument } from "../api/types";
 import { uploadFileToBackend } from "./applicantPersistence";
+import { invalidateApplicantFileListCache } from "./storedFilePreview";
 
 /**
  * Align with backend FileUploadService (15 MB) and Spring multipart max-file-size.
@@ -51,6 +52,7 @@ export async function readAndUploadModuleDocument(
     file,
   );
   if (typeof uploaded?.id === "string") {
+    invalidateApplicantFileListCache(opts.applicantId);
     return { ...doc, fileId: uploaded.id };
   }
   return doc;

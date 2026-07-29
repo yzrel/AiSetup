@@ -13,7 +13,7 @@ import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
-import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
@@ -96,7 +96,7 @@ function StepHeader({
   const currentIdx = steps.findIndex(s => s.id === current);
   const demoMode = isDemoModeActive();
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+    <div className={MODULE_STEP_SCROLL}>
       {steps.map((s, i) => {
         const done   = i < currentIdx;
         const active = i === currentIdx;

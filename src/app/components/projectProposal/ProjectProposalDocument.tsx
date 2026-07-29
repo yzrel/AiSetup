@@ -47,6 +47,7 @@ import {
 } from "../../constants/projectProposalLayout";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
 import { StoredFileImage } from "../StoredFilePreview";
+import { isImageFile } from "../../utils/storedFilePreview";
 
 export interface ProjectProposalDocumentProps {
   form: ProjectProposalForm;
@@ -212,7 +213,11 @@ function AttachmentFigure({
       </div>
     );
   }
-  const isImage = attachment.mimeType.startsWith("image/");
+  const isImage = isImageFile(
+    attachment.mimeType,
+    attachment.fileName,
+    attachment.dataUrl,
+  );
   return (
     <div className="pp-form-attachment">
       <p className="pp-form-attachment-label">{label}</p>
@@ -519,6 +524,10 @@ export function ProjectProposalDocument({
         <NarrativeBlock text={narrative("skillsExpertise", "skillsExpertise")} />
         <p className="pp-form-numbered-label">3. Compensation</p>
         <NarrativeBlock text={form.compensation} />
+        <p className="pp-form-numbered-label">
+          4. Gender and Development (GAD) — Participation and Involvement
+        </p>
+        <NarrativeBlock text={narrative("genderInvolvement", "genderInvolvement")} />
       </FormBlock>
 
       <FormBlock>

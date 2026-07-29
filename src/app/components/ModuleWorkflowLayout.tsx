@@ -17,6 +17,7 @@ import {
   MODULE_INNER_BODY,
   MODULE_INSET,
   MODULE_SHELL,
+  MODULE_STEP_SCROLL,
   moduleStepPillClass,
 } from "./moduleTheme";
 
@@ -40,6 +41,7 @@ export {
   MODULE_PAGE,
   MODULE_SECTION_TITLE,
   MODULE_SHELL,
+  MODULE_STEP_SCROLL,
   moduleStepPillClass,
 } from "./moduleTheme";
 
@@ -66,7 +68,7 @@ export function ModuleStepHeader({
   const demoMode = isDemoModeActive();
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+    <div className={MODULE_STEP_SCROLL}>
       {steps.map((s, i) => {
         const done = i < currentIdx;
         const active = i === currentIdx;

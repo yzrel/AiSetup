@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2, Shield } from 'lucide-react';
 import { authStore, type AuthUser, type UserRole } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
+import { notificationStore } from '../store/notificationStore';
 import { getApplicantsForStaff } from '../utils/provincialOffice';
 import { staffContextStore } from '../store/staffContextStore';
 import { DemoModeBanner } from './DemoModeBanner';
@@ -106,6 +107,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
       // Blocked accounts are rejected server-side (401 with a specific message).
       authStore.login(user);
       await applicantStore.hydrateFromBackend(true);
+      notificationStore.resyncFromApplicants();
       if (authStore.isStaff(user.role)) {
         autoSelectStaffApplicant();
       }

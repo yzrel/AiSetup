@@ -2,6 +2,8 @@
  * Author: Yzrel Jade B. Eborde
  */
 
+import region12Offices from "@shared/region12-offices.json";
+
 /** SETUP 4.0 brochure content — DOST Region XII */
 
 export const SETUP_4_TAGLINE =
@@ -87,53 +89,8 @@ export interface DostOfficeContact {
   website?: string;
 }
 
-export const DOST_REGION_12_CONTACTS: DostOfficeContact[] = [
-  {
-    id: "regional",
-    name: "DOST Regional Office No. XII",
-    director: "Engr. Sammy P. Malawan, Regional Director",
-    address: "PNHLSG Bldg., Brgy. Paraiso, Koronadal City",
-    email: "records@region12.dost.gov.ph",
-    phone: "(083) 826-0114",
-    website: "https://www.region12.dost.gov.ph",
-    facebook: "https://facebook.com/dostregion12",
-  },
-  {
-    id: "south-cotabato",
-    name: "South Cotabato Provincial Office",
-    director: "Ms. Gisele Eve O. Siladan, Provincial Director",
-    address:
-      "Ground Floor, Philippine National Halal Laboratory and Science Center Building, Brgy. Paraiso, City of Koronadal",
-    email: "pstc_southcot@region12.dost.gov.ph",
-    phone: "(083) 826-0115",
-    facebook: "https://facebook.com/dost12southcotabato",
-  },
-  {
-    id: "cotabato",
-    name: "North Cotabato Provincial Office",
-    director: "Mr. Michael T. Mayo, Provincial Director",
-    address: "2nd Floor Esperanza Bldg., Quezon Blvd., 9400 Kidapawan City",
-    email: "CotabatoProvince@region12.dost.gov.ph",
-    phone: "0951 849 0880",
-    facebook: "https://facebook.com/pstccotabato",
-  },
-  {
-    id: "sultan-kudarat",
-    name: "Sultan Kudarat Provincial Office",
-    director: "Ms. Zenaida D. Guiano, Provincial Director",
-    address:
-      "Unit 1-B Ground Floor Mervic Commercial Bldg. (LAMDAM ANNEX), Ladesma St. Ext., Poblacion, Tacurong City",
-    email: "pstc_sk@region12.dost.gov.ph",
-    phone: "(064) 471-2844",
-    facebook: "https://facebook.com/dost12sultankudarat",
-  },
-  {
-    id: "gensan-sarangani",
-    name: "General Santos and Sarangani Provincial Office",
-    director: "Ms. Babai K. Tagitican, Provincial Director",
-    address: "Barangay Hall Compound, Calumpang, General Santos City 9500",
-    email: "pstc_sargen@region12.dost.gov.ph",
-    phone: "(083) 826-0145",
-    facebook: "https://facebook.com/profile.php?id=100067677332511",
-  },
-];
+export const DOST_REGION_12_CONTACTS: DostOfficeContact[] =
+  region12Offices.contacts as DostOfficeContact[];
+
+export const REGION_12_PROVINCE_TO_OFFICE: Record<string, string> =
+  region12Offices.provinceToOffice as Record<string, string>;

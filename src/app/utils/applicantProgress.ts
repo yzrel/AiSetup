@@ -7,6 +7,7 @@ import {
   MODULE_LABELS,
   MODULE_ORDER,
   ModuleStatus,
+  normalizeCurrentModule,
 } from "../store/applicantStore";
 import { AdminView } from "../store/authStore";
 import { isDemoModeActive } from "./demoMode";
@@ -19,6 +20,8 @@ import {
   getOfficialChecklistStepCount,
   getProprietorTrackLabel,
 } from "./proprietorTrack";
+import { getSignedMoa } from "./approvalLetter";
+import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
 
 function countRequiredDocuments(applicant: Applicant | null): number {
   const uploads = buildRequirementUploadList(applicant);
@@ -35,7 +38,7 @@ const MODULE_TO_VIEW: Record<ModuleStatus, AdminView | null> = {
   "project-proposal": "project-proposal",
   "conduct-rtec": null,
   "approval-letter": "approval-letter",
-  "project-information-sheet": "project-information-sheet",
+  "project-information-sheet": "landbank-withdrawal",
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
   "refund-delinquent": "refund-delinquent",
@@ -53,7 +56,7 @@ const VIEW_TO_MODULE: Partial<Record<AdminView, ModuleStatus>> = {
   "project-proposal": "project-proposal",
   "conduct-rtec": "conduct-rtec",
   "approval-letter": "approval-letter",
-  "project-information-sheet": "project-information-sheet",
+  "project-information-sheet": "landbank-withdrawal",
   "landbank-withdrawal": "landbank-withdrawal",
   "procurement-liquidation": "procurement-liquidation",
   "refund-delinquent": "refund-delinquent",
@@ -75,19 +78,16 @@ function stepsAfterTna(_applicant: Applicant | null): ModuleStatus[] {
 
 function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
   if (!applicant) return [];
-  const currentIdx = MODULE_ORDER.indexOf(applicant.currentModule);
+  const currentIdx = MODULE_ORDER.indexOf(
+    normalizeCurrentModule(applicant.currentModule),
+  );
   const approvalIdx = MODULE_ORDER.indexOf("approval-letter");
-  const pisIdx = MODULE_ORDER.indexOf("project-information-sheet");
   const landbankIdx = MODULE_ORDER.indexOf("landbank-withdrawal");
   const procurementIdx = MODULE_ORDER.indexOf("procurement-liquidation");
-  const refundIdx = MODULE_ORDER.indexOf("refund-delinquent");
   const closeoutIdx = MODULE_ORDER.indexOf("project-closeout");
   const steps: ModuleStatus[] = [];
   if (currentIdx >= approvalIdx) {
     steps.push("approval-letter");
-  }
-  if (currentIdx >= pisIdx) {
-    steps.push("project-information-sheet");
   }
   if (currentIdx >= landbankIdx) {
     steps.push("landbank-withdrawal", "procurement-liquidation");
@@ -103,7 +103,9 @@ function postApprovalSteps(applicant: Applicant | null): ModuleStatus[] {
 
 function evaluationSteps(applicant: Applicant | null): ModuleStatus[] {
   if (!applicant) return [];
-  const currentIdx = MODULE_ORDER.indexOf(applicant.currentModule);
+  const currentIdx = MODULE_ORDER.indexOf(
+    normalizeCurrentModule(applicant.currentModule),
+  );
   const rtecIdx = MODULE_ORDER.indexOf("conduct-rtec");
   if (currentIdx >= rtecIdx) {
     return ["conduct-rtec"];
@@ -125,7 +127,9 @@ export function getApplicantDashboardSteps(
     ...postApprovalSteps(applicant),
   ];
 
-  const current = applicant?.currentModule ?? "prescreening";
+  const current = normalizeCurrentModule(
+    applicant?.currentModule ?? "prescreening",
+  );
   const currentIdx = MODULE_ORDER.indexOf(current);
 
   return modules.map((mod) => {
@@ -146,26 +150,25 @@ export function getApplicantDashboardSteps(
 export function moduleToApplicantView(
   module: ModuleStatus,
 ): AdminView | "dashboard" {
-  if (module === "conduct-rtec" || module === "completed") {
+  const resolved = normalizeCurrentModule(module);
+  if (resolved === "conduct-rtec" || resolved === "completed") {
     return "dashboard";
   }
-  return MODULE_TO_VIEW[module] ?? "prescreening";
+  return MODULE_TO_VIEW[resolved] ?? "prescreening";
 }
 
 export function isAwaitingStaffReview(applicant: Applicant | null): boolean {
   if (!applicant) return false;
-  if (applicant.currentModule === "conduct-rtec") return true;
-  if (applicant.currentModule === "approval-letter") {
+  const current = normalizeCurrentModule(applicant.currentModule);
+  if (current === "conduct-rtec") return true;
+  if (current === "approval-letter") {
     const stored = applicant.moduleData?.approvalLetter as
       | { published?: boolean }
       | undefined;
     return !stored?.published;
   }
-  if (applicant.currentModule === "project-information-sheet") {
-    const pis = applicant.moduleData?.projectInformationSheet as
-      | { signingDayComplete?: boolean }
-      | undefined;
-    return !pis?.signingDayComplete;
+  if (current === "landbank-withdrawal") {
+    return !getSignedMoa(applicant) || !hasPdcsRecordedForDisbursement(applicant);
   }
   return false;
 }
@@ -179,22 +182,23 @@ export function getAwaitingStaffReviewMessage(
       body: "Your application is with DOST personnel for evaluation. You will be notified when you can proceed.",
     };
   }
-  if (applicant.currentModule === "conduct-rtec") {
+  const current = normalizeCurrentModule(applicant.currentModule);
+  if (current === "conduct-rtec") {
     return {
       title: "RTEC evaluation in progress",
       body: `DOST is preparing your ${formatFormMention("002")} review. You will be notified when the approval letter is ready for your conforme.`,
     };
   }
-  if (applicant.currentModule === "approval-letter") {
+  if (current === "approval-letter") {
     return {
       title: "Approval letter being prepared",
       body: "DOST is finalizing your Notice of Approval. You will be able to acknowledge conforme once it is published.",
     };
   }
-  if (applicant.currentModule === "project-information-sheet") {
+  if (current === "landbank-withdrawal") {
     return {
-      title: "MOA signing in progress",
-      body: `DOST is coordinating MOA signing, ${formatFormMention("008")}, and PDC requirements. LandBank enrollment unlocks after signing is complete.`,
+      title: "MOA and PDCs in progress",
+      body: "DOST is coordinating MOA signing and post-dated check (PDC) recording. LandBank enrollment unlocks after both are on file.",
     };
   }
   return {
@@ -214,7 +218,7 @@ export function isOnProgramTrack(applicant: Applicant | null): boolean {
 }
 
 export function getModuleIndex(module: ModuleStatus): number {
-  const idx = MODULE_ORDER.indexOf(module);
+  const idx = MODULE_ORDER.indexOf(normalizeCurrentModule(module));
   return idx === -1 ? 0 : idx;
 }
 
@@ -266,7 +270,9 @@ export interface ApplicantDashboardStats {
 export function getApplicantDashboardStats(
   applicant: Applicant | null,
 ): ApplicantDashboardStats {
-  const current = applicant?.currentModule ?? "prescreening";
+  const current = normalizeCurrentModule(
+    applicant?.currentModule ?? "prescreening",
+  );
   const currentIdx = getModuleIndex(current);
   const totalSteps = MODULE_ORDER.length;
   const stageLabel = MODULE_LABELS[current] ?? "Pre-Screening";

@@ -16,6 +16,20 @@ export type AiSuggestResult = {
 export function applicantAiContext(applicant: Applicant | null): Record<string, unknown> {
   if (!applicant) return {};
   const md = applicant.moduleData ?? {};
+  const ppForm =
+    md.projectProposal && typeof md.projectProposal === "object"
+      ? ((md.projectProposal as { form?: Record<string, unknown> }).form ?? null)
+      : null;
+  const tna1Form =
+    md.tna1 && typeof md.tna1 === "object"
+      ? ((md.tna1 as { form?: Record<string, unknown> }).form ?? null)
+      : null;
+  const employeesMale = String(
+    ppForm?.employeesMale ?? tna1Form?.employeesMale ?? md.employeesMale ?? "",
+  ).trim();
+  const employeesFemale = String(
+    ppForm?.employeesFemale ?? tna1Form?.employeesFemale ?? md.employeesFemale ?? "",
+  ).trim();
   return {
     applicationId: applicant.applicationId,
     enterpriseName: applicant.enterpriseName,
@@ -37,6 +51,13 @@ export function applicantAiContext(applicant: Applicant | null): Record<string, 
     expectedOutcome: md.expectedOutcome ?? "",
     budget: md.budget ?? "",
     companyDescription: md.companyDescription ?? "",
+    gender: String(md.gender ?? "").trim(),
+    employeesMale,
+    employeesFemale,
+    employeesDirect: String(ppForm?.employeesDirect ?? tna1Form?.employeesDirect ?? "").trim(),
+    employeesIndirect: String(
+      ppForm?.employeesIndirect ?? tna1Form?.employeesIndirect ?? "",
+    ).trim(),
   };
 }
 

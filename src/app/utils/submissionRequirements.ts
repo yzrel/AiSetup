@@ -5,6 +5,7 @@
 import { Applicant } from "../store/applicantStore";
 import { RTEC_COMPLIANCE_ITEMS } from "./rtecReport";
 import { isNonSingleProprietor } from "./proprietorTrack";
+import { normalizeRequirementStaffReview } from "./normalizeCriticalModuleData";
 
 export { isNonSingleProprietor, isNonSingleProprietor as isNonSoleProprietorship } from "./proprietorTrack";
 
@@ -189,9 +190,10 @@ export function persistRequirementNotes(
 export function getRequirementStaffReview(
   applicant: Applicant | null | undefined,
 ): RequirementStaffReview {
-  const raw = applicant?.moduleData?.[REQUIREMENT_STAFF_REVIEW_KEY] as
-    | RequirementStaffReview
-    | undefined;
+  const normalized = normalizeRequirementStaffReview(
+    applicant?.moduleData?.[REQUIREMENT_STAFF_REVIEW_KEY],
+  );
+  const raw = normalized as RequirementStaffReview | undefined;
   const remarks: Record<string, RequirementStaffRemark> = {};
   if (raw?.remarks && typeof raw.remarks === "object") {
     for (const [id, entry] of Object.entries(raw.remarks)) {

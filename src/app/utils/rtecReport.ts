@@ -23,6 +23,7 @@ import { getPublishedTna2 } from "./tnaForm02";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { isDemoModeActive } from "./demoMode";
 import { printRtecReportPdf } from "./rtecReportPrint";
+import { normalizeRtecReportStored } from "./normalizeCriticalModuleData";
 
 const DOST_BLUE = "#0C2461";
 
@@ -351,7 +352,8 @@ export function getRtecReportStored(
   applicant: Applicant | null,
 ): RtecReportStored | null {
   if (!applicant?.moduleData?.rtecReport) return null;
-  return applicant.moduleData.rtecReport as RtecReportStored;
+  const normalized = normalizeRtecReportStored(applicant.moduleData.rtecReport);
+  return (normalized as RtecReportStored | undefined) ?? null;
 }
 
 function withDefaultSignatures(form: RtecReportForm): RtecReportForm {

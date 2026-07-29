@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
 import { api } from "../api/client";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
-import { useStoredFileSrc } from "../utils/storedFilePreview";
+import { isImageFile, isPdfFile, useStoredFileSrc } from "../utils/storedFilePreview";
 import { StoredFileImage } from "./StoredFilePreview";
 import { FORM_GRID_2, ACTION_ROW } from "./moduleTheme";
 
@@ -79,8 +79,8 @@ function SignedFilePreview({
   label: string;
 }) {
   const { src } = useStoredFileSrc(applicantId, document);
-  const isImage = document.mimeType.startsWith("image/");
-  const isPdf = document.mimeType === "application/pdf" || document.fileName.toLowerCase().endsWith(".pdf");
+  const isImage = isImageFile(document.mimeType, document.fileName, document.dataUrl);
+  const isPdf = isPdfFile(document.mimeType, document.fileName, document.dataUrl);
 
   if (isImage) {
     return (
@@ -181,7 +181,7 @@ export function SignedDocumentUpload({
   };
 
   if (readOnly) {
-    if (!hasStoredFile(document)) {
+    if (!hasStoredFile(document) && !signedDate && !venue && !notes) {
       return (
         <p className="text-sm text-gray-500 italic">No {label.toLowerCase()} uploaded yet.</p>
       );
@@ -192,18 +192,28 @@ export function SignedDocumentUpload({
           <FileText className="w-4 h-4 text-[#0C2461]" />
           {label}
         </div>
-        <p className="text-sm text-gray-600">
-          {document!.fileName} · {new Date(document!.uploadedAt).toLocaleDateString()}
-        </p>
-        <p className="text-xs text-gray-500">
-          Uploaded by DOST staff ({document!.uploadedBy})
-        </p>
+        {hasStoredFile(document) && (
+          <>
+            <p className="text-sm text-gray-600">
+              {document!.fileName} · {new Date(document!.uploadedAt).toLocaleDateString()}
+            </p>
+            <p className="text-xs text-gray-500">
+              Uploaded by DOST staff ({document!.uploadedBy})
+            </p>
+          </>
+        )}
         {signedDate && (
           <p className="text-xs text-gray-500">
             {dateLabel}: {new Date(signedDate).toLocaleDateString("en-PH", { dateStyle: "long" })}
           </p>
         )}
-        {(document!.dataUrl || document!.fileId) && (
+        {showVenue && venue?.trim() && (
+          <p className="text-xs text-gray-500">Signing venue: {venue}</p>
+        )}
+        {notes?.trim() && (
+          <p className="text-xs text-gray-500">Notes: {notes}</p>
+        )}
+        {hasStoredFile(document) && (document!.dataUrl || document!.fileId) && (
           <button
             type="button"
             onClick={() => void handleDownload()}
@@ -214,16 +224,18 @@ export function SignedDocumentUpload({
             {downloadBusy ? "Downloading…" : "Download"}
           </button>
         )}
-        {!document!.dataUrl && document!.fileId && (
+        {hasStoredFile(document) && !document!.dataUrl && document!.fileId && (
           <p className="text-xs text-gray-500">
             Preview loads from the server file store after reload.
           </p>
         )}
-        <SignedFilePreview
-          document={document!}
-          applicantId={applicantId}
-          label={label}
-        />
+        {hasStoredFile(document) && (
+          <SignedFilePreview
+            document={document!}
+            applicantId={applicantId}
+            label={label}
+          />
+        )}
       </div>
     );
   }

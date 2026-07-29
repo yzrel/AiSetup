@@ -3,12 +3,13 @@
  */
 package ph.gov.dost.aisetup.loi;
 
-import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
+import ph.gov.dost.aisetup.workflow.SharedJson;
 
 public final class ProvincialOfficeResolver {
 
@@ -19,52 +20,37 @@ public final class ProvincialOfficeResolver {
             String address
     ) {}
 
-    private static final List<OfficeContact> CONTACTS = List.of(
-            new OfficeContact(
-                    "regional",
-                    "DOST Regional Office No. XII",
-                    "Engr. Sammy P. Malawan, Regional Director",
-                    "PNHLSG Bldg., Brgy. Paraiso, Koronadal City"
-            ),
-            new OfficeContact(
-                    "south-cotabato",
-                    "South Cotabato Provincial Office",
-                    "Ms. Gisele Eve O. Siladan, Provincial Director",
-                    "Ground Floor, Philippine National Halal Laboratory and Science Center Building, Brgy. Paraiso, City of Koronadal"
-            ),
-            new OfficeContact(
-                    "cotabato",
-                    "North Cotabato Provincial Office",
-                    "Mr. Michael T. Mayo, Provincial Director",
-                    "2nd Floor Esperanza Bldg., Quezon Blvd., 9400 Kidapawan City"
-            ),
-            new OfficeContact(
-                    "sultan-kudarat",
-                    "Sultan Kudarat Provincial Office",
-                    "Ms. Zenaida D. Guiano, Provincial Director",
-                    "Unit 1-B Ground Floor Mervic Commercial Bldg. (LAMDAM ANNEX), Ladesma St. Ext., Poblacion, Tacurong City"
-            ),
-            new OfficeContact(
-                    "gensan-sarangani",
-                    "General Santos and Sarangani Provincial Office",
-                    "Ms. Babai K. Tagitican, Provincial Director",
-                    "Barangay Hall Compound, Calumpang, General Santos City 9500"
-            )
-    );
+    private static final List<OfficeContact> CONTACTS;
+    private static final Map<String, String> PROVINCE_TO_OFFICE;
 
-    private static final Map<String, String> PROVINCE_TO_OFFICE = Map.ofEntries(
-            Map.entry("south cotabato", "south-cotabato"),
-            Map.entry("cotabato", "cotabato"),
-            Map.entry("north cotabato", "cotabato"),
-            Map.entry("sultan kudarat", "sultan-kudarat"),
-            Map.entry("sarangani", "gensan-sarangani"),
-            Map.entry("general santos city", "gensan-sarangani"),
-            Map.entry("general santos", "gensan-sarangani")
-    );
+    static {
+        JsonNode root = SharedJson.readTree("shared/region12-offices.json");
+        List<OfficeContact> contacts = new ArrayList<>();
+        JsonNode contactsNode = root.get("contacts");
+        if (contactsNode != null && contactsNode.isArray()) {
+            for (JsonNode c : contactsNode) {
+                contacts.add(new OfficeContact(
+                        text(c, "id"),
+                        text(c, "name"),
+                        text(c, "director"),
+                        text(c, "address")));
+            }
+        }
+        if (contacts.isEmpty()) {
+            throw new IllegalStateException("shared/region12-offices.json has no contacts");
+        }
+        CONTACTS = List.copyOf(contacts);
+        PROVINCE_TO_OFFICE = SharedJson.stringMap(root.get("provinceToOffice"));
+    }
 
     public static final AddresseeDto REGIONAL_ADDRESSEE = buildRegionalAddressee();
 
     private ProvincialOfficeResolver() {}
+
+    private static String text(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value != null && value.isTextual() ? value.asText() : "";
+    }
 
     public static AddresseeDto buildRegionalAddressee() {
         AddresseeDto dto = new AddresseeDto();

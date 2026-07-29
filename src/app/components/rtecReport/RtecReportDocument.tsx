@@ -54,6 +54,7 @@ import {
 } from "../../constants/rtecReportLayout";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
 import { StoredFileImage } from "../StoredFilePreview";
+import { isImageFile } from "../../utils/storedFilePreview";
 
 export interface RtecReportDocumentProps {
   form: RtecReportForm;
@@ -244,7 +245,11 @@ function AttachmentFigure({
       </div>
     );
   }
-  const isImage = attachment.mimeType.startsWith("image/");
+  const isImage = isImageFile(
+    attachment.mimeType,
+    attachment.fileName,
+    attachment.dataUrl,
+  );
   return (
     <div className="rtec-form-attachment">
       <p className="rtec-form-attachment-label">{label}</p>

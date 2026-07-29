@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -40,7 +40,10 @@ import { allowWhenDemo, gateOpen } from "../utils/demoMode";
 import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
-import { SignedMoaUploadPanel } from "./SignedMoaUploadPanel";
+import {
+  SignedMoaUploadPanel,
+  type SignedMoaUploadPanelHandle,
+} from "./SignedMoaUploadPanel";
 import { getApprovalRoutingNote } from "../utils/moaAnnexD";
 import { formatFormMention } from "../constants/setupForms";
 
@@ -71,6 +74,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   const [conformeName, setConformeName] = useState("");
   const [ackNotice, setAckNotice] = useState("");
   const [, setMoaRefresh] = useState(0);
+  const moaPanelRef = useRef<SignedMoaUploadPanelHandle>(null);
 
   const loadForm = useCallback((app: Applicant | null) => {
     if (!app) {
@@ -110,6 +114,9 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
 
   const handleSave = () => {
     if (!applicant || !form) return;
+    if (step === "moa") {
+      moaPanelRef.current?.saveDraft();
+    }
     saveApprovalLetterDraft(applicant.id, form);
     setSaveNotice("Draft saved.");
     setTimeout(() => setSaveNotice(""), 3000);
@@ -168,9 +175,9 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     }
     setSubmitErrors([]);
     acknowledgeApprovalLetter(applicant.id, conformeName.trim());
-    applicantStore.update(applicant.id, { currentModule: "project-information-sheet" });
+    applicantStore.update(applicant.id, { currentModule: "landbank-withdrawal" });
     setAckNotice(
-      "Conforme acknowledged. Awaiting MOA signing day with your PSTO.",
+      "Conforme acknowledged. Proceed to LandBank & Withdrawal for MOA and account setup.",
     );
     setTimeout(() => setAckNotice(""), 5000);
     onSubmitSuccess?.();
@@ -183,7 +190,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   return (
     <ModuleWorkflowLayout
       formKey="003"
-      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme before MOA signing day and Pre-Implementation PIS."
+      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme, then proceeds to LandBank & Withdrawal (signed MOA and PDCs required before fund release)."
       user={user}
       steps={demoStaffSteps ? STEPS : undefined}
       currentStep={demoStaffSteps ? step : undefined}
@@ -252,8 +259,10 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   ) : (
                     applicant && (
                       <SignedMoaUploadPanel
+                        ref={moaPanelRef}
                         applicant={applicant}
                         uploadedBy={uploadedBy}
+                        user={user}
                         isAcknowledged={isAcknowledged}
                         requireAcknowledged={false}
                         onSaved={() => setMoaRefresh((n) => n + 1)}
@@ -261,7 +270,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     )
                   )}
 
-                  {signedMoa && (
+                  {signedMoa?.fileName && signedMoa.moaSignedDate && (
                     <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
                       <CheckCircle className="w-4 h-4" />
                       Signed MOA on file —{" "}
@@ -277,6 +286,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                 <SignedMoaUploadPanel
                   applicant={applicant}
                   uploadedBy={signedMoa.uploadedBy}
+                  user={user}
                   readOnly
                 />
               )}
@@ -367,17 +377,17 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
 
               {!showStaffWorkflow && isAcknowledged && !signedMoa && (
                 <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                  Conforme acknowledged. DOST will schedule MOA signing with your PSTO.
-                  Your signed MOA will be uploaded by DOST staff after the on-site signing
-                  ceremony — you do not need to upload it yourself.
+                  Conforme acknowledged. Proceed to LandBank &amp; Withdrawal. DOST will
+                  schedule MOA signing with your PSTO — staff upload the signed MOA there
+                  (you do not upload it yourself).
                 </p>
               )}
 
               {!showStaffWorkflow && isAcknowledged && signedMoa && (
                 <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  Conforme acknowledged. Signed MOA is on file (uploaded by DOST staff).
-                  LandBank setup will be enabled after signing day documents are complete.
+                  Conforme acknowledged. Signed MOA is on file. Continue to LandBank &amp;
+                  Withdrawal for account setup once PDCs are recorded.
                 </p>
               )}
 

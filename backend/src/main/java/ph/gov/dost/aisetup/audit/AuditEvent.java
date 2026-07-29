@@ -8,8 +8,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "audit_events")
@@ -33,8 +31,8 @@ public class AuditEvent {
     @Column(name = "entity_id")
     private String entityId;
 
-    @JdbcTypeCode(SqlTypes.CLOB)
-    @Column(name = "detail_json")
+    /** Integer.MAX_VALUE → LONGTEXT (MySQL) / CLOB (H2), matching Flyway vendor scripts. */
+    @Column(name = "detail_json", length = Integer.MAX_VALUE)
     private String detailJson;
 
     @Column(name = "created_at", nullable = false)

@@ -125,6 +125,19 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
             <p className="text-xs text-gray-400 mt-1.5">Per TNA Form 01 — report direct employees (M/F) and indirect/contract workers separately.</p>
           </div>
 
+          <AiAssistTextarea
+            label="Gender and Development (GAD) — Participation and Involvement"
+            value={form.genderInvolvement ?? ""}
+            onChange={(genderInvolvement) => set("genderInvolvement", genderInvolvement)}
+            inputClassName={inputCls}
+            labelClassName={labelCls}
+            minHeight="min-h-[100px]"
+            {...tnaAi("genderInvolvement", (v) => set("genderInvolvement", v))}
+          />
+          <p className="text-xs text-gray-400 -mt-2">
+            Describe how women and men participate in the enterprise. AI Assist drafts from Male/Female employee counts (DOST GAD / sex-disaggregated reporting).
+          </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Sector <span className="text-red-500">*</span></label>

@@ -18,6 +18,7 @@ import {
   saveSignedDocumentWithReceipts,
   sendPrintableToClient,
   sendPrintableToDost,
+  updateSignedDocumentMeta,
   SignedDocumentRecord,
 } from "../utils/documentDelivery";
 import {
@@ -71,8 +72,8 @@ export function SendToDostButton({
     sendTarget === "client" ? "Send to client by email" : "Send to DOST by email";
   const successLabel =
     sendTarget === "client"
-      ? "Sent to the client for signature — see Sent Emails."
-      : "Sent to your PSTO and DOST Region XII records — see Sent Emails.";
+      ? "Sent to the client for signature — see Administration → Sent Emails."
+      : "Sent to your PSTO and DOST Region XII records.";
 
   return (
     <div className={className}>
@@ -100,6 +101,7 @@ export function DocumentDeliveryPanel({
   moduleKey,
   documentTitle,
   hideSendButton,
+  readOnly,
   sendTarget = "dost",
   onSent,
   onSignedUpload,
@@ -111,6 +113,8 @@ export function DocumentDeliveryPanel({
   documentTitle: string;
   /** Hide the Send-to-DOST button (e.g. when rendered next to a custom one) */
   hideSendButton?: boolean;
+  /** View-only: hide send + upload controls (client LandBank, etc.) */
+  readOnly?: boolean;
   sendTarget?: "dost" | "client";
   onSent?: () => void;
   /** Extra hook after signed copy is stored (e.g. sync into module form) */
@@ -130,7 +134,7 @@ export function DocumentDeliveryPanel({
       const app = applicantStore.getById(applicant.id);
       const doc = getSignedDocument(app ?? null, moduleKey);
       setSignedDoc(doc);
-      if (doc?.signedDate) setSignedDate(doc.signedDate);
+      setSignedDate(doc?.signedDate ?? "");
     };
     reload();
     return applicantStore.subscribe(reload);
@@ -138,7 +142,21 @@ export function DocumentDeliveryPanel({
 
   if (!applicant) return null;
 
+  const handleSignedDateChange = (date: string) => {
+    if (readOnly) return;
+    setSignedDate(date);
+    // Persist immediately when a signed scan is already on file so refresh /
+    // logout / Save Draft elsewhere cannot drop the date.
+    if (signedDoc?.fileName?.trim()) {
+      const next = updateSignedDocumentMeta(applicant, moduleKey, {
+        signedDate: date || undefined,
+      });
+      if (next) setSignedDoc(next);
+    }
+  };
+
   const handleUpload = (doc: SignedDocumentValue) => {
+    if (readOnly) return;
     const record: SignedDocumentRecord = { ...doc, signedDate };
     saveSignedDocumentWithReceipts({
       applicant,
@@ -152,13 +170,16 @@ export function DocumentDeliveryPanel({
   };
 
   const handleRemove = () => {
+    if (readOnly) return;
     removeSignedDocument(applicant, moduleKey);
     setSignedDoc(null);
+    setSignedDate("");
     onSignedRemove?.();
   };
 
-  const deliveryHint =
-    sendTarget === "client"
+  const deliveryHint = readOnly
+    ? "View the signed copy on file. DOST staff prepare and upload LandBank documents."
+    : sendTarget === "client"
       ? "Email the generated letter to the client for signature, then upload the signed copy. Receipts are emailed automatically."
       : "Send the generated document to DOST admin/staff, and upload the signed copy once available. Receipts are emailed to the client and DOST staff automatically.";
 
@@ -176,7 +197,7 @@ export function DocumentDeliveryPanel({
         </div>
       </div>
 
-      {!hideSendButton && (
+      {!hideSendButton && !readOnly && (
         <SendToDostButton
           applicant={applicant}
           user={user}
@@ -191,17 +212,22 @@ export function DocumentDeliveryPanel({
         label={`Signed ${documentTitle}`}
         document={signedDoc}
         signedDate={signedDate}
-        onSignedDateChange={setSignedDate}
+        onSignedDateChange={handleSignedDateChange}
         onUpload={handleUpload}
         onRemove={handleRemove}
         uploadedBy={user?.email ?? applicant.emailAddress}
         applicantId={applicant.id}
         moduleKey={moduleKey}
+        readOnly={readOnly}
       />
-      {signedDoc && (
+      {signedDoc?.fileName && (
         <p className="flex items-center gap-1.5 text-xs text-green-700">
           <CheckCircle className="w-3.5 h-3.5" />
-          Signed copy on file — receipt emailed to the client and DOST staff.
+          Signed copy on file
+          {signedDate
+            ? ` — signed ${new Date(signedDate).toLocaleDateString("en-PH", { dateStyle: "medium" })}`
+            : ""}
+          {" "}— receipt emailed to the client and DOST staff.
         </p>
       )}
     </div>

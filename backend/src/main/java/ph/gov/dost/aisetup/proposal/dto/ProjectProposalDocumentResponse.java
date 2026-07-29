@@ -33,6 +33,7 @@ public class ProjectProposalDocumentResponse {
     private List<String> expectedOutputBullets = new ArrayList<>();
     private String wasteManagement;
     private String financialAnalysis;
+    private String genderInvolvement;
     private List<ProjectProposalRiskRowDto> riskRows = new ArrayList<>();
 
     public String getApplicationId() { return applicationId; }
@@ -109,6 +110,9 @@ public class ProjectProposalDocumentResponse {
 
     public String getFinancialAnalysis() { return financialAnalysis; }
     public void setFinancialAnalysis(String financialAnalysis) { this.financialAnalysis = financialAnalysis; }
+
+    public String getGenderInvolvement() { return genderInvolvement; }
+    public void setGenderInvolvement(String genderInvolvement) { this.genderInvolvement = genderInvolvement; }
 
     public List<ProjectProposalRiskRowDto> getRiskRows() { return riskRows; }
     public void setRiskRows(List<ProjectProposalRiskRowDto> riskRows) { this.riskRows = riskRows; }

@@ -16,6 +16,8 @@ export interface OutboxAttachment {
   mimeType?: string;
   /** Base64 data URL — kept in memory only (not persisted to localStorage) */
   dataUrl?: string;
+  /** Durable file_uploads id — persisted so Sent Emails can download after reload */
+  fileId?: string;
 }
 
 export interface OutboxEmail {
@@ -61,9 +63,10 @@ function persist() {
     // Attachments can hold multi-MB base64 payloads; persist metadata only.
     const slim = emails.slice(0, MAX_STORED).map((e) => ({
       ...e,
-      attachments: e.attachments.map(({ fileName, mimeType }) => ({
+      attachments: e.attachments.map(({ fileName, mimeType, fileId }) => ({
         fileName,
         mimeType,
+        ...(fileId ? { fileId } : {}),
       })),
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));

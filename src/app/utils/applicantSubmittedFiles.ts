@@ -16,7 +16,7 @@ import { getProjectProposalStored } from "./projectProposal";
 import { getApprovalLetterStored } from "./approvalLetter";
 import { getProjectInformationSheetStored } from "./projectInformationSheet";
 import { getLandBankStored, WITHDRAWAL_SIGNED_KEY } from "./landBankWithdrawal";
-import { getProcurementStored } from "./procurementLiquidation";
+import { getProcurementForm } from "./procurementLiquidation";
 import { getSignedDocuments } from "./documentDelivery";
 import { getTna2Draft } from "./tnaForm02";
 import { getRtecReportStored, getRtecReportForm } from "./rtecReport";
@@ -163,13 +163,13 @@ const SIGNED_KEY_META: Record<
     category: "pis",
     label: "Signed Project Information Sheet",
     sourceModule: "Project Information Sheet",
-    navigateView: "project-information-sheet",
+    navigateView: "landbank-withdrawal",
   },
   prePis: {
     category: "pis",
     label: "Signed Pre-Implementation PIS",
     sourceModule: "Project Information Sheet",
-    navigateView: "project-information-sheet",
+    navigateView: "landbank-withdrawal",
   },
   "landbank-withdrawal": {
     category: "landbank",
@@ -299,19 +299,24 @@ function pushTnaFile(
   dataUrl: string | undefined,
   label: string,
   id: string,
+  opts?: { fileId?: string; mimeType?: string },
 ): void {
   if (!fileName?.trim()) return;
+  const mimeType =
+    opts?.mimeType ||
+    (dataUrl?.startsWith("data:")
+      ? dataUrl.split(";")[0].replace("data:", "")
+      : undefined);
   out.push({
     id,
     category: "tna1",
     label,
     fileName,
-    mimeType: dataUrl?.startsWith("data:")
-      ? dataUrl.split(";")[0].replace("data:", "")
-      : undefined,
+    mimeType,
     dataUrl: dataUrl || undefined,
+    serverFileId: opts?.fileId,
     sourceModule: "TNA Form 01",
-    viewable: !!dataUrl,
+    viewable: !!(dataUrl || opts?.fileId),
     kind: "upload",
   });
 }
@@ -500,6 +505,10 @@ export function collectApplicantSubmittedFiles(
       tnaProductionPlanData,
       "Production plan",
       "tna1-production-plan",
+      {
+        fileId: String(tna1FormFields?.productionPlanFileId ?? "").trim() || undefined,
+        mimeType: String(tna1FormFields?.productionPlanFileMime ?? "").trim() || undefined,
+      },
     );
   } else {
     const productionPlanDoc = md.productionPlanDocument as ModuleDocument | undefined;
@@ -530,6 +539,10 @@ export function collectApplicantSubmittedFiles(
       tna1FormFields.plantLayoutFileData,
       "Plant layout",
       "tna1-plant-layout",
+      {
+        fileId: String(tna1FormFields.plantLayoutFileId ?? "").trim() || undefined,
+        mimeType: String(tna1FormFields.plantLayoutFileMime ?? "").trim() || undefined,
+      },
     );
     pushTnaFile(
       files,
@@ -537,6 +550,10 @@ export function collectApplicantSubmittedFiles(
       tna1FormFields.processFlowFileData,
       "Process flow diagram",
       "tna1-process-flow",
+      {
+        fileId: String(tna1FormFields.processFlowFileId ?? "").trim() || undefined,
+        mimeType: String(tna1FormFields.processFlowFileMime ?? "").trim() || undefined,
+      },
     );
   }
 
@@ -647,7 +664,7 @@ export function collectApplicantSubmittedFiles(
       label: "Pre-Implementation PIS (Form 008)",
       fileName: `SETUP-Form-008-${applicant.applicationId || applicant.id}.pdf`,
       sourceModule: "Project Information Sheet",
-      navigateView: "project-information-sheet",
+      navigateView: "landbank-withdrawal",
     });
   }
   for (const filing of pis?.ongoingFilings ?? []) {
@@ -658,7 +675,7 @@ export function collectApplicantSubmittedFiles(
       fileName: `SETUP-Form-009-${filing.id}.pdf`,
       sourceModule: "Project Information Sheet",
       uploadedAt: filing.filedAt,
-      navigateView: "project-information-sheet",
+      navigateView: "landbank-withdrawal",
     });
   }
 
@@ -734,12 +751,32 @@ export function collectApplicantSubmittedFiles(
     });
   }
 
-  const procurement = getProcurementStored(applicant);
-  for (const doc of procurement?.form?.documents ?? []) {
+  const procurementForm = getProcurementForm(applicant);
+  for (const doc of procurementForm.documents) {
     pushProcurementDoc(files, doc, "procurement");
   }
-  for (const doc of procurement?.form?.liquidationDocuments ?? []) {
-    pushProcurementDoc(files, doc, "liquidation");
+  for (const entry of procurementForm.liquidations) {
+    for (const [i, doc] of entry.attachments.entries()) {
+      pushModuleDocument(
+        files,
+        {
+          fileName: doc.fileName,
+          mimeType: doc.mimeType ?? "application/octet-stream",
+          dataUrl: doc.dataUrl,
+          uploadedAt: doc.uploadedAt,
+          uploadedBy: doc.uploadedBy ?? "",
+          fileId: doc.fileId,
+        },
+        {
+          id: `liquidation-${entry.id}-${doc.id || i}`,
+          category: "procurement",
+          label: entry.title.trim()
+            ? `Liquidation — ${entry.title} — ${doc.fileName}`
+            : `Liquidation document — ${doc.fileName}`,
+          sourceModule: "Procurement & Liquidation",
+        },
+      );
+    }
   }
 
   const refundForm = getRefundForm(applicant);

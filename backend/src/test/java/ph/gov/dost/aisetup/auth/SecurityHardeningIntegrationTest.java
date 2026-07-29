@@ -285,6 +285,16 @@ class SecurityHardeningIntegrationTest {
                                 "data", Map.of("fileName", "forged-moa.pdf")))))
                 .andExpect(status().isForbidden());
 
+        // Staff-only landBank module key cannot be patched by applicants.
+        mockMvc.perform(put("/applicants/" + applicantId + "/modules/landBank")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "data", Map.of(
+                                        "form", Map.of("accountSnapshot", Map.of("fileName", "passbook.pdf")),
+                                        "submitted", true)))))
+                .andExpect(status().isForbidden());
+
         // Forged landBank.signedMoa on full PUT is stripped (not persisted as attestation).
         MvcResult get = mockMvc.perform(get("/applicants/" + applicantId)
                         .header("Authorization", "Bearer " + token))
@@ -448,5 +458,164 @@ class SecurityHardeningIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("prompt", "hello"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void applicantWriteResponsesOmitUnpublishedStaffDocs() throws Exception {
+        String applicantId = "sec-view-" + UUID.randomUUID();
+        String appId = "LOI-2026-" + UUID.randomUUID().toString().substring(0, 6);
+        String email = "case-" + applicantId + "@example.com";
+        String staff = staffToken();
+
+        staffCreateCase(staff, applicantId, appId, email, Map.of(
+                "approvalLetter", Map.of("body", "hidden draft", "published", false),
+                "coreProducts", "Mangoes"));
+        String applicantToken = bindApplicantAccount(applicantId, appId, email, "09177777774");
+
+        MvcResult put = mockMvc.perform(put("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + applicantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", applicantId,
+                                "applicationId", appId,
+                                "enterpriseName", "Staff Case",
+                                "currentModule", "approval-letter",
+                                "moduleData", Map.of("coreProducts", "Mangoes"),
+                                "profile", Map.of("emailAddress", email)))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode putModule = objectMapper.readTree(put.getResponse().getContentAsString()).path("moduleData");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                putModule.path("approvalLetter").isMissingNode()
+                        || putModule.path("approvalLetter").isNull());
+
+        MvcResult header = mockMvc.perform(put("/applicants/" + applicantId + "/header")
+                        .header("Authorization", "Bearer " + applicantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "enterpriseName", "Staff Case Updated"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode headerModule =
+                objectMapper.readTree(header.getResponse().getContentAsString()).path("moduleData");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                headerModule.path("approvalLetter").isMissingNode()
+                        || headerModule.path("approvalLetter").isNull());
+
+        MvcResult patch = mockMvc.perform(put("/applicants/" + applicantId + "/modules/coreProducts")
+                        .header("Authorization", "Bearer " + applicantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "data", Map.of("value", "Mango puree")))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode patchModule =
+                objectMapper.readTree(patch.getResponse().getContentAsString()).path("moduleData");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                patchModule.path("approvalLetter").isMissingNode()
+                        || patchModule.path("approvalLetter").isNull());
+    }
+
+    @Test
+    void staffCannotDemotePublishedApprovalLetterViaFullPutOrPatch() throws Exception {
+        String applicantId = "sec-pub-" + UUID.randomUUID();
+        String appId = "LOI-2026-" + UUID.randomUUID().toString().substring(0, 6);
+        String email = "case-" + applicantId + "@example.com";
+        String staff = staffToken();
+
+        staffCreateCase(staff, applicantId, appId, email, Map.of(
+                "approvalLetter", Map.of(
+                        "body", "official notice",
+                        "published", true,
+                        "publishedAt", "2026-07-20T00:00:00Z")));
+
+        mockMvc.perform(put("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", applicantId,
+                                "applicationId", appId,
+                                "enterpriseName", "Staff Case",
+                                "currentModule", "approval-letter",
+                                "moduleData", Map.of(
+                                        "approvalLetter", Map.of(
+                                                "body", "stale draft",
+                                                "published", false)),
+                                "profile", Map.of("emailAddress", email)))))
+                .andExpect(status().isOk());
+
+        MvcResult getAfterPut = mockMvc.perform(get("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode letterAfterPut = objectMapper
+                .readTree(getAfterPut.getResponse().getContentAsString())
+                .path("moduleData")
+                .path("approvalLetter");
+        org.junit.jupiter.api.Assertions.assertTrue(letterAfterPut.path("published").asBoolean());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "2026-07-20T00:00:00Z", letterAfterPut.path("publishedAt").asText());
+
+        mockMvc.perform(put("/applicants/" + applicantId + "/modules/approvalLetter")
+                        .header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "data", Map.of("body", "patched body", "published", false),
+                                "published", false))))
+                .andExpect(status().isOk());
+
+        MvcResult getAfterPatch = mockMvc.perform(get("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode letterAfterPatch = objectMapper
+                .readTree(getAfterPatch.getResponse().getContentAsString())
+                .path("moduleData")
+                .path("approvalLetter");
+        org.junit.jupiter.api.Assertions.assertTrue(letterAfterPatch.path("published").asBoolean());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "patched body", letterAfterPatch.path("body").asText());
+    }
+
+    @Test
+    void applicantSaveEnvelopeValidationRejectsBadPayloads() throws Exception {
+        String staff = staffToken();
+        String applicantId = "sec-env-" + UUID.randomUUID();
+
+        mockMvc.perform(put("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", applicantId,
+                                "applicationId", " ",
+                                "enterpriseName", "X",
+                                "currentModule", "registration",
+                                "moduleData", Map.of(),
+                                "profile", Map.of()))))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(put("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", applicantId,
+                                "applicationId", "LOI-2026-ENV001",
+                                "enterpriseName", "X",
+                                "currentModule", "not-a-module",
+                                "moduleData", Map.of(),
+                                "profile", Map.of()))))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(put("/applicants/" + applicantId)
+                        .header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", applicantId,
+                                "applicationId", "LOI-2026-ENV002",
+                                "enterpriseName", "X",
+                                "currentModule", "registration",
+                                "moduleData", Map.of("approvalLetter", "corrupt"),
+                                "profile", Map.of()))))
+                .andExpect(status().isBadRequest());
     }
 }

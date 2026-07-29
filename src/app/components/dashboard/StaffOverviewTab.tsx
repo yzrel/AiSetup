@@ -2,7 +2,8 @@
  * Author: Yzrel Jade B. Eborde
  *
  * Staff dashboard overview: pipeline charts, sector/KPI panels, recent
- * applications, and the payment monitor.
+ * applications, and the payment monitor — live from scoped applicants with
+ * sample fallbacks when a series is empty.
  */
 
 import {
@@ -32,11 +33,25 @@ import { ResponsiveDataView } from "../ui/responsive-data-view";
 import { AdminView, AuthUser } from "../../store/authStore";
 import { notificationStore } from "../../store/notificationStore";
 import { staffContextStore } from "../../store/staffContextStore";
-import { getApplicantsForStaff } from "../../utils/provincialOffice";
+import { getApplicantsForStaff, filterApplicantsByProvince, DASHBOARD_PROVINCE_ALL } from "../../utils/provincialOffice";
 import { getPaymentMonitorRecords } from "../../utils/refundDelinquent";
+import {
+  getPipelineChartData,
+  getProgramKpis,
+  getRecentApplicationsRows,
+  getRegionBreakdownData,
+  getRegistrantGenderBreakdown,
+  getTopSectorsData,
+  getWorkforceGenderTotals,
+  mergeProgramKpisWithFallback,
+  withLiveOrFallback,
+} from "../../utils/dashboardMetrics";
 import { timeAgo } from "../../utils/timeAgo";
 import {
   FALLBACK_PAYMENT_RECORDS,
+  FALLBACK_PROGRAM_KPIS,
+  FALLBACK_REGISTRANT_GENDER,
+  FALLBACK_WORKFORCE_GENDER,
   pipelineData,
   recentApps,
   regionData,
@@ -45,17 +60,63 @@ import {
 import { PaymentMonitor } from "./PaymentMonitor";
 import { RecentAppStatusBadge, SectionTitle, recentAppColumns } from "./widgets";
 
+const KPI_ICONS: Record<
+  string,
+  { icon: typeof Clock; color: string }
+> = {
+  "Avg. Processing Time": { icon: Clock, color: "text-blue-500" },
+  "Approval Rate": { icon: Target, color: "text-emerald-500" },
+  "Avg. Grant Amount": { icon: Award, color: "text-amber-500" },
+  "Enterprises Upgraded": { icon: Zap, color: "text-purple-500" },
+  "Jobs Created / Retained": { icon: Users, color: "text-[#0C2461]" },
+};
+
 export function StaffOverviewTab({
   user,
   onNavigate,
+  provinceFilter = DASHBOARD_PROVINCE_ALL,
 }: {
   user: AuthUser;
   onNavigate?: (view: AdminView) => void;
+  provinceFilter?: string;
 }) {
-  const scopedApplicants = getApplicantsForStaff(user);
+  const scopedApplicants = filterApplicantsByProvince(
+    getApplicantsForStaff(user),
+    provinceFilter,
+  );
   const livePaymentRecords = getPaymentMonitorRecords(scopedApplicants);
-  const paymentMonitorRecords =
-    livePaymentRecords.length > 0 ? livePaymentRecords : FALLBACK_PAYMENT_RECORDS;
+  const paymentMonitorRecords = withLiveOrFallback(
+    livePaymentRecords,
+    FALLBACK_PAYMENT_RECORDS,
+  );
+  const livePipeline = getPipelineChartData(scopedApplicants);
+  const chartPipeline = withLiveOrFallback(livePipeline, pipelineData);
+  const liveRegions = getRegionBreakdownData(scopedApplicants);
+  const chartRegions = withLiveOrFallback(liveRegions, regionData);
+  const liveSectors = getTopSectorsData(scopedApplicants);
+  const chartSectors = withLiveOrFallback(liveSectors, topSectors);
+  const liveRecent = getRecentApplicationsRows(scopedApplicants);
+  const chartRecent = withLiveOrFallback(liveRecent, recentApps);
+  const programKpis = mergeProgramKpisWithFallback(
+    getProgramKpis(scopedApplicants),
+    FALLBACK_PROGRAM_KPIS,
+  );
+  const registrantGender = withLiveOrFallback(
+    getRegistrantGenderBreakdown(scopedApplicants),
+    FALLBACK_REGISTRANT_GENDER,
+  );
+  const workforceTotals = getWorkforceGenderTotals(scopedApplicants);
+  const workforceDisplay =
+    workforceTotals.total > 0
+      ? workforceTotals
+      : {
+          male:
+            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Male")?.count ?? 0,
+          female:
+            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Female")?.count ??
+            0,
+          total: FALLBACK_WORKFORCE_GENDER.reduce((s, r) => s + r.count, 0),
+        };
   const userNotifications = notificationStore.getForUser(user);
   const unreadNotifications = userNotifications.filter((n) => !n.read);
 
@@ -70,7 +131,7 @@ export function StaffOverviewTab({
           </SectionTitle>
           <div className="h-48 sm:h-[210px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={pipelineData} barSize={30}>
+            <BarChart data={chartPipeline} barSize={30}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="#f3f4f6"
@@ -101,7 +162,7 @@ export function StaffOverviewTab({
                 name="Applicants"
                 radius={[6, 6, 0, 0]}
               >
-                {pipelineData.map((entry, i) => (
+                {chartPipeline.map((entry, i) => (
                   <Cell key={`bar-cell-${i}`} fill={entry.fill} />
                 ))}
               </Bar>
@@ -119,7 +180,7 @@ export function StaffOverviewTab({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={regionData}
+                data={chartRegions}
                 cx="50%"
                 cy="50%"
                 innerRadius={35}
@@ -127,7 +188,7 @@ export function StaffOverviewTab({
                 dataKey="value"
                 paddingAngle={3}
               >
-                {regionData.map((r, i) => (
+                {chartRegions.map((r, i) => (
                   <Cell key={`pie-cell-${i}`} fill={r.color} />
                 ))}
               </Pie>
@@ -143,7 +204,7 @@ export function StaffOverviewTab({
           </ResponsiveContainer>
           </div>
           <div className="space-y-1.5 mt-1">
-            {regionData.map((r) => (
+            {chartRegions.map((r) => (
               <div
                 key={r.name}
                 className="flex items-center justify-between text-xs"
@@ -166,6 +227,48 @@ export function StaffOverviewTab({
         </div>
       </div>
 
+      {/* GAD strip */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <SectionTitle sub="Sex-disaggregated overview (DOST GAD)">
+          Gender Snapshot
+        </SectionTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Registrant Male
+            </p>
+            <p className="text-lg font-bold text-[#0C2461] mt-0.5">
+              {registrantGender.find((r) => r.name === "Male")?.count ?? 0}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Registrant Female
+            </p>
+            <p className="text-lg font-bold text-[#00AEEF] mt-0.5">
+              {registrantGender.find((r) => r.name === "Female")?.count ?? 0}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Workforce M / F
+            </p>
+            <p className="text-lg font-bold text-slate-800 mt-0.5">
+              {workforceDisplay.male.toLocaleString("en-PH")} /{" "}
+              {workforceDisplay.female.toLocaleString("en-PH")}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Jobs (M+F)
+            </p>
+            <p className="text-lg font-bold text-slate-800 mt-0.5">
+              {workforceDisplay.total.toLocaleString("en-PH")}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Second row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* Top sectors */}
@@ -174,7 +277,7 @@ export function StaffOverviewTab({
             Top Sectors
           </SectionTitle>
           <div className="space-y-3">
-            {topSectors.map((s, i) => (
+            {chartSectors.map((s, i) => (
               <div key={s.sector}>
                 <div className="flex justify-between text-xs mb-1">
                   <div className="flex items-center gap-1.5">
@@ -206,39 +309,12 @@ export function StaffOverviewTab({
             Program KPIs
           </SectionTitle>
           <div className="space-y-3">
-            {[
-              {
-                label: "Avg. Processing Time",
-                value: "42 days",
-                icon: Clock,
-                color: "text-blue-500",
-              },
-              {
-                label: "Approval Rate",
-                value: "78%",
+            {programKpis.map((kpi) => {
+              const meta = KPI_ICONS[kpi.label] ?? {
                 icon: Target,
-                color: "text-emerald-500",
-              },
-              {
-                label: "Avg. Grant Amount",
-                value: "₱2.3M",
-                icon: Award,
-                color: "text-amber-500",
-              },
-              {
-                label: "Enterprises Upgraded",
-                value: "94",
-                icon: Zap,
-                color: "text-purple-500",
-              },
-              {
-                label: "Jobs Created / Retained",
-                value: "1,240",
-                icon: Users,
-                color: "text-[#0C2461]",
-              },
-            ].map((kpi) => {
-              const Icon = kpi.icon;
+                color: "text-gray-500",
+              };
+              const Icon = meta.icon;
               return (
                 <div
                   key={kpi.label}
@@ -246,7 +322,7 @@ export function StaffOverviewTab({
                 >
                   <div className="flex items-center gap-2">
                     <Icon
-                      className={`w-3.5 h-3.5 ${kpi.color} shrink-0`}
+                      className={`w-3.5 h-3.5 ${meta.color} shrink-0`}
                     />
                     <span className="text-xs text-gray-600">
                       {kpi.label}
@@ -327,13 +403,17 @@ export function StaffOverviewTab({
               Latest submissions across all modules
             </p>
           </div>
-          <button className="text-xs text-[#0C2461] font-semibold hover:underline flex items-center gap-1">
+          <button
+            type="button"
+            className="text-xs text-[#0C2461] font-semibold hover:underline flex items-center gap-1"
+            onClick={() => onNavigate?.("clients")}
+          >
             View all <ArrowUpRight className="w-3 h-3" />
           </button>
         </div>
         <ResponsiveDataView
           columns={recentAppColumns}
-          rows={recentApps}
+          rows={chartRecent}
           getRowKey={(app, i) => `${app.name}-${i}`}
           mobileClassName="px-4 pb-4"
           desktopClassName="overflow-x-auto [&_th]:px-5 [&_th]:py-3 [&_th]:text-[11px] [&_th]:font-bold [&_th]:text-gray-400 [&_th]:uppercase [&_th]:tracking-wider [&_tr]:border-t [&_tr]:border-gray-50 [&_tr:hover]:bg-[#0C2461]/[0.02] [&_thead_tr]:bg-gray-50"

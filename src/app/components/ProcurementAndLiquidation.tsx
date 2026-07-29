@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useState, type ChangeEvent, type ReactNode } from "react";
 import {
   AlertCircle,
   Archive,
@@ -20,20 +20,25 @@ import { applicantStore } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
 import { ModuleWorkflowLayout, type ModuleStep } from "./ModuleWorkflowLayout";
-import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
+import { DOST_BLUE, FORM_GRID_2, MODULE_SHELL } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyProcurementComplete } from "../utils/notificationHelpers";
 import {
-  addLiquidationDocument,
+  addLiquidation,
+  addLiquidationAttachment,
   addProcurementDocument,
   addProcurementItem,
   getProcurementFinancialSummary,
   getProcurementForm,
   getProcurementStored,
+  hasLiquidationFiled,
   hasProcurementPrerequisite,
+  removeLiquidation,
+  removeLiquidationAttachment,
   removeProcurementItem,
   setAccountUntagged,
   submitProcurement,
+  updateLiquidation,
   updateProcurementItem,
   validateProcurementSubmit,
 } from "../utils/procurementLiquidation";
@@ -86,28 +91,41 @@ export function ProcurementAndLiquidation({
     ? 2
     : form?.untagged
       ? 2
-      : form?.liquidationDocuments.length
+      : form && hasLiquidationFiled(form)
         ? 1
         : form?.documents.length
           ? 0
           : 0;
 
-  const handleFileUpload = async (
-    kind: "procurement" | "liquidation",
-    e: React.ChangeEvent<HTMLInputElement>,
+  const handleProcurementUpload = async (
+    e: ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (!file || !applicant) return;
     try {
       const moduleDoc = await readAndUploadModuleDocument(file, uploadedBy, {
         applicantId: applicant.id,
-        moduleKey: kind,
+        moduleKey: "procurement",
       });
-      if (kind === "procurement") {
-        addProcurementDocument(applicant.id, moduleDoc);
-      } else {
-        addLiquidationDocument(applicant.id, moduleDoc);
-      }
+      addProcurementDocument(applicant.id, moduleDoc);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed.");
+    }
+    e.target.value = "";
+  };
+
+  const handleLiquidationAttachmentUpload = async (
+    entryId: string,
+    e: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file || !applicant || !isStaff) return;
+    try {
+      const moduleDoc = await readAndUploadModuleDocument(file, uploadedBy, {
+        applicantId: applicant.id,
+        moduleKey: "liquidation",
+      });
+      addLiquidationAttachment(applicant.id, entryId, moduleDoc);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Upload failed.");
     }
@@ -190,7 +208,7 @@ export function ProcurementAndLiquidation({
               type="file"
               id="proc-upload"
               className="hidden"
-              onChange={(e) => handleFileUpload("procurement", e)}
+              onChange={handleProcurementUpload}
               disabled={!!stored?.submitted}
             />
             <label
@@ -415,38 +433,208 @@ export function ProcurementAndLiquidation({
           )}
           <div className="p-5 space-y-4">
             <p className="text-sm text-gray-600">
-              Submit your liquidation report and equipment documentation for verification.
+              {isStaff
+                ? "Add one or more liquidations with title/period, amount, date, remarks, and supporting attachments."
+                : "DOST staff record liquidations and attachments. You can review entries below."}
             </p>
-            <input
-              type="file"
-              id="liq-upload"
-              className="hidden"
-              onChange={(e) => handleFileUpload("liquidation", e)}
-              disabled={!!stored?.submitted}
-            />
-            <label
-              htmlFor="liq-upload"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Upload Liquidation Document
-            </label>
-            <div className="space-y-1">
-              {form.liquidationDocuments.map((d) => (
+
+            {isStaff && !stored?.submitted && (
+              <button
+                type="button"
+                onClick={() => addLiquidation(applicant.id, uploadedBy)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg"
+              >
+                <Plus className="w-4 h-4" />
+                Add liquidation
+              </button>
+            )}
+
+            {!isStaff && form.liquidations.length === 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                DOST staff will record liquidations and attachments.
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {form.liquidations.map((entry) => (
                 <div
-                  key={d.id}
-                  className="flex flex-wrap items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
+                  key={entry.id}
+                  className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/40"
                 >
-                  <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                  <span className="flex-1 min-w-0 font-medium truncate">{d.fileName}</span>
-                  <SubmittedFileActions
-                    fileName={d.fileName}
-                    mimeType={d.mimeType}
-                    dataUrl={d.dataUrl}
-                    fileId={d.fileId}
-                    applicantId={applicant.id}
-                    compact
-                  />
+                  {isStaff && !stored?.submitted ? (
+                    <>
+                      <div className={FORM_GRID_2}>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-gray-500">
+                            Title / period
+                          </label>
+                          <input
+                            value={entry.title}
+                            onChange={(e) =>
+                              updateLiquidation(applicant.id, entry.id, {
+                                title: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. 1st Tranche / Q1 2026"
+                            className="w-full mt-0.5 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-gray-500">
+                            Amount
+                          </label>
+                          <input
+                            value={entry.amount}
+                            onChange={(e) =>
+                              updateLiquidation(applicant.id, entry.id, {
+                                amount: e.target.value,
+                              })
+                            }
+                            placeholder="₱0.00"
+                            className="w-full mt-0.5 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-gray-500">
+                            Date
+                          </label>
+                          <input
+                            type="date"
+                            value={entry.date}
+                            onChange={(e) =>
+                              updateLiquidation(applicant.id, entry.id, {
+                                date: e.target.value,
+                              })
+                            }
+                            className="w-full mt-0.5 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] font-bold uppercase text-gray-500">
+                            Remarks
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={entry.remarks}
+                            onChange={(e) =>
+                              updateLiquidation(applicant.id, entry.id, {
+                                remarks: e.target.value,
+                              })
+                            }
+                            placeholder="Notes for this liquidation…"
+                            className="w-full mt-0.5 border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          type="file"
+                          id={`liq-att-${entry.id}`}
+                          className="hidden"
+                          onChange={(e) =>
+                            handleLiquidationAttachmentUpload(entry.id, e)
+                          }
+                        />
+                        <label
+                          htmlFor={`liq-att-${entry.id}`}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Upload attachment
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                "Remove this liquidation and all its attachments?",
+                              )
+                            ) {
+                              removeLiquidation(applicant.id, entry.id);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2 text-sm">
+                      <p className="font-semibold text-gray-800">
+                        {entry.title.trim() || "Untitled liquidation"}
+                      </p>
+                      <div className={`${FORM_GRID_2} text-xs text-gray-600`}>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                            Amount
+                          </span>
+                          {entry.amount || "—"}
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                            Date
+                          </span>
+                          {entry.date || "—"}
+                        </div>
+                        {entry.remarks.trim() && (
+                          <div className="sm:col-span-2">
+                            <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                              Remarks
+                            </span>
+                            {entry.remarks}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    {entry.attachments.length === 0 && (
+                      <p className="text-xs text-gray-400 italic">
+                        No attachments yet.
+                      </p>
+                    )}
+                    {entry.attachments.map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex flex-wrap items-center gap-2 text-xs bg-white border border-gray-200 rounded-lg px-3 py-2"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        <span className="flex-1 min-w-0 font-medium truncate">
+                          {d.fileName}
+                        </span>
+                        <span className="text-gray-400 shrink-0">
+                          {d.uploadedAt}
+                        </span>
+                        <SubmittedFileActions
+                          fileName={d.fileName}
+                          mimeType={d.mimeType}
+                          dataUrl={d.dataUrl}
+                          fileId={d.fileId}
+                          applicantId={applicant.id}
+                          compact
+                        />
+                        {isStaff && !stored?.submitted && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeLiquidationAttachment(
+                                applicant.id,
+                                entry.id,
+                                d.id,
+                              )
+                            }
+                            className="text-red-600 hover:bg-red-50 rounded p-1"
+                            aria-label="Remove attachment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -469,7 +657,10 @@ export function ProcurementAndLiquidation({
               <div className="border border-gray-200 rounded-lg p-4 space-y-2 text-xs">
                 {[
                   { label: "Procurement Submitted", done: form.documents.length > 0 },
-                  { label: "Liquidation Report Filed", done: form.liquidationDocuments.length > 0 },
+                  {
+                    label: "Liquidation Report Filed",
+                    done: hasLiquidationFiled(form),
+                  },
                   { label: "Equipment Documented", done: form.items.length > 0 },
                   { label: "Account Untagged", done: form.untagged },
                 ].map((s) => (

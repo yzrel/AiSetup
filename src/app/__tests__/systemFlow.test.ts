@@ -48,14 +48,8 @@ import {
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
 import {
-  buildPrePisDraft,
-  canCompleteSigningDay,
-  completeSigningDay,
   hasApprovalLetterAcknowledged,
-  isSigningDayComplete,
   preparePdcsForDisbursement,
-  savePrePisDraft,
-  saveSignedPrePis,
 } from "../utils/projectInformationSheet";
 import {
   getLbpIntroductionForm,
@@ -65,6 +59,7 @@ import {
 import {
   getLandBankForm,
   hasLandBankComplete,
+  hasLandBankPrerequisite,
   saveLandBankDraft,
   submitLandBank,
   validateLandBankSubmit,
@@ -404,31 +399,29 @@ describe("system flow: registration through project close-out", () => {
     expect(isAwaitingStaffReview(getApplicant(id))).toBe(false);
     acknowledgeApprovalLetter(id, "Test Applicant");
     expect(hasApprovalLetterAcknowledged(getApplicant(id))).toBe(true);
+    applicantStore.update(id, { currentModule: "landbank-withdrawal" });
+    expect(getApplicant(id).currentModule).toBe("landbank-withdrawal");
+
+    // 11. LandBank & Withdrawal — MOA + PDC gates (no separate PIS module)
+    expect(isAwaitingStaffReview(getApplicant(id))).toBe(true); // MOA/PDCs pending
+    expect(hasLandBankPrerequisite(getApplicant(id))).toBe(false);
     saveSignedMoa(id, {
       ...moduleDocument("signed-moa.pdf", "Test Applicant"),
       moaSignedDate: "2026-02-01",
     });
-    applicantStore.update(id, { currentModule: "project-information-sheet" });
-
-    // 11. Project Information Sheet (Module 10) — Pre-PIS + MOA signing day
-    expect(isAwaitingStaffReview(getApplicant(id))).toBe(true); // signing pending
-    savePrePisDraft(id, buildPrePisDraft(getApplicant(id)));
-    saveSignedPrePis(id, {
-      ...moduleDocument("signed-pre-pis.pdf", "Test Applicant"),
-      prePisSignedDate: "2026-02-01",
-    });
-    expect(canCompleteSigningDay(getApplicant(id))).toBe(false); // PDCs missing
+    expect(hasLandBankPrerequisite(getApplicant(id))).toBe(false); // PDCs missing
     preparePdcsForDisbursement(id);
     expect(hasPdcsRecordedForDisbursement(getApplicant(id))).toBe(true);
-    expect(canCompleteSigningDay(getApplicant(id))).toBe(true);
-    expect(completeSigningDay(id, "PSTO Staff")).toEqual([]);
-    expect(isSigningDayComplete(getApplicant(id))).toBe(true);
-    // completeSigningDay advances the module itself
+    expect(hasLandBankPrerequisite(getApplicant(id))).toBe(true);
+    expect(isAwaitingStaffReview(getApplicant(id))).toBe(false);
+
+    // Legacy PIS module id normalizes to LandBank
+    applicantStore.update(id, { currentModule: "project-information-sheet" });
     expect(getApplicant(id).currentModule).toBe("landbank-withdrawal");
 
-    // 12. LandBank & Withdrawal (Modules 11–13)
+    // 12. LandBank account / withdrawal after prerequisites
     const landBankErrorsBefore = validateLandBankSubmit(getApplicant(id));
-    expect(landBankErrorsBefore.length).toBeGreaterThan(0); // gate holds
+    expect(landBankErrorsBefore.length).toBeGreaterThan(0); // LBP intro / docs still required
     expect(
       publishLbpIntroduction(
         id,
@@ -483,11 +476,22 @@ describe("system flow: registration through project close-out", () => {
           totalCost: "2,000,000",
         },
       ],
-      liquidationDocuments: [
+      liquidations: [
         {
-          id: "liq-1",
-          fileName: "liquidation-report.pdf",
-          uploadedAt: "2026-03-05",
+          id: "liq-entry-1",
+          title: "1st Tranche",
+          amount: "₱2,000,000",
+          date: "2026-03-05",
+          remarks: "Equipment liquidation",
+          attachments: [
+            {
+              id: "liq-1",
+              fileName: "liquidation-report.pdf",
+              uploadedAt: "2026-03-05",
+            },
+          ],
+          createdAt: "2026-03-05T00:00:00.000Z",
+          createdBy: "PSTO Staff",
         },
       ],
       untagged: true,

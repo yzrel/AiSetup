@@ -211,8 +211,8 @@ export function notifyMoaUploaded(applicant: Applicant) {
     kind: "info",
     title: "Signed MOA on file",
     message:
-      "Your signed Memorandum of Agreement has been recorded. Pre-PIS will be completed on the same signing day.",
-    view: "project-information-sheet",
+      "Your signed Memorandum of Agreement has been recorded. DOST staff will continue LandBank account setup once PDCs are recorded. You can view progress under LandBank & Withdrawal.",
+    view: "landbank-withdrawal",
   });
 }
 
@@ -222,9 +222,9 @@ export function notifySigningDayComplete(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "success",
-    title: "MOA signing day complete",
+    title: "MOA and PDCs ready",
     message:
-      "Signed MOA is on file. You may proceed to LandBank account setup.",
+      "Signed MOA and PDCs are on file. DOST staff will prepare your LandBank documents. You can view published letters under LandBank & Withdrawal.",
     urgent: true,
     view: "landbank-withdrawal",
   });
@@ -238,7 +238,7 @@ export function notifyLbpIntroductionPublished(applicant: Applicant) {
     kind: "success",
     title: "Letter of Introduction to LBP published",
     message:
-      "Your DOST Letter of Introduction to Land Bank of the Philippines is ready. Download and present it at your LandBank branch to open your SETUP savings passbook account.",
+      "Your DOST Letter of Introduction to Land Bank of the Philippines is ready to view and download. Present it at your LandBank branch to open your SETUP savings passbook account. DOST staff will record account and withdrawal documents.",
     urgent: true,
     view: "landbank-withdrawal",
   });
@@ -252,7 +252,7 @@ export function notifyLandBankComplete(applicant: Applicant) {
     kind: "success",
     title: "LandBank & withdrawal complete",
     message:
-      "Your LandBank account and withdrawal documents are on file. Proceed to procurement and liquidation.",
+      "Your LandBank account and withdrawal documents are on file and ready to view. Proceed to procurement and liquidation when unlocked.",
     view: "procurement-liquidation",
   });
   notificationStore.add({
@@ -262,7 +262,7 @@ export function notifyLandBankComplete(applicant: Applicant) {
     officeId: staffOffice(applicant),
     kind: "info",
     title: "Withdrawal documents submitted",
-    message: `${applicant.enterpriseName} completed LandBank & withdrawal (Modules 11–13).`,
+    message: `${applicant.enterpriseName} LandBank & withdrawal marked complete (Modules 11–13).`,
     view: "landbank-withdrawal",
   });
 }

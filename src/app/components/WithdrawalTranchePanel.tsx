@@ -72,6 +72,8 @@ export function WithdrawalTranchePanel({
     tranche === 1 ? WITHDRAWAL_SIGNED_KEY.first : WITHDRAWAL_SIGNED_KEY.second;
   const documentTitle = `Letter Request for Withdrawal (${tranche === 1 ? "1st" : "2nd"} Tranche)`;
   const uploadedBy = user?.email ?? applicant.emailAddress ?? "applicant";
+  /** Staff-only edits; clients always view-only even if readOnly was omitted. */
+  const canEdit = !!isStaff && !readOnly;
 
   const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
   const [letterNotice, setLetterNotice] = useState("");
@@ -87,10 +89,12 @@ export function WithdrawalTranchePanel({
     tranche === 1 ? isTranche1Complete(pkg) : isTranche2Complete(pkg);
 
   const persist = (next: LandBankForm) => {
+    if (!canEdit) return;
     saveLandBankDraft(applicant.id, next);
   };
 
   const patchPkg = (patch: Partial<WithdrawalTranchePackage>) => {
+    if (!canEdit) return;
     persist(updateTranchePackage(form, tranche, patch));
   };
 
@@ -105,7 +109,7 @@ export function WithdrawalTranchePanel({
   };
 
   const handleAddSelectedBudget = () => {
-    if (!selectedBudgetIds.length) return;
+    if (!canEdit || !selectedBudgetIds.length) return;
     const additions = availableBudget
       .filter((b) => selectedBudgetIds.includes(b.id))
       .map(budgetRowToWithdrawalEquipment);
@@ -114,6 +118,7 @@ export function WithdrawalTranchePanel({
   };
 
   const handleAddEmptyRow = () => {
+    if (!canEdit) return;
     const row: WithdrawalEquipmentRow = {
       id: newEquipmentId(),
       item: "",
@@ -127,6 +132,7 @@ export function WithdrawalTranchePanel({
     field: "item" | "amount",
     value: string,
   ) => {
+    if (!canEdit) return;
     patchPkg({
       equipment: pkg.equipment.map((r) =>
         r.id === id ? { ...r, [field]: value } : r,
@@ -135,10 +141,12 @@ export function WithdrawalTranchePanel({
   };
 
   const handleDeleteRow = (id: string) => {
+    if (!canEdit) return;
     patchPkg({ equipment: pkg.equipment.filter((r) => r.id !== id) });
   };
 
   const handleGenerate = () => {
+    if (!canEdit) return;
     const draft = {
       ...draftForLetter(),
       supplierName: pkg.supplierName,
@@ -161,7 +169,7 @@ export function WithdrawalTranchePanel({
     field: "quotations" | "equipmentPhotos",
     files: FileList | null,
   ) => {
-    if (!files?.length || readOnly) return;
+    if (!files?.length || !canEdit) return;
     const docs: ModuleDocument[] = [];
     for (const file of Array.from(files)) {
       docs.push(
@@ -178,6 +186,7 @@ export function WithdrawalTranchePanel({
     field: "quotations" | "equipmentPhotos",
     index: number,
   ) => {
+    if (!canEdit) return;
     const list = [...(pkg[field] ?? [])];
     list.splice(index, 1);
     patchPkg({ [field]: list });
@@ -187,10 +196,9 @@ export function WithdrawalTranchePanel({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-gray-600">
-          Build the letter from project proposal budgetary equipment, enter the
-          selected supplier, generate the letter, email it to the client for
-          signature, then upload the signed copy
-          {tranche === 1 ? " plus quotations and equipment photos" : ""}.
+          {canEdit
+            ? `Build the letter from project proposal budgetary equipment, enter the selected supplier, generate the letter, email it to the client for signature, then upload the signed copy${tranche === 1 ? " plus quotations and equipment photos" : ""}.`
+            : "View the withdrawal letter package prepared by DOST staff for this tranche."}
         </p>
         {complete ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">
@@ -212,7 +220,7 @@ export function WithdrawalTranchePanel({
           type="text"
           value={pkg.supplierName}
           onChange={(e) => patchPkg({ supplierName: e.target.value })}
-          disabled={readOnly || !isStaff}
+          disabled={!canEdit}
           placeholder="e.g. MCH COMMERCIAL"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60"
         />
@@ -233,7 +241,7 @@ export function WithdrawalTranchePanel({
           </span>
         </div>
         <div className="p-4 space-y-3">
-          {!readOnly && isStaff && (
+          {canEdit && (
             <div className="space-y-2 bg-blue-50/60 border border-blue-100 rounded-lg p-3">
               <p className="text-xs font-semibold text-gray-700">
                 Add from Project Proposal budgetary requirement
@@ -303,7 +311,7 @@ export function WithdrawalTranchePanel({
                 <tr className="text-left text-gray-500 border-b border-gray-100">
                   <th className="py-2 pr-2 font-semibold">Equipment / item</th>
                   <th className="py-2 pr-2 font-semibold w-36">Amount</th>
-                  {!readOnly && isStaff && <th className="py-2 w-10" />}
+                  {canEdit && <th className="py-2 w-10" />}
                 </tr>
               </thead>
               <tbody>
@@ -322,7 +330,7 @@ export function WithdrawalTranchePanel({
                           onChange={(e) =>
                             handleUpdateRow(row.id, "item", e.target.value)
                           }
-                          disabled={readOnly || !isStaff}
+                          disabled={!canEdit}
                           className="w-full border border-gray-200 rounded px-2 py-1.5 disabled:bg-gray-50"
                         />
                       </td>
@@ -332,12 +340,12 @@ export function WithdrawalTranchePanel({
                           onChange={(e) =>
                             handleUpdateRow(row.id, "amount", e.target.value)
                           }
-                          disabled={readOnly || !isStaff}
+                          disabled={!canEdit}
                           placeholder="785000"
                           className="w-full border border-gray-200 rounded px-2 py-1.5 disabled:bg-gray-50"
                         />
                       </td>
-                      {!readOnly && isStaff && (
+                      {canEdit && (
                         <td className="py-1.5">
                           <button
                             type="button"
@@ -382,18 +390,19 @@ export function WithdrawalTranchePanel({
             {letterNotice}
           </p>
         )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={readOnly}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: DOST_BLUE }}
-          >
-            <Download className="w-4 h-4" />
-            Generate &amp; print letter (PDF)
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+              style={{ background: DOST_BLUE }}
+            >
+              <Download className="w-4 h-4" />
+              Generate &amp; print letter (PDF)
+            </button>
+          </div>
+        )}
         {pkg.letterDraft?.generatedAt && (
           <p className="text-[11px] text-gray-400">
             Last generated:{" "}
@@ -408,6 +417,7 @@ export function WithdrawalTranchePanel({
         moduleKey={signedKey}
         documentTitle={documentTitle}
         sendTarget="client"
+        readOnly={!canEdit}
         onSent={() => {
           if (pkg.status === "draft" || !pkg.status) {
             patchPkg({ status: "sent" });
@@ -437,7 +447,7 @@ export function WithdrawalTranchePanel({
             hint="Upload supplier quotations for equipment in this tranche."
             docs={pkg.quotations ?? []}
             inputId={`wd-quotes-t${tranche}`}
-            readOnly={readOnly}
+            readOnly={!canEdit}
             applicantId={applicant.id}
             onUpload={(files) => handleMultiUpload("quotations", files)}
             onRemove={(i) => handleRemoveMulti("quotations", i)}
@@ -448,7 +458,7 @@ export function WithdrawalTranchePanel({
             docs={pkg.equipmentPhotos ?? []}
             inputId={`wd-photos-t${tranche}`}
             accept="image/*,.pdf"
-            readOnly={readOnly}
+            readOnly={!canEdit}
             applicantId={applicant.id}
             onUpload={(files) => handleMultiUpload("equipmentPhotos", files)}
             onRemove={(i) => handleRemoveMulti("equipmentPhotos", i)}

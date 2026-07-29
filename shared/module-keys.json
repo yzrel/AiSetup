@@ -1,0 +1,57 @@
+{
+  "publishGatedKeys": [
+    "tna2Document",
+    "tna2",
+    "rtecReport",
+    "conductRtec",
+    "approvalLetter",
+    "noticeOfApproval",
+    "lbpIntroduction",
+    "lbpIntroductionLetter"
+  ],
+  "staffOwnedModuleKeys": [
+    "tna2Document",
+    "rtecReport",
+    "conductRtec",
+    "approvalLetter",
+    "noticeOfApproval",
+    "lbpIntroduction",
+    "lbpIntroductionLetter",
+    "signedMoa",
+    "requirementStaffReview",
+    "landBank"
+  ],
+  "staffOnlyPatchKeys": [
+    "conduct-rtec",
+    "rtecReport",
+    "rtec",
+    "conductRtec",
+    "tna2Document",
+    "approvalLetter",
+    "noticeOfApproval",
+    "lbpIntroduction",
+    "lbpIntroductionLetter",
+    "signedMoa",
+    "landBank"
+  ],
+  "objectModuleKeys": [
+    "tna2Document",
+    "tna2",
+    "rtecReport",
+    "conductRtec",
+    "approvalLetter",
+    "noticeOfApproval",
+    "lbpIntroduction",
+    "lbpIntroductionLetter",
+    "signedMoa",
+    "requirementStaffReview",
+    "loiDocument",
+    "tna1",
+    "projectProposal",
+    "landBank",
+    "signedDocuments",
+    "procurement",
+    "refund",
+    "projectCloseOut"
+  ]
+}

@@ -84,6 +84,7 @@ class WorkflowGateServiceTest {
     void staffOnlyModuleWriteBlocksApplicant() {
         authenticateApplicant("app-1");
         assertThrows(AccessDeniedException.class, () -> service.assertStaffOnlyModuleWrite("approvalLetter"));
+        assertThrows(AccessDeniedException.class, () -> service.assertStaffOnlyModuleWrite("landBank"));
         assertDoesNotThrow(() -> service.assertStaffOnlyModuleWrite("tna1"));
     }
 }

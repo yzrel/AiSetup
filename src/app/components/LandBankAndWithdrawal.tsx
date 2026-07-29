@@ -2,24 +2,31 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import React, { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   Banknote,
   Building2,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Download,
   FileText,
   RefreshCw,
   Save,
   Send,
   Shield,
+  Upload,
   User,
 } from "lucide-react";
 import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
-import { ModuleWorkflowLayout } from "./ModuleWorkflowLayout";
+import {
+  ModuleWorkflowLayout,
+  ACTION_ROW,
+  type ModuleStep,
+} from "./ModuleWorkflowLayout";
 import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
 import { SignedDocumentUpload } from "./SignedDocumentUpload";
 import { LbpIntroductionLetterEditor } from "./LbpIntroductionLetterEditor";
@@ -31,7 +38,12 @@ import {
   notifyLandBankComplete,
   notifyLbpIntroductionPublished,
 } from "../utils/notificationHelpers";
-import { hasApprovalLetterAcknowledged } from "../utils/projectInformationSheet";
+import { getSignedMoa } from "../utils/approvalLetter";
+import {
+  getDisbursementPdcSummary,
+  hasApprovalLetterAcknowledged,
+  preparePdcsForDisbursement,
+} from "../utils/projectInformationSheet";
 import {
   downloadLbpIntroductionPdf,
   getLbpIntroductionForm,
@@ -57,15 +69,30 @@ import {
 } from "../utils/landBankWithdrawal";
 import { allowWhenDemo, gateOpen } from "../utils/demoMode";
 import { WithdrawalTranchePanel } from "./WithdrawalTranchePanel";
+import { hasPdcsRecordedForDisbursement } from "../utils/refundDelinquent";
 
-type SectionId = "introduction" | "account" | "withdrawal" | "authority";
+type StepId =
+  | "prerequisites"
+  | "introduction"
+  | "account"
+  | "withdrawal"
+  | "authority";
 type WithdrawalTrancheTab = 1 | 2;
 
-const SECTION_NAV: { id: SectionId; label: string }[] = [
-  { id: "introduction", label: "LBP Introduction" },
-  { id: "account", label: "Account Opening" },
-  { id: "withdrawal", label: "Withdrawal Request" },
-  { id: "authority", label: "Authority Letter" },
+const STEP_IDS: StepId[] = [
+  "prerequisites",
+  "introduction",
+  "account",
+  "withdrawal",
+  "authority",
+];
+
+const STEPS: ModuleStep[] = [
+  { id: "prerequisites", label: "MOA & PDCs", icon: <Upload className="w-4 h-4" /> },
+  { id: "introduction", label: "LBP Introduction", icon: <FileText className="w-4 h-4" /> },
+  { id: "account", label: "Account Opening", icon: <Building2 className="w-4 h-4" /> },
+  { id: "withdrawal", label: "Withdrawal Request", icon: <Send className="w-4 h-4" /> },
+  { id: "authority", label: "Authority Letter", icon: <Banknote className="w-4 h-4" /> },
 ];
 
 const ACCOUNT_REQUIREMENTS = [
@@ -89,31 +116,6 @@ function moduleCardHeader(icon: ReactNode, label: string) {
   );
 }
 
-function SectionHeader({
-  number,
-  title,
-  description,
-}: {
-  number: number;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mb-4">
-      <h2 className="text-lg font-bold text-gray-800">
-        {number > 0 ? (
-          <>
-            <span className="text-gray-400 font-normal">Module {number} —</span> {title}
-          </>
-        ) : (
-          title
-        )}
-      </h2>
-      <p className="text-gray-500 text-sm mt-1">{description}</p>
-    </div>
-  );
-}
-
 interface LandBankAndWithdrawalProps {
   user?: AuthUser | null;
   onSubmitSuccess?: () => void;
@@ -124,7 +126,7 @@ export function LandBankAndWithdrawal({
   onSubmitSuccess,
 }: LandBankAndWithdrawalProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
-  const [activeSection, setActiveSection] = useState<SectionId>("introduction");
+  const [step, setStep] = useState<StepId>("prerequisites");
   const [withdrawalTrancheTab, setWithdrawalTrancheTab] = useState<WithdrawalTrancheTab>(1);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [uploadDate, setUploadDate] = useState("");
@@ -133,8 +135,6 @@ export function LandBankAndWithdrawal({
   const [lbpSaveNotice, setLbpSaveNotice] = useState("");
   const [lbpPublishNotice, setLbpPublishNotice] = useState("");
   const [, setTick] = useState(0);
-
-  const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
 
@@ -164,6 +164,9 @@ export function LandBankAndWithdrawal({
   const lbpStored = applicant ? getLbpIntroductionStored(applicant) : null;
   const introPublished = hasLbpIntroductionPublished(applicant);
   const prerequisiteOk = hasLandBankPrerequisite(applicant);
+  const signedMoa = getSignedMoa(applicant);
+  const pdcSummary = getDisbursementPdcSummary(applicant);
+  const pdcsRecorded = hasPdcsRecordedForDisbursement(applicant);
   const accountReady = !!form?.accountSnapshot;
   const withdrawalUnlocked = gateOpen(accountReady);
   const withdrawalReady = form ? isWithdrawalRequestReady(form) : false;
@@ -171,6 +174,36 @@ export function LandBankAndWithdrawal({
   const tranche2Ready = form ? isTranche2Complete(form.tranches.second) : false;
   const authorityReady = !!(stored?.submitted || form?.authorityLetterGenerated);
   const uploadedBy = user?.email ?? "applicant";
+  const showStaffWorkflow = isStaff;
+  /** Clients browse every stage as a scrollable read-only stack. */
+  const sectionsToShow: StepId[] = showStaffWorkflow ? [step] : STEP_IDS;
+
+  const stepIndex = STEP_IDS.indexOf(step);
+
+  /** Highest step index the user may open (0-based). */
+  const maxReached = (() => {
+    if (stored?.submitted) return STEP_IDS.length - 1;
+    let reached = 0;
+    if (allowWhenDemo(prerequisiteOk)) reached = 1;
+    if (allowWhenDemo(prerequisiteOk && introPublished)) reached = 2;
+    if (allowWhenDemo(prerequisiteOk && introPublished && accountReady)) reached = 3;
+    if (
+      allowWhenDemo(
+        prerequisiteOk && introPublished && accountReady && withdrawalReady,
+      )
+    ) {
+      reached = 4;
+    }
+    return reached;
+  })();
+
+  const canGoNext = (() => {
+    if (step === "prerequisites") return allowWhenDemo(prerequisiteOk);
+    if (step === "introduction") return allowWhenDemo(introPublished);
+    if (step === "account") return allowWhenDemo(accountReady);
+    if (step === "withdrawal") return allowWhenDemo(withdrawalReady);
+    return false;
+  })();
 
   useEffect(() => {
     const notes = form?.accountSnapshot?.notes?.trim();
@@ -179,39 +212,41 @@ export function LandBankAndWithdrawal({
     }
   }, [form?.accountSnapshot?.notes, form?.accountSnapshot?.uploadedAt]);
 
-  const scrollToSection = (id: SectionId) => {
-    setActiveSection(id);
-    sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const goBack = () => {
+    setStep(STEP_IDS[Math.max(0, stepIndex - 1)]);
   };
 
-  const handleSaveDoc = (
-    field: "accountSnapshot",
-    doc: ModuleDocument,
-  ) => {
-    if (!applicant || !form) return;
+  const goNext = () => {
+    if (!canGoNext) return;
+    setStep(STEP_IDS[Math.min(STEP_IDS.length - 1, stepIndex + 1)]);
+  };
+
+  const handleSaveDoc = (field: "accountSnapshot", doc: ModuleDocument) => {
+    if (!showStaffWorkflow || !applicant || !form) return;
     saveLandBankDraft(applicant.id, { ...form, [field]: doc });
   };
 
   const handleRemoveDoc = (field: "accountSnapshot") => {
-    if (!applicant || !form) return;
+    if (!showStaffWorkflow || !applicant || !form) return;
     saveLandBankDraft(applicant.id, { ...form, [field]: null });
   };
 
   const handleLbpSave = () => {
-    if (!applicant || !lbpForm) return;
+    if (!showStaffWorkflow || !applicant || !lbpForm) return;
     saveLbpIntroductionDraft(applicant.id, lbpForm);
     setLbpSaveNotice("Draft saved.");
     setTimeout(() => setLbpSaveNotice(""), 3000);
   };
 
   const handleLbpChange = (next: LbpIntroductionLetterForm) => {
+    if (!showStaffWorkflow) return;
     setLbpForm(next);
     if (!applicant) return;
     saveLbpIntroductionDraft(applicant.id, next);
   };
 
   const handleLbpSync = () => {
-    if (!applicant) return;
+    if (!showStaffWorkflow || !applicant) return;
     const synced = syncLbpIntroductionFromUpstream(applicant, lbpForm);
     setLbpForm(synced);
     saveLbpIntroductionDraft(applicant.id, synced);
@@ -220,7 +255,7 @@ export function LandBankAndWithdrawal({
   };
 
   const handleLbpPublish = () => {
-    if (!applicant || !lbpForm) return;
+    if (!showStaffWorkflow || !applicant || !lbpForm) return;
     const errors = validateLbpIntroductionPublish(lbpForm);
     if (errors.length) {
       setSubmitErrors(errors);
@@ -253,11 +288,11 @@ export function LandBankAndWithdrawal({
     downloadLbpIntroductionPdf(applicant?.applicationId);
   };
 
-  const handleWithdrawalSubmit = () => {
-    if (!applicant || !form) return;
+  const handleWithdrawalContinue = () => {
+    if (!showStaffWorkflow || !applicant || !form) return;
     if (!allowWhenDemo(accountReady)) {
-      setSubmitErrors(["Upload your LandBank account snapshot in Module 11 first."]);
-      scrollToSection("account");
+      setSubmitErrors(["Upload the LandBank account snapshot first."]);
+      setStep("account");
       return;
     }
     if (!allowWhenDemo(withdrawalReady)) {
@@ -267,7 +302,7 @@ export function LandBankAndWithdrawal({
       return;
     }
     setSubmitErrors([]);
-    scrollToSection("authority");
+    setStep("authority");
   };
 
   const handleAuthorityDownload = () => {
@@ -282,7 +317,7 @@ export function LandBankAndWithdrawal({
           ? "Complete the 1st tranche letter request (signed letter, quotations, photos) before downloading authority."
           : "Upload the signed 2nd tranche letter request before downloading authority.",
       ]);
-      scrollToSection("withdrawal");
+      setStep("withdrawal");
       return;
     }
     downloadAuthorityLetterPdf(applicant, applicant.applicationId, authorityTranche);
@@ -290,6 +325,10 @@ export function LandBankAndWithdrawal({
   };
 
   const handleSubmit = () => {
+    if (!showStaffWorkflow) {
+      setSubmitErrors(["Only DOST staff can submit LandBank & withdrawal."]);
+      return;
+    }
     if (!applicant) {
       setSubmitErrors(["Select an applicant to continue."]);
       return;
@@ -320,23 +359,41 @@ export function LandBankAndWithdrawal({
 
   const alerts = (
     <>
+      {!applicant && showStaffWorkflow && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          Select an applicant to prepare LandBank documents.
+        </div>
+      )}
       {!prerequisiteOk && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <p>
-            Complete MOA signing day (Project Information Sheet) before opening a LandBank
-            account.{" "}
+            {showStaffWorkflow
+              ? "Signed MOA must be uploaded in Approval Letter, and staff must record post-dated checks (PDCs) on the MOA & PDCs step before LandBank enrollment."
+              : "DOST staff are completing your signed MOA and PDC prerequisites. You can view LandBank documents here once they are ready."}{" "}
             {!hasApprovalLetterAcknowledged(applicant) &&
+              showStaffWorkflow &&
               "Approval letter conforme is also required."}
           </p>
         </div>
       )}
-      {prerequisiteOk && !introPublished && !isStaff && (
+      {prerequisiteOk && !introPublished && !showStaffWorkflow && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <p>
-            Your PSTO is preparing the Letter of Introduction to Land Bank of the Philippines.
-            You can review the sections below; account upload unlocks when the letter is published.
+            Your PSTO is preparing the Letter of Introduction to Land Bank of the
+            Philippines. You will be notified when it is published and may download
+            it here.
+          </p>
+        </div>
+      )}
+      {!showStaffWorkflow && introPublished && !stored?.submitted && (
+        <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-900">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p>
+            LandBank account opening and withdrawal documents are prepared by DOST
+            staff. This page is view-only — download published letters and review
+            documents on file below.
           </p>
         </div>
       )}
@@ -360,57 +417,126 @@ export function LandBankAndWithdrawal({
     </>
   );
 
-  const sectionNav = (
-    <div className="flex flex-wrap gap-2 print:hidden">
-      {SECTION_NAV.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          onClick={() => scrollToSection(s.id)}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
-            activeSection === s.id
-              ? "bg-white text-[#0C2461]"
-              : "bg-white/15 text-white/80 hover:bg-white/25"
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
+  const landBankDocsReadOnly = !showStaffWorkflow || !!stored?.submitted;
 
   return (
     <ModuleWorkflowLayout
       title="LandBank & Withdrawal"
-      subtitle="Modules 11–13 — Account opening, withdrawal request, and authority letter"
+      subtitle={
+        showStaffWorkflow
+          ? "Staff prepare account opening, withdrawal request, and authority letter. Clients may view published documents only."
+          : "View published LandBank letters and documents prepared by DOST staff."
+      }
       user={user}
-      showStaffPicker={isStaff}
+      steps={showStaffWorkflow ? STEPS : undefined}
+      currentStep={showStaffWorkflow ? step : undefined}
+      maxReached={showStaffWorkflow ? maxReached : undefined}
+      onStepClick={
+        showStaffWorkflow ? (id) => setStep(id as StepId) : undefined
+      }
+      showStaffPicker={showStaffWorkflow}
       staffPickerLabel="Review applicant"
-      headerExtra={sectionNav}
       alerts={alerts}
       insetBody={false}
       maxWidth="5xl"
     >
-      {/* Letter of Introduction */}
-      <section
-        ref={(el) => {
-          sectionRefs.current.introduction = el;
-        }}
-        id="landbank-introduction"
-        className="scroll-mt-4"
-      >
-        <SectionHeader
-          number={0}
-          title="Letter of Introduction to Land Bank of the Philippines"
-          description="DOST publishes this letter so you can open a dedicated SETUP savings passbook account at LandBank."
-        />
+      <div className={showStaffWorkflow ? undefined : "space-y-5"}>
+      {sectionsToShow.includes("prerequisites") && (
+        <div className={`${MODULE_SHELL} border border-gray-200`}>
+          {moduleCardHeader(
+            <Upload className="w-4 h-4" />,
+            "Prerequisites — Signed MOA & PDCs",
+          )}
+          <div className="p-5 space-y-6">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <FileText className="w-4 h-4" /> Signed Memorandum of Agreement
+              </p>
+              {signedMoa ? (
+                <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  Signed MOA on file
+                  {signedMoa.moaSignedDate
+                    ? ` — ${new Date(signedMoa.moaSignedDate).toLocaleDateString("en-PH", {
+                        dateStyle: "long",
+                      })}`
+                    : ""}
+                  {signedMoa.fileName ? ` (${signedMoa.fileName})` : ""}. Uploaded in
+                  Approval Letter.
+                </p>
+              ) : showStaffWorkflow ? (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Upload the signed MOA in the Approval Letter module (Signed MOA
+                  step). LandBank does not accept MOA uploads here.
+                </p>
+              ) : (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Awaiting DOST staff to upload the signed MOA in Approval Letter after
+                  on-site signing.
+                </p>
+              )}
+            </div>
+
+            <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Banknote className="w-4 h-4" /> Pre-disbursement PDCs
+              </p>
+              <p className="text-xs text-gray-600">
+                Record post-dated checks covering the refund schedule (term + 1 for
+                technology transfer fee at 0.5%) before fund release.
+              </p>
+              <p className="text-xs text-gray-700">
+                Scheduled PDCs: <strong>{pdcSummary.count || "—"}</strong>
+                {pdcSummary.ttf !== "—" && (
+                  <> · TTF: <strong>{pdcSummary.ttf}</strong></>
+                )}
+                {pdcsRecorded && (
+                  <span className="ml-2 text-green-700 font-semibold">Recorded</span>
+                )}
+              </p>
+              {showStaffWorkflow && applicant && !pdcsRecorded && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    preparePdcsForDisbursement(applicant.id);
+                    reload();
+                  }}
+                  className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
+                  style={{ background: DOST_BLUE }}
+                >
+                  Generate &amp; record PDC schedule
+                </button>
+              )}
+              {!showStaffWorkflow && !pdcsRecorded && (
+                <p className="text-xs text-amber-800">
+                  DOST staff will generate and record your PDC schedule. You can
+                  review status here once recorded.
+                </p>
+              )}
+            </div>
+
+            {prerequisiteOk && (
+              <p className="text-sm text-emerald-700 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Prerequisites complete — continue to Letter of Introduction.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sectionsToShow.includes("introduction") && (
         <div className={`${MODULE_SHELL} border border-gray-200`}>
           {moduleCardHeader(
             <FileText className="w-4 h-4" />,
             "Letter of Introduction to LBP",
           )}
           <div className="p-5 space-y-4">
-            {isStaff && applicant && lbpForm && !introPublished && (
+            <p className="text-sm text-gray-500">
+              DOST publishes this letter so you can open a dedicated SETUP savings
+              passbook account at LandBank.
+            </p>
+            {showStaffWorkflow && applicant && lbpForm && !introPublished && (
               <>
                 <div className="flex flex-wrap gap-2 print:hidden">
                   <button
@@ -443,7 +569,7 @@ export function LandBankAndWithdrawal({
               </>
             )}
 
-            {isStaff && introPublished && lbpForm && (
+            {showStaffWorkflow && introPublished && lbpForm && (
               <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700 flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
                 Published
@@ -454,62 +580,61 @@ export function LandBankAndWithdrawal({
               </div>
             )}
 
-            {!isStaff && !introPublished && (
+            {!showStaffWorkflow && !introPublished && (
               <p className="text-sm text-gray-600">
-                DOST staff will publish the Letter of Introduction after MOA signing. Present
-                this letter at your LandBank branch when opening your SETUP savings passbook
+                DOST staff will publish the Letter of Introduction after the signed MOA
+                and PDCs are on file. When published, download it here and present it
+                at your LandBank branch when opening your SETUP savings passbook
                 account.
               </p>
             )}
 
-            {(gateOpen(introPublished) || isStaff) && lbpForm && (
+            {(gateOpen(introPublished) || showStaffWorkflow) && lbpForm && (
               <>
                 <LbpIntroductionLetterPreview
                   form={lbpForm}
                   applicationId={applicant?.applicationId}
-                  onPrint={gateOpen(introPublished) || isStaff ? handleLbpDownload : undefined}
-                  showToolbar={gateOpen(introPublished) || isStaff}
+                  onPrint={
+                    gateOpen(introPublished) || showStaffWorkflow
+                      ? handleLbpDownload
+                      : undefined
+                  }
+                  showToolbar={gateOpen(introPublished) || showStaffWorkflow}
                 />
                 <DocumentDeliveryPanel
                   applicant={applicant}
                   user={user}
                   moduleKey="landbank-withdrawal"
                   documentTitle="LBP Letter of Introduction"
+                  readOnly={landBankDocsReadOnly}
                 />
               </>
             )}
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Module 11 — Account Opening */}
-      <section
-        ref={(el) => {
-          sectionRefs.current.account = el;
-        }}
-        id="landbank-account"
-        className="scroll-mt-4"
-      >
-        <SectionHeader
-          number={11}
-          title="Opening of LandBank Savings Account"
-          description="Open a LandBank savings account dedicated to the SETUP project where financial assistance will be deposited and managed."
-        />
+      {sectionsToShow.includes("account") && (
         <div className={`${MODULE_SHELL} border border-gray-200`}>
           {moduleCardHeader(
             <Building2 className="w-4 h-4" />,
             "Opening of LandBank Savings Account",
           )}
           <div className="p-5 space-y-4">
+            <p className="text-sm text-gray-500">
+              {showStaffWorkflow
+                ? "Record the LandBank savings account dedicated to the SETUP project after the client opens it with the Letter of Introduction."
+                : "DOST staff record your LandBank account snapshot after you open the SETUP savings passbook. View the document on file below when available."}
+            </p>
             <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
               <div className="flex items-start gap-2 mb-3">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-sm font-semibold text-amber-800">System Advisory</p>
               </div>
               <p className="text-xs text-amber-700 mb-3">
-                Present the published Letter of Introduction when opening your SETUP savings
-                passbook account. The account will be held/tagged until DOST issues a letter of
-                authority for withdrawals.
+                Present the published Letter of Introduction when opening your SETUP
+                savings passbook account. The account will be held/tagged until DOST
+                issues a letter of authority for withdrawals.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <ul className="space-y-1.5">
@@ -529,7 +654,9 @@ export function LandBankAndWithdrawal({
                   <div className="w-16 h-16 bg-green-600 rounded-xl flex items-center justify-center shadow">
                     <Building2 className="w-9 h-9 text-white" />
                   </div>
-                  <p className="font-bold text-green-700 text-sm tracking-wide">LANDBANK</p>
+                  <p className="font-bold text-green-700 text-sm tracking-wide">
+                    LANDBANK
+                  </p>
                   <p className="text-xs text-green-600">Land Bank of the Philippines</p>
                 </div>
               </div>
@@ -539,8 +666,9 @@ export function LandBankAndWithdrawal({
               <div className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-600">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <p>
-                  Account snapshot upload is locked until the Letter of Introduction is
-                  published.
+                  {showStaffWorkflow
+                    ? "Account snapshot upload is locked until the Letter of Introduction is published."
+                    : "Account documents appear here after DOST staff publish the Letter of Introduction and record your account snapshot."}
                 </p>
               </div>
             )}
@@ -550,51 +678,54 @@ export function LandBankAndWithdrawal({
                 label="LandBank account snapshot"
                 document={form.accountSnapshot}
                 signedDate={uploadDate}
-                onSignedDateChange={setUploadDate}
+                onSignedDateChange={(date) => {
+                  if (!showStaffWorkflow) return;
+                  setUploadDate(date);
+                  if (form.accountSnapshot) {
+                    handleSaveDoc("accountSnapshot", {
+                      ...form.accountSnapshot,
+                      notes: date || undefined,
+                    });
+                  }
+                }}
                 onUpload={(doc) =>
                   handleSaveDoc("accountSnapshot", { ...doc, notes: uploadDate })
                 }
                 onRemove={() => handleRemoveDoc("accountSnapshot")}
                 uploadedBy={uploadedBy}
-                readOnly={stored?.submitted}
+                readOnly={landBankDocsReadOnly}
                 dateLabel="Account opened on"
                 applicantId={applicant.id}
                 moduleKey="landBank"
               />
             )}
-
             {accountReady && (
               <div className="flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                 <Shield className="w-3.5 h-3.5" />
-                LandBank account verified — proceed to withdrawal request below
+                LandBank account verified — proceed to withdrawal request
               </div>
             )}
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Module 12 — Withdrawal Request */}
-      <section
-        ref={(el) => {
-          sectionRefs.current.withdrawal = el;
-        }}
-        id="landbank-withdrawal"
-        className="scroll-mt-4"
-      >
-        <SectionHeader
-          number={12}
-          title="Letter Request for Withdrawal"
-          description="Generate and process Letter Requests for Withdrawal for the 1st and 2nd tranches using equipment from the project proposal budgetary requirement."
-        />
+      {sectionsToShow.includes("withdrawal") && (
         <div className={`${MODULE_SHELL} border border-gray-200`}>
           {moduleCardHeader(
             <FileText className="w-4 h-4" />,
             "Letter Request for Withdrawal",
           )}
           <div className="p-5 space-y-5">
+            <p className="text-sm text-gray-500">
+              {showStaffWorkflow
+                ? "Generate and process Letter Requests for Withdrawal for the 1st and 2nd tranches using equipment from the project proposal budgetary requirement."
+                : "Review withdrawal letter packages prepared by DOST staff for each tranche."}
+            </p>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-                <span className="text-sm font-semibold text-gray-700">Project Overview</span>
+                <span className="text-sm font-semibold text-gray-700">
+                  Project Overview
+                </span>
               </div>
               <div className="p-4 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -647,7 +778,9 @@ export function LandBankAndWithdrawal({
                     </div>
                   ) : (
                     <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-                      Complete Module 11 account snapshot first
+                      {showStaffWorkflow
+                        ? "Complete account snapshot first"
+                        : "Awaiting staff to record account snapshot"}
                     </div>
                   )}
                 </div>
@@ -689,8 +822,8 @@ export function LandBankAndWithdrawal({
                   user={user}
                   form={form}
                   tranche={withdrawalTrancheTab}
-                  readOnly={!!stored?.submitted || !withdrawalUnlocked}
-                  isStaff={isStaff}
+                  readOnly={landBankDocsReadOnly || !withdrawalUnlocked}
+                  isStaff={showStaffWorkflow}
                 />
 
                 <div>
@@ -698,22 +831,23 @@ export function LandBankAndWithdrawal({
                   <textarea
                     rows={2}
                     value={form.withdrawalRemarks}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (!showStaffWorkflow || stored?.submitted) return;
                       saveLandBankDraft(applicant.id, {
                         ...form,
                         withdrawalRemarks: e.target.value,
-                      })
-                    }
-                    disabled={!!stored?.submitted || !withdrawalUnlocked}
+                      });
+                    }}
+                    disabled={landBankDocsReadOnly || !withdrawalUnlocked}
                     placeholder="Additional remarks for withdrawal request..."
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none disabled:opacity-60"
                   />
                 </div>
 
-                {!stored?.submitted && (
+                {showStaffWorkflow && !stored?.submitted && (
                   <button
                     type="button"
-                    onClick={handleWithdrawalSubmit}
+                    onClick={handleWithdrawalContinue}
                     disabled={!allowWhenDemo(withdrawalReady && accountReady)}
                     className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
                   >
@@ -725,21 +859,9 @@ export function LandBankAndWithdrawal({
             )}
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Module 13 — Authority Letter */}
-      <section
-        ref={(el) => {
-          sectionRefs.current.authority = el;
-        }}
-        id="landbank-authority"
-        className="scroll-mt-4"
-      >
-        <SectionHeader
-          number={13}
-          title="Authority Letter to Withdraw"
-          description="Download the authority letter and present it at your LandBank branch with valid IDs to process the withdrawal."
-        />
+      {sectionsToShow.includes("authority") && (
         <div className={`${MODULE_SHELL} border border-gray-200`}>
           {moduleCardHeader(
             <Banknote className="w-4 h-4" />,
@@ -747,15 +869,26 @@ export function LandBankAndWithdrawal({
           )}
           <div className="p-5 space-y-4">
             <p className="text-sm text-gray-600">
-              After your withdrawal request is approved, download the authority letter and
-              present it at your LandBank branch with valid government-issued IDs.
+              {showStaffWorkflow
+                ? "After the withdrawal request is complete, generate the authority letter for the selected tranche."
+                : "When DOST staff complete your withdrawal documents, download the authority letter and present it at your LandBank branch with valid government-issued IDs."}
             </p>
 
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  { n: 1 as const, label: "1st Tranche", ready: tranche1Ready, amount: overview.tranche1Amount },
-                  { n: 2 as const, label: "2nd Tranche", ready: tranche2Ready, amount: overview.tranche2Amount },
+                  {
+                    n: 1 as const,
+                    label: "1st Tranche",
+                    ready: tranche1Ready,
+                    amount: overview.tranche1Amount,
+                  },
+                  {
+                    n: 2 as const,
+                    label: "2nd Tranche",
+                    ready: tranche2Ready,
+                    amount: overview.tranche2Amount,
+                  },
                 ] as const
               ).map((tab) => (
                 <button
@@ -782,9 +915,21 @@ export function LandBankAndWithdrawal({
                 <p className="font-semibold text-sm text-gray-700">Withdrawal Summary</p>
                 <div className="space-y-2 text-xs">
                   {[
-                    { icon: <User className="w-3.5 h-3.5" />, label: "Account Holder", value: overview.accountHolder },
-                    { icon: <Building2 className="w-3.5 h-3.5" />, label: "Enterprise", value: overview.enterpriseName },
-                    { icon: <Banknote className="w-3.5 h-3.5" />, label: "Approved Amount", value: overview.approvedAmount },
+                    {
+                      icon: <User className="w-3.5 h-3.5" />,
+                      label: "Account Holder",
+                      value: overview.accountHolder,
+                    },
+                    {
+                      icon: <Building2 className="w-3.5 h-3.5" />,
+                      label: "Enterprise",
+                      value: overview.enterpriseName,
+                    },
+                    {
+                      icon: <Banknote className="w-3.5 h-3.5" />,
+                      label: "Approved Amount",
+                      value: overview.approvedAmount,
+                    },
                     {
                       icon: <Banknote className="w-3.5 h-3.5" />,
                       label: `Amount to Withdraw (T${authorityTranche})`,
@@ -812,8 +957,8 @@ export function LandBankAndWithdrawal({
                     Download Authority Letter
                   </p>
                   <p className="text-xs text-gray-500 mb-4">
-                    Download the authority letter for the selected tranche and present it to
-                    your nearest LandBank branch together with valid IDs.
+                    Download the authority letter for the selected tranche and present it
+                    to your nearest LandBank branch together with valid IDs.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -852,29 +997,67 @@ export function LandBankAndWithdrawal({
               <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-green-700">
-                  Your Authority Letter to Withdraw has been generated and is ready for download.
-                  Present this letter at any LandBank branch along with valid government-issued
-                  IDs.
+                  Your Authority Letter to Withdraw has been generated and is ready for
+                  download. Present this letter at any LandBank branch along with valid
+                  government-issued IDs.
+                </p>
+              </div>
+            )}
+
+            {showStaffWorkflow && !stored?.submitted && onSubmitSuccess && (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={
+                  !allowWhenDemo(
+                    prerequisiteOk && introPublished && accountReady && withdrawalReady,
+                  )
+                }
+                className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: DOST_BLUE }}
+              >
+                Submit &amp; Continue to Procurement &amp; Liquidation →
+              </button>
+            )}
+            {!showStaffWorkflow && stored?.submitted && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-green-700">
+                  LandBank &amp; withdrawal is complete. You may proceed to procurement
+                  and liquidation when unlocked.
                 </p>
               </div>
             )}
           </div>
         </div>
-      </section>
+      )}
 
-      {!stored?.submitted && onSubmitSuccess && (
-        <div className="print:hidden pt-4 border-t border-gray-200">
+      {showStaffWorkflow && (
+      <div className={`${ACTION_ROW} flex-wrap pt-2 border-t border-gray-100 print:hidden`}>
+        <button
+          type="button"
+          onClick={goBack}
+          disabled={stepIndex === 0}
+          className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </button>
+        {step !== "authority" && (
           <button
             type="button"
-            onClick={handleSubmit}
-            disabled={!allowWhenDemo(prerequisiteOk && introPublished && accountReady && withdrawalReady)}
-            className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50"
+            onClick={goNext}
+            disabled={!canGoNext}
+            className="flex items-center gap-1 px-3 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-40"
             style={{ background: DOST_BLUE }}
           >
-            Submit &amp; Continue to Procurement &amp; Liquidation →
+            Next
+            <ChevronRight className="w-4 h-4" />
           </button>
-        </div>
+        )}
+      </div>
       )}
+      </div>
     </ModuleWorkflowLayout>
   );
 }

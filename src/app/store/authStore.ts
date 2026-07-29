@@ -82,7 +82,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "client-files": ["admin", "agent", "provincial-director"],
   "account-management": ["admin", "agent", "provincial-director"],
   "my-account": ["client", "applicant"],
-  "sent-emails": ["admin", "agent", "provincial-director", "client", "applicant"],
+  "sent-emails": ["admin", "agent", "provincial-director"],
 };
 
 const DASHBOARD_TAB_PERMISSIONS: Record<DashboardTab, UserRole[]> = {

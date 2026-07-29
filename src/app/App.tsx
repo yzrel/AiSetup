@@ -13,7 +13,6 @@ import { TNA2TechnicalReport } from "./components/TNA2TechnicalReport";
 import { ProjectProposal } from "./components/ProjectProposal";
 import { ConductOfRTEC } from "./components/ConductOfRTEC";
 import { ApprovalLetter } from "./components/ApprovalLetter";
-import { ProjectInformationSheet } from "./components/ProjectInformationSheet";
 import { LandBankAndWithdrawal } from "./components/LandBankAndWithdrawal";
 import { ProcurementAndLiquidation } from "./components/ProcurementAndLiquidation";
 import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
@@ -34,6 +33,7 @@ import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage, loadLogin
 import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
+import { notificationStore } from "./store/notificationStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
 import {
@@ -168,11 +168,6 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         label: "Dashboard",
         icon: LayoutDashboard,
       },
-      {
-        id: "sent-emails" as ViewType,
-        label: "Sent Emails",
-        icon: Mail,
-      },
     ],
   },
   {
@@ -242,12 +237,6 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         icon: FileText,
         module: "Module 9",
       },
-      {
-        id: "project-information-sheet" as ViewType,
-        label: "Project Information Sheet",
-        icon: ClipboardCheck,
-        module: "Module 10",
-      },
     ],
   },
   {
@@ -257,7 +246,7 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "landbank-withdrawal" as ViewType,
         label: "LandBank & Withdrawal",
         icon: Upload,
-        module: "Mod 11–13",
+        module: "Module 10+",
       },
       {
         id: "procurement-liquidation" as ViewType,
@@ -297,6 +286,12 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "client-files" as ViewType,
         label: "Client Files",
         icon: FolderOpen,
+        module: "Admin",
+      },
+      {
+        id: "sent-emails" as ViewType,
+        label: "Sent Emails",
+        icon: Mail,
         module: "Admin",
       },
       {
@@ -354,12 +349,12 @@ const viewTitles: Record<
     subtitle: "Module 9 — Notice of Approval",
   },
   "project-information-sheet": {
-    title: "Project Information Sheet",
-    subtitle: "Module 10 — Pre-Implementation PIS, MOA Signing & Semester PIS",
+    title: "LandBank & Withdrawal",
+    subtitle: "Module 10+ — Account & Fund Access",
   },
   "landbank-withdrawal": {
     title: "LandBank & Withdrawal",
-    subtitle: "Modules 11–13 — Account & Fund Access",
+    subtitle: "Module 10+ — Account & Fund Access",
   },
   "procurement-liquidation": {
     title: "Procurement & Liquidation",
@@ -572,6 +567,7 @@ export default function App() {
     setAuthReady(true);
     // Pull persisted applicants when a session token is present
     void applicantStore.hydrateFromBackend(!!restored).then(() => {
+      notificationStore.resyncFromApplicants();
       const nextView = resolveViewForUser(restored);
       if (restored && authStore.isClientRole(restored.role) && nextView) {
         setCurrentViewState(nextView);
@@ -642,8 +638,10 @@ export default function App() {
   }, [user, currentView]);
 
   const setCurrentView = (view: ViewType) => {
-    setCurrentViewState(view);
-    saveCurrentView(view);
+    const resolved =
+      view === "project-information-sheet" ? "landbank-withdrawal" : view;
+    setCurrentViewState(resolved);
+    saveCurrentView(resolved);
   };
 
   if (!authReady) {
@@ -1034,13 +1032,8 @@ export default function App() {
                   onSubmitSuccess={() => advanceFrom("approval-letter")}
                 />
               )}
-              {currentView === "project-information-sheet" && (
-                <ProjectInformationSheet
-                  user={user}
-                  onSubmitSuccess={() => advanceFrom("project-information-sheet")}
-                />
-              )}
-              {currentView === "landbank-withdrawal" && (
+              {(currentView === "landbank-withdrawal" ||
+                currentView === "project-information-sheet") && (
                 <LandBankAndWithdrawal
                   user={user}
                   onSubmitSuccess={() => advanceFrom("landbank-withdrawal")}

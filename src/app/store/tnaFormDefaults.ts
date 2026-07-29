@@ -105,6 +105,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     employeesFemale: "",
     employeesIndirect: "",
     employeesContract: "",
+    genderInvolvement: "",
     enterpriseBackground:
       loiBackground ||
       String(md.companyDescription ?? "") ||
@@ -152,12 +153,22 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     productionPlanFileData: String(
       (md.productionPlanDocument as ModuleDocument | undefined)?.dataUrl ?? "",
     ),
+    productionPlanFileId: String(
+      (md.productionPlanDocument as ModuleDocument | undefined)?.fileId ?? "",
+    ),
+    productionPlanFileMime: String(
+      (md.productionPlanDocument as ModuleDocument | undefined)?.mimeType ?? "",
+    ),
     plantLayoutFileName: "",
     plantLayoutFileData: "",
+    plantLayoutFileId: "",
+    plantLayoutFileMime: "",
     processFlowMode: "text" as "text" | "attachment",
     processFlow: "",
     processFlowFileName: "",
     processFlowFileData: "",
+    processFlowFileId: "",
+    processFlowFileMime: "",
     inventorySystem: "",
     maintenanceProgram: "",
     cgmpHaccp: "",

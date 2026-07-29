@@ -9,8 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "applicant_module_data")
@@ -25,8 +23,8 @@ public class ApplicantModuleData {
     @Column(name = "module_key", nullable = false, length = 128)
     private String moduleKey;
 
-    @JdbcTypeCode(SqlTypes.CLOB)
-    @Column(name = "data_json")
+    /** Integer.MAX_VALUE → LONGTEXT (MySQL) / CLOB (H2), matching Flyway vendor scripts. */
+    @Column(name = "data_json", length = Integer.MAX_VALUE)
     private String dataJson;
 
     private Boolean published;

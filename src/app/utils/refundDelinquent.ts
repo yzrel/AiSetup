@@ -30,23 +30,19 @@ import { getProjectProposalForm } from "./projectProposal";
 
 import { hasProcurementComplete } from "./procurementLiquidation";
 
-import { formatCurrency } from "./landBankWithdrawal";
+import { formatCurrency, getLandBankForm, getLandBankStored, WITHDRAWAL_SIGNED_KEY } from "./landBankWithdrawal";
 
 import { resolveApplicantProvince } from "./provincialOffice";
 
 import { isDemoModeActive } from "./demoMode";
-
 import {
-
   computeRefundSchedule,
-
   parseTermYears,
-
   REFUND_GRACE_MONTHS,
-
 } from "./refundSchedule";
-
-
+import { normalizeFormModuleStored } from "./normalizeCriticalModuleData";
+import { sumWithdrawalEquipment } from "./withdrawalRequestLetter";
+import { getSignedDocument } from "./documentDelivery";
 
 const MODULE_KEY = "refund";
 
@@ -83,11 +79,9 @@ export function emptyRefundForm(): RefundDelinquentForm {
 
 
 export function getRefundStored(applicant: Applicant | null): RefundDelinquentStored | null {
-
   if (!applicant?.moduleData?.[MODULE_KEY]) return null;
-
-  return applicant.moduleData[MODULE_KEY] as RefundDelinquentStored;
-
+  const normalized = normalizeFormModuleStored(applicant.moduleData[MODULE_KEY]);
+  return (normalized as RefundDelinquentStored | undefined) ?? null;
 }
 
 
@@ -721,30 +715,69 @@ export function getPaymentMonitorRecords(
 
 
 
+/**
+ * Live LandBank tranche totals by signed/release month (millions ₱).
+ * Returns [] when no signed/release amounts — callers use sample fallback.
+ * Prefer `buildFundDisbursementChartData` from dashboardMetrics for new UI.
+ */
 export function getFundDisbursementChartData(applicants: Applicant[]) {
+  if (applicants.length === 0) return [];
 
-  const months = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
+  const now = new Date();
+  const buckets: { year: number; month: number; label: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: d.toLocaleString("en-US", { month: "short" }),
+    });
+  }
 
-  const counts = months.map((month, i) => {
+  const amounts = buckets.map(() => 0);
+  let any = false;
 
-    const count = applicants.filter((a) => {
+  for (const applicant of applicants) {
+    const form = getLandBankForm(applicant);
+    const stored = getLandBankStored(applicant);
+    const packages = [
+      {
+        amount: sumWithdrawalEquipment(form.tranches.first.equipment),
+        signedKey: WITHDRAWAL_SIGNED_KEY.first,
+        letter: form.tranches.first.signedLetter,
+      },
+      {
+        amount: sumWithdrawalEquipment(form.tranches.second.equipment),
+        signedKey: WITHDRAWAL_SIGNED_KEY.second,
+        letter: form.tranches.second.signedLetter,
+      },
+    ] as const;
 
-      const submitted = getRefundStored(a)?.submittedAt;
+    for (const pkg of packages) {
+      if (pkg.amount <= 0) continue;
+      const signed = getSignedDocument(applicant, pkg.signedKey);
+      const rawDate =
+        signed?.uploadedAt ||
+        pkg.letter?.uploadedAt ||
+        stored?.submittedAt ||
+        stored?.updatedAt;
+      if (!rawDate) continue;
+      const date = new Date(rawDate);
+      if (Number.isNaN(date.getTime())) continue;
+      buckets.forEach((b, i) => {
+        if (date.getFullYear() === b.year && date.getMonth() === b.month) {
+          amounts[i] += pkg.amount;
+          any = true;
+        }
+      });
+    }
+  }
 
-      if (!submitted) return i < 3;
-
-      const d = new Date(submitted);
-
-      return d.getMonth() === (i + 9) % 12;
-
-    }).length;
-
-    return { month, amount: count * 1.2 + 5 };
-
-  });
-
-  return counts;
-
+  if (!any) return [];
+  return buckets.map((b, i) => ({
+    month: b.label,
+    amount: Math.round((amounts[i] / 1_000_000) * 100) / 100,
+  }));
 }
 
 

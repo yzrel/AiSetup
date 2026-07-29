@@ -28,7 +28,7 @@ import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
-import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, ACTION_ROW } from "./moduleTheme";
+import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, ACTION_ROW, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { api, ApiError } from "../api/client";
 import type {
@@ -64,6 +64,7 @@ import { getPublishedTna2 } from "../utils/tnaForm02";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { StoredFileImage } from "./StoredFilePreview";
+import { isImageFile } from "../utils/storedFilePreview";
 import {
   AiAssistNotice,
   AiAssistStringList,
@@ -106,7 +107,7 @@ const sectionTitle =
 function StepHeader({ current }: { current: StepId }) {
   const currentIdx = STEPS.findIndex((s) => s.id === current);
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+    <div className={MODULE_STEP_SCROLL}>
       {STEPS.map((s, i) => {
         const done = i < currentIdx;
         const active = i === currentIdx;
@@ -199,9 +200,6 @@ function AttachmentUpload({
                       }
                     : undefined,
                 );
-                // #region agent log
-                fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a4e6b2'},body:JSON.stringify({sessionId:'a4e6b2',runId:'pre-fix',hypothesisId:'H-C',location:'ProjectProposal.tsx:onUpload',message:'attachment uploaded',data:{kind,fileName:doc.fileName,fileId:doc.fileId??null,hasDataUrl:!!doc.dataUrl,applicantId:applicantId??null},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 onUpload({
                   id: uid(),
                   kind,
@@ -220,7 +218,7 @@ function AttachmentUpload({
         {attachment ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-[#0C2461]">📎 {attachment.fileName}</p>
-            {attachment.mimeType.startsWith("image/") && (
+            {isImageFile(attachment.mimeType, attachment.fileName, attachment.dataUrl) && (
               <StoredFileImage
                 applicantId={applicantId}
                 file={attachment}
@@ -228,12 +226,6 @@ function AttachmentUpload({
                 className="max-h-32 mx-auto rounded border"
               />
             )}
-            {/* #region agent log */}
-            {(() => {
-              fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a4e6b2'},body:JSON.stringify({sessionId:'a4e6b2',runId:'post-fix',hypothesisId:'H-B',location:'ProjectProposal.tsx:AttachmentUpload',message:'attachment preview state',data:{kind,fileName:attachment.fileName,mimeType:attachment.mimeType,hasDataUrl:!!attachment.dataUrl,dataUrlLen:attachment.dataUrl?.length??0,fileId:attachment.fileId??null,applicantId:applicantId??null,canResolveViaFileId:!!(applicantId&&attachment.fileId)},timestamp:Date.now()})}).catch(()=>{});
-              return null;
-            })()}
-            {/* #endregion */}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1 text-gray-500">
@@ -587,6 +579,16 @@ export function ProjectProposal({
                   onChange={(compensation) => patchForm({ compensation })}
                   minHeight="min-h-[80px]"
                   {...ai("compensation")}
+                />
+              </div>
+              <div className="mt-4">
+                <AiAssistTextarea
+                  label="Gender and Development (GAD) — Participation and Involvement"
+                  value={form.genderInvolvement}
+                  onChange={(genderInvolvement) => patchForm({ genderInvolvement })}
+                  minHeight="min-h-[100px]"
+                  hint="Describe how women and men participate in the enterprise and benefit from the SETUP intervention. AI Assist uses your Male/Female employee counts; do not invent headcounts."
+                  {...ai("genderInvolvement")}
                 />
               </div>
             </div>

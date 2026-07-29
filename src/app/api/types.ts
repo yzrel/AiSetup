@@ -30,6 +30,44 @@ export interface ApiAuthResponse {
   };
 }
 
+export type ApiStaffRole = "admin" | "agent" | "provincial-director";
+
+export interface ApiStaffUser {
+  id: string;
+  email: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  role: ApiStaffRole;
+  enterpriseName?: string;
+  officeId?: string;
+  assignedProvinces?: string[];
+  enabled: boolean;
+}
+
+export interface ApiCreateStaffRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  role: ApiStaffRole;
+  officeId?: string;
+  assignedProvinces?: string[];
+  enterpriseName?: string;
+}
+
+export interface ApiUpdateStaffRequest {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  role?: ApiStaffRole;
+  officeId?: string;
+  assignedProvinces?: string[];
+  enterpriseName?: string;
+  enabled?: boolean;
+}
+
 export interface ApiRegisterRequest {
   email: string;
   password: string;
@@ -411,6 +449,7 @@ export interface ProjectProposalForm {
   quickRatioTable: string[][];
   roiTable: string[][];
   financialAnalysis: string;
+  genderInvolvement: string;
   financialConstraintsNote: string;
   budgetItems: ProjectProposalBudgetRow[];
   refundSchedule: string[][];
@@ -452,6 +491,7 @@ export interface ProjectProposalDocumentResponse {
   expectedOutputBullets?: string[];
   wasteManagement?: string;
   financialAnalysis?: string;
+  genderInvolvement?: string;
   riskRows?: ProjectProposalRiskRow[];
 }
 
@@ -859,6 +899,19 @@ export interface ProcurementDocument {
   fileId?: string;
 }
 
+/** Staff-managed liquidation record (title/period + attachments). */
+export interface LiquidationEntry {
+  id: string;
+  title: string;
+  amount: string;
+  date: string;
+  remarks: string;
+  attachments: ProcurementDocument[];
+  createdAt: string;
+  createdBy?: string;
+  updatedAt?: string;
+}
+
 export interface ProcurementStaffReview {
   reviewerName: string;
   reviewedAt: string;
@@ -869,7 +922,12 @@ export interface ProcurementStaffReview {
 export interface ProcurementForm {
   documents: ProcurementDocument[];
   items: ProcurementLineItem[];
-  liquidationDocuments: ProcurementDocument[];
+  /** Staff-managed multi-entry liquidations. */
+  liquidations: LiquidationEntry[];
+  /**
+   * @deprecated Prefer `liquidations[].attachments`. Kept for normalize-on-read of older records.
+   */
+  liquidationDocuments?: ProcurementDocument[];
   staffReview?: ProcurementStaffReview;
   untagged: boolean;
   untaggedAt?: string;

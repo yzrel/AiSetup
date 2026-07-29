@@ -18,6 +18,7 @@ import type {
 import { getPublishedTna2 } from "./tnaForm02";
 import { yearFromDateEstablished } from "./applicantPrefill";
 import { isDemoModeActive } from "./demoMode";
+import { normalizeProjectProposalStored } from "./normalizeCriticalModuleData";
 
 export const PROPOSAL_ATTACHMENT_LABELS: Record<
   ProjectProposalAttachmentKind,
@@ -126,6 +127,7 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
       ["3", "", "", ""],
     ],
     financialAnalysis: "",
+    genderInvolvement: "",
     financialConstraintsNote: "Please refer to the attached financial reports.",
     budgetItems: [emptyBudgetRow()],
     refundSchedule: buildDefaultRefundSchedule("", ""),
@@ -373,6 +375,7 @@ export function buildProjectProposalDraft(
     marketStrategies: [""],
     wasteManagement: "",
     financialAnalysis: "",
+    genderInvolvement: String(form.genderInvolvement ?? ""),
     riskRows: [
       {
         id: rowId(),
@@ -448,7 +451,10 @@ export function getProjectProposalStored(
   applicant: Applicant | null,
 ): ProjectProposalStored | null {
   if (!applicant?.moduleData?.projectProposal) return null;
-  return applicant.moduleData.projectProposal as ProjectProposalStored;
+  const normalized = normalizeProjectProposalStored(
+    applicant.moduleData.projectProposal,
+  );
+  return (normalized as ProjectProposalStored | undefined) ?? null;
 }
 
 export function getProjectProposalForm(
@@ -536,6 +542,7 @@ export function applyGeneratedDocument(
         : form.expectedOutputBullets,
     wasteManagement: document.wasteManagement ?? form.wasteManagement,
     financialAnalysis: document.financialAnalysis ?? form.financialAnalysis,
+    genderInvolvement: document.genderInvolvement ?? form.genderInvolvement,
     riskRows:
       document.riskRows?.length ? document.riskRows : form.riskRows,
   };
@@ -644,6 +651,9 @@ export function buildLocalProjectProposalDocument(
     financialAnalysis:
       f.financialAnalysis ||
       "Financial capacity will be supported by attached statements and projected cash flows from improved operations.",
+    genderInvolvement:
+      f.genderInvolvement ||
+      `${req.enterpriseName || f.proponentName || "The enterprise"} employs ${f.employeesMale || "0"} male and ${f.employeesFemale || "0"} female workers in its operations. Women and men participate in production and related functions, and the SETUP intervention is intended to benefit the workforce equitably through skills upgrading and improved working conditions, consistent with DOST Gender and Development (GAD) principles. The enterprise affirms equal opportunity regardless of sex or gender in hiring, training, and advancement.`,
     riskRows: f.riskRows,
   };
 }
@@ -670,7 +680,8 @@ export type ProposalAiField =
   | "interventionImpact"
   | "expectedOutputBullets"
   | "wasteManagement"
-  | "financialAnalysis";
+  | "financialAnalysis"
+  | "genderInvolvement";
 
 export function extractProposalFieldSuggestion(
   doc: ProjectProposalDocumentResponse,
@@ -731,6 +742,8 @@ export function extractProposalFieldSuggestion(
       return doc.wasteManagement ?? form.wasteManagement;
     case "financialAnalysis":
       return doc.financialAnalysis ?? form.financialAnalysis;
+    case "genderInvolvement":
+      return doc.genderInvolvement ?? form.genderInvolvement;
     default:
       return "";
   }

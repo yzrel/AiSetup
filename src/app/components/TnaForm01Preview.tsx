@@ -8,7 +8,7 @@ import { TnaForm01Document } from "./tnaForm01/TnaForm01Document";
 import { printTnaForm01Pdf } from "../utils/tnaForm01Print";
 
 interface TnaForm01PreviewProps {
-  applicant: { applicationId?: string } | null;
+  applicant: { id?: string; applicationId?: string } | null;
   form: Record<string, unknown>;
   tables: {
     rawMaterials: string[][];
@@ -58,7 +58,11 @@ export function TnaForm01Preview({
         id="tna-form-01-preview"
         className="tna-form-document overflow-x-auto flex justify-center py-4 px-2 sm:px-4 bg-gray-100 print:bg-white print:py-0 print:px-0"
       >
-        <TnaForm01Document form={form} tables={tables} />
+        <TnaForm01Document
+          form={form}
+          tables={tables}
+          applicantId={applicant?.id}
+        />
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import type {
   Tna2ScopeItem,
   Tna2StoredDocument,
 } from "../api/types";
+import { normalizeTna2DocumentStored } from "./normalizeCriticalModuleData";
 
 function str(value: unknown): string {
   return value == null ? "" : String(value).trim();
@@ -555,11 +556,17 @@ export function saveTna2Draft(
 
 export function getPublishedTna2(applicant: Applicant | null): Tna2StoredDocument | null {
   if (!applicant?.moduleData?.tna2Document) return null;
-  const doc = applicant.moduleData.tna2Document as Tna2StoredDocument;
-  return doc.published ? doc : null;
+  const doc = normalizeTna2DocumentStored(applicant.moduleData.tna2Document) as
+    | Tna2StoredDocument
+    | undefined;
+  return doc?.published ? doc : null;
 }
 
 export function getTna2Draft(applicant: Applicant | null): Tna2StoredDocument | null {
   if (!applicant?.moduleData?.tna2Document) return null;
-  return applicant.moduleData.tna2Document as Tna2StoredDocument;
+  return (
+    (normalizeTna2DocumentStored(applicant.moduleData.tna2Document) as
+      | Tna2StoredDocument
+      | undefined) ?? null
+  );
 }

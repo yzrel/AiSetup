@@ -128,6 +128,16 @@ export function ProjectInformationSheet({
   const handleSaveDraft = () => {
     if (!applicant || !draft) return;
     savePrePisDraft(applicant.id, draft);
+    // Flush signed Pre-PIS date/notes when a scan (or pending upload) is present.
+    const fileMeta = pendingPrePisFile ?? signedPrePis;
+    if (fileMeta?.fileName) {
+      saveSignedPrePis(applicant.id, {
+        ...fileMeta,
+        prePisSignedDate,
+        notes: prePisNotes || undefined,
+      });
+      setPendingPrePisFile(null);
+    }
     setSaveNotice("Pre-PIS draft saved.");
     setTimeout(() => setSaveNotice(""), 3000);
   };
@@ -288,11 +298,11 @@ export function ProjectInformationSheet({
     >
       {applicant && draft && gateOpen(ackReady) && (
         <>
-          <div className="flex gap-2 border-b border-gray-100 pb-3 overflow-x-auto scrollbar-hide">
+          <div className="flex flex-nowrap gap-2 border-b border-gray-100 pb-3 overflow-x-auto scrollbar-subtle-light">
             <button
               type="button"
               onClick={() => setTab("signing-day")}
-              className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
+              className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
                 tab === "signing-day"
                   ? "text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -304,7 +314,7 @@ export function ProjectInformationSheet({
             <button
               type="button"
               onClick={() => setTab("ongoing")}
-              className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
+              className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
                 tab === "ongoing"
                   ? "text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -371,6 +381,7 @@ export function ProjectInformationSheet({
                         <SignedMoaUploadPanel
                           applicant={applicant}
                           uploadedBy={uploadedBy}
+                          user={user}
                           isAcknowledged={approvalAcknowledged}
                           onSaved={() => setMoaRefresh((n) => n + 1)}
                         />
@@ -415,9 +426,29 @@ export function ProjectInformationSheet({
                           label="Signed Pre-PIS"
                           document={pendingPrePisFile ?? signedPrePis}
                           signedDate={prePisSignedDate}
-                          onSignedDateChange={setPrePisSignedDate}
+                          onSignedDateChange={(date) => {
+                            setPrePisSignedDate(date);
+                            if (signedPrePis?.fileName) {
+                              saveSignedPrePis(applicant.id, {
+                                ...signedPrePis,
+                                ...(pendingPrePisFile ?? {}),
+                                prePisSignedDate: date,
+                                notes: prePisNotes || undefined,
+                              });
+                            }
+                          }}
                           notes={prePisNotes}
-                          onNotesChange={setPrePisNotes}
+                          onNotesChange={(notes) => {
+                            setPrePisNotes(notes);
+                            if (signedPrePis?.fileName) {
+                              saveSignedPrePis(applicant.id, {
+                                ...signedPrePis,
+                                ...(pendingPrePisFile ?? {}),
+                                prePisSignedDate,
+                                notes: notes || undefined,
+                              });
+                            }
+                          }}
                           onUpload={(doc) => setPendingPrePisFile(doc)}
                           onRemove={() => {
                             if (!isStaff) return;

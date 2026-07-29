@@ -3,85 +3,54 @@
  */
 package ph.gov.dost.aisetup.workflow;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Server-side MODULE_ORDER mirrored from the FE applicantStore.
+ * Server-side MODULE_ORDER and staff/publish key lists loaded from
+ * {@code shared/module-order.json} and {@code shared/module-keys.json}.
  */
 public final class ModuleOrder {
 
-    public static final List<String> ORDER = List.of(
-            "prescreening",
-            "registration",
-            "letter-of-intent",
-            "tna1",
-            "tna2",
-            "project-proposal",
-            "requirements",
-            "conduct-rtec",
-            "approval-letter",
-            "project-information-sheet",
-            "landbank-withdrawal",
-            "procurement-liquidation",
-            "refund-delinquent",
-            "project-closeout",
-            "completed");
+    public static final List<String> ORDER;
+    public static final List<String> PUBLISH_GATED_KEYS;
+    public static final List<String> STAFF_OWNED_MODULE_KEYS;
+    private static final Set<String> STAFF_ONLY_MODULE_KEYS;
 
-    /**
-     * Staff-draft keys hidden from applicants until {@code published == true}.
-     * Shared by visibility filtering.
-     */
-    public static final List<String> PUBLISH_GATED_KEYS = List.of(
-            "tna2Document",
-            "tna2",
-            "rtecReport",
-            "conductRtec",
-            "approvalLetter",
-            "noticeOfApproval",
-            "lbpIntroduction",
-            "lbpIntroductionLetter");
+    static {
+        ORDER = SharedJson.stringList(SharedJson.readTree("shared/module-order.json"));
+        JsonNode keys = SharedJson.readTree("shared/module-keys.json");
+        PUBLISH_GATED_KEYS = SharedJson.stringList(keys.get("publishGatedKeys"));
+        STAFF_OWNED_MODULE_KEYS = SharedJson.stringList(keys.get("staffOwnedModuleKeys"));
+        STAFF_ONLY_MODULE_KEYS = Set.copyOf(new HashSet<>(SharedJson.stringList(keys.get("staffOnlyPatchKeys"))));
+        if (ORDER.isEmpty()) {
+            throw new IllegalStateException("shared/module-order.json produced an empty MODULE_ORDER");
+        }
+    }
 
-    /**
-     * Keys applicants may never invent or overwrite on full PUT / module PATCH.
-     * (Excludes {@code tna2} form data which applicants still edit.)
-     * Note: {@code signedDocuments} is client-writable — wet-ink LOI / proposal /
-     * TNA / withdrawal uploads belong to the applicant (or staff acting for them).
-     * Staff-only attestation remains {@code signedMoa}.
-     */
-    public static final List<String> STAFF_OWNED_MODULE_KEYS = List.of(
-            "tna2Document",
-            "rtecReport",
-            "conductRtec",
-            "approvalLetter",
-            "noticeOfApproval",
-            "lbpIntroduction",
-            "lbpIntroductionLetter",
-            "signedMoa",
-            "requirementStaffReview");
-
-    /** Module keys applicants must not PATCH (staff owns these documents). */
-    private static final Set<String> STAFF_ONLY_MODULE_KEYS = Set.of(
-            "conduct-rtec",
-            "rtecReport",
-            "rtec",
-            "conductRtec",
-            "tna2Document",
-            "approvalLetter",
-            "noticeOfApproval",
-            "lbpIntroduction",
-            "lbpIntroductionLetter",
-            "signedMoa");
     private ModuleOrder() {}
 
+    /** Legacy PIS module removed from the critical path; treat as LandBank. */
+    public static final String LEGACY_PIS_MODULE = "project-information-sheet";
+
+    public static String normalize(String module) {
+        if (LEGACY_PIS_MODULE.equals(module)) {
+            return "landbank-withdrawal";
+        }
+        return module;
+    }
+
     public static int indexOf(String module) {
-        int idx = ORDER.indexOf(module);
+        int idx = ORDER.indexOf(normalize(module));
         return idx < 0 ? 0 : idx;
     }
 
     public static boolean isKnown(String module) {
-        return module != null && ORDER.contains(module);
+        String normalized = normalize(module);
+        return normalized != null && ORDER.contains(normalized);
     }
 
     /** Staff-only module keys that applicants must not mutate via module PATCH. */

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.AnthropicClient;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
+import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.loi.ProvincialOfficeResolver;
 import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
 import ph.gov.dost.aisetup.tna1.dto.Tna1TablesDto;
@@ -139,6 +140,7 @@ public class Tna2GenerationService {
                 Write a complete formal report matching the official SUMMARY OF ASSESSMENT structure. Do NOT invent specific costs, equipment models, or metrics not supported by the data.
                 Base findings on TNA Form 01 production problems, equipment inventory, and project description.
                 Fill findingsByArea subsection content from TNA Form 01 fields (plan5Years/plan10Years, employees, purchasingSystem, safetyMeasures, trainingDevelopment, marketing/promotionalStrategies, productionPlan, wasteManagement, processFlow).
+                %s
 
                 Return ONLY a valid JSON object with this exact structure (no markdown):
                 {
@@ -231,7 +233,7 @@ public class Tna2GenerationService {
 
                 Applicant and TNA Form 01 data:
                 %s
-                """.formatted(facts);
+                """.formatted(GadLanguagePolicy.WRITING_RULES, facts);
     }
 
     private Tna2DocumentResponse buildTemplateDocument(Tna2GenerationRequest r) {

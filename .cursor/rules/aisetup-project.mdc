@@ -1,5 +1,5 @@
 ---
-description: Core aiSETUP project conventions (stack, domain, responsive UI, gates, print/AI)
+description: Core aiSETUP project conventions (stack, domain, responsive UI, gates, print/AI, data integrity)
 alwaysApply: true
 ---
 
@@ -10,15 +10,24 @@ alwaysApply: true
 - Digitize **DOST SETUP** for **Region XII (SOCCSKSARGEN)**; case IDs like `LOI-YYYY-######`.
 - Modules follow `MODULE_ORDER`; use `formatFormMention` / `SETUP_FORMS` for titles — do **not** renumber forms vs the regional pack without an explicit DOST XII decision.
 - Qualification: `applicant.qualified` gates Enterprise+ SETUP. Unqualified clients who pick a recommended program get a **program LOI** (no seed-fund budget paragraph, no refund commitment) — not a SETUP LOI.
-- Keep FE/BE Region XII office maps in sync (`provincialOffice.ts` ↔ `ProvincialOfficeResolver`).
+- Keep Region XII offices / module order / staff-publish key lists in sync via **repo-root `shared/*.json`** (`module-order.json`, `module-keys.json`, `region12-offices.json`). FE imports via `@shared`; BE loads from classpath (Maven copies `shared/` → `target/classes/shared/`). Do **not** re-hardcode duplicate maps in FE and BE.
 
 ## Stack / architecture
 
-- **FE:** React 18 + Vite + Tailwind 4 + shadcn under `src/app/components/ui/`; path alias `@` → `src`.
+- **FE:** React 18 + Vite + Tailwind 4 + shadcn under `src/app/components/ui/`; path alias `@` → `src`, `@shared` → `shared`.
 - **BE:** Spring Boot 3.5 / Java 17, package `ph.gov.dost.aisetup.*`, servlet context-path `/api`, Spring Security + JWT.
-- Feature screen in `components/` + domain logic in `utils/` + case payload in `applicant.moduleData`; **normalize on read** for legacy shapes.
+- Feature screen in `components/` + domain logic in `utils/` + case payload in `applicant.moduleData`; **normalize on read** for legacy shapes (`normalizeModuleDataForHydrate` / per-key normalizers in `normalizeCriticalModuleData.ts`).
 - State: existing singleton stores + `subscribe` / `aisetup.*` storage keys. Do not introduce Redux.
 - Staff modules: `ModuleWorkflowLayout` + DOST blues from `moduleTheme.ts`.
+
+## Data integrity / moduleData
+
+- `moduleData` stays a **JSON map** (legacy-tolerant) + per-module rows; integrity is **typed islands**, not a full relational rewrite.
+- Known object keys live in `shared/module-keys.json` → `objectModuleKeys`. BE `ModuleDataIntegrityService` rejects non-objects / bad `published` / `form` / `submitted` on full PUT and module PATCH.
+- Applicant write responses must run through `ClientVisibilityService.forViewer` (no unpublished staff docs on save/header/patch).
+- Once `published: true`, do **not** demote to false via stale full PUT/PATCH (no unpublish API).
+- Prefer **header + per-module PATCH** for sync; whole-blob PUT is cold-create / legacy dual-write only.
+- Full applicant save uses `@Valid ApplicantSaveRequest` (`applicationId` required; `currentModule` must be known via `ModuleOrder`).
 
 ## Responsive UI (required)
 
@@ -49,5 +58,7 @@ alwaysApply: true
 - Auth is **server-side**: Spring Security + JWT Bearer on `/api/**` (except `/health`, `/auth/login`, `/auth/register`).
 - FE must send `Authorization: Bearer <token>` via `api/client.ts`; do not revive hardcoded client-only login checks.
 - Demo unlock is disabled when `VITE_APP_ENV=production` or `aisetup.demo-mode-enabled=false` (prod profile).
+- Unhandled exceptions: `GlobalExceptionHandler` catch-all returns JSON `{"error":"Unexpected server error"}` (never leak stack messages).
+- CI: `.github/workflows/ci.yml` runs FE typecheck/lint/test and BE `mvn test` — keep green.
 - Do not revive the disabled client community portal without a product decision.
 - Never commit secrets (`ANTHROPIC_API_KEY`, `JWT_SECRET`, `.env`).

@@ -39,6 +39,10 @@ export const MODULE_INSET = "px-4 sm:px-6 pb-4 sm:pb-6";
 export const MODULE_INNER_BODY =
   "border border-gray-200 rounded-xl overflow-hidden bg-white";
 
+/** Horizontal step / tab strip under the blue module header */
+export const MODULE_STEP_SCROLL =
+  "flex flex-nowrap items-center gap-1 overflow-x-auto pb-1 scrollbar-subtle";
+
 /** Staff applicant picker container on the blue header */
 export const MODULE_HEADER_PICKER =
   "mt-4 p-3 bg-white/10 rounded-xl border border-white/20";

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.dto.AiFieldSuggestionRequest;
 import ph.gov.dost.aisetup.ai.dto.AiFieldSuggestionResponse;
+import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -99,13 +100,20 @@ public class AiFieldSuggestionService {
                 - %s
                 - Reference the enterprise name and business sector where appropriate
                 - Avoid marketing hype, vague claims, or filler phrases
+                %s
 
                 Applicant and module data (JSON):
                 %s
 
                 Return ONLY valid JSON with no markdown fences or commentary:
                 %s
-                """.formatted(spec.label(), spec.formSection(), spec.styleNote(), contextJson, outputShape);
+                """.formatted(
+                spec.label(),
+                spec.formSection(),
+                spec.styleNote(),
+                GadLanguagePolicy.WRITING_RULES,
+                contextJson,
+                outputShape);
     }
 
     private List<String> readBullets(JsonNode node) {
@@ -133,11 +141,33 @@ public class AiFieldSuggestionService {
         String project = str(ctx, "projectDescription", "technology upgrading");
         String outcome = str(ctx, "expectedOutcome", "improved productivity and product quality");
 
+        if ("genderInvolvement".equals(field)) {
+            response.setText(GadLanguagePolicy.involvementTemplate(
+                    enterprise,
+                    empCount(ctx, "employeesMale"),
+                    empCount(ctx, "employeesFemale")));
+            return;
+        }
+
         if (spec.bullets()) {
             response.setBullets(templateBullets(field, enterprise, sector, nature, products, project, outcome));
         } else {
             response.setText(templateText(field, enterprise, sector, nature, msme, products, project, outcome));
         }
+    }
+
+    private static String empCount(Map<String, Object> ctx, String key) {
+        String top = str(ctx, key, "");
+        if (!top.isBlank()) return top;
+        Object form = ctx.get("form");
+        if (form instanceof Map<?, ?> map) {
+            Object v = map.get(key);
+            if (v != null) {
+                String s = String.valueOf(v).trim();
+                if (!s.isBlank()) return s;
+            }
+        }
+        return "";
     }
 
     private String templateText(String field, String enterprise, String sector, String nature,
@@ -368,7 +398,9 @@ public class AiFieldSuggestionService {
                 entry("wasteManagement", "Waste Management", "Environment", false,
                         "Write 4-5 sentences on waste types, segregation, disposal, and compliance."),
                 entry("financialAnalysis", "Financial Analysis", "Financial", false,
-                        "Write 4-5 sentences on financial capacity, ratios, and ability to co-fund and repay.")
+                        "Write 4-5 sentences on financial capacity, ratios, and ability to co-fund and repay."),
+                entry("genderInvolvement", "Gender and Development (GAD) — Participation and Involvement", "Management / GAD", false,
+                        "Write one short paragraph (3-5 sentences) describing how women and men participate in the enterprise and how the SETUP intervention benefits them equitably. Use ONLY the provided Male/Female employee counts; do not invent roles, ratios, or headcounts. Use gender-fair language per DOST GAD guidelines.")
         ));
 
         reg.put("loi", Map.ofEntries(
@@ -394,7 +426,9 @@ public class AiFieldSuggestionService {
                 entry("marketingProblemsConcerns", "Marketing Problems and Concerns", "TNA Form 01", false,
                         "Write 4-5 sentences on marketing challenges."),
                 entry("otherConcerns", "Other Concerns", "TNA Form 01", false,
-                        "Write 3-4 sentences on other relevant concerns.")
+                        "Write 3-4 sentences on other relevant concerns."),
+                entry("genderInvolvement", "Gender and Development (GAD) — Participation and Involvement", "TNA Form 01", false,
+                        "Write one short paragraph (3-5 sentences) describing how women and men participate in the enterprise and how SETUP assistance will benefit them equitably. Use ONLY the provided Male/Female employee counts; do not invent roles, ratios, or headcounts. Use gender-fair language per DOST GAD guidelines.")
         ));
 
         reg.put("tna2", Map.ofEntries(

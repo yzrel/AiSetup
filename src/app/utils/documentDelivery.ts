@@ -20,6 +20,7 @@ import {
 } from "./provincialOffice";
 import type { SignedDocumentValue } from "../components/SignedDocumentUpload";
 import { syncModuleKeyToBackendBestEffort } from "./applicantPersistence";
+import { normalizeSignedDocumentsMap } from "./normalizeCriticalModuleData";
 
 const REGIONAL_RECORDS_EMAIL = "records@region12.dost.gov.ph";
 
@@ -65,7 +66,7 @@ export function sendPrintableToDost(options: {
     kind: "printable",
     to,
     cc: applicant.emailAddress ? [applicant.emailAddress] : [],
-    subject: `[aiSETUP] ${documentTitle} — ${applicant.enterpriseName} (${applicant.applicationId})`,
+    subject: `AiSetup ${documentTitle} — ${applicant.enterpriseName} (${applicant.applicationId})`,
     body:
       `Good day,\n\n` +
       `Please find attached the ${documentTitle} of ${applicant.enterpriseName} ` +
@@ -122,7 +123,7 @@ export function sendPrintableToClient(options: {
     kind: "printable",
     to: clientEmail ? [clientEmail] : dostTo,
     cc: clientEmail ? dostTo : [],
-    subject: `[aiSETUP] Please sign — ${documentTitle} (${applicant.applicationId})`,
+    subject: `AiSetup Please sign — ${documentTitle} (${applicant.applicationId})`,
     body:
       `Good day ${applicant.applicantName},\n\n` +
       `Please find attached the ${documentTitle} for ${applicant.enterpriseName} ` +
@@ -163,10 +164,9 @@ export function sendPrintableToClient(options: {
 export function getSignedDocuments(
   applicant: Applicant | null,
 ): Record<string, SignedDocumentRecord> {
-  return (applicant?.moduleData?.signedDocuments ?? {}) as Record<
-    string,
-    SignedDocumentRecord
-  >;
+  return normalizeSignedDocumentsMap(
+    applicant?.moduleData?.signedDocuments,
+  ) as unknown as Record<string, SignedDocumentRecord>;
 }
 
 export function getSignedDocument(
@@ -216,6 +216,7 @@ export function saveSignedDocumentWithReceipts(options: {
     fileName: document.fileName,
     mimeType: document.mimeType,
     dataUrl: document.dataUrl,
+    fileId: document.fileId,
   };
 
   // Receipt to the client — proof of delivery of the signed document.
@@ -223,7 +224,7 @@ export function saveSignedDocumentWithReceipts(options: {
     kind: "signed-receipt",
     to: applicant.emailAddress ? [applicant.emailAddress] : [],
     cc: [],
-    subject: `[aiSETUP] Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
+    subject: `AiSetup Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
     body:
       `Good day ${applicant.applicantName},\n\n` +
       `This confirms that the signed ${documentTitle} for ${applicant.enterpriseName} ` +
@@ -243,7 +244,7 @@ export function saveSignedDocumentWithReceipts(options: {
     kind: "signed-receipt",
     to,
     cc: [],
-    subject: `[aiSETUP] Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
+    subject: `AiSetup Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
     body:
       `Good day,\n\n` +
       `The signed ${documentTitle} of ${applicant.enterpriseName} ` +
@@ -276,6 +277,77 @@ export function saveSignedDocumentWithReceipts(options: {
   });
 }
 
+/**
+ * Emails signed MOA receipts to the client and DOST PSTO / regional records
+ * via the in-app outbox. Metadata stays under approvalLetter.signedMoa —
+ * this helper only sends mail (does not rewrite signedDocuments).
+ */
+export function sendSignedMoaReceiptsToDost(options: {
+  applicant: Applicant;
+  user: AuthUser | null;
+  document: SignedDocumentRecord;
+}): void {
+  const { applicant, user, document } = options;
+  const documentTitle = "Memorandum of Agreement (MOA)";
+  const moduleKey = "signedMoa";
+  const { to, officeId } = dostRecipients(applicant);
+  const uploadedByStaff = !!user && authStore.isStaff(user.role);
+  const uploaderLabel = uploadedByStaff
+    ? `DOST staff (${user?.email})`
+    : `${applicant.applicantName} (${applicant.emailAddress})`;
+  const attachment: OutboxAttachment = {
+    fileName: document.fileName || `${documentTitle}.pdf`,
+    mimeType: document.mimeType || "application/pdf",
+    dataUrl: document.dataUrl,
+    fileId: document.fileId,
+  };
+
+  emailOutboxStore.send({
+    kind: "signed-receipt",
+    to: applicant.emailAddress ? [applicant.emailAddress] : [],
+    cc: [],
+    subject: `AiSetup Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
+    body:
+      `Good day ${applicant.applicantName},\n\n` +
+      `This confirms that the signed ${documentTitle} for ${applicant.enterpriseName} ` +
+      `(Application ID: ${applicant.applicationId}) was uploaded by ${uploaderLabel} ` +
+      `on ${new Date(document.uploadedAt).toLocaleString("en-PH")} and is now on file.\n\n` +
+      (document.signedDate
+        ? `MOA signed date: ${document.signedDate}.\n`
+        : "") +
+      (document.notes ? `Notes: ${document.notes}\n` : "") +
+      `\nKeep this email as your receipt / proof of delivery.\n\n` +
+      `Respectfully,\naiSETUP — DOST Region XII`,
+    attachments: document.fileName || document.dataUrl ? [attachment] : [],
+    sentBy: user?.email ?? applicant.emailAddress,
+    applicantId: applicant.id,
+    officeId,
+    module: moduleKey,
+  });
+
+  emailOutboxStore.send({
+    kind: "signed-receipt",
+    to,
+    cc: [],
+    subject: `AiSetup Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
+    body:
+      `Good day,\n\n` +
+      `The signed ${documentTitle} of ${applicant.enterpriseName} ` +
+      `(Application ID: ${applicant.applicationId}) was uploaded by ${uploaderLabel}. ` +
+      `The document is attached for your records.\n\n` +
+      (document.signedDate
+        ? `MOA signed date: ${document.signedDate}.\n`
+        : "") +
+      (document.notes ? `Notes: ${document.notes}\n` : "") +
+      `\nRespectfully,\naiSETUP — DOST Region XII`,
+    attachments: document.fileName || document.dataUrl ? [attachment] : [],
+    sentBy: user?.email ?? applicant.emailAddress,
+    applicantId: applicant.id,
+    officeId,
+    module: moduleKey,
+  });
+}
+
 /** Removes a stored signed document for a module. */
 export function removeSignedDocument(
   applicant: Applicant,
@@ -292,4 +364,33 @@ export function removeSignedDocument(
   });
   const updated = applicantStore.getById(applicant.id) ?? current;
   syncModuleKeyToBackendBestEffort(updated, "signedDocuments", docs);
+}
+
+/**
+ * Updates signed-document metadata (e.g. signedDate) without re-sending
+ * receipt emails. No-op unless a file is already on file for the module key.
+ */
+export function updateSignedDocumentMeta(
+  applicant: Applicant,
+  moduleKey: string,
+  patch: Partial<Pick<SignedDocumentRecord, "signedDate" | "notes">>,
+): SignedDocumentRecord | null {
+  const current = applicantStore.getById(applicant.id) ?? applicant;
+  const existing = getSignedDocument(current, moduleKey);
+  if (!existing?.fileName?.trim()) return null;
+
+  const next: SignedDocumentRecord = { ...existing, ...patch };
+  const nextSignedDocuments = {
+    ...getSignedDocuments(current),
+    [moduleKey]: next,
+  };
+  applicantStore.update(applicant.id, {
+    moduleData: {
+      ...current.moduleData,
+      signedDocuments: nextSignedDocuments,
+    },
+  });
+  const updated = applicantStore.getById(applicant.id) ?? current;
+  syncModuleKeyToBackendBestEffort(updated, "signedDocuments", nextSignedDocuments);
+  return next;
 }

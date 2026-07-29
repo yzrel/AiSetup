@@ -12,6 +12,7 @@ import type {
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
 import { printProjectProposalPdf } from "../utils/projectProposalPrint";
 import { StoredFileImage } from "./StoredFilePreview";
+import { isImageFile } from "../utils/storedFilePreview";
 import {
   PreviewFieldRow,
   PreviewSection,
@@ -112,7 +113,11 @@ function AttachmentFigure({
       </div>
     );
   }
-  const isImage = attachment.mimeType.startsWith("image/");
+  const isImage = isImageFile(
+    attachment.mimeType,
+    attachment.fileName,
+    attachment.dataUrl,
+  );
   return (
     <div className="space-y-1">
       <p className="text-xs font-semibold text-gray-600">{label}</p>
@@ -266,6 +271,12 @@ export function ProjectProposalPreview({
           <div className="mt-3">
             <p className="text-xs font-bold text-gray-500 uppercase mb-1">B.3 Compensation</p>
             <Narrative text={form.compensation} />
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-1">
+              Gender and Development (GAD) — Participation and Involvement
+            </p>
+            <Narrative text={narrative("genderInvolvement", "genderInvolvement")} />
           </div>
         </Section>
 

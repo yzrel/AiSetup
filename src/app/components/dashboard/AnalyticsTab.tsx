@@ -1,15 +1,21 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Staff analytics tab: monthly trends, fund disbursement, quarter comparison.
+ * Staff analytics tab: monthly trends, fund disbursement, quarter comparison —
+ * live from scoped applicants with sample fallbacks when empty.
  */
 
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,15 +23,78 @@ import {
 } from "recharts";
 import { ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { AuthUser } from "../../store/authStore";
-import { getApplicantsForStaff } from "../../utils/provincialOffice";
-import { getFundDisbursementChartData } from "../../utils/refundDelinquent";
-import { monthlyData } from "./dashboardData";
+import {
+  DASHBOARD_PROVINCE_ALL,
+  filterApplicantsByProvince,
+  getApplicantsForStaff,
+} from "../../utils/provincialOffice";
+import {
+  buildFundDisbursementChartData,
+  getMonthlyTrendsData,
+  getOwnerSexBreakdown,
+  getQuarterComparisonData,
+  getRegistrantGenderBreakdown,
+  getWorkforceGenderBreakdown,
+  getWorkforceGenderTotals,
+  withLiveOrFallback,
+} from "../../utils/dashboardMetrics";
+import {
+  FALLBACK_FUND_DISBURSEMENT,
+  FALLBACK_OWNER_SEX,
+  FALLBACK_QUARTER_COMPARISON,
+  FALLBACK_REGISTRANT_GENDER,
+  FALLBACK_WORKFORCE_GENDER,
+  monthlyData,
+} from "./dashboardData";
 import { SectionTitle } from "./widgets";
 
-export function AnalyticsTab({ user }: { user: AuthUser }) {
-  const fundChartData = getFundDisbursementChartData(
+export function AnalyticsTab({
+  user,
+  provinceFilter = DASHBOARD_PROVINCE_ALL,
+}: {
+  user: AuthUser;
+  provinceFilter?: string;
+}) {
+  const scoped = filterApplicantsByProvince(
     getApplicantsForStaff(user),
+    provinceFilter,
   );
+  const monthlyTrends = withLiveOrFallback(
+    getMonthlyTrendsData(scoped),
+    monthlyData,
+  );
+  const fundChartData = withLiveOrFallback(
+    buildFundDisbursementChartData(scoped),
+    FALLBACK_FUND_DISBURSEMENT,
+  );
+  const quarterRows = withLiveOrFallback(
+    getQuarterComparisonData(scoped),
+    FALLBACK_QUARTER_COMPARISON,
+  );
+  const registrantGender = withLiveOrFallback(
+    getRegistrantGenderBreakdown(scoped),
+    FALLBACK_REGISTRANT_GENDER,
+  );
+  const ownerSex = withLiveOrFallback(
+    getOwnerSexBreakdown(scoped),
+    FALLBACK_OWNER_SEX,
+  );
+  const workforceGender = withLiveOrFallback(
+    getWorkforceGenderBreakdown(scoped),
+    FALLBACK_WORKFORCE_GENDER,
+  );
+  const workforceTotals = getWorkforceGenderTotals(scoped);
+  const workforceDisplay =
+    workforceTotals.total > 0
+      ? workforceTotals
+      : {
+          male:
+            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Male")?.count ?? 0,
+          female:
+            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Female")?.count ??
+            0,
+          total: FALLBACK_WORKFORCE_GENDER.reduce((s, r) => s + r.count, 0),
+        };
 
   return (
     <div className="space-y-5">
@@ -37,7 +106,7 @@ export function AnalyticsTab({ user }: { user: AuthUser }) {
           </SectionTitle>
           <div className="h-48 sm:h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={monthlyData}>
+            <LineChart data={monthlyTrends}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="#f3f4f6"
@@ -160,60 +229,194 @@ export function AnalyticsTab({ user }: { user: AuthUser }) {
         </div>
       </div>
 
+      {/* GAD / sex-disaggregated statistics */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <SectionTitle sub="DOST GAD — sex-disaggregated registrant, owner, and workforce data">
+          Gender and Development (GAD) Statistics
+        </SectionTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Workforce Male
+            </p>
+            <p className="text-xl font-bold text-[#0C2461] mt-0.5">
+              {workforceDisplay.male.toLocaleString("en-PH")}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Workforce Female
+            </p>
+            <p className="text-xl font-bold text-[#00AEEF] mt-0.5">
+              {workforceDisplay.female.toLocaleString("en-PH")}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Jobs (M+F)
+            </p>
+            <p className="text-xl font-bold text-slate-800 mt-0.5">
+              {workforceDisplay.total.toLocaleString("en-PH")}
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">
+              Registrant gender
+            </p>
+            <div className="h-44 sm:h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={registrantGender}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    {registrantGender.map((row) => (
+                      <Cell key={row.name} fill={row.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: "none",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      fontSize: 12,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center mt-1">
+              {registrantGender.map((row) => (
+                <div
+                  key={row.name}
+                  className="flex items-center gap-1.5 text-[11px] text-gray-500"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: row.fill }}
+                  />
+                  {row.name} ({row.count})
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">
+              Enterprise owner sex (PIS)
+            </p>
+            <div className="h-44 sm:h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={ownerSex}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    {ownerSex.map((row) => (
+                      <Cell key={row.name} fill={row.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: "none",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      fontSize: 12,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center mt-1">
+              {ownerSex.map((row) => (
+                <div
+                  key={row.name}
+                  className="flex items-center gap-1.5 text-[11px] text-gray-500"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: row.fill }}
+                  />
+                  {row.name} ({row.count})
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">
+              Workforce employment (M / F)
+            </p>
+            <div className="h-44 sm:h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={workforceGender} barSize={36}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#f3f4f6"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: "#9ca3af" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "#9ca3af" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: "none",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      fontSize: 12,
+                    }}
+                  />
+                  <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                    {workforceGender.map((row) => (
+                      <Cell key={row.name} fill={row.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Comparison table */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
         <SectionTitle sub="Current vs previous quarter">
           Quarter Comparison
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {[
-            {
-              label: "New Applications",
-              q3: 68,
-              q4: 83,
-              unit: "",
-            },
-            {
-              label: "Approvals",
-              q3: 14,
-              q4: 18,
-              unit: "",
-            },
-            {
-              label: "Funds Released",
-              q3: 29.4,
-              q4: 42.0,
-              unit: "₱",
-              suffix: "M",
-            },
-            {
-              label: "Avg. Processing Days",
-              q3: 48,
-              q4: 42,
-              unit: "",
-              lower: true,
-            },
-            {
-              label: "Rejection Rate",
-              q3: 28,
-              q4: 22,
-              unit: "",
-              suffix: "%",
-              lower: true,
-            },
-            {
-              label: "Enterprises Graduated",
-              q3: 71,
-              q4: 94,
-              unit: "",
-            },
-          ].map((item) => {
+          {quarterRows.map((item) => {
             const improved = item.lower
-              ? item.q4 < item.q3
-              : item.q4 > item.q3;
-            const pct = Math.round(
-              Math.abs((item.q4 - item.q3) / item.q3) * 100,
-            );
+              ? item.current < item.previous
+              : item.current > item.previous;
+            const pct =
+              item.previous === 0
+                ? item.current === 0
+                  ? 0
+                  : 100
+                : Math.round(
+                    Math.abs((item.current - item.previous) / item.previous) *
+                      100,
+                  );
             return (
               <div
                 key={item.label}
@@ -225,24 +428,24 @@ export function AnalyticsTab({ user }: { user: AuthUser }) {
                 <div className="flex items-end justify-center gap-4">
                   <div>
                     <p className="text-[10px] text-gray-400 mb-0.5">
-                      Q3
+                      {item.previousLabel}
                     </p>
                     <p className="text-lg font-bold text-gray-400">
                       {item.unit}
-                      {item.q3}
+                      {item.previous}
                       {item.suffix}
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300 mb-2" />
                   <div>
                     <p className="text-[10px] text-gray-400 mb-0.5">
-                      Q4
+                      {item.currentLabel}
                     </p>
                     <p
                       className={`text-xl font-black ${improved ? "text-emerald-600" : "text-red-500"}`}
                     >
                       {item.unit}
-                      {item.q4}
+                      {item.current}
                       {item.suffix}
                     </p>
                   </div>

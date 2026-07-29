@@ -6,7 +6,7 @@
  */
 
 import { useRef } from "react";
-import { moduleStepPillClass } from "../moduleTheme";
+import { moduleStepPillClass, MODULE_STEP_SCROLL } from "../moduleTheme";
 import { readAndUploadModuleDocument } from "../../utils/readFileAsDataUrl";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
@@ -48,7 +48,7 @@ export function StepHeader({
 }) {
   const currentIdx = STEPS.findIndex(s => s.id === current);
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1">
+    <div className={MODULE_STEP_SCROLL}>
       {STEPS.map((s, i) => {
         const done   = i < currentIdx;
         const active = i === currentIdx;
@@ -155,7 +155,11 @@ export function FileAttachmentField({
   label: string;
   accept?: string;
   fileName: string;
-  onFile: (name: string, dataUrl: string) => void;
+  onFile: (
+    name: string,
+    dataUrl: string,
+    meta?: { fileId?: string; mimeType?: string },
+  ) => void;
   hint?: string;
   /** When set, also mirrors the file into POST /applicants/{id}/files. */
   applicantId?: string;
@@ -187,7 +191,10 @@ export function FileAttachmentField({
                     ? { applicantId, moduleKey: moduleKey ?? "tna1" }
                     : undefined,
                 );
-                onFile(doc.fileName, doc.dataUrl ?? "");
+                onFile(doc.fileName, doc.dataUrl ?? "", {
+                  fileId: doc.fileId,
+                  mimeType: doc.mimeType,
+                });
               } catch {
                 onFile("", "");
               }

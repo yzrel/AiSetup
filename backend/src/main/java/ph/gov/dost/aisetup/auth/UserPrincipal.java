@@ -40,6 +40,10 @@ public class UserPrincipal implements UserDetails {
                 || "provincial-director".equals(role);
     }
 
+    public boolean isAdmin() {
+        return "admin".equals(account.getRole());
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + account.getRole().toUpperCase().replace('-', '_')));

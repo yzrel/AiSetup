@@ -4,6 +4,7 @@
 
 import { applicantStore, Applicant } from "../store/applicantStore";
 import type {
+  LiquidationEntry,
   ModuleDocument,
   ProcurementDocument,
   ProcurementForm,
@@ -13,6 +14,7 @@ import type {
 import { getLandBankOverview, hasLandBankComplete } from "./landBankWithdrawal";
 import { formatCurrency } from "./landBankWithdrawal";
 import { isDemoModeActive } from "./demoMode";
+import { normalizeFormModuleStored } from "./normalizeCriticalModuleData";
 
 const MODULE_KEY = "procurement";
 
@@ -24,19 +26,72 @@ export function emptyProcurementForm(): ProcurementForm {
   return {
     documents: [],
     items: [],
-    liquidationDocuments: [],
+    liquidations: [],
     untagged: false,
   };
 }
 
+export function normalizeProcurementForm(
+  form: Partial<ProcurementForm> | null | undefined,
+): ProcurementForm {
+  const base = emptyProcurementForm();
+  if (!form) return base;
+
+  const legacyDocs = Array.isArray(form.liquidationDocuments)
+    ? form.liquidationDocuments
+    : [];
+  let liquidations = Array.isArray(form.liquidations) ? [...form.liquidations] : [];
+
+  if (liquidations.length === 0 && legacyDocs.length > 0) {
+    liquidations = [
+      {
+        id: uid(),
+        title: "Legacy liquidation",
+        amount: "",
+        date: legacyDocs[0]?.uploadedAt ?? "",
+        remarks: "",
+        attachments: legacyDocs,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+  }
+
+  liquidations = liquidations.map((entry) => ({
+    id: entry.id || uid(),
+    title: entry.title ?? "",
+    amount: entry.amount ?? "",
+    date: entry.date ?? "",
+    remarks: entry.remarks ?? "",
+    attachments: Array.isArray(entry.attachments) ? entry.attachments : [],
+    createdAt: entry.createdAt ?? new Date().toISOString(),
+    createdBy: entry.createdBy,
+    updatedAt: entry.updatedAt,
+  }));
+
+  return {
+    documents: Array.isArray(form.documents) ? form.documents : [],
+    items: Array.isArray(form.items) ? form.items : [],
+    liquidations,
+    staffReview: form.staffReview,
+    untagged: !!form.untagged,
+    untaggedAt: form.untaggedAt,
+  };
+}
+
+export function hasLiquidationFiled(form: ProcurementForm | null): boolean {
+  if (!form) return false;
+  return form.liquidations.some((e) => e.attachments.length > 0);
+}
+
 export function getProcurementStored(applicant: Applicant | null): ProcurementStored | null {
   if (!applicant?.moduleData?.[MODULE_KEY]) return null;
-  return applicant.moduleData[MODULE_KEY] as ProcurementStored;
+  const normalized = normalizeFormModuleStored(applicant.moduleData[MODULE_KEY]);
+  return (normalized as ProcurementStored | undefined) ?? null;
 }
 
 export function getProcurementForm(applicant: Applicant | null): ProcurementForm {
   const stored = getProcurementStored(applicant);
-  return stored?.form ?? emptyProcurementForm();
+  return normalizeProcurementForm(stored?.form);
 }
 
 export function hasProcurementPrerequisite(applicant: Applicant | null): boolean {
@@ -76,11 +131,12 @@ export function saveProcurementDraft(applicantId: string, form: ProcurementForm)
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
   const existing = getProcurementStored(applicant);
+  const normalized = normalizeProcurementForm(form);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
       [MODULE_KEY]: {
-        form,
+        form: normalized,
         submitted: existing?.submitted,
         submittedAt: existing?.submittedAt,
         submittedBy: existing?.submittedBy,
@@ -158,8 +214,62 @@ export function removeProcurementItem(applicantId: string, itemId: string): void
   });
 }
 
-export function addLiquidationDocument(
+export function addLiquidation(
   applicantId: string,
+  createdBy?: string,
+): LiquidationEntry {
+  const entry: LiquidationEntry = {
+    id: uid(),
+    title: "",
+    amount: "",
+    date: "",
+    remarks: "",
+    attachments: [],
+    createdAt: new Date().toISOString(),
+    createdBy,
+  };
+  const applicant = applicantStore.getById(applicantId);
+  if (applicant) {
+    const form = getProcurementForm(applicant);
+    saveProcurementDraft(applicantId, {
+      ...form,
+      liquidations: [...form.liquidations, entry],
+    });
+  }
+  return entry;
+}
+
+export function updateLiquidation(
+  applicantId: string,
+  entryId: string,
+  patch: Partial<Omit<LiquidationEntry, "id" | "attachments" | "createdAt">>,
+): void {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return;
+  const form = getProcurementForm(applicant);
+  saveProcurementDraft(applicantId, {
+    ...form,
+    liquidations: form.liquidations.map((e) =>
+      e.id === entryId
+        ? { ...e, ...patch, updatedAt: new Date().toISOString() }
+        : e,
+    ),
+  });
+}
+
+export function removeLiquidation(applicantId: string, entryId: string): void {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return;
+  const form = getProcurementForm(applicant);
+  saveProcurementDraft(applicantId, {
+    ...form,
+    liquidations: form.liquidations.filter((e) => e.id !== entryId),
+  });
+}
+
+export function addLiquidationAttachment(
+  applicantId: string,
+  entryId: string,
   moduleDoc: ModuleDocument,
 ): void {
   const applicant = applicantStore.getById(applicantId);
@@ -176,8 +286,54 @@ export function addLiquidationDocument(
   };
   saveProcurementDraft(applicantId, {
     ...form,
-    liquidationDocuments: [...form.liquidationDocuments, doc],
+    liquidations: form.liquidations.map((e) =>
+      e.id === entryId
+        ? {
+            ...e,
+            attachments: [...e.attachments, doc],
+            updatedAt: new Date().toISOString(),
+          }
+        : e,
+    ),
   });
+}
+
+export function removeLiquidationAttachment(
+  applicantId: string,
+  entryId: string,
+  attachmentId: string,
+): void {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return;
+  const form = getProcurementForm(applicant);
+  saveProcurementDraft(applicantId, {
+    ...form,
+    liquidations: form.liquidations.map((e) =>
+      e.id === entryId
+        ? {
+            ...e,
+            attachments: e.attachments.filter((a) => a.id !== attachmentId),
+            updatedAt: new Date().toISOString(),
+          }
+        : e,
+    ),
+  });
+}
+
+/** @deprecated Prefer addLiquidationAttachment on a LiquidationEntry. */
+export function addLiquidationDocument(
+  applicantId: string,
+  moduleDoc: ModuleDocument,
+): void {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return;
+  const form = getProcurementForm(applicant);
+  let entryId = form.liquidations[0]?.id;
+  if (!entryId) {
+    const created = addLiquidation(applicantId, moduleDoc.uploadedBy);
+    entryId = created.id;
+  }
+  addLiquidationAttachment(applicantId, entryId, moduleDoc);
 }
 
 export function setAccountUntagged(applicantId: string): void {
@@ -204,8 +360,10 @@ export function validateProcurementSubmit(applicant: Applicant | null): string[]
   if (form.items.length === 0) {
     errors.push("Add at least one procurement line item.");
   }
-  if (form.liquidationDocuments.length === 0) {
-    errors.push("Upload at least one liquidation document.");
+  if (!hasLiquidationFiled(form)) {
+    errors.push(
+      "Staff must add at least one liquidation with at least one attachment.",
+    );
   }
   if (!form.untagged) {
     errors.push("Complete account untagging before proceeding to monitoring.");

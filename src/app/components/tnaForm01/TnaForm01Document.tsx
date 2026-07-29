@@ -26,6 +26,8 @@ import {
   mapEmploymentClassToOfficial,
   mapOrganizationType,
 } from "../../constants/tnaForm01Layout";
+import { isImageFile, isPdfFile } from "../../utils/storedFilePreview";
+import { StoredFileImage } from "../StoredFilePreview";
 
 export interface TnaForm01Tables {
   rawMaterials: string[][];
@@ -36,6 +38,7 @@ export interface TnaForm01Tables {
 export interface TnaForm01DocumentProps {
   form: Record<string, unknown>;
   tables: TnaForm01Tables;
+  applicantId?: string;
 }
 
 function val(form: Record<string, unknown>, key: string): string {
@@ -188,17 +191,29 @@ export function FormAttachmentBlock({
   label,
   fileName,
   fileData,
+  fileId,
+  mimeType,
+  moduleKey,
+  applicantId,
   minHeight = 120,
 }: {
   label: string;
   fileName?: string;
   fileData?: string;
+  fileId?: string;
+  mimeType?: string;
+  moduleKey?: string;
+  applicantId?: string;
   minHeight?: number;
 }) {
-  const isImage =
-    fileData &&
-    (fileData.startsWith("data:image/") ||
-      /\.(png|jpe?g|gif|webp)$/i.test(fileName ?? ""));
+  const showImage = isImageFile(mimeType, fileName, fileData);
+  const fileRef = {
+    dataUrl: fileData || undefined,
+    fileId: fileId || undefined,
+    fileName: fileName || undefined,
+    mimeType: mimeType || undefined,
+    moduleKey,
+  };
 
   return (
     <div className="tna-form-block tna-print-section">
@@ -215,10 +230,19 @@ export function FormAttachmentBlock({
               colSpan={2}
             >
               <div className="tna-form-attachment" style={{ minHeight }}>
-                {isImage ? (
-                  <img src={fileData} alt={label} className="tna-form-attachment-img" />
+                {showImage && (fileData || fileId || (applicantId && fileName)) ? (
+                  <StoredFileImage
+                    applicantId={applicantId}
+                    file={fileRef}
+                    alt={label}
+                    className="tna-form-attachment-img"
+                    loadingClassName="tna-form-attachment-name"
+                  />
                 ) : fileName ? (
-                  <p className="tna-form-attachment-name">{fileName}</p>
+                  <p className="tna-form-attachment-name">
+                    {fileName}
+                    {isPdfFile(mimeType, fileName, fileData) ? " (PDF)" : ""}
+                  </p>
                 ) : (
                   <span className="tna-form-blank-box" />
                 )}
@@ -297,7 +321,7 @@ function BenchmarkBullet({ children }: { children: ReactNode }) {
   return <p className="tna-form-benchmark-item">{children}</p>;
 }
 
-export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
+export function TnaForm01Document({ form, tables, applicantId }: TnaForm01DocumentProps) {
   const f = form;
   const org = mapOrganizationType(val(f, "organizationType"));
   const capitalId = mapCapitalClassToOfficial(val(f, "capitalClassification"));
@@ -565,6 +589,12 @@ export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
           </FormTable>
         </FormBlock>
 
+        <FormTextBlock
+          label="Gender and Development (GAD) — Participation and Involvement:"
+          value={val(f, "genderInvolvement")}
+          lines={3}
+        />
+
         <FormBorderedPanel>
           <p className="tna-form-subheading tna-form-panel-title">Business Activity:</p>
           <div className="tna-form-activity-list">
@@ -687,6 +717,10 @@ export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
             label="Production Plan Attachment"
             fileName={val(f, "productionPlanFileName")}
             fileData={val(f, "productionPlanFileData")}
+            fileId={val(f, "productionPlanFileId")}
+            mimeType={val(f, "productionPlanFileMime")}
+            moduleKey="tna1-productionPlan"
+            applicantId={applicantId}
             minHeight={140}
           />
         ) : null}
@@ -694,6 +728,10 @@ export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
           label="Plant Lay-Out"
           fileName={val(f, "plantLayoutFileName")}
           fileData={val(f, "plantLayoutFileData")}
+          fileId={val(f, "plantLayoutFileId")}
+          mimeType={val(f, "plantLayoutFileMime")}
+          moduleKey="tna1-plantLayout"
+          applicantId={applicantId}
           minHeight={160}
         />
       </FormPage>
@@ -705,6 +743,10 @@ export function TnaForm01Document({ form, tables }: TnaForm01DocumentProps) {
             label="Process Flow"
             fileName={val(f, "processFlowFileName")}
             fileData={val(f, "processFlowFileData")}
+            fileId={val(f, "processFlowFileId")}
+            mimeType={val(f, "processFlowFileMime")}
+            moduleKey="tna1-processFlow"
+            applicantId={applicantId}
             minHeight={140}
           />
         ) : (

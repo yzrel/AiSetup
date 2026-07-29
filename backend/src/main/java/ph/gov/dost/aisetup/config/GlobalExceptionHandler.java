@@ -61,6 +61,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "The record conflicts with existing data (duplicate applicationId?)");
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpected(Exception e) {
+        log.error("Unhandled exception", e);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
+    }
+
     private ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {
         return ResponseEntity.status(status)
                 .body(Map.of("error", message != null ? message : status.getReasonPhrase()));

@@ -53,8 +53,8 @@ public class WorkflowGateService {
             return;
         }
 
-        String from = existing.currentModule();
-        String to = incoming.currentModule();
+        String from = ModuleOrder.normalize(existing.currentModule());
+        String to = ModuleOrder.normalize(incoming.currentModule());
         if (to == null || to.equals(from)) {
             return;
         }

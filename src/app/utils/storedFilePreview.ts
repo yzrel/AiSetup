@@ -3,6 +3,7 @@
  *
  * Resolve preview/download URLs for module uploads after dataUrl is stripped on sync.
  * Prefer in-session dataUrl; otherwise fetch bytes via fileId from the durable file store.
+ * When fileId is missing (legacy TNA fields), match by moduleKey + original fileName.
  */
 
 import { useEffect, useState } from "react";
@@ -11,7 +12,104 @@ import { api } from "../api/client";
 export type StoredFileRef = {
   dataUrl?: string;
   fileId?: string;
+  fileName?: string;
+  mimeType?: string;
+  /** Backend moduleKey used when uploading (e.g. tna1-plantLayout). */
+  moduleKey?: string;
 };
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+
+export function isImageFile(
+  mimeType?: string | null,
+  fileName?: string | null,
+  dataUrl?: string | null,
+): boolean {
+  if (mimeType?.startsWith("image/")) return true;
+  if (dataUrl?.startsWith("data:image/")) return true;
+  return IMAGE_EXT.test(fileName ?? "");
+}
+
+export function isPdfFile(
+  mimeType?: string | null,
+  fileName?: string | null,
+  dataUrl?: string | null,
+): boolean {
+  if (mimeType?.includes("pdf")) return true;
+  if (dataUrl?.startsWith("data:application/pdf")) return true;
+  return (fileName ?? "").toLowerCase().endsWith(".pdf");
+}
+
+type ListedFile = {
+  id: string;
+  moduleKey?: string;
+  originalFilename?: string;
+  contentType?: string;
+};
+
+const listCache = new Map<string, Promise<ListedFile[]>>();
+
+function listApplicantFilesCached(applicantId: string): Promise<ListedFile[]> {
+  const existing = listCache.get(applicantId);
+  if (existing) return existing;
+  const pending = api
+    .listApplicantFiles(applicantId)
+    .then((rows) =>
+      rows.map((r) => ({
+        id: r.id,
+        moduleKey: r.moduleKey,
+        originalFilename: r.originalFilename,
+        contentType: r.contentType,
+      })),
+    )
+    .catch(() => {
+      listCache.delete(applicantId);
+      return [] as ListedFile[];
+    });
+  listCache.set(applicantId, pending);
+  return pending;
+}
+
+/** Drop cached file lists after a new upload so previews can rediscover fileIds. */
+export function invalidateApplicantFileListCache(applicantId?: string): void {
+  if (!applicantId) {
+    listCache.clear();
+    return;
+  }
+  listCache.delete(applicantId);
+}
+
+function moduleKeyMatches(stored: string | undefined, wanted: string | undefined): boolean {
+  if (!wanted) return true;
+  if (!stored) return false;
+  // Backend sometimes stores comma-joined keys from merge paths.
+  return stored.split(",").map((s) => s.trim()).includes(wanted);
+}
+
+async function resolveFileIdFromListing(
+  applicantId: string,
+  file: StoredFileRef,
+): Promise<string | undefined> {
+  if (!file.fileName && !file.moduleKey) return undefined;
+  const rows = await listApplicantFilesCached(applicantId);
+  const byNameAndModule = rows.find(
+    (r) =>
+      moduleKeyMatches(r.moduleKey, file.moduleKey) &&
+      r.originalFilename === file.fileName,
+  );
+  if (byNameAndModule) return byNameAndModule.id;
+
+  if (file.fileName) {
+    const byName = rows.find((r) => r.originalFilename === file.fileName);
+    if (byName) return byName.id;
+  }
+
+  if (file.moduleKey) {
+    const byModule = rows.find((r) => moduleKeyMatches(r.moduleKey, file.moduleKey));
+    if (byModule) return byModule.id;
+  }
+  return undefined;
+}
 
 /**
  * Resolve a usable object/data URL for preview. Caller must revoke blob: URLs when done
@@ -23,8 +121,15 @@ export async function resolveStoredFileSrc(
 ): Promise<string | undefined> {
   if (!file) return undefined;
   if (file.dataUrl) return file.dataUrl;
-  if (!applicantId || !file.fileId) return undefined;
-  const { blob } = await api.downloadApplicantFile(applicantId, file.fileId);
+  if (!applicantId) return undefined;
+
+  let fileId = file.fileId;
+  if (!fileId) {
+    fileId = await resolveFileIdFromListing(applicantId, file);
+  }
+  if (!fileId) return undefined;
+
+  const { blob } = await api.downloadApplicantFile(applicantId, fileId);
   return URL.createObjectURL(blob);
 }
 
@@ -36,12 +141,12 @@ export async function hydrateStoredFileDataUrls<T extends StoredFileRef>(
   const blobUrls: string[] = [];
   const next = await Promise.all(
     items.map(async (item) => {
-      if (item.dataUrl || !applicantId || !item.fileId) return item;
+      if (item.dataUrl || !applicantId) return item;
       try {
-        const { blob } = await api.downloadApplicantFile(applicantId, item.fileId);
-        const url = URL.createObjectURL(blob);
-        blobUrls.push(url);
-        return { ...item, dataUrl: url };
+        const src = await resolveStoredFileSrc(applicantId, item);
+        if (!src || src === item.dataUrl) return item;
+        if (src.startsWith("blob:")) blobUrls.push(src);
+        return { ...item, dataUrl: src };
       } catch {
         return item;
       }
@@ -61,6 +166,8 @@ export function useStoredFileSrc(
 ): { src: string | undefined; loading: boolean; error: boolean } {
   const dataUrl = file?.dataUrl;
   const fileId = file?.fileId;
+  const fileName = file?.fileName;
+  const moduleKey = file?.moduleKey;
   const [src, setSrc] = useState<string | undefined>(dataUrl);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -76,7 +183,7 @@ export function useStoredFileSrc(
       return;
     }
 
-    if (!applicantId || !fileId) {
+    if (!applicantId || (!fileId && !fileName && !moduleKey)) {
       setSrc(undefined);
       setLoading(false);
       setError(false);
@@ -85,67 +192,38 @@ export function useStoredFileSrc(
 
     setLoading(true);
     setError(false);
-    void api
-      .downloadApplicantFile(applicantId, fileId)
-      .then(({ blob }) => {
-        if (cancelled) return;
-        createdBlobUrl = URL.createObjectURL(blob);
-        setSrc(createdBlobUrl);
+    void resolveStoredFileSrc(applicantId, {
+      fileId,
+      fileName,
+      moduleKey,
+    })
+      .then((resolved) => {
+        if (cancelled) {
+          if (resolved?.startsWith("blob:")) URL.revokeObjectURL(resolved);
+          return;
+        }
+        if (!resolved) {
+          setSrc(undefined);
+          setLoading(false);
+          setError(true);
+          return;
+        }
+        if (resolved.startsWith("blob:")) createdBlobUrl = resolved;
+        setSrc(resolved);
         setLoading(false);
-        // #region agent log
-        fetch("http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "a4e6b2",
-          },
-          body: JSON.stringify({
-            sessionId: "a4e6b2",
-            runId: "post-fix",
-            hypothesisId: "H-B",
-            location: "storedFilePreview.ts:useStoredFileSrc",
-            message: "resolved preview from fileId",
-            data: {
-              applicantId,
-              fileId,
-              blobSize: blob.size,
-              blobType: blob.type,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
       })
       .catch(() => {
         if (cancelled) return;
         setSrc(undefined);
         setLoading(false);
         setError(true);
-        // #region agent log
-        fetch("http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "a4e6b2",
-          },
-          body: JSON.stringify({
-            sessionId: "a4e6b2",
-            runId: "post-fix",
-            hypothesisId: "H-C",
-            location: "storedFilePreview.ts:useStoredFileSrc",
-            message: "fileId download failed",
-            data: { applicantId, fileId },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
       });
 
     return () => {
       cancelled = true;
       if (createdBlobUrl) URL.revokeObjectURL(createdBlobUrl);
     };
-  }, [applicantId, dataUrl, fileId]);
+  }, [applicantId, dataUrl, fileId, fileName, moduleKey]);
 
   return { src, loading, error };
 }

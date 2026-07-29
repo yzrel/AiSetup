@@ -24,16 +24,7 @@ function isHeavyDataUrl(value: unknown): value is string {
  * Metadata (fileName, mimeType, uploadedAt, fileId, …) is preserved.
  */
 export function stripHeavyPayloads<T>(value: T): T {
-  const out = stripValue(value) as T;
-  // #region agent log
-  try {
-    const sample = value as { attachments?: Array<{ kind?: string; fileName?: string; dataUrl?: string; fileId?: string }> };
-    if (sample && Array.isArray(sample.attachments)) {
-      fetch('http://127.0.0.1:7919/ingest/215832d4-6965-4326-be26-4bf61789267b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a4e6b2'},body:JSON.stringify({sessionId:'a4e6b2',runId:'pre-fix',hypothesisId:'H-D',location:'stripModuleDataForSync.ts:stripHeavyPayloads',message:'stripped proposal-like attachments',data:{before:sample.attachments.map(a=>({kind:a.kind,fileName:a.fileName,hasDataUrl:!!a.dataUrl,fileId:a.fileId??null})),after:((out as {attachments?:typeof sample.attachments}).attachments??[]).map(a=>({kind:a.kind,fileName:a.fileName,hasDataUrl:!!a.dataUrl,fileId:a.fileId??null}))},timestamp:Date.now()})}).catch(()=>{});
-    }
-  } catch { /* ignore */ }
-  // #endregion
-  return out;
+  return stripValue(value) as T;
 }
 
 function stripValue(value: unknown): unknown {

@@ -2,6 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
+import moduleOrderJson from "@shared/module-order.json";
 import {
   REGION_12_LABEL,
   REGION_12_PROVINCES,
@@ -16,6 +17,7 @@ import {
   fetchBackendApplicants,
   syncApplicantToBackendBestEffort,
 } from "../utils/applicantPersistence";
+import { normalizeModuleDataForHydrate } from "../utils/normalizeCriticalModuleData";
 import { api } from "../api/client";
 import { authStore } from "./authStore";
 // Simple in-memory store using a singleton + event-based reactivity
@@ -99,6 +101,7 @@ const seedApplicants: Applicant[] = [
       approvedAmount: '₱2,000,000',
       accountStatus: 'active',
       province: 'South Cotabato',
+      gender: 'Male',
       zipCode: '9506',
       tinNumber: '123-456-789-000',
       registrationType: 'DTI',
@@ -132,6 +135,8 @@ const seedApplicants: Applicant[] = [
           mainProduct: 'Dried mangoes, banana chips, fruit preserves',
           employeesMale: '12',
           employeesFemale: '11',
+          genderInvolvement:
+            'ABC Food Processing employs 12 male and 11 female workers. Women and men participate in production and packing; SETUP upgrading will benefit the workforce equitably through skills transfer and safer equipment, consistent with DOST GAD principles.',
           productionProblemsConcerns:
             'Manual packing bottlenecks and inconsistent dehydration capacity during peak season.',
           processFlow:
@@ -177,6 +182,7 @@ const seedApplicants: Applicant[] = [
     moduleData: {
       accountStatus: 'active',
       province: 'General Santos City',
+      gender: 'Female',
       projectDescription: 'Cloud-based inventory and order management system for retail operations.',
       expectedOutcome: 'Reduce order processing time by 50% and improve stock accuracy.',
       productServices: 'Software development and IT consulting',
@@ -196,6 +202,8 @@ const seedApplicants: Applicant[] = [
           mainProduct: 'Custom software and IT solutions',
           employeesMale: '18',
           employeesFemale: '14',
+          genderInvolvement:
+            'Tech Innovations Inc. employs 18 male and 14 female workers. Women and men participate across development and support roles; SETUP assistance will expand skills equitably consistent with DOST GAD principles.',
           productionProblemsConcerns:
             'Manual inventory tracking and fragmented order processing across branches.',
           processFlow:
@@ -399,9 +407,9 @@ function applicantFromRecord(
   local: Applicant | undefined,
 ): Applicant {
   const profile = (record.profile ?? {}) as Partial<Applicant>;
-  const moduleData = {
-    ...((record.moduleData ?? {}) as Record<string, any>),
-  };
+  const moduleData = normalizeModuleDataForHydrate(
+    (record.moduleData ?? {}) as Record<string, unknown>,
+  );
   const base: Applicant = local ?? {
     id: record.id,
     applicationId: record.applicationId,
@@ -431,7 +439,9 @@ function applicantFromRecord(
     id: record.id,
     applicationId: record.applicationId ?? base.applicationId,
     enterpriseName: record.enterpriseName ?? base.enterpriseName,
-    currentModule: (record.currentModule as ModuleStatus) ?? base.currentModule,
+    currentModule: normalizeCurrentModule(
+      (record.currentModule as ModuleStatus) ?? base.currentModule,
+    ),
     moduleData,
     lastUpdated: record.updatedAt ?? base.lastUpdated,
   };
@@ -496,8 +506,15 @@ export const applicantStore = {
   },
 
   update: (id: string, updates: Partial<Applicant>) => {
+    const nextUpdates =
+      updates.currentModule !== undefined
+        ? {
+            ...updates,
+            currentModule: normalizeCurrentModule(updates.currentModule),
+          }
+        : updates;
     applicants = applicants.map(a =>
-      a.id === id ? { ...a, ...updates, lastUpdated: new Date().toISOString() } : a
+      a.id === id ? { ...a, ...nextUpdates, lastUpdated: new Date().toISOString() } : a
     );
     const updated = applicants.find(a => a.id === id);
     if (updated) {
@@ -575,11 +592,20 @@ export const applicantStore = {
   },
 };
 
-export const MODULE_ORDER: ModuleStatus[] = [
-  'prescreening', 'registration', 'letter-of-intent', 'tna1', 'tna2', 'project-proposal', 'requirements',
-  'conduct-rtec', 'approval-letter',
-  'project-information-sheet', 'landbank-withdrawal', 'procurement-liquidation', 'refund-delinquent', 'project-closeout', 'completed',
-];
+export const MODULE_ORDER: ModuleStatus[] = moduleOrderJson as ModuleStatus[];
+
+/** Legacy module removed from the critical path; normalize to LandBank on load. */
+export const LEGACY_PIS_MODULE = 'project-information-sheet' as const;
+
+export function normalizeCurrentModule(module: ModuleStatus | string | null | undefined): ModuleStatus {
+  if (module === LEGACY_PIS_MODULE) {
+    return 'landbank-withdrawal';
+  }
+  if (module && MODULE_ORDER.includes(module as ModuleStatus)) {
+    return module as ModuleStatus;
+  }
+  return 'prescreening';
+}
 
 export const MODULE_LABELS: Record<ModuleStatus, string> = {
   'prescreening': 'Pre-Screening',

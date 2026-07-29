@@ -4,10 +4,13 @@
 package ph.gov.dost.aisetup.auth;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,8 +22,12 @@ import ph.gov.dost.aisetup.auth.dto.AdminSetEnabledRequest;
 import ph.gov.dost.aisetup.auth.dto.AuthResponse;
 import ph.gov.dost.aisetup.auth.dto.AuthUserDto;
 import ph.gov.dost.aisetup.auth.dto.ChangePasswordRequest;
+import ph.gov.dost.aisetup.auth.dto.CreateStaffRequest;
 import ph.gov.dost.aisetup.auth.dto.LoginRequest;
 import ph.gov.dost.aisetup.auth.dto.RegisterRequest;
+import ph.gov.dost.aisetup.auth.dto.StaffResetPasswordRequest;
+import ph.gov.dost.aisetup.auth.dto.StaffUserDto;
+import ph.gov.dost.aisetup.auth.dto.UpdateStaffRequest;
 
 @RestController
 @RequestMapping("/auth")
@@ -78,6 +85,44 @@ public class AuthController {
                 "applicant",
                 request.getApplicantId(),
                 Map.of());
+        return Map.of("ok", true);
+    }
+
+    @GetMapping("/admin/staff")
+    public List<StaffUserDto> listStaff() {
+        SecurityUtils.requireAdmin();
+        return authService.listStaffUsers();
+    }
+
+    @PostMapping("/admin/staff")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StaffUserDto createStaff(@Valid @RequestBody CreateStaffRequest request) {
+        SecurityUtils.requireAdmin();
+        StaffUserDto created = authService.createStaffUser(request);
+        auditService.record("auth.staff-create", "user", created.getId(), Map.of(
+                "email", created.getEmail(),
+                "role", created.getRole()));
+        return created;
+    }
+
+    @PatchMapping("/admin/staff/{userId}")
+    public StaffUserDto updateStaff(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UpdateStaffRequest request) {
+        SecurityUtils.requireAdmin();
+        StaffUserDto updated = authService.updateStaffUser(userId, request, principal);
+        auditService.record("auth.staff-update", "user", userId, Map.of());
+        return updated;
+    }
+
+    @PostMapping("/admin/staff/{userId}/reset-password")
+    public Map<String, Boolean> resetStaffPassword(
+            @PathVariable String userId,
+            @Valid @RequestBody StaffResetPasswordRequest request) {
+        SecurityUtils.requireAdmin();
+        authService.resetStaffPassword(userId, request);
+        auditService.record("auth.staff-reset-password", "user", userId, Map.of());
         return Map.of("ok", true);
     }
 }

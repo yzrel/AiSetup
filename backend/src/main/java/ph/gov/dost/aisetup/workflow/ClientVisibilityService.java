@@ -64,6 +64,71 @@ public class ClientVisibilityService {
     }
 
     /**
+     * Once a publish-gated document is published, stale client payloads must not
+     * demote {@code published} back to false. There is no unpublish API.
+     */
+    public Map<String, Object> preservePublishedFlags(
+            Map<String, Object> incoming, Map<String, Object> existing) {
+        if (incoming == null || existing == null || existing.isEmpty()) {
+            return incoming;
+        }
+        Map<String, Object> merged = new LinkedHashMap<>(incoming);
+        for (String key : ModuleOrder.PUBLISH_GATED_KEYS) {
+            restorePublishedMap(merged, existing, key);
+        }
+        Object existingLandBank = existing.get("landBank");
+        Object incomingLandBank = merged.get("landBank");
+        if (existingLandBank instanceof Map<?, ?> exLb
+                && incomingLandBank instanceof Map<?, ?> inLb
+                && exLb.get("introductionLetter") instanceof Map<?, ?> exLetter
+                && isPublished(exLetter)) {
+            Map<String, Object> lbMerged = new LinkedHashMap<>();
+            inLb.forEach((k, v) -> lbMerged.put(String.valueOf(k), v));
+            Object inLetter = lbMerged.get("introductionLetter");
+            if (!(inLetter instanceof Map<?, ?> inMap && isPublished(inMap))) {
+                Map<String, Object> restored = new LinkedHashMap<>();
+                if (inLetter instanceof Map<?, ?> partial) {
+                    partial.forEach((k, v) -> restored.put(String.valueOf(k), v));
+                }
+                restored.put("published", true);
+                if (exLetter.get("publishedAt") != null) {
+                    restored.put("publishedAt", exLetter.get("publishedAt"));
+                }
+                lbMerged.put("introductionLetter", restored);
+            }
+            merged.put("landBank", lbMerged);
+        }
+        return merged;
+    }
+
+    private void restorePublishedMap(
+            Map<String, Object> merged, Map<String, Object> existing, String key) {
+        Object existingValue = existing.get(key);
+        if (!(existingValue instanceof Map<?, ?> exMap) || !isPublished(exMap)) {
+            return;
+        }
+        Object incomingValue = merged.get(key);
+        if (incomingValue instanceof Map<?, ?> inMap && isPublished(inMap)) {
+            return;
+        }
+        Map<String, Object> restored = new LinkedHashMap<>();
+        if (incomingValue instanceof Map<?, ?> partial) {
+            partial.forEach((k, v) -> restored.put(String.valueOf(k), v));
+        } else if (existingValue instanceof Map<?, ?> full) {
+            full.forEach((k, v) -> restored.put(String.valueOf(k), v));
+            merged.put(key, restored);
+            return;
+        }
+        restored.put("published", true);
+        if (exMap.get("publishedAt") != null) {
+            restored.put("publishedAt", exMap.get("publishedAt"));
+        } else if (!restored.containsKey("publishedAt")) {
+            // keep any publishedAt already in partial; otherwise leave unset
+        }
+        merged.put(key, restored);
+    }
+
+    /**
      * Applicants hydrate a filtered blob (unpublished staff docs removed), so a
      * later whole-blob save from them must not erase or overwrite those drafts.
      * Staff-owned keys always come from the stored record when present; applicants
@@ -73,7 +138,7 @@ public class ClientVisibilityService {
             Map<String, Object> incoming, Map<String, Object> existing) {
         UserPrincipal principal = SecurityUtils.requirePrincipal();
         if (principal.isStaff()) {
-            return incoming;
+            return preservePublishedFlags(incoming, existing);
         }
         Map<String, Object> merged = new LinkedHashMap<>(incoming != null ? incoming : Map.of());
         // Always strip applicant-forged MOA attestation; restore from stored only.
@@ -117,6 +182,6 @@ public class ClientVisibilityService {
         } else if (existingLandBank instanceof Map<?, ?>) {
             merged.put("landBank", existingLandBank);
         }
-        return merged;
+        return preservePublishedFlags(merged, existing);
     }
 }
