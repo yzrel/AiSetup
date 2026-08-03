@@ -1,13 +1,14 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Sent Emails view — shows the simulated email outbox (printables sent to
- * DOST and signed-document receipts). Staff see office-scoped traffic with
- * client filtering; under Administration.
+ * Sent Emails view — shows the email outbox (printables sent to DOST and
+ * signed-document receipts). Staff see office-scoped traffic with client
+ * filtering; under Administration. Banner reflects live SMTP vs local-only.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Inbox, Mail, Paperclip, Search, Building2 } from "lucide-react";
+import { api } from "../api/client";
 import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore } from "../store/applicantStore";
 import {
@@ -85,12 +86,28 @@ export function EmailOutbox({ user }: { user: AuthUser }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [smtpEnabled, setSmtpEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
     const reload = () => setEmails(emailOutboxStore.getForUser(user));
     reload();
     return emailOutboxStore.subscribe(reload);
   }, [user.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .health()
+      .then((h) => {
+        if (!cancelled) setSmtpEnabled(!!h.smtpEnabled);
+      })
+      .catch(() => {
+        if (!cancelled) setSmtpEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const clientOptions = useMemo(() => {
     const ids = new Set<string>();
@@ -162,10 +179,18 @@ export function EmailOutbox({ user }: { user: AuthUser }) {
         </div>
 
         <div className="p-4 sm:p-6">
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-            Email delivery is currently simulated — messages are recorded here
-            instead of being sent through a live mail server.
-          </div>
+          {smtpEnabled === true ? (
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
+              Live SMTP is configured — new document emails are delivered through
+              the mail server and also recorded in this list as an audit trail.
+            </div>
+          ) : (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+              {smtpEnabled === null
+                ? "Checking mail server status…"
+                : "Email delivery is currently local-only — messages are recorded here instead of being sent through a live mail server. Set SMTP_USERNAME / SMTP_PASSWORD (Gmail App Password) on the backend to enable delivery."}
+            </div>
+          )}
 
           {isStaff && (
             <div className="mb-4 flex flex-col sm:flex-row gap-3">

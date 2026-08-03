@@ -207,6 +207,11 @@ export function DocumentDeliveryPanel({
           onSent={onSent}
         />
       )}
+      {!hideSendButton && !readOnly && signedDoc?.fileName && (
+        <p className="text-xs text-gray-500 -mt-2">
+          The signed copy on file ({signedDoc.fileName}) will be attached to the email.
+        </p>
+      )}
 
       <SignedDocumentUpload
         label={`Signed ${documentTitle}`}

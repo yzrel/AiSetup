@@ -311,4 +311,28 @@ export const api = {
         body: JSON.stringify(payload),
       },
     ),
+
+  /** Deliver a document / receipt email via configured SMTP (Gmail App Password, etc.). */
+  sendMail: (payload: {
+    to: string[];
+    cc?: string[];
+    subject: string;
+    body: string;
+    applicantId?: string;
+    attachments?: Array<{
+      fileName?: string;
+      mimeType?: string;
+      fileId?: string;
+      contentBase64?: string;
+    }>;
+  }) =>
+    apiFetch<{
+      ok: boolean;
+      delivered: boolean;
+      attachmentCount?: number;
+      skippedAttachments?: string[];
+    }>("/mail/send", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

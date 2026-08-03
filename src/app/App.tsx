@@ -36,6 +36,8 @@ import { demoModeStore } from "./store/demoModeStore";
 import { notificationStore } from "./store/notificationStore";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
+import { isSentEmailsNavUnlocked } from "./utils/documentDelivery";
+import { emailOutboxStore } from "./store/emailOutboxStore";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -399,6 +401,7 @@ function SidebarNav({
   userRole,
   applicant,
   demoMode,
+  sentEmailsUnlocked,
   onLogout,
 }: {
   currentView: ViewType;
@@ -408,6 +411,8 @@ function SidebarNav({
   userRole: AuthUser["role"];
   applicant?: ReturnType<typeof resolveApplicantForUser>;
   demoMode: boolean;
+  /** Staff: Sent Emails enabled after a signed document upload. */
+  sentEmailsUnlocked: boolean;
   onLogout: () => void;
 }) {
   const visibleGroups = menuGroups
@@ -444,27 +449,33 @@ function SidebarNav({
               group.items.map((item) => {
                 const Icon = item.icon;
                 const active = currentView === item.id;
-                const locked =
+                const moduleLocked =
                   authStore.isClientRole(userRole) &&
                   isApplicantViewLocked(applicant ?? null, item.id);
-                const navigable = !locked || demoMode;
+                const sentEmailsLocked =
+                  item.id === "sent-emails" && !sentEmailsUnlocked;
+                const locked = moduleLocked || sentEmailsLocked;
+                const navigable =
+                  (!moduleLocked || demoMode) && !sentEmailsLocked;
                 return (
                   <button
                     key={item.id}
                     onClick={() => navigable && onNavigate(item.id)}
                     disabled={!navigable}
                     title={
-                      locked
-                        ? demoMode
-                          ? "Normally locked — demo mode lets you open this module"
-                          : "Complete earlier application steps to unlock this module"
-                        : undefined
+                      sentEmailsLocked
+                        ? "Available after a client uploads a signed document."
+                        : moduleLocked
+                          ? demoMode
+                            ? "Normally locked — demo mode lets you open this module"
+                            : "Complete earlier application steps to unlock this module"
+                          : undefined
                     }
                     className={`w-full flex items-center gap-3 px-3 py-[10px] rounded-lg transition-all mb-0.5 group text-left ${
-                      locked
-                        ? demoMode
+                      locked && !navigable
+                        ? "opacity-40 cursor-not-allowed text-white/35"
+                        : locked && demoMode
                           ? "opacity-70 text-white/50 hover:bg-white/10 hover:text-white/75"
-                          : "opacity-40 cursor-not-allowed text-white/35"
                         : active
                           ? "bg-white/15 text-white shadow-sm"
                           : "text-white/55 hover:bg-white/10 hover:text-white/85"
@@ -539,6 +550,8 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
   /** Bumps when applicantStore hydrates/updates so sidebar unlocks after refresh. */
   const [, setApplicantStoreEpoch] = useState(0);
+  /** Bumps when email outbox changes so Sent Emails unlocks after signed upload. */
+  const [, setEmailOutboxEpoch] = useState(0);
 
   const setAuthPage = (page: "landing" | "login" | "register") => {
     setAuthPageState(page);
@@ -591,6 +604,11 @@ export default function App() {
   );
 
   useEffect(
+    () => emailOutboxStore.subscribe(() => setEmailOutboxEpoch((n) => n + 1)),
+    [],
+  );
+
+  useEffect(
     () => demoModeStore.subscribe(() => setDemoMode(demoModeStore.isEnabled())),
     [],
   );
@@ -624,6 +642,13 @@ export default function App() {
   useEffect(() => {
     if (!user || authStore.usesClientPortal(user)) return;
     if (!authStore.canAccessView(user.role, currentView)) {
+      const fallback = authStore.getDefaultView(user.role);
+      setCurrentViewState(fallback);
+      saveCurrentView(fallback);
+    } else if (
+      currentView === "sent-emails" &&
+      !isSentEmailsNavUnlocked(user)
+    ) {
       const fallback = authStore.getDefaultView(user.role);
       setCurrentViewState(fallback);
       saveCurrentView(fallback);
@@ -714,6 +739,9 @@ export default function App() {
     ) {
       return;
     }
+    if (view === "sent-emails" && user && !isSentEmailsNavUnlocked(user)) {
+      return;
+    }
     setCurrentView(view);
     setDrawerOpen(false);
   };
@@ -737,6 +765,7 @@ export default function App() {
 
   const isRestrictedClient = authStore.isClientRole(user.role);
   const isStaff = authStore.isStaff(user.role);
+  const sentEmailsUnlocked = isSentEmailsNavUnlocked(user);
   const { title, subtitle } = viewTitles[currentView];
 
   return (
@@ -759,6 +788,7 @@ export default function App() {
           userRole={user.role}
           applicant={activeApplicant}
           demoMode={demoMode}
+          sentEmailsUnlocked={sentEmailsUnlocked}
           onLogout={handleLogout}
         />
       </aside>
@@ -795,6 +825,7 @@ export default function App() {
           userRole={user.role}
           applicant={activeApplicant}
           demoMode={demoMode}
+          sentEmailsUnlocked={sentEmailsUnlocked}
           onLogout={handleLogout}
         />
       </aside>

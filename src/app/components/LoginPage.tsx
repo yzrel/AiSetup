@@ -14,7 +14,7 @@ import { DemoModeLogoTrigger } from './DemoModeLogoTrigger';
 import { DOSTMark } from './DOSTLogos';
 import { api, ApiError } from '../api/client';
 import { setAuthToken } from '../api/authToken';
-import { isDemoModeAllowedByBuild } from '../store/demoModeStore';
+import { demoModeStore } from '../store/demoModeStore';
 
 function autoSelectStaffApplicant() {
   const user = authStore.getUser();
@@ -64,12 +64,18 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [registeredNotice] = useState(defaultPortal === 'applicant');
+  const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
 
   useEffect(() => {
     if (defaultPortal) {
       setPortalType(defaultPortal);
     }
   }, [defaultPortal]);
+
+  useEffect(
+    () => demoModeStore.subscribe(() => setDemoMode(demoModeStore.isEnabled())),
+    [],
+  );
 
   const resetForm = () => {
     setEmail('');
@@ -301,7 +307,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
               </div>
             )}
 
-            {isDemoModeAllowedByBuild() && (
+            {demoMode && (
             <div className={`mt-4 rounded-xl p-3 border ${isStaff ? 'bg-purple-50/50 border-purple-100' : 'bg-gray-50 border-gray-200'}`}>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Dev credentials (seeded users)</p>
               {isStaff ? (

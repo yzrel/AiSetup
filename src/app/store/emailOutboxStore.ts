@@ -1,9 +1,8 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Local email outbox only — SMTP delivery is disabled until a mail server is configured.
- * Every "sent" email is recorded here so clients and DOST staff can review the trail
- * (printables, signed-document receipts, etc.). Nothing is delivered outside the browser.
+ * In-app email audit trail (localStorage). Document helpers always record here;
+ * when SMTP is configured they also deliver via POST /mail/send (see documentDelivery).
  */
 
 import { AuthUser, authStore } from "./authStore";
