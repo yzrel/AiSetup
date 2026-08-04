@@ -42,7 +42,7 @@ export interface DostProgram {
 }
 
 const PSTC_STEP =
-  "Submit a letter of interest to your Provincial Science and Technology Center (PSTC) under DOST Region XII.";
+  "Submit a letter of interest to your Provincial Science and Technology Center (PSTC) under DOST SOCCSKSARGEN.";
 
 export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
   mpex: {
@@ -123,14 +123,14 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Business or farm registration documents",
       "Production area and commodity profile",
     ],
-    fundingNote: "Technical consultancy provided through DOST Region XII.",
+    fundingNote: "Technical consultancy provided through DOST SOCCSKSARGEN.",
     applyVia: "Contact your Provincial S&T Center",
     url: "https://region12.dost.gov.ph/technical-consultancy-services/",
   },
   "food-safety": {
     id: "food-safety",
     name: "Food Safety Program",
-    tagline: "DOST Region XII Food Safety Services",
+    tagline: "DOST SOCCSKSARGEN Food Safety Services",
     summary:
       "Promotes safe food handling and compliance for processed food MSMEs.",
     scope: "region12",
@@ -168,7 +168,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
   "energy-audit": {
     id: "energy-audit",
     name: "Energy Audit",
-    tagline: "DOST Region XII Energy Audit Services",
+    tagline: "DOST SOCCSKSARGEN Energy Audit Services",
     summary:
       "Identifies energy-saving opportunities for manufacturing and industrial MSMEs.",
     scope: "region12",
@@ -226,7 +226,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Valid business registration for commercial testing requests",
     ],
     howToApply: [
-      "Contact DOST Region XII RSTL or your PSTC for testing requirements.",
+      "Contact DOST SOCCSKSARGEN RSTL or your PSTC for testing requirements.",
       "Submit sample submission forms and product specifications.",
       "Pay applicable testing fees and receive accredited test reports.",
     ],
@@ -236,7 +236,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Business registration (for commercial clients)",
     ],
     fundingNote: "Fee-based testing; fees vary by test type.",
-    applyVia: "DOST Region XII RSTL or Provincial S&T Center",
+    applyVia: "DOST SOCCSKSARGEN RSTL or Provincial S&T Center",
     url: "https://region12.dost.gov.ph/testing-and-calibration-services/",
   },
   "packaging-labeling": {
@@ -281,13 +281,13 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
   "tech-training": {
     id: "tech-training",
     name: "Technology Training & Fora",
-    tagline: "DOST Region XII Capacity Building",
+    tagline: "DOST SOCCSKSARGEN Capacity Building",
     summary:
       "Scheduled trainings and technology fora for MSMEs across Region XII.",
     scope: "region12",
     sectors: [...SETUP_PRIORITY_SECTORS],
     description:
-      "DOST Region XII conducts technology trainings and fora based on regional MSME needs. Trainings disseminate matured technologies from publicly funded R&D, while fora connect entrepreneurs with experts, new tools, and S&T solutions relevant to their industries.",
+      "DOST SOCCSKSARGEN conducts technology trainings and fora based on regional MSME needs. Trainings disseminate matured technologies from publicly funded R&D, while fora connect entrepreneurs with experts, new tools, and S&T solutions relevant to their industries.",
     benefits: [
       "Skills training on relevant production technologies",
       "Technology fora and knowledge-sharing sessions",
@@ -300,7 +300,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Some programs may prioritize specific sectors or commodities",
     ],
     howToApply: [
-      "Watch for training announcements from your PSTC or DOST Region XII.",
+      "Watch for training announcements from your PSTC or DOST SOCCSKSARGEN.",
       "Register for scheduled technology training or fora.",
       "Apply learnings and follow up with PSTC for firm-level assistance.",
     ],
@@ -308,7 +308,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Training registration form (when required)",
       "Business registration (for firm-representative slots)",
     ],
-    applyVia: "Provincial S&T Center or DOST Region XII",
+    applyVia: "Provincial S&T Center or DOST SOCCSKSARGEN",
     url: "https://region12.dost.gov.ph/technology-training-and-fora/",
   },
   sgf: {

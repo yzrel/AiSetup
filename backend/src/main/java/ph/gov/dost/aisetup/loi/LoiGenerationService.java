@@ -179,7 +179,7 @@ public class LoiGenerationService {
                         .formatted(programName, complianceLine);
 
         return """
-                You are drafting the body of a formal Letter of Intent from a Philippine MSME to DOST Region XII for %s.
+                You are drafting the body of a formal Letter of Intent from a Philippine MSME to DOST SOCCSKSARGEN for %s.
 
                 Write 3 to 5 formal paragraphs in English, written in the first person as the enterprise representative.
                 %s

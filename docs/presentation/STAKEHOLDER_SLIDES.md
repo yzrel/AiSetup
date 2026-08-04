@@ -324,7 +324,7 @@ Each step follows the same pattern: staff publish or verify â†’ client submits â
 **Contact / project team**
 
 - [Add presenter name and email]
-- [Add DOST Region XII focal]
+- [Add DOST SOCCSKSARGEN focal]
 
 ---
 

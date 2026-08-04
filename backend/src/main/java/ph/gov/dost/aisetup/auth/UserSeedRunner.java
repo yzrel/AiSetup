@@ -54,7 +54,7 @@ public class UserSeedRunner implements ApplicationRunner {
                 "",
                 "Admin",
                 "admin",
-                "DOST Region XII — Regional Office",
+                "DOST SOCCSKSARGEN — Regional Office",
                 "regional",
                 List.of());
         seedStaff(
@@ -64,7 +64,7 @@ public class UserSeedRunner implements ApplicationRunner {
                 "",
                 "Agent",
                 "agent",
-                "DOST Region XII — Provincial S&T Center",
+                "DOST SOCCSKSARGEN — Provincial S&T Center",
                 "south-cotabato",
                 List.of("South Cotabato"));
         seedStaff(

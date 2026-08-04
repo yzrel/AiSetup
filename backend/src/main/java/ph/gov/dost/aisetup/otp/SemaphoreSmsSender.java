@@ -70,7 +70,7 @@ public class SemaphoreSmsSender {
         body.put("number", number);
         body.put(
                 "message",
-                "Your DOST Region XII aiSETUP verification code is " + code
+                "Your DOST SOCCSKSARGEN aiSETUP verification code is " + code
                         + ". Valid for 10 minutes.");
         String sender = properties.getSms().getSenderName();
         if (sender != null && !sender.isBlank()) {

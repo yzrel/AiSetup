@@ -135,7 +135,7 @@ public class Tna2GenerationService {
         );
 
         return """
-                You are a DOST Region XII SETUP assessor drafting TNA Form 02 (Technology Needs Assessment Report) based on TNA Form 01 and site validation data.
+                You are a DOST SOCCSKSARGEN SETUP assessor drafting TNA Form 02 (Technology Needs Assessment Report) based on TNA Form 01 and site validation data.
 
                 Write a complete formal report matching the official SUMMARY OF ASSESSMENT structure. Do NOT invent specific costs, equipment models, or metrics not supported by the data.
                 Base findings on TNA Form 01 production problems, equipment inventory, and project description.
@@ -228,7 +228,7 @@ public class Tna2GenerationService {
                     "outcomes": ["", ""]
                   },
                   "assessor": { "name": "", "title": "TNA Team Leader", "office": "" },
-                  "attestedBy": { "name": "", "title": "Assistant Regional Director", "office": "DOST Region XII" }
+                  "attestedBy": { "name": "", "title": "Assistant Regional Director", "office": "DOST SOCCSKSARGEN" }
                 }
 
                 Applicant and TNA Form 01 data:
@@ -350,7 +350,7 @@ public class Tna2GenerationService {
         Tna2AssessorDto attested = new Tna2AssessorDto();
         attested.setName("");
         attested.setTitle("Assistant Regional Director");
-        attested.setOffice("DOST Region XII");
+        attested.setOffice("DOST SOCCSKSARGEN");
         doc.setAttestedBy(attested);
 
         return doc;
@@ -527,7 +527,7 @@ public class Tna2GenerationService {
         Tna2AssessorDto assessor = new Tna2AssessorDto();
         assessor.setName(office.getName() != null ? office.getName() : "PROVINCIAL DIRECTOR");
         assessor.setTitle(office.getTitle() != null ? office.getTitle() : "Provincial Director");
-        assessor.setOffice(office.getOfficeName() != null ? office.getOfficeName() : "DOST Region XII");
+        assessor.setOffice(office.getOfficeName() != null ? office.getOfficeName() : "DOST SOCCSKSARGEN");
         return assessor;
     }
 

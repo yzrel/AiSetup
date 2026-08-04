@@ -384,7 +384,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
     attestedBy: doc.attestedBy ?? {
       name: "",
       title: "Assistant Regional Director",
-      office: "DOST Region XII",
+      office: "DOST SOCCSKSARGEN",
     },
   };
 }
@@ -496,12 +496,12 @@ export function buildLocalTna2Document(
     assessor: {
       name: "PROVINCIAL DIRECTOR",
       title: "TNA Team Leader",
-      office: "DOST Region XII",
+      office: "DOST SOCCSKSARGEN",
     },
     attestedBy: {
       name: "",
       title: "Assistant Regional Director",
-      office: "DOST Region XII",
+      office: "DOST SOCCSKSARGEN",
     },
     generatedAt: new Date().toISOString(),
     aiGenerated: false,

@@ -408,7 +408,7 @@ export function downloadAuthorityLetterPdf(
       <p style="text-align:justify;margin-top:12px;">
         Remaining project balance after this withdrawal: <strong>${escapeHtml(overview.remainingBalance)}</strong>.
       </p>
-      <p style="margin-top:48px;font-weight:bold;">DOST REGION XII — SETUP 4.0</p>
+      <p style="margin-top:48px;font-weight:bold;">DOST SOCCSKSARGEN — SETUP 4.0</p>
       <p style="font-size:10px;color:#6b7280;margin-top:32px;text-align:center;">
         Generated via aiSETUP · Demo document for presentation purposes
       </p>

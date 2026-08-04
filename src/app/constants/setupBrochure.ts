@@ -4,7 +4,7 @@
 
 import region12Offices from "@shared/region12-offices.json";
 
-/** SETUP 4.0 brochure content — DOST Region XII */
+/** SETUP 4.0 brochure content — DOST SOCCSKSARGEN */
 
 export const SETUP_4_TAGLINE =
   "Harnessing Technology and Innovation to Ensure the Productivity and Resilience of Philippines SMEs";

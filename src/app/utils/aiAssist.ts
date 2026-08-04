@@ -8,6 +8,8 @@ import type { AiFieldSuggestionResponse, AiSuggestModule } from "../api/types";
 import { Applicant } from "../store/applicantStore";
 import { aiAssistNotice } from "./demoMode";
 
+export const AI_ASSIST_INSTRUCTION_MAX = 500;
+
 export type AiSuggestResult = {
   value: string | string[];
   aiGenerated: boolean;
@@ -66,12 +68,15 @@ export async function suggestAiField(
   field: string,
   context: Record<string, unknown>,
   localFallback?: () => string | string[],
+  userInstruction?: string,
 ): Promise<AiSuggestResult> {
   try {
+    const trimmed = userInstruction?.trim().slice(0, AI_ASSIST_INSTRUCTION_MAX);
     const res: AiFieldSuggestionResponse = await api.suggestAiField({
       module,
       field,
       context,
+      ...(trimmed ? { userInstruction: trimmed } : {}),
     });
     if (res.bullets?.length) {
       return { value: res.bullets, aiGenerated: res.aiGenerated };
@@ -128,6 +133,7 @@ export function useAiFieldSuggest(module: AiSuggestModule) {
       context: Record<string, unknown>,
       apply: (value: string | string[]) => void,
       localFallback?: () => string | string[],
+      userInstruction?: string,
     ) => {
       setLoadingField(field);
       setNotice(null);
@@ -137,6 +143,7 @@ export function useAiFieldSuggest(module: AiSuggestModule) {
           field,
           context,
           localFallback,
+          userInstruction,
         );
         apply(value);
         setNotice(aiAssistNotice(aiGenerated));
@@ -152,9 +159,9 @@ export function useAiFieldSuggest(module: AiSuggestModule) {
 
   const bind = useCallback(
     (field: string, context: Record<string, unknown>, apply: (value: string | string[]) => void, localFallback?: () => string | string[]) => ({
-      onAiSuggest: () => {
+      onAiSuggest: (userInstruction?: string) => {
         if (loadingField) return;
-        void suggest(field, context, apply, localFallback);
+        void suggest(field, context, apply, localFallback, userInstruction);
       },
       aiLoading: loadingField === field,
     }),

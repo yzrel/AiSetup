@@ -56,6 +56,7 @@ export function PrescreeningForm({
     enterpriseName: "",
     contactNumber: "",
     emailAddress: "",
+    companyDescription: "",
     businessType: "",
     businessNature: "",
     businessSector: "",
@@ -97,6 +98,7 @@ export function PrescreeningForm({
       currentModule: existing?.currentModule ?? "prescreening",
       moduleData: {
         ...existing?.moduleData,
+        companyDescription: data.companyDescription,
         coreProducts: data.coreProducts,
         exportClassification: data.exportClassification,
         classificationRange: data.classificationRange,
@@ -209,6 +211,7 @@ export function PrescreeningForm({
       enterpriseName: app.enterpriseName,
       contactNumber: app.contactNumber,
       emailAddress: app.emailAddress,
+      companyDescription: String(app.moduleData?.companyDescription ?? ""),
       businessType: app.businessType,
       businessNature: app.businessNature,
       businessSector: app.businessSector,
@@ -266,6 +269,7 @@ export function PrescreeningForm({
       qualified: result.qualified,
       moduleData: {
         ...existing?.moduleData,
+        companyDescription: formData.companyDescription,
         coreProducts: formData.coreProducts,
         exportClassification: formData.exportClassification,
         classificationRange: formData.classificationRange,
@@ -527,6 +531,30 @@ export function PrescreeningForm({
                       }
                     />
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Brief Description of Company
+                    </label>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Describe your enterprise&apos;s products, services, and
+                      operations (max 500 characters)
+                    </p>
+                    <textarea
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      value={formData.companyDescription}
+                      onChange={(e) =>
+                        setField(
+                          "companyDescription",
+                          e.target.value.slice(0, 500),
+                        )
+                      }
+                      placeholder="We are a food processing enterprise specializing in..."
+                    />
+                    <p className="text-[10px] text-gray-400 text-right mt-1">
+                      {formData.companyDescription.length}/500
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -669,7 +697,7 @@ export function PrescreeningForm({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Priority Sector (SETUP 4.0) *
+                      Business Sector (SETUP 4.0) *
                     </label>
                     <PrioritySectorSelect
                       required

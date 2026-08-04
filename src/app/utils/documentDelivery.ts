@@ -183,7 +183,7 @@ function printableBody(options: {
     `${greeting}\n\n` +
     `${main}\n\n` +
     `${closingNote}\n\n` +
-    `Respectfully,\naiSETUP — DOST Region XII`
+    `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`
   );
 }
 
@@ -413,7 +413,7 @@ export function saveSignedDocumentWithReceipts(options: {
       `(Application ID: ${applicant.applicationId}) was uploaded by ${uploaderLabel} ` +
       `on ${new Date(document.uploadedAt).toLocaleString("en-PH")} and is now on file.\n\n` +
       `Keep this email as your receipt / proof of delivery.\n\n` +
-      `Respectfully,\naiSETUP — DOST Region XII`,
+      `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`,
     attachments: realAttachment ? [attachment] : [],
     sentBy: user?.email ?? applicant.emailAddress,
     applicantId: applicant.id,
@@ -436,7 +436,7 @@ export function saveSignedDocumentWithReceipts(options: {
   //     `The signed ${documentTitle} of ${applicant.enterpriseName} ` +
   //     `(Application ID: ${applicant.applicationId}) was uploaded by ${uploaderLabel}.` +
   //     `${staffAttachNote}\n\n` +
-  //     `Respectfully,\naiSETUP — DOST Region XII`,
+  //     `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`,
   //   attachments: realAttachment ? [attachment] : [],
   //   sentBy: user?.email ?? applicant.emailAddress,
   //   applicantId: applicant.id,
@@ -506,7 +506,7 @@ export function sendSignedMoaReceiptsToDost(options: {
         : "") +
       (document.notes ? `Notes: ${document.notes}\n` : "") +
       `\nKeep this email as your receipt / proof of delivery.\n\n` +
-      `Respectfully,\naiSETUP — DOST Region XII`,
+      `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`,
     attachments: realAttachment ? [attachment] : [],
     sentBy: user?.email ?? applicant.emailAddress,
     applicantId: applicant.id,
@@ -533,7 +533,7 @@ export function sendSignedMoaReceiptsToDost(options: {
   //       ? `MOA signed date: ${document.signedDate}.\n`
   //       : "") +
   //     (document.notes ? `Notes: ${document.notes}\n` : "") +
-  //     `\nRespectfully,\naiSETUP — DOST Region XII`,
+  //     `\nRespectfully,\naiSETUP — DOST SOCCSKSARGEN`,
   //   attachments: realAttachment ? [attachment] : [],
   //   sentBy: user?.email ?? applicant.emailAddress,
   //   applicantId: applicant.id,

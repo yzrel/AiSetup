@@ -73,7 +73,7 @@ export function SendToDostButton({
   const successLabel =
     sendTarget === "client"
       ? "Sent to the client for signature — see Administration → Sent Emails."
-      : "Sent to your PSTO and DOST Region XII records.";
+      : "Sent to your PSTO and DOST SOCCSKSARGEN records.";
 
   return (
     <div className={className}>

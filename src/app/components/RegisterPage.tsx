@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { DataPrivacyModal } from "./DataPrivacyModal";
 import { applicantStore } from "../store/applicantStore";
+import { demoModeStore } from "../store/demoModeStore";
 import type { RegistrationAgency } from "../utils/proprietorTrack";
 import {
   REGION_12_ADDRESS_PLACEHOLDER,
@@ -571,6 +572,7 @@ export function RegisterPage({
     smsEnabled: boolean;
     demoModeEnabled: boolean;
   }>({ smtpEnabled: false, smsEnabled: false, demoModeEnabled: true });
+  const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
 
   useEffect(() => {
     void api
@@ -587,6 +589,21 @@ export function RegisterPage({
       });
   }, []);
 
+  useEffect(() => {
+    return demoModeStore.subscribe(() => {
+      const on = demoModeStore.isEnabled();
+      setDemoMode(on);
+      if (on) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.emailVerified;
+          delete next.phoneVerified;
+          return next;
+        });
+      }
+    });
+  }, []);
+
   const set = (key: string, value: any) =>
     setForm((p) => ({ ...p, [key]: value }));
   const clearErr = (key: string) =>
@@ -599,17 +616,11 @@ export function RegisterPage({
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    // Demo mode may skip most field validators, but email/SMS OTP must still
-    // succeed server-side — keep those checks so registration does not fail later.
+    // Demo mode bypasses field validators and OTP verification (backend also
+    // skips OTP enforcement when aisetup.demo-mode-enabled is true).
     if (isDemoModeActive()) {
-      if (step === 2 || step === 4) {
-        if (!form.emailVerified)
-          errs.emailVerified = "Please verify your email address";
-        if (!form.phoneVerified)
-          errs.phoneVerified = "Please verify your mobile number";
-      }
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
+      setErrors({});
+      return true;
     }
     if (step === 1) {
       if (!form.firstName.trim())
@@ -1009,6 +1020,13 @@ export function RegisterPage({
                   Account & Verification
                 </h3>
 
+                {demoMode && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Demo mode: email and mobile OTP verification are optional.
+                    You can continue without verifying.
+                  </div>
+                )}
+
                 {/* Email */}
                 <Field
                   label="Email Address"
@@ -1217,7 +1235,7 @@ export function RegisterPage({
                 </div>
 
                 <Field
-                  label="Priority Sector (SETUP 4.0)"
+                  label="Business Sector (SETUP 4.0)"
                   required
                   error={errors.businessSector}
                   hint="Must match one of the priority sectors on the SETUP landing page"

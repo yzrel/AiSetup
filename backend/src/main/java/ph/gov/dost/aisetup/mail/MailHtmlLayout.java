@@ -4,7 +4,7 @@
 package ph.gov.dost.aisetup.mail;
 
 /**
- * Shared DOST Region XII branded HTML shell for outbound transactional mail.
+ * Shared DOST SOCCSKSARGEN branded HTML shell for outbound transactional mail.
  * Table-based + inline CSS for email-client compatibility.
  */
 public final class MailHtmlLayout {
@@ -12,7 +12,13 @@ public final class MailHtmlLayout {
     public static final String LOGO_CID = "dost-logo";
     public static final String LOGO_CLASSPATH = "classpath:mail/dost-logo-horizontal-light.png";
 
+    /** Accent / footer text — dark navy for contrast on light surfaces. */
     private static final String DOST_BLUE = "#1B2A4E";
+    /**
+     * Header band — matches the baked-in blue of {@code dost-logo-horizontal-light.png}
+     * (sampled ~#3F5282) so the logo does not sit in a darker “box”.
+     */
+    private static final String HEADER_BG = "#3F5282";
     private static final String DOST_LIGHT = "#00AEEF";
     private static final String BODY_TEXT = "#1f2937";
     private static final String MUTED = "#6b7280";
@@ -74,7 +80,7 @@ public final class MailHtmlLayout {
         String safeCode = escape(code == null ? "" : code.trim());
         return """
                 <p style="margin:0 0 20px;color:%s;font-size:15px;line-height:1.55;font-family:Arial,Helvetica,sans-serif;">
-                  Your DOST Region XII aiSETUP verification code is:
+                  Your DOST SOCCSKSARGEN aiSETUP verification code is:
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="margin:0 0 20px;">
                   <tr>
@@ -105,7 +111,7 @@ public final class MailHtmlLayout {
                 <head>
                   <meta charset="UTF-8">
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <title>aiSETUP — DOST Region XII</title>
+                  <title>aiSETUP — DOST SOCCSKSARGEN</title>
                 </head>
                 <body style="margin:0;padding:0;background:#eef2f7;font-family:Arial,Helvetica,sans-serif;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="background:#eef2f7;padding:24px 12px;">
@@ -116,7 +122,7 @@ public final class MailHtmlLayout {
                             <td style="background-color:%s;padding:20px 24px 18px;text-align:center;border-bottom:3px solid %s;">
                               <img src="cid:%s" alt="Department of Science and Technology" width="420" style="display:block;margin:0 auto 14px;max-width:100%%;height:auto;border:0;">
                               <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;">aiSETUP</div>
-                              <div style="font-size:12px;color:#ffffff;margin-top:4px;font-weight:600;opacity:0.9;font-family:Arial,Helvetica,sans-serif;">DOST Region XII</div>
+                              <div style="font-size:12px;color:#ffffff;margin-top:4px;font-weight:600;opacity:0.9;font-family:Arial,Helvetica,sans-serif;">DOST SOCCSKSARGEN</div>
                             </td>
                           </tr>
                           <tr>
@@ -136,7 +142,7 @@ public final class MailHtmlLayout {
                           </tr>
                         </table>
                         <p style="margin:16px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;">
-                          This message was sent by aiSETUP — DOST Region XII (SOCCSKSARGEN).
+                          This message was sent by aiSETUP — DOST SOCCSKSARGEN (SOCCSKSARGEN).
                         </p>
                       </td>
                     </tr>
@@ -145,7 +151,7 @@ public final class MailHtmlLayout {
                 </html>
                 """
                 .formatted(
-                        DOST_BLUE,
+                        HEADER_BG,
                         DOST_LIGHT,
                         LOGO_CID,
                         inner,

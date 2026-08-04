@@ -43,7 +43,7 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
-  onAiSuggest?: () => void;
+  onAiSuggest?: (userInstruction?: string) => void;
   aiLoading?: boolean;
 }) {
   if (multiline && onAiSuggest) {
@@ -94,7 +94,7 @@ function StringListEditor({
   label: string;
   items: string[];
   onChange: (items: string[]) => void;
-  onAiSuggest?: () => void;
+  onAiSuggest?: (userInstruction?: string) => void;
   aiLoading?: boolean;
   multiline?: boolean;
 }) {

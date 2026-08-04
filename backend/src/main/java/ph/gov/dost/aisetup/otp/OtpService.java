@@ -170,15 +170,18 @@ public class OtpService {
 
     /**
      * Enforces email (and SMS when configured) OTP before registration.
-     * Demo-mode fallback still requires a verified demo OTP row for the target.
+     * When aisetup.demo-mode-enabled is true, OTP checks are skipped so demo
+     * registration can proceed without verifying (production keeps this off).
      */
     public void requireVerifiedForRegistration(String email, String phone) {
+        if (properties.isDemoModeEnabled()) {
+            return;
+        }
         if (!isRecentlyVerified(CHANNEL_EMAIL, email)) {
             throw new IllegalArgumentException("Please verify your email address before registering");
         }
-        // Require SMS verification when SMS is configured, or when demo fallback is active for SMS
-        // (registration still asks for phone OTP in the UI).
-        if (isSmsConfigured() || isDemoFallback(CHANNEL_SMS)) {
+        // Require SMS verification when SMS is configured.
+        if (isSmsConfigured()) {
             if (phone == null || phone.isBlank()) {
                 throw new IllegalArgumentException("Mobile number is required for registration");
             }

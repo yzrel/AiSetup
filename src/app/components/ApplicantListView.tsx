@@ -385,7 +385,7 @@ function ApplicantDetail({
                   onChange={handleChange}
                 />
                 <EditField
-                  label="Priority Sector"
+                  label="Business Sector"
                   name="businessSector"
                   value={form.businessSector}
                   onChange={handleChange}

@@ -146,7 +146,7 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
                 value={form.sector}
                 onChange={(value) => set("sector", value)}
                 className={inputCls}
-                placeholder="Select priority sector"
+                placeholder="Select business sector"
               />
             </div>
             <div>

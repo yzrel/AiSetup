@@ -161,7 +161,7 @@ export function TNA2TechnicalReport({
               <div>
                 <p className="font-semibold text-amber-900">Awaiting DOST preparation</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  DOST Region XII is preparing your {formatFormMention("tna02")} based on your{" "}
+                  DOST SOCCSKSARGEN is preparing your {formatFormMention("tna02")} based on your{" "}
                   {formatFormMention("tna01")} and site validation. You will be able to view and download it here once
                   published.
                 </p>

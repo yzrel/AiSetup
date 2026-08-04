@@ -114,7 +114,7 @@ export function DostProgramRecommendationCards({
             Contact your nearest Provincial S&T Center
           </p>
           <p className="text-gray-600 text-xs mb-2">
-            DOST Region XII provincial offices can guide you on which program
+            DOST SOCCSKSARGEN provincial offices can guide you on which program
             fits your enterprise best.
           </p>
           <ul className="text-xs text-gray-600 space-y-1">

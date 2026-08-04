@@ -151,7 +151,7 @@ export function DOSTNavBrand({
             variant === "light" ? "text-white/70" : "text-gray-500"
           }`}
         >
-          DOST Region XII
+          DOST SOCCSKSARGEN
         </p>
         <div className="flex items-center gap-0.5 mt-0.5">
           <span

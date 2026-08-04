@@ -517,6 +517,8 @@ export interface AiFieldSuggestionRequest {
   module: AiSuggestModule;
   field: string;
   context: Record<string, unknown>;
+  /** Optional free-text hint merged into the AI prompt (max 500 chars). */
+  userInstruction?: string;
 }
 
 export interface AiFieldSuggestionResponse {

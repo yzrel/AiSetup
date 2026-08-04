@@ -30,10 +30,11 @@ class MailHtmlLayoutTest {
     void wrapIncludesBrandingAndCidLogo() {
         String doc = MailHtmlLayout.wrap("<p>Inner content</p>");
         assertTrue(doc.contains("aiSETUP"));
-        assertTrue(doc.contains("DOST Region XII"));
+        assertTrue(doc.contains("DOST SOCCSKSARGEN"));
         assertTrue(doc.contains("cid:" + MailHtmlLayout.LOGO_CID));
         assertTrue(doc.contains("Inner content"));
         assertTrue(doc.contains("records@region12.dost.gov.ph"));
+        assertTrue(doc.contains("background-color:#3F5282"));
         assertTrue(doc.contains("#1B2A4E"));
         assertTrue(doc.contains("border-bottom:3px solid #00AEEF"));
     }

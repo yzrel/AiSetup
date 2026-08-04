@@ -54,7 +54,7 @@ type Lang = "en-PH" | "fil-PH";
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are the DOST aiSETUP Assistant — a friendly, knowledgeable AI chatbot for DOST Region XII (SOCCSKSARGEN) Small Enterprise Technology Upgrading Program (SETUP) in the Philippines.
+const SYSTEM_PROMPT = `You are the DOST aiSETUP Assistant — a friendly, knowledgeable AI chatbot for DOST SOCCSKSARGEN (SOCCSKSARGEN) Small Enterprise Technology Upgrading Program (SETUP) in the Philippines.
 
 You serve MSMEs and DOST staff in Region XII only: South Cotabato, Cotabato, Sultan Kudarat, Sarangani, and General Santos City. The regional office is in Koronadal City.
 
@@ -532,7 +532,7 @@ export function DOSTChatbot() {
       const errMsg =
         lang === "fil-PH"
           ? "Nagkaroon ng problema sa koneksyon. Pakisubukan muli."
-          : "I'm having trouble connecting. Please try again or contact DOST Region XII in Koronadal City.";
+          : "I'm having trouble connecting. Please try again or contact DOST SOCCSKSARGEN in Koronadal City.";
       setMessages((prev) => [
         ...prev,
         {

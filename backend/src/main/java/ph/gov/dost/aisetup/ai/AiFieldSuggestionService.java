@@ -50,8 +50,13 @@ public class AiFieldSuggestionService {
         response.setModule(module);
         response.setField(field);
 
+        String userInstruction = request.getUserInstruction() != null
+                ? request.getUserInstruction().trim()
+                : "";
+
         try {
-            JsonNode ai = anthropicClient.generateJsonObject(buildPrompt(spec, context), SUGGEST_MAX_TOKENS);
+            JsonNode ai = anthropicClient.generateJsonObject(
+                    buildPrompt(spec, context, userInstruction), SUGGEST_MAX_TOKENS);
             if (spec.bullets()) {
                 List<String> bullets = readBullets(ai);
                 if (!bullets.isEmpty()) {
@@ -71,12 +76,19 @@ public class AiFieldSuggestionService {
             log.warn("AI field suggestion failed for {}.{}: {}", module, field, e.getMessage());
         }
 
-        applyTemplateFallback(response, spec, context);
+        applyTemplateFallback(response, spec, context, userInstruction);
         response.setAiGenerated(false);
         return response;
     }
 
-    private String buildPrompt(FieldSpec spec, Map<String, Object> context) {
+    /** Visible for tests: module → registered field keys. */
+    static Map<String, java.util.Set<String>> registeredFieldKeys() {
+        Map<String, java.util.Set<String>> out = new LinkedHashMap<>();
+        REGISTRY.forEach((module, fields) -> out.put(module, java.util.Set.copyOf(fields.keySet())));
+        return out;
+    }
+
+    private String buildPrompt(FieldSpec spec, Map<String, Object> context, String userInstruction) {
         String contextJson;
         try {
             contextJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(context);
@@ -88,8 +100,24 @@ public class AiFieldSuggestionService {
                 ? "{ \"bullets\": [\"...\", \"...\"] }"
                 : "{ \"text\": \"...\" }";
 
+        String instructionBlock = "";
+        if (userInstruction != null && !userInstruction.isBlank()) {
+            // Escape % so String.formatted does not treat user text as format specifiers.
+            instructionBlock = ("""
+
+                Additional user instructions (ADDITIVE — do not replace the writing standards, field requirements, or applicant data above):
+                - Keep satisfying all SETUP writing standards and the field style note for this section
+                - Incorporate the following guidance where it is compatible with applicant data
+                - Do not invent unsupported facts, figures, dates, or certifications to satisfy these instructions
+                - If any instruction conflicts with SETUP standards or applicant data, follow SETUP standards and applicant data
+                """ + userInstruction + "\n").replace("%", "%%");
+        }
+
+        // Escape % in context JSON for the same String.formatted safety reason.
+        contextJson = contextJson.replace("%", "%%");
+
         return """
-                You are a senior technical writer for the DOST Region XII SETUP (Small Enterprise Technology Upgrading Program) application process.
+                You are a senior technical writer for the DOST SOCCSKSARGEN SETUP (Small Enterprise Technology Upgrading Program) application process.
 
                 Draft the "%s" content for the "%s" section of an official SETUP application document.
 
@@ -100,8 +128,9 @@ public class AiFieldSuggestionService {
                 - %s
                 - Reference the enterprise name and business sector where appropriate
                 - Avoid marketing hype, vague claims, or filler phrases
+                - Return a single clean draft only: do not repeat sentences, phrases, or paragraphs
                 %s
-
+                %s
                 Applicant and module data (JSON):
                 %s
 
@@ -112,6 +141,7 @@ public class AiFieldSuggestionService {
                 spec.formSection(),
                 spec.styleNote(),
                 GadLanguagePolicy.WRITING_RULES,
+                instructionBlock,
                 contextJson,
                 outputShape);
     }
@@ -131,29 +161,291 @@ public class AiFieldSuggestionService {
         return node.path("text").asText("").trim();
     }
 
-    private void applyTemplateFallback(AiFieldSuggestionResponse response, FieldSpec spec, Map<String, Object> ctx) {
+    private void applyTemplateFallback(
+            AiFieldSuggestionResponse response,
+            FieldSpec spec,
+            Map<String, Object> ctx,
+            String userInstruction) {
         String field = response.getField();
         String enterprise = str(ctx, "enterpriseName", "the enterprise");
         String sector = str(ctx, "businessSector", "manufacturing");
         String nature = str(ctx, "businessNature", "production");
         String msme = str(ctx, "msmeSize", "MSME");
-        String products = str(ctx, "productServices", str(ctx, "coreProducts", "core products"));
-        String project = str(ctx, "projectDescription", "technology upgrading");
-        String outcome = str(ctx, "expectedOutcome", "improved productivity and product quality");
+        List<String> instructionProducts = extractProductsFromInstruction(userInstruction);
+        String products = mergeProductSeed(ctx, field, instructionProducts);
+        String project = projectSeed(ctx, field);
+        String outcome = outcomeSeed(ctx, field);
 
         if ("genderInvolvement".equals(field)) {
-            response.setText(GadLanguagePolicy.involvementTemplate(
-                    enterprise,
-                    empCount(ctx, "employeesMale"),
-                    empCount(ctx, "employeesFemale")));
+            if (wantsBulletList(userInstruction)) {
+                response.setText(composeBulletAndStatements(
+                        field, userInstruction, enterprise, sector, nature, msme, products, project, outcome));
+            } else {
+                response.setText(GadLanguagePolicy.involvementTemplate(
+                        enterprise,
+                        empCount(ctx, "employeesMale"),
+                        empCount(ctx, "employeesFemale")));
+            }
             return;
         }
 
         if (spec.bullets()) {
+            // Registry bullet fields are already list-shaped; Extra format intents need no change.
             response.setBullets(templateBullets(field, enterprise, sector, nature, products, project, outcome));
+        } else if (wantsBulletList(userInstruction)) {
+            response.setText(composeBulletAndStatements(
+                    field, userInstruction, enterprise, sector, nature, msme, products, project, outcome));
         } else {
             response.setText(templateText(field, enterprise, sector, nature, msme, products, project, outcome));
         }
+    }
+
+    private static boolean wantsBulletList(String instruction) {
+        if (instruction == null || instruction.isBlank()) return false;
+        String s = instruction.toLowerCase();
+        return s.contains("bullet")
+                || s.contains("list form")
+                || s.contains("as a list")
+                || s.contains("in list")
+                || s.contains("bullet form");
+    }
+
+    private static boolean wantsStatements(String instruction) {
+        if (instruction == null || instruction.isBlank()) return false;
+        String s = instruction.toLowerCase();
+        return s.contains("statement")
+                || s.contains("narrative")
+                || s.contains("paragraph")
+                || s.contains("also add");
+    }
+
+    /**
+     * Bullets first, then optional narrative statements after (never narrative-first when bullets requested).
+     */
+    private String composeBulletAndStatements(
+            String field,
+            String userInstruction,
+            String enterprise,
+            String sector,
+            String nature,
+            String msme,
+            String products,
+            String project,
+            String outcome) {
+        String bullets = bulletFallbackText(field, enterprise, sector, nature, products, project, outcome);
+        boolean appendNarrative = "productServices".equals(field) || wantsStatements(userInstruction);
+        if (!appendNarrative) {
+            return bullets;
+        }
+        String narrative = templateText(field, enterprise, sector, nature, msme, products, project, outcome);
+        if (narrative == null || narrative.isBlank()) {
+            return bullets;
+        }
+        return bullets + "\n\n" + narrative.trim();
+    }
+
+    private static String bulletFallbackText(
+            String field,
+            String enterprise,
+            String sector,
+            String nature,
+            String products,
+            String project,
+            String outcome) {
+        return switch (field) {
+            case "productServices" -> toBulletLines(splitListItems(products));
+            case "projectDescription" -> toBulletLines(List.of(
+                    enterprise + " proposes " + project,
+                    "Sector focus: " + sector,
+                    "Nature of operations: " + nature,
+                    "Target outcome: " + outcome));
+            case "expectedOutcome" -> toBulletLines(List.of(
+                    outcome,
+                    "Improved delivery and quality for " + products,
+                    "Stronger competitiveness in the " + sector + " sector"));
+            case "productionPlanNotes" -> toBulletLines(List.of(
+                    "Phased installation and commissioning of " + project,
+                    "Operator training and SOP updates before acceptance testing",
+                    "PSTO Region XII monitoring of key milestones"));
+            default -> toBulletLines(List.of(
+                    enterprise + " (" + sector + ")",
+                    products,
+                    project,
+                    outcome));
+        };
+    }
+
+    /** Pull product names from Extra instructions by stripping format phrases, then splitting. */
+    static List<String> extractProductsFromInstruction(String instruction) {
+        if (instruction == null || instruction.isBlank()) return List.of();
+        String cleaned = instruction;
+        String[] phrases = {
+                "add these products in bullet form",
+                "add these products",
+                "products offered",
+                "also add statements",
+                "add statements",
+                "in bullet form",
+                "bullet form",
+                "as a list",
+                "list form",
+                "in list form",
+                "in list",
+                "please",
+                "bullets",
+                "bullet",
+                "statements",
+                "narrative",
+                "paragraph",
+                "offered",
+        };
+        // Longer phrases first (array already ordered).
+        for (String phrase : phrases) {
+            cleaned = cleaned.replaceAll("(?i)" + java.util.regex.Pattern.quote(phrase), " ");
+        }
+        cleaned = cleaned.replaceAll("(?i)\\b(add|these|products|form|also)\\b", " ");
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        if (cleaned.isBlank()) return List.of();
+        List<String> items = splitListItems(cleaned).stream()
+                .filter(item -> !isInstructionNoise(item))
+                .toList();
+        // Require at least one concrete item; otherwise fall back to context seed.
+        return items;
+    }
+
+    private static boolean isInstructionNoise(String item) {
+        String s = item.toLowerCase().trim();
+        if (s.isEmpty() || s.length() < 2) return true;
+        if (s.equals("these") || s.equals("products") || s.equals("form") || s.equals("also") || s.equals("in")) {
+            return true;
+        }
+        return s.contains("offer")
+                || s.contains("bullet")
+                || s.contains("statement")
+                || s.contains("narrative")
+                || s.contains("paragraph")
+                || s.matches(".*\\b(add|please|list)\\b.*");
+    }
+
+    private static List<String> splitListItems(String raw) {
+        if (raw == null || raw.isBlank()) return List.of("core products");
+        String[] parts = raw.split("[,;\\n]+");
+        List<String> items = new ArrayList<>();
+        for (String part : parts) {
+            String item = part.trim();
+            if (!item.isEmpty()) items.add(item);
+        }
+        return items.isEmpty() ? List.of(raw.trim()) : items;
+    }
+
+    private static String toBulletLines(List<String> items) {
+        StringBuilder sb = new StringBuilder();
+        for (String item : items) {
+            String line = item == null ? "" : item.trim();
+            if (line.isEmpty()) continue;
+            if (line.startsWith("- ")) {
+                sb.append(line);
+            } else {
+                sb.append("- ").append(line);
+            }
+            sb.append('\n');
+        }
+        return sb.toString().trim();
+    }
+
+    /** Prefer products listed in Extra instructions; else short context seed. */
+    private static String mergeProductSeed(Map<String, Object> ctx, String field, List<String> instructionProducts) {
+        if (instructionProducts != null && !instructionProducts.isEmpty()) {
+            return String.join(", ", instructionProducts);
+        }
+        return productSeed(ctx, field);
+    }
+
+    /** Short product/service seed; never reuse a full productServices narrative when generating that field. */
+    private static String productSeed(Map<String, Object> ctx, String field) {
+        if ("productServices".equals(field)) {
+            String core = str(ctx, "coreProducts", "");
+            if (isShortSeed(core)) return core;
+            String current = str(ctx, "productServices", "");
+            if (isShortSeed(current)) return current;
+            return "core products";
+        }
+        String products = str(ctx, "productServices", str(ctx, "coreProducts", "core products"));
+        return sanitizeSeed(products, "core products");
+    }
+
+    /** Project seed; never reuse projectDescription narrative when generating that field. */
+    private static String projectSeed(Map<String, Object> ctx, String field) {
+        if ("projectDescription".equals(field)) {
+            return "technology upgrading";
+        }
+        return sanitizeSeed(str(ctx, "projectDescription", "technology upgrading"), "technology upgrading");
+    }
+
+    /** Outcome seed; never reuse expectedOutcome narrative when generating that field. */
+    private static String outcomeSeed(Map<String, Object> ctx, String field) {
+        if ("expectedOutcome".equals(field)) {
+            return "improved productivity and product quality";
+        }
+        return sanitizeSeed(
+                str(ctx, "expectedOutcome", "improved productivity and product quality"),
+                "improved productivity and product quality");
+    }
+
+    private static final int SEED_MAX_LEN = 120;
+
+    private static boolean isShortSeed(String value) {
+        return value != null && !value.isBlank() && !looksLikeAssistNarrative(value) && value.length() <= SEED_MAX_LEN;
+    }
+
+    private static String sanitizeSeed(String value, String fallback) {
+        if (value == null || value.isBlank()) return fallback;
+        if (looksLikeAssistNarrative(value) || value.length() > SEED_MAX_LEN) {
+            String clipped = firstPhrase(value, SEED_MAX_LEN);
+            if (clipped.isBlank() || looksLikeAssistNarrative(clipped)) return fallback;
+            return clipped;
+        }
+        return value;
+    }
+
+    private static boolean looksLikeAssistNarrative(String value) {
+        String lower = value.toLowerCase();
+        return lower.contains("established quality and service standards")
+                || lower.contains("technology upgrading will support")
+                || lower.contains("the product or service portfolio reflects")
+                || lower.contains("detailed technical specifications and production parameters")
+                || lower.contains("through the setup program")
+                || lower.contains("upon successful implementation");
+    }
+
+    private static String firstPhrase(String value, int max) {
+        String trimmed = value.trim();
+        int cut = trimmed.length();
+        for (String sep : List.of(". ", "; ", ", ")) {
+            int i = trimmed.indexOf(sep);
+            if (i > 0 && i < cut) cut = i;
+        }
+        if (cut > max) cut = max;
+        String out = trimmed.substring(0, cut).trim();
+        // Avoid returning a nested "Enterprise offers Enterprise offers…" opener alone.
+        if (out.toLowerCase().contains(" offers ") && out.length() > 60) {
+            return fallbackProductFromOffers(out);
+        }
+        return out;
+    }
+
+    private static String fallbackProductFromOffers(String offersClause) {
+        String marker = " offers ";
+        int idx = offersClause.toLowerCase().indexOf(marker);
+        if (idx < 0) return "";
+        String after = offersClause.substring(idx + marker.length()).trim();
+        int end = after.length();
+        for (String sep : List.of(" to customers", " in the ", ". ", "; ")) {
+            int i = after.toLowerCase().indexOf(sep.toLowerCase());
+            if (i > 0 && i < end) end = i;
+        }
+        String product = after.substring(0, end).trim();
+        return product.length() <= SEED_MAX_LEN ? product : "";
     }
 
     private static String empCount(Map<String, Object> ctx, String key) {

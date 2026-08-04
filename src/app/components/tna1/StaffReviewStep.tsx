@@ -60,7 +60,7 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
             <div className="w-9 h-9 rounded-full bg-sky-400 flex items-center justify-center font-bold text-blue-900 text-sm">PS</div>
             <div>
               <p className="font-bold text-sm">Provincial Staff Review Mode</p>
-              <p className="text-xs text-white/60">Staff ID: PSTD-R12-001 · DOST Region XII · {new Date().toLocaleDateString("en-PH", { dateStyle: "medium" })}</p>
+              <p className="text-xs text-white/60">Staff ID: PSTD-R12-001 · DOST SOCCSKSARGEN · {new Date().toLocaleDateString("en-PH", { dateStyle: "medium" })}</p>
             </div>
             <div className="ml-auto">
               <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-sky-300">🔒 Secure Mode</span>

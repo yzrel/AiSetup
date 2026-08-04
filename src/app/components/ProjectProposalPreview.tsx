@@ -250,7 +250,7 @@ export function ProjectProposalPreview({
           <Row label="Business Permit No." value={form.businessPermitNumber} />
           <Row label="Business Permit Date" value={form.businessPermitDate} />
           <Row label="Business Activity" value={form.businessActivity} />
-          <Row label="Priority Sector (Specify)" value={form.prioritySectorSpecify} />
+          <Row label="Business Sector (Specify)" value={form.prioritySectorSpecify} />
           <Row label="Products / Services" value={form.productsServices} />
           <div className="mt-3">
             <p className="text-xs font-bold text-gray-500 uppercase mb-1">Brief Enterprise Background</p>

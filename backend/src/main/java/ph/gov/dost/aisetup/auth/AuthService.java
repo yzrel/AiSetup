@@ -69,7 +69,7 @@ public class AuthService {
         }
         if (!account.isEnabled()) {
             throw new BadCredentialsException(
-                    "This account has been blocked by DOST Region XII. Please contact the DOST XII office for assistance.");
+                    "This account has been blocked by DOST SOCCSKSARGEN. Please contact the DOST XII office for assistance.");
         }
         return toAuthResponse(account);
     }

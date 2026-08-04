@@ -27,7 +27,7 @@ public class EmailOtpSender {
         }
         String plain =
                 """
-                Your DOST Region XII aiSETUP verification code is: %s
+                Your DOST SOCCSKSARGEN aiSETUP verification code is: %s
 
                 This code expires in 10 minutes. If you did not request this, you can ignore this email.
                 """

@@ -320,7 +320,7 @@ export function EnterpriseRegistration({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Priority Sector (SETUP 4.0) *
+              Business Sector (SETUP 4.0) *
             </label>
             <PrioritySectorSelect
               required

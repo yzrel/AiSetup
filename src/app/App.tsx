@@ -127,7 +127,7 @@ function SidebarLogo() {
           </span>
         </div>
         <p className="text-white/35 text-[9px] tracking-wide mt-0.5">
-          DOST Region XII · SETUP 4.0
+          DOST SOCCSKSARGEN · SETUP 4.0
         </p>
       </div>
     </div>

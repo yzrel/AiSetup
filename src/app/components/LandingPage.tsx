@@ -501,7 +501,7 @@ function PrioritySectorsSection() {
             Priority Sectors
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto text-sm">
-            MSMEs classified under these sectors may avail of SETUP 4.0 assistance through DOST Region XII.
+            MSMEs classified under these sectors may avail of SETUP 4.0 assistance through DOST SOCCSKSARGEN.
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -626,7 +626,7 @@ function ContactOfficesSection() {
             Get in Touch
           </span>
           <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-3">
-            DOST Region XII Offices
+            DOST SOCCSKSARGEN Offices
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto text-sm">
             Contact the Provincial S&amp;T Center where your enterprise is based, or the Regional Office in Koronadal City.
@@ -1067,7 +1067,7 @@ function CTASection({
         </h2>
         <p className="text-white/60 mb-8 max-w-xl mx-auto">
           Join MSMEs across SOCCSKSARGEN that have already
-          benefited from DOST Region XII&apos;s SETUP Program. Start your
+          benefited from DOST SOCCSKSARGEN&apos;s SETUP Program. Start your
           application today.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -1165,7 +1165,7 @@ function Footer({ onStaffLogin }: { onStaffLogin: () => void }) {
               </li>
               {[
                 {
-                  label: "DOST Region XII Website",
+                  label: "DOST SOCCSKSARGEN Website",
                   href: DOST_REGION_12_WEBSITE,
                 },
                 {
