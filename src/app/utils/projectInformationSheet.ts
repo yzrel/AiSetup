@@ -274,7 +274,6 @@ export function validateSignedPrePisUpload(
   fileName: string,
   moaSignedDate?: string,
 ): { errors: string[]; warnings: string[] } {
-  if (isDemoModeActive()) return { errors: [], warnings: [] };
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!prePisSignedDate?.trim()) errors.push("Pre-PIS signed date is required.");
@@ -282,6 +281,8 @@ export function validateSignedPrePisUpload(
   if (moaSignedDate && prePisSignedDate && prePisSignedDate !== moaSignedDate) {
     warnings.push("Pre-PIS signed date differs from MOA signed date.");
   }
+  // Demo unlocks blockers only — keep soft warnings visible.
+  if (isDemoModeActive()) return { errors: [], warnings };
   return { errors, warnings };
 }
 

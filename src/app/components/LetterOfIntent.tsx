@@ -32,8 +32,9 @@ import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { api, ApiError } from "../api/client";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
-import { allowWhenDemo, aiGenerateNotice } from "../utils/demoMode";
+import { allowWhenDemo, aiGenerateNotice, isDemoModeActive } from "../utils/demoMode";
 import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
+import { ValidationRow } from "./ValidationRow";
 import type { LoiDocumentResponse } from "../api/types";
 import {
   buildLoiGenerationPayload,
@@ -106,25 +107,6 @@ function StepHeader({ current, steps }: { current: StepId; steps: typeof STEPS }
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function ValidationRow({ label, value, passed }: { label: string; value: string; passed: boolean }) {
-  return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-500"}`}>
-        {passed ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className={`text-sm mt-0.5 truncate ${passed ? "text-gray-800" : "text-red-500 italic"}`}>
-          {value || "Missing — please update in previous steps"}
-        </p>
-      </div>
-      <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${passed ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
-        {passed ? "OK" : "MISSING"}
-      </span>
     </div>
   );
 }
@@ -939,10 +921,21 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </h2>
               <div className="bg-white border border-gray-100 rounded-xl p-4 divide-y divide-gray-50">
                 {validationChecks.map((check) => (
-                  <ValidationRow key={check.label} {...check} />
+                  <ValidationRow
+                    key={check.label}
+                    {...check}
+                    missingHint="Missing — please update in previous steps"
+                  />
                 ))}
               </div>
             </div>
+
+            {isDemoModeActive() && !allValidationPassed && (
+              <div className="rounded-xl p-4 border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+                Demo mode: you can proceed with incomplete fields. Missing items
+                above still show what production mode would require.
+              </div>
+            )}
 
             <div className={`rounded-xl p-4 border-2 ${allValidationPassed ? "bg-green-50 border-green-300" : "bg-red-50 border-red-200"}`}>
               <div className="flex items-center gap-3">

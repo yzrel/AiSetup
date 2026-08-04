@@ -185,8 +185,8 @@ describe("signed MOA persistence", () => {
       .slice(0, emailOutboxStore.getAll().length - beforeCount)
       .filter((e) => e.applicantId === applicantId && e.module === "signedMoa");
 
-    // Client receipt + DOST copy
-    expect(sent.length).toBeGreaterThanOrEqual(2);
+    // Client receipt only (DOST/PSTO copy temporarily disabled in documentDelivery).
+    expect(sent.length).toBeGreaterThanOrEqual(1);
     expect(sent.some((e) => e.to.includes(app.emailAddress))).toBe(true);
     expect(
       sent.some((e) =>

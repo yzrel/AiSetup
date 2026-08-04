@@ -23,6 +23,7 @@ import ph.gov.dost.aisetup.persistence.dto.ModulePatchRequest;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveRequest;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveResponse;
 import ph.gov.dost.aisetup.workflow.ClientVisibilityService;
+import ph.gov.dost.aisetup.workflow.ModuleContentValidationService;
 import ph.gov.dost.aisetup.workflow.ModuleDataIntegrityService;
 import ph.gov.dost.aisetup.workflow.WorkflowGateService;
 
@@ -34,6 +35,7 @@ public class ApplicantController {
     private final WorkflowGateService workflowGateService;
     private final ClientVisibilityService clientVisibilityService;
     private final ModuleDataIntegrityService moduleDataIntegrityService;
+    private final ModuleContentValidationService moduleContentValidationService;
     private final AuditService auditService;
 
     public ApplicantController(
@@ -41,11 +43,13 @@ public class ApplicantController {
             WorkflowGateService workflowGateService,
             ClientVisibilityService clientVisibilityService,
             ModuleDataIntegrityService moduleDataIntegrityService,
+            ModuleContentValidationService moduleContentValidationService,
             AuditService auditService) {
         this.persistenceService = persistenceService;
         this.workflowGateService = workflowGateService;
         this.clientVisibilityService = clientVisibilityService;
         this.moduleDataIntegrityService = moduleDataIntegrityService;
+        this.moduleContentValidationService = moduleContentValidationService;
         this.auditService = auditService;
     }
 
@@ -154,6 +158,7 @@ public class ApplicantController {
         workflowGateService.assertCanPublish(body.getPublished());
         Map<String, Object> data = sanitizeModulePatchData(moduleKey, body.getData());
         moduleDataIntegrityService.assertModulePatchShape(moduleKey, data);
+        moduleContentValidationService.assertHardTransition(moduleKey, data, body.getPublished());
         ApplicantRecordDto saved = persistenceService.mergeModuleKey(id, moduleKey, data, body.getPublished());
         auditService.record(
                 Boolean.TRUE.equals(body.getPublished()) ? "module.publish" : "module.patch",
@@ -173,6 +178,7 @@ public class ApplicantController {
             @PathVariable String id,
             @Valid @RequestBody ApprovalAcknowledgeRequest body) {
         SecurityUtils.requireCanAccessApplicant(id);
+        moduleContentValidationService.assertApprovalAcknowledge(body.getConformeSignedName());
         ApplicantRecordDto saved = persistenceService.acknowledgeApprovalLetter(
                 id, body.getConformeSignedName().trim());
         auditService.record(
@@ -192,6 +198,7 @@ public class ApplicantController {
             if (body.getApplicantId() == null || body.getApplicantId().isBlank()) {
                 body.setApplicantId(id);
             }
+            moduleContentValidationService.assertTna1Submit(body.getForm(), body.isSubmitted());
             Tna1FormSaveResponse response = persistenceService.saveTna1(id, body);
             auditService.record("tna1.save", "applicant", id, Map.of("submitted", body.isSubmitted()));
             return ResponseEntity.ok(response);
@@ -218,4 +225,5 @@ public class ApplicantController {
         cleaned.remove("introductionLetter");
         return cleaned;
     }
+
 }

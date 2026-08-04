@@ -11,20 +11,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalDocumentResponse;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalGenerationRequest;
+import ph.gov.dost.aisetup.workflow.ModuleContentValidationService;
 
 @RestController
 @RequestMapping("/project-proposal")
 public class ProjectProposalController {
 
     private final ProjectProposalGenerationService generationService;
+    private final ModuleContentValidationService moduleContentValidationService;
 
-    public ProjectProposalController(ProjectProposalGenerationService generationService) {
+    public ProjectProposalController(
+            ProjectProposalGenerationService generationService,
+            ModuleContentValidationService moduleContentValidationService) {
         this.generationService = generationService;
+        this.moduleContentValidationService = moduleContentValidationService;
     }
 
     @PostMapping("/generate")
     public ResponseEntity<ProjectProposalDocumentResponse> generate(
             @Valid @RequestBody ProjectProposalGenerationRequest request) {
+        moduleContentValidationService.assertProposalGeneration(request);
         return ResponseEntity.ok(generationService.generate(request));
     }
 }

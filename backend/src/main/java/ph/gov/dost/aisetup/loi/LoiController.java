@@ -11,19 +11,25 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ph.gov.dost.aisetup.loi.dto.LoiDocumentResponse;
 import ph.gov.dost.aisetup.loi.dto.LoiGenerationRequest;
+import ph.gov.dost.aisetup.workflow.ModuleContentValidationService;
 
 @RestController
 @RequestMapping("/loi")
 public class LoiController {
 
     private final LoiGenerationService loiGenerationService;
+    private final ModuleContentValidationService moduleContentValidationService;
 
-    public LoiController(LoiGenerationService loiGenerationService) {
+    public LoiController(
+            LoiGenerationService loiGenerationService,
+            ModuleContentValidationService moduleContentValidationService) {
         this.loiGenerationService = loiGenerationService;
+        this.moduleContentValidationService = moduleContentValidationService;
     }
 
     @PostMapping("/generate")
     public ResponseEntity<LoiDocumentResponse> generate(@Valid @RequestBody LoiGenerationRequest request) {
+        moduleContentValidationService.assertLoiGeneration(request);
         return ResponseEntity.ok(loiGenerationService.generate(request));
     }
 }

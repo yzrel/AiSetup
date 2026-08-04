@@ -5,7 +5,7 @@
  */
 
 import { MODULE_BODY } from "../moduleTheme";
-import { allowWhenDemo } from "../../utils/demoMode";
+import { allowWhenDemo, isDemoModeActive } from "../../utils/demoMode";
 import { notifyTna1Submitted } from "../../utils/notificationHelpers";
 import type { Tna1StepContext } from "./stepContext";
 import { AILoader, DOST_BLUE, InfoBanner, sectionTitle, ValidationRow } from "./tna1Ui";
@@ -44,6 +44,13 @@ export function ValidationStep({ ctx }: { ctx: Tna1StepContext }) {
           {validationChecks.map(check => <ValidationRow key={check.label} {...check} />)}
         </div>
       </div>
+
+      {isDemoModeActive() && !allValid && (
+        <div className="rounded-xl p-4 border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+          Demo mode: you can submit with incomplete fields. Missing items above
+          still show what production mode would require.
+        </div>
+      )}
 
       <div className={`rounded-xl p-4 border-2 ${allValid ? "bg-green-50 border-green-300" : "bg-red-50 border-red-200"}`}>
         <div className="flex items-center gap-3">

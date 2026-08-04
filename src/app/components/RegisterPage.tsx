@@ -38,6 +38,15 @@ import { DemoModeBanner } from "./DemoModeBanner";
 import { DemoModeLogoTrigger } from "./DemoModeLogoTrigger";
 import { DOSTMark } from "./DOSTLogos";
 import { isDemoModeActive } from "../utils/demoMode";
+import {
+  email as validateEmail,
+  nonEmptySelect,
+  passwordPolicy,
+  passwordsMatch,
+  phMobile,
+  requiredTrimmed,
+  tin as validateTin,
+} from "../utils/fieldValidators";
 import { api, ApiError } from "../api/client";
 import { clearAuthToken, setAuthToken } from "../api/authToken";
 import { syncApplicantToBackend, uploadFileToBackend } from "../utils/applicantPersistence";
@@ -618,17 +627,18 @@ export function RegisterPage({
     const errs: Record<string, string> = {};
     // Demo mode bypasses field validators and OTP verification (backend also
     // skips OTP enforcement when aisetup.demo-mode-enabled is true).
+    // Amber banners still explain that OTP is optional.
     if (isDemoModeActive()) {
       setErrors({});
       return true;
     }
     if (step === 1) {
-      if (!form.firstName.trim())
-        errs.firstName = "First name is required";
-      if (!form.lastName.trim())
-        errs.lastName = "Last name is required";
-      if (!form.birthday)
-        errs.birthday = "Birthday is required";
+      const first = requiredTrimmed(form.firstName, "First name");
+      if (first) errs.firstName = first;
+      const last = requiredTrimmed(form.lastName, "Last name");
+      if (last) errs.lastName = last;
+      const birthday = requiredTrimmed(form.birthday, "Birthday");
+      if (birthday) errs.birthday = birthday;
       if (!form.gender) errs.gender = "Please select gender";
       if (!form.civilStatus)
         errs.civilStatus = "Please select civil status";
@@ -637,45 +647,40 @@ export function RegisterPage({
           "Selfie is required for identity verification";
     }
     if (step === 2) {
-      if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-        errs.email = "Enter a valid email address";
+      const emailErr = validateEmail(form.email);
+      if (emailErr) errs.email = emailErr;
       if (!form.emailVerified)
         errs.emailVerified = "Please verify your email address";
-      if (!form.phone.match(/^(09|\+639)\d{9}$/))
-        errs.phone = "Enter a valid Philippine mobile number";
+      const phoneErr = phMobile(form.phone);
+      if (phoneErr) errs.phone = phoneErr;
       if (!form.phoneVerified)
         errs.phoneVerified = "Please verify your mobile number";
-      if (form.password.length < 8)
-        errs.password =
-          "Password must be at least 8 characters";
-      if (!/[A-Z]/.test(form.password))
-        errs.password =
-          "Password must contain an uppercase letter";
-      if (!/[0-9]/.test(form.password))
-        errs.password = "Password must contain a number";
-      if (form.password !== form.confirmPassword)
-        errs.confirmPassword = "Passwords do not match";
+      const pwErr = passwordPolicy(form.password);
+      if (pwErr) errs.password = pwErr;
+      const matchErr = passwordsMatch(form.password, form.confirmPassword);
+      if (matchErr) errs.confirmPassword = matchErr;
     }
     if (step === 3) {
-      if (!form.companyName.trim())
-        errs.companyName = "Company name is required";
-      if (!form.province)
-        errs.province = "Select your province in Region XII";
-      if (!form.companyAddress.trim())
-        errs.companyAddress = "Company address is required";
-      if (
-        !form.tinNumber.match(/^\d{3}-\d{3}-\d{3}-\d{3}$/) &&
-        !form.tinNumber.match(/^\d{9,12}$/)
-      )
-        errs.tinNumber =
-          "Enter a valid TIN (e.g. 123-456-789-000)";
-      if (!form.registrationType)
-        errs.registrationType = "Select registration type";
-      if (!form.companyStartDate)
-        errs.companyStartDate =
-          "Company start date is required";
-      if (!form.businessSector)
-        errs.businessSector = "Select your SETUP priority sector";
+      const company = requiredTrimmed(form.companyName, "Company name");
+      if (company) errs.companyName = company;
+      const province = nonEmptySelect(
+        form.province,
+        "your province in Region XII",
+      );
+      if (province) errs.province = province;
+      const address = requiredTrimmed(form.companyAddress, "Company address");
+      if (address) errs.companyAddress = address;
+      const tinErr = validateTin(form.tinNumber);
+      if (tinErr) errs.tinNumber = tinErr;
+      const regType = nonEmptySelect(form.registrationType, "registration type");
+      if (regType) errs.registrationType = regType;
+      const start = requiredTrimmed(form.companyStartDate, "Company start date");
+      if (start) errs.companyStartDate = start;
+      const sector = nonEmptySelect(
+        form.businessSector,
+        "your SETUP priority sector",
+      );
+      if (sector) errs.businessSector = sector;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;

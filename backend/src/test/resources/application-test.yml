@@ -14,6 +14,10 @@ spring:
   h2:
     console:
       enabled: false
+  # Keep OTP demo fallback deterministic — do not inherit developer SMTP env.
+  mail:
+    username:
+    password:
 
 aisetup:
   cors:
@@ -26,6 +30,13 @@ aisetup:
   seed-users: true
   demo-mode-enabled: true
   upload-dir: ./data/test-uploads
+  mail:
+    from:
+    username:
+    password:
+  sms:
+    api-key:
+    sender-name: DOSTXII
   rate-limit:
     otp-per-ip: 200
     otp-per-target: 50

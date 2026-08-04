@@ -18,6 +18,7 @@ import {
   loadBusinessPermits,
   validateBusinessPermits,
 } from "../utils/businessPermits";
+import { requiredTrimmed, tin as validateTin } from "../utils/fieldValidators";
 import { isFoodSector } from "../utils/foodSector";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
@@ -223,16 +224,32 @@ export function EnterpriseRegistration({
     if (!applicant) return;
 
     if (!isDemoModeActive()) {
+      const tinErr = validateTin(formData.tinNumber);
+      if (tinErr) {
+        setFormError(tinErr);
+        return;
+      }
+      const nameErr = requiredTrimmed(formData.enterpriseName, "Enterprise name");
+      if (nameErr) {
+        setFormError(nameErr);
+        return;
+      }
       const permitError = validateBusinessPermits(businessPermits);
       if (permitError) {
         setFormError(permitError);
         return;
       }
-      if (foodSector && !formData.fdaNumber.trim()) {
-        setFormError(
-          "FDA License to Operate No. is required for food sector enterprises.",
+      if (foodSector) {
+        const fdaErr = requiredTrimmed(
+          formData.fdaNumber,
+          "FDA License to Operate No.",
         );
-        return;
+        if (fdaErr) {
+          setFormError(
+            "FDA License to Operate No. is required for food sector enterprises.",
+          );
+          return;
+        }
       }
     }
     persistEnterpriseDetails({ markSaved: true });

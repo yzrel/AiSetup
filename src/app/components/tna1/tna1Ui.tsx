@@ -8,6 +8,7 @@
 import { useRef } from "react";
 import { moduleStepPillClass, MODULE_STEP_SCROLL } from "../moduleTheme";
 import { readAndUploadModuleDocument } from "../../utils/readFileAsDataUrl";
+export { ValidationRow } from "../ValidationRow";
 
 // ─── Shared style constants (mirrors LOI exactly) ────────────────────────────
 export const DOST_BLUE = "#0C2461";
@@ -85,34 +86,6 @@ export function ReadonlyField({ label, value }: { label: string; value?: string 
       <div className="w-full border border-gray-100 bg-blue-50/40 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 font-medium min-h-[40px]">
         {value || <span className="text-gray-300 font-normal">—</span>}
       </div>
-    </div>
-  );
-}
-
-// ─── Validation row (same as LOI ValidationRow) ──────────────────────────────
-export function ValidationRow({
-  label,
-  value,
-  passed,
-}: {
-  label: string;
-  value?: string;
-  passed: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-500"}`}>
-        {passed ? "✓" : "!"}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className={`text-sm mt-0.5 truncate ${passed ? "text-gray-800" : "text-red-500 italic"}`}>
-          {value || "Missing — please complete in previous steps"}
-        </p>
-      </div>
-      <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${passed ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
-        {passed ? "OK" : "MISSING"}
-      </span>
     </div>
   );
 }

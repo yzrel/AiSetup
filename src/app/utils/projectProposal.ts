@@ -18,6 +18,7 @@ import type {
 import { getPublishedTna2 } from "./tnaForm02";
 import { yearFromDateEstablished } from "./applicantPrefill";
 import { isDemoModeActive } from "./demoMode";
+import { requiredTrimmed } from "./fieldValidators";
 import { normalizeProjectProposalStored } from "./normalizeCriticalModuleData";
 
 export const PROPOSAL_ATTACHMENT_LABELS: Record<
@@ -766,10 +767,15 @@ export function validateProjectProposalSubmit(
 ): string[] {
   if (isDemoModeActive()) return [];
   const errors: string[] = [];
-  if (!form.projectTitle.trim()) errors.push("Project title is required.");
-  if (!form.proponentName.trim()) errors.push("Proponent name is required.");
-  if (!form.amountRequested.trim())
-    errors.push("Amount requested from SETUP is required.");
+  const title = requiredTrimmed(form.projectTitle, "Project title");
+  if (title) errors.push(title.endsWith(".") ? title : `${title}.`);
+  const proponent = requiredTrimmed(form.proponentName, "Proponent name");
+  if (proponent) errors.push(proponent.endsWith(".") ? proponent : `${proponent}.`);
+  const amount = requiredTrimmed(
+    form.amountRequested,
+    "Amount requested from SETUP",
+  );
+  if (amount) errors.push(amount.endsWith(".") ? amount : `${amount}.`);
   for (const kind of REQUIRED_ATTACHMENTS) {
     if (!attachments.some((a) => a.kind === kind))
       errors.push(`${PROPOSAL_ATTACHMENT_LABELS[kind]} is required.`);

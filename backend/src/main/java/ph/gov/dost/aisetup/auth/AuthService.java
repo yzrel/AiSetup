@@ -27,6 +27,7 @@ import ph.gov.dost.aisetup.auth.dto.RegisterRequest;
 import ph.gov.dost.aisetup.auth.dto.StaffResetPasswordRequest;
 import ph.gov.dost.aisetup.auth.dto.StaffUserDto;
 import ph.gov.dost.aisetup.auth.dto.UpdateStaffRequest;
+import ph.gov.dost.aisetup.common.PasswordPolicy;
 import ph.gov.dost.aisetup.otp.OtpService;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordRepository;
@@ -85,6 +86,7 @@ public class AuthService {
         if (userAccountRepository.existsByEmailIgnoreCase(request.getEmail().trim())) {
             throw new IllegalArgumentException("An account with this email already exists");
         }
+        PasswordPolicy.assertValid(request.getPassword());
         otpService.requireVerifiedForRegistration(request.getEmail(), request.getPhone());
 
         String applicantId = request.getApplicantId().trim();
@@ -202,6 +204,7 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getCurrentPassword(), account.getPasswordHash())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
+        PasswordPolicy.assertValid(request.getNewPassword());
         account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         account.setUpdatedAt(Instant.now());
         userAccountRepository.save(account);
@@ -211,6 +214,7 @@ public class AuthService {
     @Transactional
     public void adminResetPassword(AdminResetPasswordRequest request) {
         UserAccount account = requireApplicantAccount(request.getApplicantId());
+        PasswordPolicy.assertValid(request.getNewPassword());
         account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         account.setUpdatedAt(Instant.now());
         userAccountRepository.save(account);
@@ -239,6 +243,7 @@ public class AuthService {
         if (userAccountRepository.existsByEmailIgnoreCase(email)) {
             throw new IllegalArgumentException("An account with this email already exists");
         }
+        PasswordPolicy.assertValid(request.getPassword());
         Instant now = Instant.now();
         UserAccount account = new UserAccount();
         account.setId(UUID.randomUUID().toString());
@@ -327,6 +332,7 @@ public class AuthService {
     @Transactional
     public void resetStaffPassword(String userId, StaffResetPasswordRequest request) {
         UserAccount account = requireStaffAccount(userId);
+        PasswordPolicy.assertValid(request.getNewPassword());
         account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         account.setUpdatedAt(Instant.now());
         userAccountRepository.save(account);
