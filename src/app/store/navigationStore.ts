@@ -2,7 +2,7 @@
  * Persists shell navigation across page refresh.
  */
 
-import type { AdminView } from "./authStore";
+import { normalizeAdminView, type AdminView } from "./authStore";
 
 const VIEW_STORAGE_KEY = "aisetup.app.currentView";
 const AUTH_PAGE_KEY = "aisetup.auth.page";
@@ -16,7 +16,7 @@ export function loadCurrentView(): AdminView | null {
     const raw =
       sessionStorage.getItem(VIEW_STORAGE_KEY) ??
       localStorage.getItem(VIEW_STORAGE_KEY);
-    return raw ? (raw as AdminView) : null;
+    return normalizeAdminView(raw);
   } catch {
     return null;
   }

@@ -39,6 +39,7 @@ import type { LoiDocumentResponse } from "../api/types";
 import {
   buildLoiGenerationPayload,
   buildLocalLoiDocument,
+  coerceLoiDocument,
 } from "../utils/loiLetter";
 import { LoiDocumentPreview } from "./LoiDocumentPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
@@ -212,12 +213,21 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       setCommitmentRefund((prev) => ({ ...prev, ...draft.commitmentRefund }));
     }
 
-    const saved = app.moduleData?.loiDocument as LoiDocumentResponse | undefined;
+    const savedRaw = app.moduleData?.loiDocument;
     // Only restore a saved letter if it was generated for the currently
     // selected program (or for SETUP when no program is selected). A letter
     // generated for a different target must be re-generated.
     const savedLetterProgramId = String(app.moduleData?.loiDocumentProgramId ?? "");
     const currentProgramId = String(app.moduleData?.selectedProgramId ?? "");
+    const saved = coerceLoiDocument(savedRaw, {
+      enterpriseName: app.enterpriseName,
+      applicantName: app.applicantName,
+      designation: app.designation,
+      address: app.address,
+      email: app.emailAddress,
+      contactNumber: app.contactNumber,
+      province: String(app.moduleData?.province ?? ""),
+    });
     if (saved?.bodyParagraphs?.length && savedLetterProgramId === currentProgramId) {
       setLoiDocument(saved);
       setStep("complete");

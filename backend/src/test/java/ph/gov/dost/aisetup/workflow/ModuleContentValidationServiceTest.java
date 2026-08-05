@@ -118,4 +118,35 @@ class ModuleContentValidationServiceTest {
         req.setAttachmentKinds(List.of("vicinityMap", "plantLayout"));
         assertDoesNotThrow(() -> service.assertProposalGeneration(req));
     }
+
+    @Test
+    void closeOutSubmitRequiresInventoryRow() {
+        Map<String, Object> incomplete = Map.of(
+                "form",
+                Map.of(
+                        "terminalReportFileName", "tr.pdf",
+                        "auditedFinancialFileName", "fs.pdf",
+                        "equipmentAcknowledgementFileName", "ack.pdf",
+                        "certificateOfOwnershipIssued", true,
+                        "equipmentInventory", List.of(Map.of("description", ""))),
+                "submitted",
+                true);
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.assertHardTransition("projectCloseOut", incomplete, false));
+
+        Map<String, Object> complete = Map.of(
+                "form",
+                Map.of(
+                        "terminalReportFileName", "tr.pdf",
+                        "auditedFinancialFileName", "fs.pdf",
+                        "equipmentAcknowledgementFileName", "ack.pdf",
+                        "certificateOfOwnershipIssued", true,
+                        "equipmentInventory",
+                        List.of(Map.of("description", "Vacuum sealer"))),
+                "submitted",
+                true);
+        assertDoesNotThrow(
+                () -> service.assertHardTransition("projectCloseOut", complete, false));
+    }
 }

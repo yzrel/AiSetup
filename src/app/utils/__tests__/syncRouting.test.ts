@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Applicant } from "../../store/applicantStore";
 
+const getApplicant = vi.fn();
 const updateApplicantHeader = vi.fn();
 const patchApplicantModule = vi.fn();
 const saveApplicantRecord = vi.fn();
@@ -22,6 +23,7 @@ vi.mock("../../api/client", () => {
   return {
     ApiError,
     api: {
+      getApplicant: (...args: unknown[]) => getApplicant(...args),
       updateApplicantHeader: (...args: unknown[]) => updateApplicantHeader(...args),
       patchApplicantModule: (...args: unknown[]) => patchApplicantModule(...args),
       saveApplicantRecord: (...args: unknown[]) => saveApplicantRecord(...args),
@@ -66,14 +68,15 @@ function sampleApplicant(overrides: Partial<Applicant> = {}): Applicant {
 describe("syncApplicantToBackend routing", () => {
   beforeEach(() => {
     vi.resetModules();
+    getApplicant.mockReset();
     updateApplicantHeader.mockReset();
     patchApplicantModule.mockReset();
     saveApplicantRecord.mockReset();
   });
 
-  it("cold-creates via full PUT when header returns 404", async () => {
+  it("cold-creates via full PUT when getApplicant returns 404", async () => {
     const { ApiError } = await import("../../api/client");
-    updateApplicantHeader.mockRejectedValue(new ApiError("missing", 404));
+    getApplicant.mockRejectedValue(new ApiError("missing", 404));
     saveApplicantRecord.mockResolvedValue({});
 
     const { syncApplicantToBackend } = await import("../applicantPersistence");
@@ -81,9 +84,11 @@ describe("syncApplicantToBackend routing", () => {
 
     expect(saveApplicantRecord).toHaveBeenCalledTimes(1);
     expect(patchApplicantModule).not.toHaveBeenCalled();
+    expect(updateApplicantHeader).not.toHaveBeenCalled();
   });
 
-  it("uses header + per-module patch when case exists", async () => {
+  it("patches modules before header when case exists", async () => {
+    getApplicant.mockResolvedValue({});
     updateApplicantHeader.mockResolvedValue({});
     patchApplicantModule.mockResolvedValue({});
     saveApplicantRecord.mockResolvedValue({});
@@ -91,11 +96,18 @@ describe("syncApplicantToBackend routing", () => {
     const { syncApplicantToBackend } = await import("../applicantPersistence");
     await syncApplicantToBackend(sampleApplicant());
 
+    expect(getApplicant).toHaveBeenCalledWith("app-1");
     expect(updateApplicantHeader).toHaveBeenCalledTimes(1);
     expect(patchApplicantModule).toHaveBeenCalled();
     const keys = patchApplicantModule.mock.calls.map((c) => c[1]);
     expect(keys).toContain("loiDocument");
     expect(keys).toContain("caseMeta");
+
+    // Module patches must land before currentModule advance (branch caps).
+    const firstPatchOrder = patchApplicantModule.mock.invocationCallOrder[0];
+    const headerOrder = updateApplicantHeader.mock.invocationCallOrder[0];
+    expect(firstPatchOrder).toBeLessThan(headerOrder);
+
     // Legacy blob is best-effort fire-and-forget
     expect(saveApplicantRecord).toHaveBeenCalled();
   });

@@ -5,13 +5,30 @@
  */
 
 import { AlertCircle } from "lucide-react";
-import { AuthUser } from "../../store/authStore";
+import { AdminView, AuthUser } from "../../store/authStore";
 import { notificationStore } from "../../store/notificationStore";
+import { staffContextStore } from "../../store/staffContextStore";
 import { timeAgo } from "../../utils/timeAgo";
 
-export function AlertsTab({ user }: { user: AuthUser }) {
+export function AlertsTab({
+  user,
+  onNavigate,
+}: {
+  user: AuthUser;
+  onNavigate?: (view: AdminView) => void;
+}) {
   const userNotifications = notificationStore.getForUser(user);
   const unreadNotifications = userNotifications.filter((n) => !n.read);
+
+  const handleClick = (alertId: string, view?: AdminView, applicantId?: string) => {
+    notificationStore.markRead(alertId);
+    if (view && onNavigate) {
+      if (applicantId) {
+        staffContextStore.setSelectedApplicant(applicantId);
+      }
+      onNavigate(view);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -50,9 +67,11 @@ export function AlertsTab({ user }: { user: AuthUser }) {
         ))}
       </div>
       {userNotifications.map((alert) => (
-        <div
+        <button
           key={alert.id}
-          className={`flex gap-3 p-4 rounded-xl border text-sm ${
+          type="button"
+          onClick={() => handleClick(alert.id, alert.view, alert.applicantId)}
+          className={`w-full text-left flex gap-3 p-4 rounded-xl border text-sm transition-colors hover:opacity-95 ${
             alert.kind === "warning" || alert.kind === "action"
               ? "bg-amber-50 border-amber-200"
               : alert.kind === "success"
@@ -69,7 +88,7 @@ export function AlertsTab({ user }: { user: AuthUser }) {
                   : "text-blue-500"
             }`}
           />
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-gray-800 font-medium">{alert.title}</p>
             <p className="text-gray-600 text-sm mt-0.5">{alert.message}</p>
             <p className="text-xs text-gray-400 mt-1">
@@ -77,15 +96,11 @@ export function AlertsTab({ user }: { user: AuthUser }) {
             </p>
           </div>
           {!alert.read && (
-            <button
-              type="button"
-              onClick={() => notificationStore.markRead(alert.id)}
-              className="text-xs font-semibold text-gray-500 hover:text-gray-700 shrink-0"
-            >
-              Mark read
-            </button>
+            <span className="text-xs font-semibold text-gray-500 shrink-0 self-start">
+              Unread
+            </span>
           )}
-        </div>
+        </button>
       ))}
       {userNotifications.length === 0 && (
         <p className="text-sm text-gray-400 text-center py-8">No notifications.</p>

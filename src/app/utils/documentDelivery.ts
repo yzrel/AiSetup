@@ -234,24 +234,26 @@ export function sendPrintableToDost(options: {
   });
   deliverViaSmtpBestEffort(email);
 
-  notificationStore.add({
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId,
-    kind: "action",
-    title: `${documentTitle} received by email`,
-    message: `${applicant.enterpriseName} sent the ${documentTitle} to DOST for review.`,
-    view,
-  });
-  notificationStore.add({
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: `${documentTitle} sent to DOST`,
-    // TEMP: clients only — was: emailed to PSTO and regional records, copy to client.
-    message: `Your ${documentTitle} was emailed to ${applicant.emailAddress || "your email"}.`,
-    view,
-  });
+  notificationStore.addMany([
+    {
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId,
+      kind: "action",
+      title: `${documentTitle} received by email`,
+      message: `${applicant.enterpriseName} sent the ${documentTitle} to DOST for review.`,
+      view,
+    },
+    {
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: `${documentTitle} sent to DOST`,
+      // TEMP: clients only — was: emailed to PSTO and regional records, copy to client.
+      message: `Your ${documentTitle} was emailed to ${applicant.emailAddress || "your email"}.`,
+      view,
+    },
+  ]);
 
   return email;
 }
@@ -300,23 +302,25 @@ export function sendPrintableToClient(options: {
   });
   deliverViaSmtpBestEffort(email);
 
-  notificationStore.add({
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "action",
-    title: `Sign and return: ${documentTitle}`,
-    message: `Your ${documentTitle} was emailed for signature. Print, sign, and upload the signed copy in LandBank & Withdrawal.`,
-    view,
-  });
-  notificationStore.add({
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId,
-    kind: "info",
-    title: `${documentTitle} sent to client`,
-    message: `${documentTitle} for ${applicant.enterpriseName} was emailed to ${clientEmail || "the client"} for signature.`,
-    view,
-  });
+  notificationStore.addMany([
+    {
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "action",
+      title: `Sign and return: ${documentTitle}`,
+      message: `Your ${documentTitle} was emailed for signature. Print, sign, and upload the signed copy in LandBank & Withdrawal.`,
+      view,
+    },
+    {
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId,
+      kind: "info",
+      title: `${documentTitle} sent to client`,
+      message: `${documentTitle} for ${applicant.enterpriseName} was emailed to ${clientEmail || "the client"} for signature.`,
+      view,
+    },
+  ]);
 
   return email;
 }
@@ -445,23 +449,25 @@ export function saveSignedDocumentWithReceipts(options: {
   // });
   // deliverViaSmtpBestEffort(staffReceipt);
 
-  notificationStore.add({
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId,
-    kind: "info",
-    title: `Signed ${documentTitle} on file`,
-    message: `${applicant.enterpriseName} — signed ${documentTitle} uploaded by ${uploaderLabel}.`,
-    view,
-  });
-  notificationStore.add({
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: `Signed ${documentTitle} recorded`,
-    message: `Your signed ${documentTitle} is on file. A receipt was emailed to ${applicant.emailAddress || "your email"}.`,
-    view,
-  });
+  notificationStore.addMany([
+    {
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId,
+      kind: "info",
+      title: `Signed ${documentTitle} on file`,
+      message: `${applicant.enterpriseName} — signed ${documentTitle} uploaded by ${uploaderLabel}.`,
+      view,
+    },
+    {
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: `Signed ${documentTitle} recorded`,
+      message: `Your signed ${documentTitle} is on file. A receipt was emailed to ${applicant.emailAddress || "your email"}.`,
+      view,
+    },
+  ]);
 }
 
 /**

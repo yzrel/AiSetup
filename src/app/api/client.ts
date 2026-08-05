@@ -335,4 +335,27 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  listNotifications: () =>
+    apiFetch<import("./types").ApiNotification[]>("/notifications"),
+
+  createNotifications: (
+    payload: import("./types").ApiCreateNotificationRequest[],
+  ) =>
+    apiFetch<import("./types").ApiNotification[]>("/notifications", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  markNotificationRead: (id: string) =>
+    apiFetch<import("./types").ApiNotification>(
+      `/notifications/${encodeURIComponent(id)}/read`,
+      { method: "PATCH" },
+    ),
+
+  markAllNotificationsRead: () =>
+    apiFetch<{ ok: boolean; updated: number }>(
+      "/notifications/mark-all-read",
+      { method: "POST" },
+    ),
 };

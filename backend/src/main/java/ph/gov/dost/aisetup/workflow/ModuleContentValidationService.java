@@ -326,10 +326,26 @@ public class ModuleContentValidationService {
                 errors,
                 stringField(form, "equipmentAcknowledgementFileName"),
                 "Upload equipment acknowledgement receipt.");
+        if (!hasEquipmentInventoryRow(form.get("equipmentInventory"))) {
+            errors.add("Complete at least one equipment inventory row.");
+        }
         if (!Boolean.TRUE.equals(asBoolean(form.get("certificateOfOwnershipIssued")))) {
             errors.add("Confirm Certificate of Ownership and IRP issuance.");
         }
         return errors;
+    }
+
+    private static boolean hasEquipmentInventoryRow(Object inventory) {
+        if (!(inventory instanceof Collection<?> col) || col.isEmpty()) {
+            return false;
+        }
+        for (Object row : col) {
+            if (row instanceof Map<?, ?> m
+                    && !TextUtils.isBlank(stringField(castMap(m), "description"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<String> validateRefund(Map<String, Object> data) {

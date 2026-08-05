@@ -113,7 +113,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
       // Blocked accounts are rejected server-side (401 with a specific message).
       authStore.login(user);
       await applicantStore.hydrateFromBackend(true);
-      notificationStore.resyncFromApplicants();
+      await notificationStore.hydrateFromBackend();
       if (authStore.isStaff(user.role)) {
         autoSelectStaffApplicant();
       }

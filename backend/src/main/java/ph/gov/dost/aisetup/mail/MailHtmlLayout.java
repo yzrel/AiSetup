@@ -15,10 +15,10 @@ public final class MailHtmlLayout {
     /** Accent / footer text — dark navy for contrast on light surfaces. */
     private static final String DOST_BLUE = "#1B2A4E";
     /**
-     * Header band — matches the baked-in blue of {@code dost-logo-horizontal-light.png}
-     * (sampled ~#3F5282) so the logo does not sit in a darker “box”.
+     * Header band — solid brand navy. Logo PNG uses a transparent background
+     * so it does not show a mismatched blue “box” over the header.
      */
-    private static final String HEADER_BG = "#3F5282";
+    private static final String HEADER_BG = "#0C2461";
     private static final String DOST_LIGHT = "#00AEEF";
     private static final String BODY_TEXT = "#1f2937";
     private static final String MUTED = "#6b7280";
@@ -119,8 +119,8 @@ public final class MailHtmlLayout {
                       <td align="center">
                         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
                           <tr>
-                            <td style="background-color:%s;padding:20px 24px 18px;text-align:center;border-bottom:3px solid %s;">
-                              <img src="cid:%s" alt="Department of Science and Technology" width="420" style="display:block;margin:0 auto 14px;max-width:100%%;height:auto;border:0;">
+                            <td bgcolor="#0C2461" style="background-color:%s;padding:20px 24px 18px;text-align:center;border-bottom:3px solid %s;">
+                              <img src="cid:%s" alt="Department of Science and Technology" width="420" style="display:block;margin:0 auto 14px;max-width:100%%;height:auto;border:0;outline:none;text-decoration:none;background-color:transparent;">
                               <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;">aiSETUP</div>
                               <div style="font-size:12px;color:#ffffff;margin-top:4px;font-weight:600;opacity:0.9;font-family:Arial,Helvetica,sans-serif;">DOST SOCCSKSARGEN</div>
                             </td>

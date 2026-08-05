@@ -67,5 +67,102 @@ class Tna2GenerationServiceTest {
         assertFalse(response.getFindingsByArea().get(0).getSubsections().isEmpty());
         assertNotNull(response.getBackground());
         assertNotNull(response.getMethodology());
+
+        var strategic = response.getFindingsByArea().get(0);
+        assertEquals("1. Strategic Direction", strategic.getTitle());
+        String mission = strategic.getSubsections().stream()
+                .filter(s -> "mission".equals(s.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getContent();
+        String plans = strategic.getSubsections().stream()
+                .filter(s -> "plans".equals(s.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getContent();
+        assertTrue(mission == null || mission.isBlank(),
+                "Mission Statement must not be filled from expectedOutcome/plans");
+        assertTrue(plans.contains("Increase capacity by 40%"));
+    }
+
+    @Test
+    void templateFindingsMapMultiTargetSourcesToPrimaryOnly() {
+        AnthropicClient client = mock(AnthropicClient.class);
+        when(client.generateJsonObject(anyString())).thenThrow(new IllegalStateException("no key"));
+
+        Tna2GenerationService service = new Tna2GenerationService(client, new ObjectMapper());
+
+        String safety = "PPE required; fire extinguishers inspected monthly.";
+        String processFlow = "Receive → Sort → Dry → Pack → Ship";
+        String waste = "Organic waste composted; plastics segregated.";
+        String problems = "Manual packing bottlenecks at peak season.";
+        String cgmp = "Basic GMP practiced; no formal HACCP.";
+
+        Tna2GenerationRequest request = new Tna2GenerationRequest();
+        request.setApplicationId("LOI-2024-000200");
+        request.setEnterpriseName("Primary Map Foods");
+        request.setProvince("South Cotabato");
+        request.setExpectedOutcome("Improve throughput");
+        Map<String, Object> form = new HashMap<>();
+        form.put("enterpriseName", "Primary Map Foods");
+        form.put("safetyMeasures", safety);
+        form.put("processFlow", processFlow);
+        form.put("wasteManagement", waste);
+        form.put("productionProblemsConcerns", problems);
+        form.put("cgmpHaccp", cgmp);
+        form.put("hiringCriteria", "Experience preferred");
+        form.put("employeeIncentives", "Attendance bonus");
+        form.put("trainingDevelopment", "On-the-job training");
+        form.put("employeesMale", "5");
+        form.put("employeesFemale", "4");
+        request.setTna1Form(form);
+
+        Tna2DocumentResponse response = service.generate(request);
+        assertFalse(response.isAiGenerated());
+
+        Map<String, String> byId = subsectionContentById(response);
+
+        assertEquals(safety, byId.get("ohs"));
+        assertTrue(isBlank(byId.get("work-environment")));
+
+        assertEquals(processFlow, byId.get("production-system"));
+        assertTrue(isBlank(byId.get("operational")));
+
+        assertEquals(waste, byId.get("waste-management"));
+        assertTrue(isBlank(byId.get("methods-of-disposal")));
+
+        assertEquals(problems, byId.get("production-planning"));
+        assertTrue(isBlank(byId.get("work-study")));
+        assertTrue(isBlank(byId.get("equipment-mgmt")));
+
+        assertEquals(cgmp, byId.get("qa-system"));
+        assertTrue(isBlank(byId.get("product-quality")));
+
+        String hr = byId.getOrDefault("human-resources", "");
+        assertTrue(hr.contains("Hiring criteria"));
+        assertFalse(hr.contains("Attendance bonus"));
+        assertFalse(hr.contains("On-the-job training"));
+        assertEquals("Attendance bonus", byId.get("compensation"));
+        assertEquals("On-the-job training", byId.get("technical-training"));
+    }
+
+    private static Map<String, String> subsectionContentById(Tna2DocumentResponse response) {
+        Map<String, String> byId = new HashMap<>();
+        if (response.getFindingsByArea() == null) {
+            return byId;
+        }
+        for (var section : response.getFindingsByArea()) {
+            if (section.getSubsections() == null) {
+                continue;
+            }
+            for (var sub : section.getSubsections()) {
+                byId.put(sub.getId(), sub.getContent() == null ? "" : sub.getContent());
+            }
+        }
+        return byId;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

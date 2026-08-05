@@ -2,7 +2,7 @@
 
 Copy each slide block into PowerPoint, Google Slides, or Canva. Speaker notes appear after `---` under each slide.
 
-**Suggested timing:** 20–25 minutes (slides) + 15–20 minutes (live demo)
+**Suggested timing:** 20–25 minutes (slides) + 25–40 minutes (live demo: register one new client → close-out)
 
 ---
 
@@ -93,8 +93,8 @@ flowchart LR
 ```
 
 1. **Engagement** — Qualify, register, submit Letter of Intent  
-2. **Assessment** — Technology Needs Assessment (TNA) and documentary requirements  
-3. **Approval** — Project proposal, RTEC evaluation, Notice of Approval  
+2. **Assessment** — Technology Needs Assessment (TNA) and project proposal  
+3. **Approval** — Documentary requirements, RTEC evaluation, Notice of Approval  
 4. **Implementation** — MOA signing, fund release, procurement, refund monitoring, close-out
 
 ---
@@ -112,8 +112,8 @@ flowchart LR
 | Phase | Applicant action |
 |-------|------------------|
 | Engagement | Complete pre-screening, register enterprise, draft and submit LOI |
-| Assessment | Fill **DOST TNA Form 01**, review published TNA technical report, upload required documents |
-| Approval | Complete **SETUP Form 001** (Project Proposal); acknowledge Notice of Approval (conforme) |
+| Assessment | Fill **DOST TNA Form 01**, review published TNA technical report, complete **SETUP Form 001** (Project Proposal) |
+| Approval | Upload required documents; acknowledge Notice of Approval (conforme) after staff publish |
 | Implementation | Attend MOA signing; open LandBank account; submit procurement and liquidation docs; file terminal report |
 
 - Cannot skip ahead — future steps stay locked until DOST unlocks them
@@ -134,8 +134,8 @@ flowchart LR
 
 | Phase | Staff action |
 |-------|--------------|
-| Assessment | Review TNA Form 01; generate, edit, and **publish** TNA Form 02 technical report; verify requirements and route to SETUP or MPEX |
-| Approval | Conduct **RTEC** (staff-only); prepare and **publish** Notice of Approval (SETUP Form 003 · Annex A-3) |
+| Assessment | Review TNA Form 01; generate, edit, and **publish** TNA Form 02 technical report |
+| Approval | Verify requirements and route SETUP/MPEX; conduct **RTEC** (staff-only); prepare and **publish** Notice of Approval (SETUP Form 003 · Annex A-3) |
 | Implementation | Manage MOA signing day; publish LandBank introduction letter; verify procurement; monitor refund schedule and delinquency |
 
 - **Clients hub** shows which cases need review (`Needs review` badges)
@@ -253,11 +253,11 @@ flowchart TB
 
 **Not every enterprise proceeds straight to SETUP funding**
 
-After documentary requirements, staff may route a case to **MPEX** (MSME Productivity and Export) instead of the project proposal track.
+After the project proposal and documentary requirements, staff may route a case to **MPEX** (MSME Productivity and Export) instead of the SETUP RTEC / seed-fund track.
 
 - Client remains on the requirements/dashboard view
-- SETUP approval pipeline pauses while capacity-building programs apply
-- Routing is a explicit staff decision recorded on the case
+- SETUP funding pipeline (RTEC → approval → LandBank…) stays locked
+- Routing is an explicit staff decision recorded on the case
 
 **When to mention:** Use only if audience asks about non-SETUP pathways; one minute max.
 
@@ -302,7 +302,7 @@ Each step follows the same pattern: staff publish or verify → client submits �
 5. MOA signing and LandBank — fund release coordination  
 6. Notifications — both sides stay informed  
 
-**Live demo:** Use two browser windows (applicant + staff) and seed accounts at the appropriate workflow stage (see `LIVE_DEMO_SCRIPT.md`).
+**Live demo:** Register **one new client** and process that same case start to end (two windows: applicant + staff). Do not hop seed accounts mid-demo. See `LIVE_DEMO_SCRIPT.md`; seed accounts are a time-fallback appendix only.
 
 ---
 

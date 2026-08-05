@@ -153,24 +153,38 @@ async function syncHeader(
 
 /**
  * Sync case state to Spring Boot (required SoR).
- * Primary path: header + per-module rows. Whole-blob PUT is best-effort only.
+ * Primary path: per-module rows (incl. caseMeta branch flags) then header
+ * currentModule — so program-referral / MPEX caps see metadata before advance.
+ * Whole-blob PUT is best-effort only.
  */
 export async function syncApplicantToBackend(
   applicant: Applicant,
 ): Promise<void> {
   const record = toApplicantRecord(applicant);
-  const headerStatus = await syncHeader(record);
 
-  if (headerStatus === "missing") {
-    // Cold create — full PUT dual-writes header + all module rows.
-    await api.saveApplicantRecord(record);
-    return;
+  // Existence probe without advancing currentModule (header advance can 403
+  // when branch metadata is not on the server yet).
+  try {
+    await api.getApplicant(record.id);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      await api.saveApplicantRecord(record);
+      return;
+    }
+    throw err;
   }
 
   const { ok, failed } = await syncStructuredModules(
     applicant.id,
     (record.moduleData ?? {}) as Record<string, unknown>,
   );
+
+  const headerStatus = await syncHeader(record);
+  if (headerStatus === "missing") {
+    // Race: case disappeared between probe and header — cold create.
+    await api.saveApplicantRecord(record);
+    return;
+  }
 
   // Legacy blob dual-write for rollback/compat — never fail the primary path.
   void api.saveApplicantRecord(record).catch((blobErr) => {

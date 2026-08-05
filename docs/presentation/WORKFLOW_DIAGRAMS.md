@@ -17,9 +17,9 @@ flowchart TB
     C4[Submit_TNA1]
     C5[Wait_TNA1_Review]
     C6[Read_TNA2_After_Publish]
-    C7[Upload_Requirements]
-    C8[Wait_Requirements_Review]
-    C9[Submit_ProjectProposal]
+    C7[Submit_ProjectProposal]
+    C8[Upload_Requirements]
+    C9[Wait_Requirements_Review]
     C10[Wait_Under_DOST_Review]
     C11[Acknowledge_Approval_Conforme]
     C12[Wait_MOA_Signing]
@@ -48,8 +48,8 @@ flowchart TB
 
   C1 --> C2 --> C3 --> C4 --> C5
   C5 -.->|unlocked| C6
-  C6 --> C7 --> C8
-  C8 -.->|approved| C9 --> C10
+  C6 --> C7 --> C8 --> C9
+  C9 -.->|approved_SETUP| C10
   C10 -.->|RTEC_and_approval| C11 --> C12
   C12 -.->|signing_complete| C13 --> C14 --> C15 --> C16
 
@@ -61,13 +61,15 @@ flowchart TB
 
   C4 -->|submit| S4
   S5 -->|publish| C6
-  C7 -->|submit| S6
-  S7 -->|SETUP_route| C9
-  C9 -->|submit| S8
+  C8 -->|submit| S6
+  S7 -->|SETUP_route| C10
+  C7 -->|submit| S8
   S9 -->|publish| C11
   S10 -->|complete| C13
   S11 -->|publish| C13
 ```
+
+Canonical order matches `shared/module-order.json`: proposal **before** requirements, then RTEC.
 
 ### Module-to-lane mapping
 
@@ -78,14 +80,13 @@ flowchart TB
 | Letter of Intent | Draft and submit | View case |
 | TNA 1 | Submit Form 01 | Review / approve / resubmit |
 | TNA 2 | Read after publish | Generate and publish Form 02 |
-| Requirements | Upload docs | Verify, approve, route |
 | Project Proposal | Submit Form 001 | — |
+| Requirements | Upload docs | Verify, approve, route SETUP/MPEX |
 | Conduct of RTEC | *No access* | Form 002 evaluation |
 | Approval Letter | Conforme after publish | Publish Form 003 |
-| PIS / MOA | Wait, then ongoing filings | Signing day, uploads |
-| LandBank | Account and withdrawal docs | Publish LBP intro |
+| LandBank / MOA | Wait for MOA+PDCs, then filings | Signing day, LBP intro publish |
 | Procurement | Upload receipts | Verify, untagging |
-| Refund | Submit PDCs | Monitor delinquency |
+| Refund | Submit PDCs / monitoring | Monitor delinquency |
 | Close-Out | Terminal report | Review and complete |
 
 ---
@@ -97,7 +98,7 @@ Each gate blocks the client until staff action (or client acknowledgment) comple
 ```mermaid
 flowchart TD
   Start([Case_created]) --> PS{PreScreening_qualified}
-  PS -->|No| EndMPEX[End_or_other_programs]
+  PS -->|No| ProgLOI[Program_LOI_referral_only]
   PS -->|Yes| REG[Registration_and_LOI]
 
   REG --> TNA1S[TNA1_submitted]
@@ -105,15 +106,14 @@ flowchart TD
   G1 -->|Resubmission| TNA1S
   G1 -->|Approved| TNA2P{TNA2_published}
   TNA2P -->|No| WaitTNA2[Client_blocked]
-  TNA2P -->|Yes| REQ[Requirements_uploaded]
+  TNA2P -->|Yes| PP[Project_Proposal_submitted]
 
+  PP --> REQ[Requirements_uploaded]
   REQ --> G2{Staff_requirements_decision}
   G2 -->|Revision| REQ
   G2 -->|Approved| G3{Route_SETUP_or_MPEX}
   G3 -->|MPEX| MPEXTrack[Client_on_MPEX_track]
-  G3 -->|SETUP| PP[Project_Proposal_submitted]
-
-  PP --> RTEC[Staff_RTEC_complete]
+  G3 -->|SETUP| RTEC[Staff_RTEC_complete]
   RTEC --> G4{Approval_letter_published}
   G4 -->|No| WaitAL[Client_Under_DOST_Review]
   G4 -->|Yes| CONF{Client_conforme}

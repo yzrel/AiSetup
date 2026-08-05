@@ -27,6 +27,47 @@ function joinNonBlank(...parts: unknown[]): string {
   return parts.map(str).filter(Boolean).join(" ");
 }
 
+/** Coerce string or array payloads into a string list (full-field / legacy tolerant). */
+function asStringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(str).filter(Boolean);
+  const s = str(value);
+  return s ? [s] : [];
+}
+
+function asProcessAnalysis(value: unknown): {
+  summary: string;
+  findings: string[];
+} {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const row = value as Record<string, unknown>;
+    return {
+      summary: str(row.summary),
+      findings: asStringList(row.findings),
+    };
+  }
+  const s = str(value);
+  return { summary: s, findings: [] };
+}
+
+function asTeamMember(value: unknown): { name: string; title?: string } {
+  if (typeof value === "string") return { name: str(value) };
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const row = value as Record<string, unknown>;
+    return {
+      name: str(row.name),
+      title: str(row.title || row.position) || undefined,
+    };
+  }
+  return { name: "" };
+}
+
+function asTeamMembers(value: unknown): { name: string; title?: string }[] {
+  if (Array.isArray(value)) return value.map(asTeamMember);
+  const s = str(value);
+  if (!s) return [];
+  return s.split(/[,;]+/).map((part) => ({ name: str(part) })).filter((m) => m.name);
+}
+
 /** Empty findings template with labeled subsections. */
 export function defaultFindingsByArea(): Tna2FindingSection[] {
   return TNA_FORM_02_FINDINGS_TEMPLATE.map((section) => ({
@@ -57,17 +98,26 @@ function subsectionMap(
   return map;
 }
 
+/** Section key for merge: official `title`, or legacy `area` from older/API payloads. */
+function findingSectionKey(section: unknown): string {
+  if (!section || typeof section !== "object") return "";
+  const row = section as Record<string, unknown>;
+  return str(row.title || row.area).toLowerCase();
+}
+
 /** Merge saved findings onto the official template (by subsection id). */
 export function normalizeFindingsByArea(
   saved?: Tna2FindingSection[] | null,
 ): Tna2FindingSection[] {
   const byId = subsectionMap(saved ?? undefined);
-  const byTitle = new Map(
-    (saved ?? []).map((s) => [s.title.trim().toLowerCase(), s]),
-  );
+  const byTitle = new Map<string, Tna2FindingSection>();
+  for (const section of saved ?? []) {
+    const key = findingSectionKey(section);
+    if (key) byTitle.set(key, section);
+  }
 
   return defaultFindingsByArea().map((template) => {
-    const prior = byTitle.get(template.title.trim().toLowerCase());
+    const prior = byTitle.get(str(template.title).toLowerCase());
     const subsections: Tna2FindingSubsection[] = (template.subsections ?? []).map(
       (sub) => ({
         ...sub,
@@ -97,7 +147,11 @@ function setSubsectionContent(
   }));
 }
 
-/** Prefill empty findings subsections from TNA Form 01 fields. */
+/**
+ * Prefill empty findings subsections from TNA Form 01 fields.
+ * Multi-target sources fill the primary subsection only; related siblings stay empty
+ * so AI/staff can write distinct grounded notes (never identical paste twins).
+ */
 export function prefillFindingsFromTna1(
   findings: Tna2FindingSection[],
   form: Record<string, unknown>,
@@ -109,11 +163,10 @@ export function prefillFindingsFromTna1(
       form.employeesMale && `${form.employeesMale} male`,
       form.employeesFemale && `${form.employeesFemale} female`,
     );
+  // Headcount + hiring only — incentives/training have their own primary subsections.
   const hr = joinNonBlank(
     employees && `Total personnel: ${employees}.`,
     form.hiringCriteria && `Hiring criteria: ${form.hiringCriteria}.`,
-    form.employeeIncentives && `Incentives: ${form.employeeIncentives}.`,
-    form.trainingDevelopment && `Training: ${form.trainingDevelopment}.`,
   );
   const waste = str(form.wasteManagement);
   const processFlow = str(form.processFlow);
@@ -125,41 +178,43 @@ export function prefillFindingsFromTna1(
     next = setSubsectionContent(next, id, value);
   };
 
-  put("mission", str(form.plan5Years));
-  put("vision", str(form.plan10Years));
+  // Mission/Vision are enterprise statements — do not map LOI expectedOutcome
+  // or Form 01 5/10-year plans into those subsections.
   put(
     "plans",
-    joinNonBlank(form.reasonsForAssistance, form.expectedOutcome),
+    joinNonBlank(
+      form.plan5Years && `5-year plan: ${form.plan5Years}`,
+      form.plan10Years && `10-year plan: ${form.plan10Years}`,
+      form.reasonsForAssistance,
+      form.expectedOutcome,
+    ),
   );
   put("human-resources", hr);
   put("purchasing", str(form.purchasingSystem));
-  put("work-environment", str(form.safetyMeasures));
-  put("compensation", str(form.employeeIncentives));
+  // safetyMeasures → primary ohs; related work-environment left empty
   put("ohs", str(form.safetyMeasures));
+  put("compensation", str(form.employeeIncentives));
   put("business-ethics", str(form.agreements));
   put("technical-training", str(form.trainingDevelopment));
   put(
     "product-promotion",
     joinNonBlank(form.promotionalStrategies, form.marketingPlan),
   );
-  put(
-    "product-process-performance",
-    joinNonBlank(productionPlan, problems, form.cgmpHaccp),
-  );
-  put("operational", processFlow);
+  // productionPlan only — do not paste problems/cgmp (their primaries elsewhere)
+  put("product-process-performance", productionPlan);
+  // processFlow → primary production-system; related operational left empty
   put("production-system", processFlow);
+  // productionProblemsConcerns → primary production-planning; related left empty
   put("production-planning", problems);
   put("production-layout", str(form.plantLayoutFileName) ? `Plant layout on file: ${form.plantLayoutFileName}` : "");
-  put("work-study", problems);
-  put("equipment-mgmt", problems);
+  // cgmpHaccp → primary qa-system; related product-quality left empty
   put("qa-system", str(form.cgmpHaccp));
   put("reengineering", str(form.reasonsForAssistance));
   put("pm-process", productionPlan);
   put("pm-product", str(form.mainProduct));
   put("continuous-improvement", str(form.expectedOutcome));
-  put("product-quality", str(form.cgmpHaccp));
+  // wasteManagement → primary waste-management; related methods-of-disposal left empty
   put("waste-management", waste);
-  put("methods-of-disposal", waste);
 
   return next;
 }
@@ -253,15 +308,31 @@ export function buildTna2GenerationPayload(applicant: Applicant): Tna2Generation
 /** Fill SUMMARY OF ASSESSMENT fields from legacy narrative when missing. */
 export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentResponse {
   const profile = doc.enterpriseProfile ?? {};
-  const process = doc.productionProcessAnalysis ?? { summary: "", findings: [] };
-  const site = doc.siteValidationFindings ?? [];
-  const gaps = doc.technologyGaps ?? [];
-  const interventions = doc.proposedInterventions ?? [];
-  const productivity = doc.productivityImprovement ?? { kpis: [], outcomes: [] };
-  const equipment = doc.recommendedEquipment ?? [];
+  const process = asProcessAnalysis(doc.productionProcessAnalysis);
+  const site = asStringList(doc.siteValidationFindings);
+  const gaps = asStringList(doc.technologyGaps);
+  const interventions = asStringList(doc.proposedInterventions);
+  const productivityRaw =
+    doc.productivityImprovement &&
+    typeof doc.productivityImprovement === "object" &&
+    !Array.isArray(doc.productivityImprovement)
+      ? doc.productivityImprovement
+      : null;
+  const productivity = {
+    kpis: Array.isArray(productivityRaw?.kpis) ? productivityRaw.kpis : [],
+    outcomes: asStringList(
+      productivityRaw?.outcomes ??
+        (typeof doc.productivityImprovement === "string"
+          ? doc.productivityImprovement
+          : undefined),
+    ),
+  };
+  const equipment = Array.isArray(doc.recommendedEquipment)
+    ? doc.recommendedEquipment
+    : [];
 
   const background =
-    doc.background?.trim() ||
+    str(doc.background) ||
     [
       profile.enterpriseName &&
         `${profile.enterpriseName} operates in the ${profile.sector || "priority"} sector`,
@@ -273,7 +344,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
       .join(", ") + ".";
 
   const methodology =
-    doc.methodology?.trim() ||
+    str(doc.methodology) ||
     [
       "The assessment was conducted through on-site plant visits, direct observation of workflow and facilities,",
       "interviews with the owner and key production staff, and review of operational documents submitted with TNA Form 01.",
@@ -283,7 +354,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
   let findingsByArea = normalizeFindingsByArea(doc.findingsByArea);
 
   // Backfill empty subsections from legacy narrative fields
-  const processText = [process.summary, ...(process.findings ?? [])]
+  const processText = [process.summary, ...process.findings]
     .filter(Boolean)
     .join(" ");
   const gapText = gaps.join(" ");
@@ -306,7 +377,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
   findingsByArea = setSubsectionContent(
     findingsByArea,
     "production-planning",
-    process.findings?.[0] || "",
+    process.findings[0] || "",
   );
   findingsByArea = setSubsectionContent(findingsByArea, "work-study", gapText);
   findingsByArea = setSubsectionContent(
@@ -317,7 +388,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
   findingsByArea = setSubsectionContent(
     findingsByArea,
     "product-process-performance",
-    productivity.outcomes?.[0] || "",
+    productivity.outcomes[0] || "",
   );
   findingsByArea = setSubsectionContent(
     findingsByArea,
@@ -334,7 +405,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
 
   const recommendations =
     doc.recommendations?.length
-      ? doc.recommendations
+      ? asStringList(doc.recommendations)
       : interventions.length
         ? interventions
         : productivity.outcomes;
@@ -349,29 +420,44 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
             equipment[i]
               ? `${equipment[i].name}${equipment[i].specifications ? ` — ${equipment[i].specifications}` : ""}`
               : equipment[0]?.name || "",
-          impact: productivity.outcomes?.[i] || productivity.outcomes?.[0] || "",
+          impact: productivity.outcomes[i] || productivity.outcomes[0] || "",
         }));
 
-  const assessor = doc.assessor ?? {};
-  const tnaTeam = doc.tnaTeam ?? {
-    leader: {
-      name: assessor.name || "",
-      title: assessor.title || "TNA Team Leader",
-    },
-    members: [],
-  };
+  const assessor = asTeamMember(doc.assessor);
+  const rawTeam = doc.tnaTeam;
+  const tnaTeam =
+    rawTeam && typeof rawTeam === "object"
+      ? {
+          leader: asTeamMember(
+            (rawTeam as { leader?: unknown }).leader ?? assessor,
+          ),
+          members: asTeamMembers((rawTeam as { members?: unknown }).members),
+        }
+      : {
+          leader: {
+            name: assessor.name || "",
+            title: assessor.title || "TNA Team Leader",
+          },
+          members: [] as { name: string; title?: string }[],
+        };
 
   return {
     ...doc,
+    siteValidationFindings: site,
+    productionProcessAnalysis: process,
+    technologyGaps: gaps,
+    proposedInterventions: interventions,
+    productivityImprovement: productivity,
+    recommendedEquipment: equipment,
     background,
     methodology,
     findingsByArea,
     otherObservations:
-      doc.otherObservations?.trim() ||
+      str(doc.otherObservations) ||
       site.slice(1).join(" ") ||
       "",
     conclusions:
-      doc.conclusions?.trim() ||
+      str(doc.conclusions) ||
       [
         "The enterprise demonstrates basic operational capacity with documented technology needs.",
         gaps.length
@@ -381,11 +467,21 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
     recommendations,
     interventionRows,
     tnaTeam,
-    attestedBy: doc.attestedBy ?? {
-      name: "",
-      title: "Assistant Regional Director",
-      office: "DOST SOCCSKSARGEN",
+    assessor: {
+      name: assessor.name,
+      title: assessor.title || str((doc.assessor as { title?: string } | undefined)?.title),
+      office: str((doc.assessor as { office?: string } | undefined)?.office),
     },
+    attestedBy: doc.attestedBy
+      ? {
+          ...asTeamMember(doc.attestedBy),
+          office: str((doc.attestedBy as { office?: string }).office),
+        }
+      : {
+          name: "",
+          title: "Assistant Regional Director",
+          office: "DOST SOCCSKSARGEN",
+        },
   };
 }
 
@@ -418,7 +514,7 @@ export function buildLocalTna2Document(
   const employees = `${form.employeesMale ?? ""} male / ${form.employeesFemale ?? ""} female`;
   const findingsByArea = prefillFindingsFromTna1(
     defaultFindingsByArea(),
-    form,
+    { ...form, expectedOutcome: payload.expectedOutcome },
     employees,
   );
 
@@ -559,7 +655,17 @@ export function getPublishedTna2(applicant: Applicant | null): Tna2StoredDocumen
   const doc = normalizeTna2DocumentStored(applicant.moduleData.tna2Document) as
     | Tna2StoredDocument
     | undefined;
-  return doc?.published ? doc : null;
+  if (!doc?.published) return null;
+  // Coerce legacy/full-field string list fields before consumers call .map/.join.
+  const enriched = enrichTna2Summary(doc) as Tna2StoredDocument;
+  // #region agent log
+  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'E',location:'tnaForm02.ts:getPublishedTna2',message:'published tna2 after enrich',data:{published:true,rawRecEqType:typeof (doc as {recommendedEquipment?:unknown}).recommendedEquipment,rawRecEqIsArray:Array.isArray(doc.recommendedEquipment),recEqType:typeof enriched.recommendedEquipment,recEqIsArray:Array.isArray(enriched.recommendedEquipment),gapsIsArray:Array.isArray(enriched.technologyGaps),interventionsIsArray:Array.isArray(enriched.proposedInterventions),processIsObject:!!enriched.productionProcessAnalysis&&typeof enriched.productionProcessAnalysis==='object'},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  return {
+    ...enriched,
+    published: true,
+    publishedAt: doc.publishedAt,
+  };
 }
 
 export function getTna2Draft(applicant: Applicant | null): Tna2StoredDocument | null {

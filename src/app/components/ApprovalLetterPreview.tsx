@@ -133,7 +133,7 @@ export function ApprovalLetterPreview({
         {/* Footer */}
         <div className="al-footer mt-10 pt-3 border-t border-gray-200 text-center text-[9px] text-gray-500 leading-relaxed">
           <p>Regional Guidelines on SETUP (Revision 3.0)</p>
-          <p>SETUP Annex A-3 - SETUP Form 003- Notice of Approval</p>
+          <p>Notice of Approval</p>
           <p>Page 1 of 1</p>
           {applicationId && (
             <p className="mt-1 text-gray-400">Application ID: {applicationId}</p>

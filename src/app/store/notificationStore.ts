@@ -2,14 +2,20 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { AdminView, AuthUser, authStore } from "./authStore";
-import { Applicant, applicantStore } from "./applicantStore";
+import { api } from "../api/client";
+import type { ApiNotification } from "../api/types";
 import {
-  resolveApplicantOfficeId,
+  AdminView,
+  AuthUser,
+  authStore,
+  normalizeAdminView,
+} from "./authStore";
+import { applicantStore } from "./applicantStore";
+import {
   staffCoversProvince,
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
-import { needsStaffAssessment } from "../utils/clientAssessment";
+import { getAuthToken } from "../api/authToken";
 
 export type NotificationKind = "info" | "success" | "warning" | "action";
 
@@ -30,130 +36,54 @@ export interface AppNotification {
   view?: AdminView;
 }
 
+export type NotificationInput = Omit<
+  AppNotification,
+  "id" | "read" | "timestamp"
+> & {
+  id?: string;
+  read?: boolean;
+  timestamp?: string;
+};
+
 let notifications: AppNotification[] = [];
 let listeners: (() => void)[] = [];
+let hydrateInFlight: Promise<void> | null = null;
 
 function notify() {
   listeners.forEach((l) => l());
 }
 
-function seedFromApplicants() {
-  const seeded: AppNotification[] = [];
-  const now = Date.now();
-
-  for (const app of applicantStore.getAll()) {
-    const officeId = resolveApplicantOfficeId(app);
-
-    if (app.moduleData?.documentsSubmitted && !app.moduleData?.staffDecision) {
-      seeded.push({
-        id: `seed-req-${app.id}`,
-        audience: "staff",
-        applicantId: app.id,
-        officeId,
-        kind: "action",
-        title: "Requirements awaiting review",
-        message: `${app.enterpriseName} submitted documentary requirements for verification.`,
-        read: false,
-        urgent: true,
-        timestamp: new Date(now - 3600000).toISOString(),
-        view: "requirements",
-      });
-      seeded.push({
-        id: `seed-req-applicant-${app.id}`,
-        audience: "applicant",
-        applicantId: app.id,
-        kind: "info",
-        title: "Requirements submitted",
-        message: "Your documents are with your provincial DOST office for review.",
-        read: false,
-        timestamp: new Date(now - 3500000).toISOString(),
-        view: "requirements",
-      });
-    }
-
-    if (app.moduleData?.staffDecision === "needs-revision") {
-      seeded.push({
-        id: `seed-revision-${app.id}`,
-        audience: "applicant",
-        applicantId: app.id,
-        kind: "warning",
-        title: "Revisions requested",
-        message: "DOST staff flagged documents that need correction. Please resubmit.",
-        read: false,
-        urgent: true,
-        timestamp: new Date(now - 7200000).toISOString(),
-        view: "requirements",
-      });
-    }
-
-    if (app.moduleData?.tna1?.submitted && !app.moduleData?.tna1?.staffReviewed) {
-      seeded.push({
-        id: `seed-tna1-${app.id}`,
-        audience: "staff",
-        applicantId: app.id,
-        officeId,
-        kind: "action",
-        title: "TNA Form 01 submitted",
-        message: `${app.enterpriseName} submitted TNA Form 01 for staff review.`,
-        read: false,
-        timestamp: new Date(now - 5400000).toISOString(),
-        view: "tna1",
-      });
-    }
-
-    const tna2 = app.moduleData?.tna2Document;
-    if (tna2?.published) {
-      seeded.push({
-        id: `seed-tna2-published-${app.id}`,
-        audience: "applicant",
-        applicantId: app.id,
-        kind: "success",
-        title: "TNA Form 02 published",
-        message: "Your technical report is now available. Review and continue your application.",
-        read: app.currentModule !== "tna2",
-        timestamp: tna2.publishedAt ?? new Date(now - 86400000).toISOString(),
-        view: "tna2",
-      });
-    } else if (
-      app.currentModule === "tna2" &&
-      needsStaffAssessment(app)
-    ) {
-      seeded.push({
-        id: `seed-tna2-staff-${app.id}`,
-        audience: "staff",
-        applicantId: app.id,
-        officeId,
-        kind: "action",
-        title: "TNA Form 02 pending",
-        message: `Generate and publish TNA Form 02 for ${app.enterpriseName}.`,
-        read: false,
-        timestamp: new Date(now - 1800000).toISOString(),
-        view: "tna2",
-      });
-    }
-
-    if (
-      app.currentModule === "conduct-rtec" ||
-      app.currentModule === "approval-letter"
-    ) {
-      seeded.push({
-        id: `seed-rtec-${app.id}`,
-        audience: "applicant",
-        applicantId: app.id,
-        kind: "info",
-        title: "Under DOST evaluation",
-        message: "Your project proposal is with DOST for RTEC evaluation and approval.",
-        read: false,
-        timestamp: new Date(now - 43200000).toISOString(),
-        view: "dashboard",
-      });
-    }
-  }
-
-  notifications = seeded;
+function fromApi(n: ApiNotification): AppNotification {
+  return {
+    id: n.id,
+    audience: n.audience,
+    applicantId: n.applicantId,
+    officeId: n.officeId,
+    kind: n.kind,
+    title: n.title,
+    message: n.message,
+    read: !!n.read,
+    urgent: n.urgent,
+    timestamp: n.timestamp,
+    view: normalizeAdminView(n.view) ?? undefined,
+  };
 }
 
-seedFromApplicants();
+function toApiPayload(n: AppNotification) {
+  return {
+    id: n.id,
+    audience: n.audience,
+    applicantId: n.applicantId,
+    officeId: n.officeId,
+    kind: n.kind,
+    title: n.title,
+    message: n.message,
+    read: n.read,
+    urgent: n.urgent,
+    timestamp: n.timestamp,
+    view: n.view,
+  };
+}
 
 function matchesUser(n: AppNotification, user: AuthUser): boolean {
   if (n.audience === "applicant") {
@@ -161,7 +91,8 @@ function matchesUser(n: AppNotification, user: AuthUser): boolean {
     const app =
       applicantStore.getById(user.id) ??
       applicantStore.getByEmail(user.email);
-    return !!app && n.applicantId === app.id;
+    const applicantId = user.applicantId ?? app?.id;
+    return !!applicantId && n.applicantId === applicantId;
   }
 
   if (!authStore.isStaff(user.role)) return false;
@@ -181,6 +112,34 @@ function matchesUser(n: AppNotification, user: AuthUser): boolean {
   return false;
 }
 
+function upsertLocal(entry: AppNotification) {
+  notifications = [entry, ...notifications.filter((n) => n.id !== entry.id)];
+}
+
+function buildEntry(notification: NotificationInput): AppNotification {
+  return {
+    ...notification,
+    id:
+      notification.id ??
+      `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    read: notification.read ?? false,
+    timestamp: notification.timestamp ?? new Date().toISOString(),
+  };
+}
+
+async function persistEntries(entries: AppNotification[]) {
+  if (!getAuthToken() || entries.length === 0) return;
+  try {
+    const saved = await api.createNotifications(entries.map(toApiPayload));
+    for (const row of saved) {
+      upsertLocal(fromApi(row));
+    }
+    notify();
+  } catch (err) {
+    console.warn("Failed to persist notifications", err);
+  }
+}
+
 export const notificationStore = {
   getAll: () => notifications,
 
@@ -197,20 +156,23 @@ export const notificationStore = {
   getUnreadCount: (user: AuthUser | null): number =>
     notificationStore.getForUser(user).filter((n) => !n.read).length,
 
-  add: (notification: Omit<AppNotification, "id" | "read" | "timestamp"> & {
-    id?: string;
-    read?: boolean;
-    timestamp?: string;
-  }) => {
-    const entry: AppNotification = {
-      ...notification,
-      id: notification.id ?? `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      read: notification.read ?? false,
-      timestamp: notification.timestamp ?? new Date().toISOString(),
-    };
-    notifications = [entry, ...notifications.filter((n) => n.id !== entry.id)];
+  add: (notification: NotificationInput) => {
+    const entry = buildEntry(notification);
+    upsertLocal(entry);
     notify();
+    void persistEntries([entry]);
     return entry;
+  },
+
+  /** Optimistic multi-add + single batch POST (staff + applicant pairs). */
+  addMany: (items: NotificationInput[]) => {
+    const entries = items.map(buildEntry);
+    for (const entry of entries) {
+      upsertLocal(entry);
+    }
+    notify();
+    void persistEntries(entries);
+    return entries;
   },
 
   markRead: (id: string) => {
@@ -218,6 +180,10 @@ export const notificationStore = {
       n.id === id ? { ...n, read: true } : n,
     );
     notify();
+    if (!getAuthToken()) return;
+    void api.markNotificationRead(id).catch((err) => {
+      console.warn("Failed to mark notification read", err);
+    });
   },
 
   markAllRead: (user: AuthUser | null) => {
@@ -226,6 +192,10 @@ export const notificationStore = {
       ids.has(n.id) ? { ...n, read: true } : n,
     );
     notify();
+    if (!getAuthToken()) return;
+    void api.markAllNotificationsRead().catch((err) => {
+      console.warn("Failed to mark all notifications read", err);
+    });
   },
 
   subscribe: (fn: () => void) => {
@@ -235,8 +205,29 @@ export const notificationStore = {
     };
   },
 
+  hydrateFromBackend: async () => {
+    if (!getAuthToken()) {
+      notifications = [];
+      notify();
+      return;
+    }
+    if (hydrateInFlight) return hydrateInFlight;
+    hydrateInFlight = (async () => {
+      try {
+        const rows = await api.listNotifications();
+        notifications = rows.map(fromApi);
+        notify();
+      } catch (err) {
+        console.warn("Failed to hydrate notifications", err);
+      } finally {
+        hydrateInFlight = null;
+      }
+    })();
+    return hydrateInFlight;
+  },
+
+  /** @deprecated Use hydrateFromBackend — kept for any leftover call sites. */
   resyncFromApplicants: () => {
-    seedFromApplicants();
-    notify();
+    void notificationStore.hydrateFromBackend();
   },
 };

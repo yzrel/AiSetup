@@ -28,16 +28,18 @@ import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
-import { authStore, AuthUser, AdminView, ROLE_LABELS } from "./store/authStore";
+import { authStore, AuthUser, AdminView, ROLE_LABELS, normalizeAdminView } from "./store/authStore";
 import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage, loadLoginPortal, saveLoginPortal } from "./store/navigationStore";
 import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
 import { notificationStore } from "./store/notificationStore";
+import { getAuthToken } from "./api/authToken";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
 import { isSentEmailsNavUnlocked } from "./utils/documentDelivery";
 import { emailOutboxStore } from "./store/emailOutboxStore";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -579,8 +581,10 @@ export default function App() {
     }
     setAuthReady(true);
     // Pull persisted applicants when a session token is present
-    void applicantStore.hydrateFromBackend(!!restored).then(() => {
-      notificationStore.resyncFromApplicants();
+    void applicantStore.hydrateFromBackend(!!restored).then(async () => {
+      if (restored) {
+        await notificationStore.hydrateFromBackend();
+      }
       const nextView = resolveViewForUser(restored);
       if (restored && authStore.isClientRole(restored.role) && nextView) {
         setCurrentViewState(nextView);
@@ -588,6 +592,17 @@ export default function App() {
       }
       setApplicantStoreEpoch((n) => n + 1);
     });
+  }, []);
+
+  // Refresh notifications when returning to the tab (cross-user delivery without websockets).
+  useEffect(() => {
+    const onFocus = () => {
+      if (authStore.getUser() && getAuthToken()) {
+        void notificationStore.hydrateFromBackend();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   // Subscribe to auth changes
@@ -662,9 +677,23 @@ export default function App() {
     }
   }, [user, currentView]);
 
+  // Heal corrupted persisted view keys without crashing the shell.
+  useEffect(() => {
+    const normalized = normalizeAdminView(currentView);
+    if (!normalized) {
+      const fallback = resolveViewForUser(user);
+      setCurrentViewState(fallback);
+      saveCurrentView(fallback);
+      return;
+    }
+    if (normalized !== currentView) {
+      setCurrentViewState(normalized);
+      saveCurrentView(normalized);
+    }
+  }, [currentView, user]);
+
   const setCurrentView = (view: ViewType) => {
-    const resolved =
-      view === "project-information-sheet" ? "landbank-withdrawal" : view;
+    const resolved = normalizeAdminView(view) ?? "dashboard";
     setCurrentViewState(resolved);
     saveCurrentView(resolved);
   };
@@ -731,18 +760,20 @@ export default function App() {
     setCollapsed((p) => ({ ...p, [label]: !p[label] }));
 
   const navigate = (view: ViewType) => {
-    if (user && !authStore.canAccessView(user.role, view)) return;
+    const target = normalizeAdminView(view);
+    if (!target) return;
+    if (user && !authStore.canAccessView(user.role, target)) return;
     if (
       user &&
       authStore.isClientRole(user.role) &&
-      !canApplicantAccessView(resolveApplicantForUser(user), view)
+      !canApplicantAccessView(resolveApplicantForUser(user), target)
     ) {
       return;
     }
-    if (view === "sent-emails" && user && !isSentEmailsNavUnlocked(user)) {
+    if (target === "sent-emails" && user && !isSentEmailsNavUnlocked(user)) {
       return;
     }
-    setCurrentView(view);
+    setCurrentView(target);
     setDrawerOpen(false);
   };
 
@@ -760,13 +791,22 @@ export default function App() {
     if (app && next) {
       applicantStore.update(app.id, { currentModule: next });
     }
-    navigate(navigateTo ?? ((next ?? module) as ViewType));
+    const fallbackView =
+      normalizeAdminView(navigateTo) ??
+      normalizeAdminView(next) ??
+      normalizeAdminView(module) ??
+      "dashboard";
+    navigate(fallbackView);
   };
 
   const isRestrictedClient = authStore.isClientRole(user.role);
   const isStaff = authStore.isStaff(user.role);
   const sentEmailsUnlocked = isSentEmailsNavUnlocked(user);
-  const { title, subtitle } = viewTitles[currentView];
+  const safeView = normalizeAdminView(currentView) ?? "dashboard";
+  const { title, subtitle } = viewTitles[safeView] ?? {
+    title: "Dashboard",
+    subtitle: "SETUP Program Overview",
+  };
 
   return (
     <div
@@ -781,7 +821,7 @@ export default function App() {
           <SidebarLogo />
         </div>
         <SidebarNav
-          currentView={currentView}
+          currentView={safeView}
           onNavigate={navigate}
           collapsed={collapsed}
           onToggleGroup={toggleGroup}
@@ -818,7 +858,7 @@ export default function App() {
           </button>
         </div>
         <SidebarNav
-          currentView={currentView}
+          currentView={safeView}
           onNavigate={navigate}
           collapsed={collapsed}
           onToggleGroup={toggleGroup}
@@ -983,12 +1023,13 @@ export default function App() {
 
         {/* ── Page content ── */}
         <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 pb-20 sm:pb-6">
-          {authStore.canAccessView(user.role, currentView) ? (
+          <AppErrorBoundary key={safeView} label={safeView}>
+          {authStore.canAccessView(user.role, safeView) ? (
             <>
-              {currentView === "dashboard" && (
+              {safeView === "dashboard" && (
                 <Dashboard user={user} onNavigate={navigate} />
               )}
-              {currentView === "prescreening" && (
+              {safeView === "prescreening" && (
                 <PrescreeningForm
                   user={user}
                   onSubmitSuccess={() => {
@@ -998,14 +1039,14 @@ export default function App() {
                   onProceedToLoi={() => navigate("letter-of-intent")}
                 />
               )}
-              {currentView === "registration" && (
+              {safeView === "registration" && (
                 <EnterpriseRegistration
                   user={user}
                   onOpenAccount={() => navigate("my-account")}
                   onSubmitSuccess={() => advanceFrom("registration")}
                 />
               )}
-              {currentView === "letter-of-intent" && (
+              {safeView === "letter-of-intent" && (
                 <LetterOfIntent
                   user={user}
                   onSubmitSuccess={() => {
@@ -1019,25 +1060,25 @@ export default function App() {
                   }}
                 />
               )}
-              {currentView === "tna1" && (
+              {safeView === "tna1" && (
                 <TechnologyNeedsAssessment1
                   user={user}
                   onSubmitSuccess={() => advanceFrom("tna1")}
                 />
               )}
-              {currentView === "tna2" && (
+              {safeView === "tna2" && (
                 <TNA2TechnicalReport
                   user={user}
                   onSubmitSuccess={() => advanceFrom("tna2")}
                 />
               )}
-              {currentView === "project-proposal" && (
+              {safeView === "project-proposal" && (
                 <ProjectProposal
                   user={user}
                   onSubmitSuccess={() => advanceFrom("project-proposal")}
                 />
               )}
-              {currentView === "requirements" && (
+              {safeView === "requirements" && (
                 <SubmissionRequirements
                   user={user}
                   onSubmitSuccess={() => {
@@ -1051,38 +1092,38 @@ export default function App() {
                   }}
                 />
               )}
-              {currentView === "conduct-rtec" && (
+              {safeView === "conduct-rtec" && (
                 <ConductOfRTEC
                   user={user}
                   onSubmitSuccess={() => advanceFrom("conduct-rtec")}
                 />
               )}
-              {currentView === "approval-letter" && (
+              {safeView === "approval-letter" && (
                 <ApprovalLetter
                   user={user}
                   onSubmitSuccess={() => advanceFrom("approval-letter")}
                 />
               )}
-              {(currentView === "landbank-withdrawal" ||
-                currentView === "project-information-sheet") && (
+              {(safeView === "landbank-withdrawal" ||
+                safeView === "project-information-sheet") && (
                 <LandBankAndWithdrawal
                   user={user}
                   onSubmitSuccess={() => advanceFrom("landbank-withdrawal")}
                 />
               )}
-              {currentView === "procurement-liquidation" && (
+              {safeView === "procurement-liquidation" && (
                 <ProcurementAndLiquidation
                   user={user}
                   onSubmitSuccess={() => advanceFrom("procurement-liquidation")}
                 />
               )}
-              {currentView === "refund-delinquent" && (
+              {safeView === "refund-delinquent" && (
                 <RefundAndDelinquent
                   user={user}
                   onSubmitSuccess={() => advanceFrom("refund-delinquent")}
                 />
               )}
-              {currentView === "project-closeout" && (
+              {safeView === "project-closeout" && (
                 <ProjectCloseOut
                   user={user}
                   onSubmitSuccess={() => {
@@ -1090,17 +1131,17 @@ export default function App() {
                   }}
                 />
               )}
-              {currentView === "clients" && (
+              {safeView === "clients" && (
                 <ClientManagement user={user} onNavigate={navigate} />
               )}
-              {currentView === "client-files" && (
+              {safeView === "client-files" && (
                 <ClientFilesAdmin user={user} onNavigate={navigate} />
               )}
-              {currentView === "account-management" && (
+              {safeView === "account-management" && (
                 <AccountManagement user={user} />
               )}
-              {currentView === "my-account" && <MyAccount user={user} />}
-              {currentView === "sent-emails" && <EmailOutbox user={user} />}
+              {safeView === "my-account" && <MyAccount user={user} />}
+              {safeView === "sent-emails" && <EmailOutbox user={user} />}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">
@@ -1115,6 +1156,7 @@ export default function App() {
               </p>
             </div>
           )}
+          </AppErrorBoundary>
         </main>
 
         {/* ── Footer ── */}

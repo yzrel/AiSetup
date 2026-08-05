@@ -223,6 +223,23 @@ export function buildProjectProposalDraft(
   const md = applicant.moduleData ?? {};
   const { form, tables } = getTna1Data(applicant);
   const tna2 = getPublishedTna2(applicant) as Tna2StoredDocument | null;
+  const recommendedEquipment = Array.isArray(tna2?.recommendedEquipment)
+    ? tna2.recommendedEquipment
+    : [];
+  const technologyGaps = Array.isArray(tna2?.technologyGaps)
+    ? tna2.technologyGaps
+    : [];
+  const proposedInterventions = Array.isArray(tna2?.proposedInterventions)
+    ? tna2.proposedInterventions
+    : [];
+  const productivityOutcomes = Array.isArray(
+    tna2?.productivityImprovement?.outcomes,
+  )
+    ? tna2.productivityImprovement.outcomes
+    : [];
+  // #region agent log
+  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'A',location:'projectProposal.ts:buildProjectProposalDraft',message:'tna2 arrays after guard',data:{hasTna2:!!tna2,recEqIsArray:Array.isArray(recommendedEquipment),recEqLen:recommendedEquipment.length,gapsIsArray:Array.isArray(technologyGaps),interventionsIsArray:Array.isArray(proposedInterventions),outcomesLen:productivityOutcomes.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const projectDesc = String(
     md.projectDescription ?? form.reasonsForAssistance ?? "",
@@ -242,14 +259,14 @@ export function buildProjectProposalDraft(
   if (md.expectedOutcome) specificObjs.push(String(md.expectedOutcome));
   if (form.reasonsForAssistance)
     specificObjs.push(String(form.reasonsForAssistance));
-  if (tna2?.productivityImprovement?.outcomes?.length) {
-    specificObjs.push(...tna2.productivityImprovement.outcomes);
+  if (productivityOutcomes.length) {
+    specificObjs.push(...productivityOutcomes);
   }
   if (specificObjs.length === 0) specificObjs.push("");
 
   const budgetItems: ProjectProposalBudgetRow[] = [];
-  if (tna2?.recommendedEquipment?.length) {
-    for (const eq of tna2.recommendedEquipment) {
+  if (recommendedEquipment.length) {
+    for (const eq of recommendedEquipment) {
       budgetItems.push({
         id: rowId(),
         item: eq.name || "S&T intervention equipment",
@@ -272,19 +289,26 @@ export function buildProjectProposalDraft(
   }
   if (budgetItems.length === 0) budgetItems.push(emptyBudgetRow());
 
+  // #region agent log
+  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'C',location:'projectProposal.ts:beforeJoin',message:'using guarded gap/intervention arrays',data:{gapsLen:technologyGaps.length,interventionsLen:proposedInterventions.length,recEqLen:recommendedEquipment.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const interventionProblem = String(
     form.productionProblemsConcerns ??
-      tna2?.technologyGaps?.join("; ") ??
+      technologyGaps.join("; ") ??
       "",
   );
   const interventionProposed = String(
     md.projectDescription ??
-      tna2?.proposedInterventions?.join("; ") ??
+      proposedInterventions.join("; ") ??
       "",
   );
-  const interventionEquipment =
-    tna2?.recommendedEquipment?.map((e) => e.name).filter(Boolean).join(", ") ??
-    "";
+  // #region agent log
+  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'A',location:'projectProposal.ts:interventionEquipment',message:'mapping guarded recommendedEquipment v2',data:{recEqIsArray:Array.isArray(recommendedEquipment),recEqLen:recommendedEquipment.length,hasMapFn:typeof recommendedEquipment.map==='function'},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  const interventionEquipment = recommendedEquipment
+    .map((row) => row.name)
+    .filter(Boolean)
+    .join(", ");
 
   const draft: ProjectProposalForm = {
     ...base,
@@ -349,18 +373,20 @@ export function buildProjectProposalDraft(
     interventionProposed,
     interventionEquipment,
     interventionImpact: String(
-      tna2?.productivityImprovement?.outcomes?.[0] ?? md.expectedOutcome ?? "",
+      productivityOutcomes[0] ?? md.expectedOutcome ?? "",
     ),
     interventionCostTable:
-      tna2?.recommendedEquipment?.map((e) => [
-        e.name,
-        e.quantity ?? "1",
-        e.estimatedCost ?? "",
-        e.estimatedCost ?? "",
-      ]) ?? tableFromTna([], 4),
+      recommendedEquipment.length
+        ? recommendedEquipment.map((e) => [
+            e.name,
+            e.quantity ?? "1",
+            e.estimatedCost ?? "",
+            e.estimatedCost ?? "",
+          ])
+        : tableFromTna([], 4),
     expectedOutputBullets:
-      tna2?.productivityImprovement?.outcomes?.length
-        ? [...tna2.productivityImprovement.outcomes]
+      productivityOutcomes.length
+        ? [...productivityOutcomes]
         : md.expectedOutcome
           ? [String(md.expectedOutcome)]
           : defaultExpectedOutputBullets(enterprise),

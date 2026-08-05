@@ -139,7 +139,18 @@ public class Tna2GenerationService {
 
                 Write a complete formal report matching the official SUMMARY OF ASSESSMENT structure. Do NOT invent specific costs, equipment models, or metrics not supported by the data.
                 Base findings on TNA Form 01 production problems, equipment inventory, and project description.
-                Fill findingsByArea subsection content from TNA Form 01 fields (plan5Years/plan10Years, employees, purchasingSystem, safetyMeasures, trainingDevelopment, marketing/promotionalStrategies, productionPlan, wasteManagement, processFlow).
+
+                TNA Form 01 fields are SOURCES OF TRUTH for findings — do not paste the same source text into multiple subsections.
+                For each source group below, write DISTINCT assessor notes for the primary and related subsections, each from a different angle, all grounded on that source (plus other TNA1/LOI facts). Never leave two subsections with identical content strings.
+                Source expansion groups:
+                - safetyMeasures → primary ohs (hazards/controls); related work-environment (facilities/conditions)
+                - processFlow → primary production-system (how production is organized); related operational (outsourcing/ops practices)
+                - wasteManagement → primary waste-management (overall waste handling); related methods-of-disposal (disposal methods)
+                - productionProblemsConcerns → primary production-planning; related work-study, equipment-mgmt (distinct angles)
+                - cgmpHaccp → primary qa-system; related product-quality (standards vs QA practices)
+                One-to-one sources (paraphrase once): purchasingSystem→purchasing, employeeIncentives→compensation, trainingDevelopment→technical-training, promotionalStrategies/marketingPlan→product-promotion, productionPlan→pm-process and product-process-performance (different angles if both filled), agreements→business-ethics.
+                For human-resources: summarize headcount and hiringCriteria only — do not paste full trainingDevelopment or employeeIncentives text (those belong in technical-training and compensation).
+                Put plan5Years, plan10Years, reasonsForAssistance, and expectedOutcome under Plans only — never under Mission Statement or Vision Statement. Leave Mission/Vision blank unless the enterprise stated an explicit mission or vision.
                 %s
 
                 Return ONLY a valid JSON object with this exact structure (no markdown):
@@ -310,7 +321,7 @@ public class Tna2GenerationService {
                 "The assessment was conducted through on-site plant visits, direct observation of the workflow and facilities, "
                         + "interviews with the owner and key production staff, and a thorough review of operational documents submitted with TNA Form 01."
         );
-        doc.setFindingsByArea(buildFindingsFromTna1(form, profile, process));
+        doc.setFindingsByArea(buildFindingsFromTna1(form, profile, safe(r.getExpectedOutcome())));
         doc.setOtherObservations(problems.isBlank()
                 ? "No additional observations beyond the findings above."
                 : problems);
@@ -370,32 +381,36 @@ public class Tna2GenerationService {
     private static List<Tna2FindingSectionDto> buildFindingsFromTna1(
             Map<String, Object> form,
             Tna2EnterpriseProfileDto profile,
-            Tna2ProductionProcessDto process
+            String expectedOutcome
     ) {
         String employees = profile.getEmployees() != null ? profile.getEmployees() : "";
+        // Headcount + hiring only — incentives/training have their own primary subsections.
         String hr = joinNonBlank(
                 employees.isBlank() ? "" : "Total personnel: " + employees + ".",
-                blankToEmpty(form.get("hiringCriteria"), "Hiring criteria: %s."),
-                blankToEmpty(form.get("employeeIncentives"), "Incentives: %s."),
-                blankToEmpty(form.get("trainingDevelopment"), "Training: %s.")
+                blankToEmpty(form.get("hiringCriteria"), "Hiring criteria: %s.")
         );
         String waste = stringVal(form.get("wasteManagement"));
-        String processFlow = firstNonBlank(stringVal(form.get("processFlow")), process.getSummary());
-        String problems = firstNonBlank(
-                stringVal(form.get("productionProblemsConcerns")),
-                process.getFindings() != null && !process.getFindings().isEmpty()
-                        ? process.getFindings().get(0) : ""
-        );
+        // Prefer Form 01 processFlow for the primary mapping; do not fall back to process
+        // summary for related siblings (template leaves related empty).
+        String processFlow = stringVal(form.get("processFlow"));
+        String problems = stringVal(form.get("productionProblemsConcerns"));
         String productionPlan = stringVal(form.get("productionPlan"));
+        String plan5 = stringVal(form.get("plan5Years"));
+        String plan10 = stringVal(form.get("plan10Years"));
+        String outcome = firstNonBlank(stringVal(form.get("expectedOutcome")), expectedOutcome);
         String plans = joinNonBlank(
+                plan5.isBlank() ? "" : "5-year plan: " + plan5,
+                plan10.isBlank() ? "" : "10-year plan: " + plan10,
                 stringVal(form.get("reasonsForAssistance")),
-                stringVal(form.get("expectedOutcome"))
+                outcome
         );
 
         return List.of(
                 section("1. Strategic Direction", List.of(
-                        sub("mission", "Mission Statement", stringVal(form.get("plan5Years"))),
-                        sub("vision", "Vision Statement", stringVal(form.get("plan10Years"))),
+                        // Mission/Vision stay blank unless staff enter enterprise statements —
+                        // do not map Form 01 plans or LOI expectedOutcome here.
+                        sub("mission", "Mission Statement", ""),
+                        sub("vision", "Vision Statement", ""),
                         sub("plans", "Plans", plans.isBlank()
                                 ? "Plans focus on technology upgrading aligned with SETUP objectives."
                                 : plans),
@@ -404,8 +419,10 @@ public class Tna2GenerationService {
                 section("2. Management Aspect", List.of(
                         sub("human-resources", "Human Resources", hr),
                         sub("purchasing", "Purchasing", stringVal(form.get("purchasingSystem"))),
-                        sub("work-environment", "Work Environment", stringVal(form.get("safetyMeasures"))),
+                        // Related to safetyMeasures — template leaves empty for staff/AI.
+                        sub("work-environment", "Work Environment", ""),
                         sub("compensation", "Compensation", stringVal(form.get("employeeIncentives"))),
+                        // Primary for safetyMeasures.
                         sub("ohs", "Occupational Health and Safety", stringVal(form.get("safetyMeasures"))),
                         sub("business-ethics", "Business ethics and social responsibilities",
                                 stringVal(form.get("agreements"))),
@@ -414,20 +431,26 @@ public class Tna2GenerationService {
                         sub("product-promotion", "Product Promotion", joinNonBlank(
                                 stringVal(form.get("promotionalStrategies")),
                                 stringVal(form.get("marketingPlan")))),
+                        // productionPlan only — do not paste problems/cgmp (their primaries elsewhere).
                         sub("product-process-performance",
                                 "Product and Process Performance and Improvement",
-                                joinNonBlank(productionPlan, problems, stringVal(form.get("cgmpHaccp"))))
+                                productionPlan)
                 )),
                 section("3. Technical Aspect", List.of(
-                        sub("operational", "Operational and Outsourcing Practices", processFlow),
+                        // Related to processFlow — template leaves empty.
+                        sub("operational", "Operational and Outsourcing Practices", ""),
+                        // Primary for processFlow.
                         sub("production-system", "Production System", processFlow),
+                        // Primary for productionProblemsConcerns.
                         sub("production-planning", "Production and Planning Control", problems),
                         sub("production-layout", "Production Layout",
                                 stringVal(form.get("plantLayoutFileName")).isBlank()
                                         ? ""
                                         : "Plant layout on file: " + stringVal(form.get("plantLayoutFileName"))),
-                        sub("work-study", "Work Study/improvement", problems),
-                        sub("equipment-mgmt", "Equipment Management and Maintenance", problems),
+                        // Related to problems — template leaves empty.
+                        sub("work-study", "Work Study/improvement", ""),
+                        sub("equipment-mgmt", "Equipment Management and Maintenance", ""),
+                        // Primary for cgmpHaccp.
                         sub("qa-system", "Quality Assurance System", stringVal(form.get("cgmpHaccp")))
                 )),
                 section("4. Product and Process Performance and Improvement", List.of(
@@ -438,14 +461,17 @@ public class Tna2GenerationService {
                                 stringVal(form.get("mainProduct"))),
                         sub("continuous-improvement", "Procedures for Continuous Improvement",
                                 stringVal(form.get("expectedOutcome"))),
-                        sub("product-quality", "Product Quality Standards", stringVal(form.get("cgmpHaccp")))
+                        // Related to cgmpHaccp — template leaves empty.
+                        sub("product-quality", "Product Quality Standards", "")
                 )),
                 section("5. Environmental Management System", List.of(
+                        // Primary for wasteManagement.
                         sub("waste-management", "Waste Management",
                                 waste.isBlank()
                                         ? "Waste management and environmental controls were reviewed during the assessment."
                                         : waste),
-                        sub("methods-of-disposal", "Methods of disposal", waste)
+                        // Related to wasteManagement — template leaves empty.
+                        sub("methods-of-disposal", "Methods of disposal", "")
                 ))
         );
     }

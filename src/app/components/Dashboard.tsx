@@ -268,7 +268,7 @@ export function Dashboard({
       {/* ── Alerts Tab ── */}
       {activeTab === "alerts" &&
         authStore.canAccessDashboardTab(user.role, "alerts") && (
-          <AlertsTab user={user} />
+          <AlertsTab user={user} onNavigate={onNavigate} />
         )}
 
       {/* ── Applicant Registry Tab ── */}

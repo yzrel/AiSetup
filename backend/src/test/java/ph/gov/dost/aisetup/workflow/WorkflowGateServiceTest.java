@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import ph.gov.dost.aisetup.auth.UserAccount;
 import ph.gov.dost.aisetup.auth.UserPrincipal;
 import ph.gov.dost.aisetup.config.AisetupProperties;
 import ph.gov.dost.aisetup.files.FileUploadRepository;
+import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
 
 @ExtendWith(MockitoExtension.class)
 class WorkflowGateServiceTest {
@@ -57,6 +59,15 @@ class WorkflowGateServiceTest {
                 .setAuthentication(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
     }
 
+    private static ApplicantRecordDto dto(
+            String id,
+            String currentModule,
+            Map<String, Object> moduleData,
+            Map<String, Object> profile) {
+        return new ApplicantRecordDto(
+                id, "LOI-2026-000001", "Test Co", currentModule, moduleData, profile, null);
+    }
+
     @Test
     void landBankGateRejectsForgedModuleDataWithoutStaffUpload() {
         authenticateApplicant("app-1");
@@ -86,5 +97,63 @@ class WorkflowGateServiceTest {
         assertThrows(AccessDeniedException.class, () -> service.assertStaffOnlyModuleWrite("approvalLetter"));
         assertThrows(AccessDeniedException.class, () -> service.assertStaffOnlyModuleWrite("landBank"));
         assertDoesNotThrow(() -> service.assertStaffOnlyModuleWrite("tna1"));
+    }
+
+    @Test
+    void programReferralMayJumpFromPrescreeningToLoi() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "prescreening",
+                Map.of("selectedProgramId", "mpex"),
+                Map.of("qualified", false));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "letter-of-intent",
+                Map.of("selectedProgramId", "mpex"),
+                Map.of("qualified", false));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void programReferralCannotAdvancePastLoi() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "letter-of-intent",
+                Map.of("selectedProgramId", "mpex"),
+                Map.of("qualified", false));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "tna1",
+                Map.of("selectedProgramId", "mpex"),
+                Map.of("qualified", false));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void mpexRouteCannotEnterSetupFundingPipeline() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "requirements",
+                Map.of("routingDecision", "mpex"),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "conduct-rtec",
+                Map.of("routingDecision", "mpex"),
+                Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void qualifiedOneStepAdvanceStillAllowed() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1", "registration", Map.of(), Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1", "letter-of-intent", Map.of(), Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
     }
 }

@@ -268,7 +268,6 @@ public class Tna1GenerationService {
                 safe(r.getProjectDescription())
         );
         String project = safe(r.getProjectDescription());
-        String outcome = safe(r.getExpectedOutcome());
 
         putIfEmpty(r.getForm(), suggestions, "enterpriseBackground",
                 background.isBlank()
@@ -279,9 +278,7 @@ public class Tna1GenerationService {
                         ? "The enterprise seeks DOST SETUP assistance to upgrade production technology and improve productivity."
                         : project);
         putIfEmpty(r.getForm(), suggestions, "plan5Years",
-                outcome.isBlank()
-                        ? "Within five years, the enterprise aims to increase production capacity, improve product quality, and expand market reach."
-                        : outcome);
+                "Within five years, the enterprise aims to increase production capacity, improve product quality, and expand market reach.");
         putIfEmpty(r.getForm(), suggestions, "plan10Years",
                 "Within ten years, the enterprise plans to scale operations sustainably and explore new markets while maintaining compliance with industry standards.");
         putIfEmpty(r.getForm(), suggestions, "productionProblemsConcerns",

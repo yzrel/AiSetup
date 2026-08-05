@@ -5,12 +5,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app/App";
+import { AppErrorBoundary } from "./app/components/AppErrorBoundary";
 import { Toaster } from "./app/components/ui/sonner";
 import "./styles/index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary label="root">
+      <App />
+    </AppErrorBoundary>
     <Toaster position="top-center" richColors closeButton />
   </StrictMode>,
 );

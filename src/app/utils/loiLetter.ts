@@ -324,3 +324,137 @@ export function buildLocalLoiDocument(payload: LoiGenerationRequest): LoiDocumen
     provincialOfficeDefaulted: thru.defaulted,
   };
 }
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function asLines(value: unknown, fallback: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    return value.map((line) => String(line ?? "").trim()).filter(Boolean);
+  }
+  return fallback;
+}
+
+/**
+ * Coerce stored `moduleData.loiDocument` into a renderable letter.
+ * Tolerates full-field / legacy blobs that nest form fields and omit letterhead.
+ */
+export function coerceLoiDocument(
+  raw: unknown,
+  fallbacks?: {
+    enterpriseName?: string;
+    applicantName?: string;
+    designation?: string;
+    address?: string;
+    email?: string;
+    contactNumber?: string;
+    province?: string;
+  },
+): LoiDocumentResponse | null {
+  const obj = asRecord(raw);
+  if (!obj) return null;
+
+  const bodyParagraphs = asLines(obj.bodyParagraphs);
+  if (!bodyParagraphs.length) return null;
+
+  const form = asRecord(obj.form) ?? {};
+  const pick = (...keys: string[]): string => {
+    for (const key of keys) {
+      const fromObj = obj[key];
+      if (typeof fromObj === "string" && fromObj.trim()) return fromObj.trim();
+      const fromForm = form[key];
+      if (typeof fromForm === "string" && fromForm.trim()) return fromForm.trim();
+    }
+    return "";
+  };
+
+  const enterpriseName =
+    pick("enterpriseName") || fallbacks?.enterpriseName || "";
+  const applicantName =
+    pick("applicantName", "printedName") || fallbacks?.applicantName || "";
+  const designation =
+    pick("designation") || fallbacks?.designation || "";
+  const address = pick("address", "enterpriseAddress") || fallbacks?.address || "";
+  const email = pick("email", "emailAddress") || fallbacks?.email || "";
+  const mobile =
+    pick("mobile", "contactNumber") || fallbacks?.contactNumber || "";
+  const dateSigned =
+    pick("dateSigned", "signedDate", "commitDate") || "";
+  const typedName =
+    pick("signature", "typedName", "commitSignature") || applicantName;
+  const province = pick("province") || fallbacks?.province || "";
+
+  const letterheadRaw = asRecord(obj.letterhead);
+  const signatureRaw = asRecord(obj.signature);
+  const regionalRaw = asRecord(obj.regionalAddressee);
+  const thruRaw = asRecord(obj.thruAddressee);
+
+  const thruFallback = resolveProvincialOffice(province);
+  const thruLinesFromRaw = asLines(thruRaw?.lines);
+  const thruLines =
+    thruLinesFromRaw.length > 0
+      ? thruLinesFromRaw
+      : thruRaw
+        ? [
+            String(thruRaw.thruLine ?? thruRaw.name ?? "").trim(),
+            String(thruRaw.title ?? "").trim(),
+            String(thruRaw.officeName ?? "").trim(),
+          ].filter(Boolean)
+        : thruFallback.lines;
+
+  return {
+    letterhead: {
+      enterpriseName: (
+        String(letterheadRaw?.enterpriseName ?? enterpriseName) || ""
+      ).toUpperCase(),
+      address: String(letterheadRaw?.address ?? address),
+      email: String(letterheadRaw?.email ?? email),
+      mobile: String(letterheadRaw?.mobile ?? mobile),
+      date: String(
+        letterheadRaw?.date ?? formatDisplayDate(dateSigned),
+      ),
+    },
+    regionalAddressee: {
+      name: String(regionalRaw?.name ?? LOI_REGIONAL_ADDRESSEE.name),
+      title: String(regionalRaw?.title ?? LOI_REGIONAL_ADDRESSEE.title),
+      lines: asLines(regionalRaw?.lines, [...LOI_REGIONAL_ADDRESSEE.lines]),
+    },
+    thruAddressee: {
+      name: String(
+        thruRaw?.name ??
+          thruFallback.thruLine.replace(/^THRU:\s*/i, ""),
+      ),
+      title: String(thruRaw?.title ?? thruFallback.title),
+      thruLine: String(thruRaw?.thruLine ?? thruFallback.thruLine),
+      officeName: String(thruRaw?.officeName ?? thruFallback.officeName),
+      lines: thruLines.length ? thruLines : thruFallback.lines,
+      addressLines: asLines(
+        thruRaw?.addressLines,
+        thruFallback.addressLines ?? [],
+      ),
+      defaulted: Boolean(thruRaw?.defaulted ?? thruFallback.defaulted),
+    },
+    salutation: String(
+      obj.salutation ??
+        `Dear Regional Director ${LOI_REGIONAL_DIRECTOR_SURNAME}:`,
+    ),
+    bodyParagraphs,
+    closing: String(obj.closing ?? "Respectfully yours,"),
+    signature: {
+      typedName: String(signatureRaw?.typedName ?? typedName),
+      printedName: String(signatureRaw?.printedName ?? applicantName),
+      designation: String(signatureRaw?.designation ?? designation),
+      enterpriseName: String(
+        signatureRaw?.enterpriseName ?? enterpriseName,
+      ),
+      dateSigned: String(signatureRaw?.dateSigned ?? dateSigned),
+    },
+    generatedAt: String(obj.generatedAt ?? new Date().toISOString()),
+    aiGenerated: Boolean(obj.aiGenerated),
+    provincialOfficeDefaulted: Boolean(
+      obj.provincialOfficeDefaulted ?? thruFallback.defaulted,
+    ),
+  };
+}

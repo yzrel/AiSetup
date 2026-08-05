@@ -15,26 +15,28 @@ function staffOffice(applicant: Applicant) {
 
 export function notifyRequirementsSubmitted(applicant: Applicant) {
   const officeId = staffOffice(applicant);
-  notificationStore.add({
-    id: `req-staff-${applicant.id}`,
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId,
-    kind: "action",
-    title: "Requirements awaiting review",
-    message: `${applicant.enterpriseName} submitted documentary requirements for verification.`,
-    urgent: true,
-    view: "requirements",
-  });
-  notificationStore.add({
-    id: `req-applicant-${applicant.id}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "info",
-    title: "Requirements submitted",
-    message: "Your documents are with your provincial DOST office for review.",
-    view: "requirements",
-  });
+  notificationStore.addMany([
+    {
+      id: `req-staff-${applicant.id}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId,
+      kind: "action",
+      title: "Requirements awaiting review",
+      message: `${applicant.enterpriseName} submitted documentary requirements for verification.`,
+      urgent: true,
+      view: "requirements",
+    },
+    {
+      id: `req-applicant-${applicant.id}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "info",
+      title: "Requirements submitted",
+      message: "Your documents are with your provincial DOST office for review.",
+      view: "requirements",
+    },
+  ]);
 }
 
 export function notifyRequirementsDecision(
@@ -66,52 +68,65 @@ export function notifyRequirementsDecision(
 }
 
 export function notifyPrescreeningResult(applicant: Applicant, qualified: boolean) {
+  if (qualified) {
+    notificationStore.addMany([
+      {
+        id: `prescreen-${applicant.id}-ok`,
+        audience: "applicant",
+        applicantId: applicant.id,
+        kind: "success",
+        title: "Pre-screening passed",
+        message: "You meet the SETUP requirements. Continue with enterprise registration.",
+        view: "registration",
+      },
+      {
+        id: `prescreen-staff-${applicant.id}`,
+        audience: "staff",
+        applicantId: applicant.id,
+        officeId: staffOffice(applicant),
+        kind: "info",
+        title: "New qualified applicant",
+        message: `${applicant.enterpriseName} passed pre-screening and may proceed.`,
+        view: "clients",
+      },
+    ]);
+    return;
+  }
   notificationStore.add({
-    id: `prescreen-${applicant.id}-${qualified ? "ok" : "no"}`,
+    id: `prescreen-${applicant.id}-no`,
     audience: "applicant",
     applicantId: applicant.id,
-    kind: qualified ? "success" : "warning",
-    title: qualified ? "Pre-screening passed" : "Not qualified for SETUP",
-    message: qualified
-      ? "You meet the SETUP requirements. Continue with enterprise registration."
-      : "You do not yet meet SETUP requirements. Review recommended DOST programs for your sector on the pre-screening page.",
-    view: qualified ? "registration" : "prescreening",
-    urgent: !qualified,
+    kind: "warning",
+    title: "Not qualified for SETUP",
+    message:
+      "You do not yet meet SETUP requirements. Review recommended DOST programs for your sector on the pre-screening page.",
+    view: "prescreening",
+    urgent: true,
   });
-  if (qualified) {
-    notificationStore.add({
-      id: `prescreen-staff-${applicant.id}`,
-      audience: "staff",
-      applicantId: applicant.id,
-      officeId: staffOffice(applicant),
-      kind: "info",
-      title: "New qualified applicant",
-      message: `${applicant.enterpriseName} passed pre-screening and may proceed.`,
-      view: "clients",
-    });
-  }
 }
 
 export function notifyTna1Submitted(applicant: Applicant) {
-  notificationStore.add({
-    id: `tna1-staff-${applicant.id}-${Date.now()}`,
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId: staffOffice(applicant),
-    kind: "action",
-    title: `${formatFormMention("tna01")} submitted`,
-    message: `${applicant.enterpriseName} submitted ${formatFormMention("tna01", "both")} for staff review.`,
-    view: "tna1",
-  });
-  notificationStore.add({
-    id: `tna1-applicant-${applicant.id}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "info",
-    title: `${formatFormMention("tna01")} submitted`,
-    message: `Your assessment was submitted. DOST staff will review your ${formatFormMention("tna01")}.`,
-    view: "tna1",
-  });
+  notificationStore.addMany([
+    {
+      id: `tna1-staff-${applicant.id}-${Date.now()}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "action",
+      title: `${formatFormMention("tna01")} submitted`,
+      message: `${applicant.enterpriseName} submitted ${formatFormMention("tna01", "both")} for staff review.`,
+      view: "tna1",
+    },
+    {
+      id: `tna1-applicant-${applicant.id}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "info",
+      title: `${formatFormMention("tna01")} submitted`,
+      message: `Your assessment was submitted. DOST staff will review your ${formatFormMention("tna01")}.`,
+      view: "tna1",
+    },
+  ]);
 }
 
 export function notifyTna1Reviewed(applicant: Applicant) {
@@ -143,25 +158,28 @@ export function notifyTna1DirectorValidated(
   applicant: Applicant,
   directorName: string,
 ) {
-  notificationStore.add({
-    id: `tna1-director-validated-${applicant.id}-${Date.now()}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: `${formatFormMention("tna01")} validated`,
-    message: `${directorName} (Provincial Director) validated your ${formatFormMention("tna01")}. You may now proceed to TNA Form 02.`,
-    view: "tna1",
-  });
-  notificationStore.add({
-    id: `tna1-director-validated-staff-${applicant.id}-${Date.now()}`,
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId: staffOffice(applicant),
-    kind: "success",
-    title: `${formatFormMention("tna01")} validated by Provincial Director`,
-    message: `${directorName} validated ${applicant.enterpriseName}'s ${formatFormMention("tna01")}.`,
-    view: "tna1",
-  });
+  const stamp = Date.now();
+  notificationStore.addMany([
+    {
+      id: `tna1-director-validated-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: `${formatFormMention("tna01")} validated`,
+      message: `${directorName} (Provincial Director) validated your ${formatFormMention("tna01")}. You may now proceed to TNA Form 02.`,
+      view: "tna1",
+    },
+    {
+      id: `tna1-director-validated-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "success",
+      title: `${formatFormMention("tna01")} validated by Provincial Director`,
+      message: `${directorName} validated ${applicant.enterpriseName}'s ${formatFormMention("tna01")}.`,
+      view: "tna1",
+    },
+  ]);
 }
 
 export function notifyTna1Resubmission(applicant: Applicant) {
@@ -245,49 +263,55 @@ export function notifyLbpIntroductionPublished(applicant: Applicant) {
 }
 
 export function notifyLandBankComplete(applicant: Applicant) {
-  notificationStore.add({
-    id: `landbank-complete-${applicant.id}-${Date.now()}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: "LandBank & withdrawal complete",
-    message:
-      "Your LandBank account and withdrawal documents are on file and ready to view. Proceed to procurement and liquidation when unlocked.",
-    view: "procurement-liquidation",
-  });
-  notificationStore.add({
-    id: `landbank-staff-${applicant.id}-${Date.now()}`,
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId: staffOffice(applicant),
-    kind: "info",
-    title: "Withdrawal documents submitted",
-    message: `${applicant.enterpriseName} LandBank & withdrawal marked complete (Modules 11–13).`,
-    view: "landbank-withdrawal",
-  });
+  const stamp = Date.now();
+  notificationStore.addMany([
+    {
+      id: `landbank-complete-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: "LandBank & withdrawal complete",
+      message:
+        "Your LandBank account and withdrawal documents are on file and ready to view. Proceed to procurement and liquidation when unlocked.",
+      view: "procurement-liquidation",
+    },
+    {
+      id: `landbank-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "info",
+      title: "Withdrawal documents submitted",
+      message: `${applicant.enterpriseName} LandBank & withdrawal marked complete (Modules 11–13).`,
+      view: "landbank-withdrawal",
+    },
+  ]);
 }
 
 export function notifyProcurementComplete(applicant: Applicant) {
-  notificationStore.add({
-    id: `procurement-complete-${applicant.id}-${Date.now()}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: "Procurement & liquidation complete",
-    message:
-      "Procurement, liquidation, and account untagging are complete. Refund monitoring will begin per your MOA schedule.",
-    view: "refund-delinquent",
-  });
-  notificationStore.add({
-    id: `procurement-staff-${applicant.id}-${Date.now()}`,
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId: staffOffice(applicant),
-    kind: "action",
-    title: "Refund monitoring required",
-    message: `${applicant.enterpriseName} is ready for refund schedule and PDC monitoring.`,
-    view: "refund-delinquent",
-  });
+  const stamp = Date.now();
+  notificationStore.addMany([
+    {
+      id: `procurement-complete-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: "Procurement & liquidation complete",
+      message:
+        "Procurement, liquidation, and account untagging are complete. Refund monitoring will begin per your MOA schedule.",
+      view: "refund-delinquent",
+    },
+    {
+      id: `procurement-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "action",
+      title: "Refund monitoring required",
+      message: `${applicant.enterpriseName} is ready for refund schedule and PDC monitoring.`,
+      view: "refund-delinquent",
+    },
+  ]);
 }
 
 export function notifyRefundMonitoringComplete(applicant: Applicant) {
@@ -304,25 +328,27 @@ export function notifyRefundMonitoringComplete(applicant: Applicant) {
 }
 
 export function notifyProjectProposalSubmitted(applicant: Applicant) {
-  notificationStore.add({
-    id: `pp-staff-${applicant.id}-${Date.now()}`,
-    audience: "staff",
-    applicantId: applicant.id,
-    officeId: staffOffice(applicant),
-    kind: "action",
-    title: "Project Proposal submitted",
-    message: `${applicant.enterpriseName} submitted ${formatFormMention("001", "both")} for review.`,
-    view: "project-proposal",
-  });
-  notificationStore.add({
-    id: `pp-applicant-${applicant.id}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: "Project Proposal submitted",
-    message: "Your project proposal was submitted. Proceed to the next application step when advised.",
-    view: "project-proposal",
-  });
+  notificationStore.addMany([
+    {
+      id: `pp-staff-${applicant.id}-${Date.now()}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "action",
+      title: "Project Proposal submitted",
+      message: `${applicant.enterpriseName} submitted ${formatFormMention("001", "both")} for review.`,
+      view: "project-proposal",
+    },
+    {
+      id: `pp-applicant-${applicant.id}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: "Project Proposal submitted",
+      message: "Your project proposal was submitted. Proceed to the next application step when advised.",
+      view: "project-proposal",
+    },
+  ]);
 }
 
 export function notifyWithNavigation(

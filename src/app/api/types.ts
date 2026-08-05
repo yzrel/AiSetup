@@ -1065,3 +1065,33 @@ export interface ApiApplicantRecord {
   profile?: Record<string, unknown>;
   updatedAt?: string;
 }
+
+export type ApiNotificationKind = "info" | "success" | "warning" | "action";
+
+export interface ApiNotification {
+  id: string;
+  audience: "applicant" | "staff";
+  applicantId?: string;
+  officeId?: string;
+  kind: ApiNotificationKind;
+  title: string;
+  message: string;
+  read: boolean;
+  urgent?: boolean;
+  timestamp: string;
+  view?: string;
+}
+
+export interface ApiCreateNotificationRequest {
+  id?: string;
+  audience: "applicant" | "staff";
+  applicantId?: string;
+  officeId?: string;
+  kind: ApiNotificationKind;
+  title: string;
+  message: string;
+  read?: boolean;
+  urgent?: boolean;
+  timestamp?: string;
+  view?: string;
+}

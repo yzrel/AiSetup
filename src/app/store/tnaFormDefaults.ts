@@ -127,7 +127,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     consultedAgency: "",
     assistanceType: String(md.timeline ?? ""),
     whyNotConsulted: "",
-    plan5Years: String(md.expectedOutcome ?? ""),
+    plan5Years: "",
     plan10Years: "",
     agreements: "",
     cashFlow: "",

@@ -21,11 +21,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import ph.gov.dost.aisetup.audit.RequestAuditFilter;
 import ph.gov.dost.aisetup.auth.JwtAuthenticationFilter;
 
 @Configuration
@@ -35,12 +37,15 @@ import ph.gov.dost.aisetup.auth.JwtAuthenticationFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RequestAuditFilter requestAuditFilter;
 
     @Value("${aisetup.cors.allowed-origins}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter, RequestAuditFilter requestAuditFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.requestAuditFilter = requestAuditFilter;
     }
 
     @Bean
@@ -71,8 +76,18 @@ public class SecurityConfig {
                         }))
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(requestAuditFilter, JwtAuthenticationFilter.class);
         return http.build();
+    }
+
+    /** Keep RequestAuditFilter inside the security chain only (principal still available). */
+    @Bean
+    public FilterRegistrationBean<RequestAuditFilter> requestAuditFilterRegistration(
+            RequestAuditFilter filter) {
+        FilterRegistrationBean<RequestAuditFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

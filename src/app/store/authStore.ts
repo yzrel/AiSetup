@@ -39,6 +39,44 @@ export type AdminView =
   | "my-account"
   | "sent-emails";
 
+/** Runtime allow-list for persisted / API view keys (avoids shell crashes). */
+export const KNOWN_ADMIN_VIEWS: readonly AdminView[] = [
+  "dashboard",
+  "prescreening",
+  "registration",
+  "letter-of-intent",
+  "requirements",
+  "tna1",
+  "tna2",
+  "project-proposal",
+  "conduct-rtec",
+  "approval-letter",
+  "project-information-sheet",
+  "landbank-withdrawal",
+  "procurement-liquidation",
+  "refund-delinquent",
+  "project-closeout",
+  "clients",
+  "client-files",
+  "account-management",
+  "my-account",
+  "sent-emails",
+] as const;
+
+export function isAdminView(value: unknown): value is AdminView {
+  return (
+    typeof value === "string" &&
+    (KNOWN_ADMIN_VIEWS as readonly string[]).includes(value)
+  );
+}
+
+/** Maps legacy aliases; returns null when unknown. */
+export function normalizeAdminView(value: unknown): AdminView | null {
+  if (!isAdminView(value)) return null;
+  if (value === "project-information-sheet") return "landbank-withdrawal";
+  return value;
+}
+
 export type DashboardTab = "overview" | "analytics" | "alerts" | "registry";
 
 export interface AuthUser {

@@ -16,6 +16,7 @@ import type { Tna2DocumentResponse } from "../api/types";
 import {
   buildLocalTna2Document,
   buildTna2GenerationPayload,
+  enrichTna2Summary,
   getPublishedTna2,
   getTna2Draft,
   normalizeFindingsByArea,
@@ -48,25 +49,32 @@ export function TNA2TechnicalReport({
   const [editMode, setEditMode] = useState(false);
   const [editSavedNotice, setEditSavedNotice] = useState("");
 
-  const loadApplicant = useCallback((app: Applicant | null) => {
-    const stored = getTna2Draft(app);
-    if (!stored) {
-      setDraft(null);
-      setEditMode(false);
-      return;
-    }
-    setDraft({
-      ...stored,
-      findingsByArea: normalizeFindingsByArea(stored.findingsByArea),
-    });
-    setEditMode(false);
-  }, []);
+  const loadApplicant = useCallback(
+    (app: Applicant | null, options?: { resetEditMode?: boolean }) => {
+      const stored = getTna2Draft(app);
+      if (!stored) {
+        setDraft(null);
+        setEditMode(false);
+        return;
+      }
+      setDraft(
+        enrichTna2Summary({
+          ...stored,
+          findingsByArea: normalizeFindingsByArea(stored.findingsByArea),
+        }),
+      );
+      // Only exit edit mode when switching applicants — autosave via
+      // applicantStore.subscribe must not kick the user back to preview.
+      if (options?.resetEditMode) setEditMode(false);
+    },
+    [],
+  );
 
   useEffect(() => {
-    loadApplicant(applicant);
+    loadApplicant(applicant, { resetEditMode: true });
   }, [applicant?.id, loadApplicant]);
 
-  useApplicantSubscription(applicant?.id, loadApplicant);
+  useApplicantSubscription(applicant?.id, (app) => loadApplicant(app));
 
   const published = getPublishedTna2(applicant);
   const displayDoc = isStaff ? draft : published;
@@ -98,7 +106,10 @@ export function TNA2TechnicalReport({
 
     const findingsByArea = prefillFindingsFromTna1(
       normalizeFindingsByArea(document.findingsByArea),
-      (payload.tna1Form as Record<string, unknown>) ?? {},
+      {
+        ...((payload.tna1Form as Record<string, unknown>) ?? {}),
+        expectedOutcome: payload.expectedOutcome,
+      },
       document.enterpriseProfile?.employees,
     );
     const normalized: Tna2DocumentResponse = { ...document, findingsByArea };
