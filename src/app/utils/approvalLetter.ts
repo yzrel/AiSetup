@@ -249,10 +249,13 @@ export function syncApprovalLetterFromRtec(
 export function saveApprovalLetterDraft(
   applicantId: string,
   form: ApprovalLetterForm,
+  options?: { clearRdDisapproval?: boolean },
 ): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
   const existing = getApprovalLetterStored(applicant);
+  const clearDisapproval =
+    options?.clearRdDisapproval && existing?.rdDecision === "disapproved";
   const nextStored = mergeApprovalLetterPreservePublished(existing, {
     ...(existing ?? {
       form,
@@ -264,6 +267,10 @@ export function saveApprovalLetterDraft(
     publishedAt: existing?.publishedAt,
     acknowledged: existing?.acknowledged ?? false,
     acknowledgedAt: existing?.acknowledgedAt,
+    rdDecision: clearDisapproval ? null : existing?.rdDecision,
+    rdDecidedBy: clearDisapproval ? undefined : existing?.rdDecidedBy,
+    rdDecidedAt: clearDisapproval ? undefined : existing?.rdDecidedAt,
+    rdRemarks: clearDisapproval ? undefined : existing?.rdRemarks,
     signedMoa: existing?.signedMoa,
     updatedAt: new Date().toISOString(),
   } satisfies ApprovalLetterStored);
@@ -275,12 +282,91 @@ export function saveApprovalLetterDraft(
   });
 }
 
+export type RdApprovalDecision = "approved" | "disapproved";
+
+/**
+ * Regional Director Approve/Disapprove. Only call when the actor is
+ * regional-director (UI-gated). On approve, ensures a letter draft exists.
+ * Staff may clear disapproval by saving a re-endorsement draft.
+ */
+export function recordRdDecision(
+  applicantId: string,
+  decision: RdApprovalDecision,
+  decidedBy: string,
+  form?: ApprovalLetterForm,
+  remarks?: string,
+): ApprovalLetterForm | null {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return null;
+  const existing = getApprovalLetterStored(applicant);
+  if (existing?.published) {
+    return existing.form ?? null;
+  }
+
+  let nextForm =
+    form ??
+    existing?.form ??
+    buildApprovalLetterDraft(applicant);
+  if (decision === "approved") {
+    // Ensure fields are populated from RTEC / proposal when still empty.
+    nextForm = syncApprovalLetterFromRtec(nextForm, applicant);
+  }
+
+  const now = new Date().toISOString();
+  const nextStored: ApprovalLetterStored = {
+    ...(existing ?? {
+      form: nextForm,
+      published: false,
+      acknowledged: false,
+    }),
+    form: { ...nextForm, published: false },
+    published: false,
+    publishedAt: existing?.publishedAt,
+    acknowledged: existing?.acknowledged ?? false,
+    acknowledgedAt: existing?.acknowledgedAt,
+    rdDecision: decision,
+    rdDecidedBy: decidedBy,
+    rdDecidedAt: now,
+    rdRemarks: remarks?.trim() || undefined,
+    signedMoa: existing?.signedMoa,
+    updatedAt: now,
+  };
+  applicantStore.update(applicantId, {
+    moduleData: {
+      ...applicant.moduleData,
+      approvalLetter: nextStored,
+    },
+  });
+  return nextForm;
+}
+
+export function canPublishApprovalLetter(
+  applicant: Applicant | null,
+): boolean {
+  if (isDemoModeActive()) return true;
+  const stored = getApprovalLetterStored(applicant);
+  return stored?.rdDecision === "approved";
+}
+
+/** Client may proceed past Approval Letter only after RD approve + publish. */
+export function hasRdApprovedNotice(applicant: Applicant | null): boolean {
+  const stored = getApprovalLetterStored(applicant);
+  return stored?.rdDecision === "approved" && !!stored?.published;
+}
+
 export function publishApprovalLetter(
   applicantId: string,
   form: ApprovalLetterForm,
-): void {
+): { ok: boolean; error?: string } {
   const applicant = applicantStore.getById(applicantId);
-  if (!applicant) return;
+  if (!applicant) return { ok: false, error: "Applicant not found." };
+  if (!canPublishApprovalLetter(applicant)) {
+    return {
+      ok: false,
+      error:
+        "Regional Director must Approve the Notice of Approval before it can be published.",
+    };
+  }
   const existing = getApprovalLetterStored(applicant);
   const now = new Date().toISOString();
   const nextStored: ApprovalLetterStored = {
@@ -290,6 +376,10 @@ export function publishApprovalLetter(
     publishedAt: now,
     acknowledged: false,
     acknowledgedAt: undefined,
+    rdDecision: existing?.rdDecision ?? "approved",
+    rdDecidedBy: existing?.rdDecidedBy,
+    rdDecidedAt: existing?.rdDecidedAt,
+    rdRemarks: existing?.rdRemarks,
     signedMoa: existing?.signedMoa,
     updatedAt: now,
   };
@@ -307,6 +397,7 @@ export function publishApprovalLetter(
     "approvalLetter",
     nextStored as unknown as Record<string, unknown>,
   );
+  return { ok: true };
 }
 
 /** Restore published=true when a stale assessment overwrite wiped the flag. */
@@ -329,6 +420,10 @@ export function ensureApprovalLetterPublished(
         publishedAt: existing?.publishedAt ?? now,
         acknowledged: existing?.acknowledged ?? false,
         acknowledgedAt: existing?.acknowledgedAt,
+        rdDecision: existing?.rdDecision ?? "approved",
+        rdDecidedBy: existing?.rdDecidedBy,
+        rdDecidedAt: existing?.rdDecidedAt,
+        rdRemarks: existing?.rdRemarks,
         signedMoa: existing?.signedMoa,
         updatedAt: now,
       } satisfies ApprovalLetterStored,
@@ -373,9 +468,17 @@ export function acknowledgeApprovalLetter(
   });
 }
 
-export function validateApprovalLetterPublish(form: ApprovalLetterForm): string[] {
+export function validateApprovalLetterPublish(
+  form: ApprovalLetterForm,
+  applicant?: Applicant | null,
+): string[] {
   if (isDemoModeActive()) return [];
   const errors: string[] = [];
+  if (applicant !== undefined && !canPublishApprovalLetter(applicant)) {
+    errors.push(
+      "Regional Director must Approve before publishing the Notice of Approval.",
+    );
+  }
   if (!form.projectTitle?.trim()) errors.push("Project title is required.");
   if (!form.referenceNumber?.trim()) errors.push("Reference number is required.");
   if (!form.recipientName?.trim()) errors.push("Recipient name is required.");
@@ -422,8 +525,8 @@ export function getApprovalLetterPrintStyles(): string {
 export function printApprovalLetter(applicationId?: string) {
   const el = document.getElementById("approval-letter-preview");
   const title = applicationId
-    ? `SETUP-Form-003-Approval-${applicationId}`
-    : "SETUP-Form-003-Approval";
+    ? `Approval-Letter-${applicationId}`
+    : "Approval-Letter";
   if (!el) {
     window.print();
     return;

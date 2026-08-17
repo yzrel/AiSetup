@@ -37,11 +37,21 @@ public class UserPrincipal implements UserDetails {
         String role = account.getRole();
         return "admin".equals(role)
                 || "agent".equals(role)
-                || "provincial-director".equals(role);
+                || "provincial-director".equals(role)
+                || "regional-director".equals(role);
     }
 
     public boolean isAdmin() {
         return "admin".equals(account.getRole());
+    }
+
+    public boolean isRegionalDirector() {
+        return "regional-director".equals(account.getRole());
+    }
+
+    /** Admin or Regional Director — region-wide staff/account management. */
+    public boolean isRegionalAdmin() {
+        return isAdmin() || isRegionalDirector();
     }
 
     @Override

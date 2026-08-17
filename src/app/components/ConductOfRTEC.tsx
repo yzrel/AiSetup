@@ -38,6 +38,7 @@ import {
   validateRtecReportSubmit,
 } from "../utils/rtecReport";
 import { allowWhenDemo } from "../utils/demoMode";
+import { notifyRtecSubmitted } from "../utils/notificationHelpers";
 import { formatFormMention } from "../constants/setupForms";
 import { RtecReportEditor } from "./RtecReportEditor";
 import { RtecReportPreview } from "./RtecReportPreview";
@@ -154,6 +155,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
     } else {
       applicantStore.update(applicant.id, { currentModule: "approval-letter" });
     }
+    notifyRtecSubmitted(applicant);
     setCompleteNotice("RTEC Report marked complete. Applicant advanced to Approval Letter.");
     setTimeout(() => setCompleteNotice(""), 5000);
     onSubmitSuccess?.();

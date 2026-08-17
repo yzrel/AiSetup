@@ -61,7 +61,7 @@ export function ApprovalLetterPreview({
           </p>
           <p className="text-sm font-semibold">Regional Office No. XII</p>
           <p className="al-form-title text-sm font-bold mt-2">
-            SETUP Form 003 — Approval
+            Approval Letter
           </p>
           <p className="text-xs text-gray-600 mt-1">{APPROVAL_LETTER_ADDRESS}</p>
         </div>

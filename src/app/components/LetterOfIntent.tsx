@@ -10,7 +10,6 @@ import {
   X,
   AlertCircle,
   Eye,
-  ChevronRight,
   Shield,
   Paperclip,
   ClipboardCheck,
@@ -25,7 +24,8 @@ import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
-import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
+import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { ModuleStepHeader } from "./ModuleWorkflowLayout";
 import { buildLoiAdditionalFromApplicant } from "../utils/applicantPrefill";
 import type { ModuleDocument } from "../api/types";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
@@ -43,6 +43,7 @@ import {
 } from "../utils/loiLetter";
 import { LoiDocumentPreview } from "./LoiDocumentPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
+import { notifyLoiSubmitted } from "../utils/notificationHelpers";
 
 interface LetterOfIntentProps {
   user?: AuthUser | null;
@@ -86,35 +87,10 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StepHeader({ current, steps }: { current: StepId; steps: typeof STEPS }) {
-  const currentIdx = steps.findIndex((s) => s.id === current);
-  return (
-    <div className={MODULE_STEP_SCROLL}>
-      {steps.map((s, i) => {
-        const done = i < currentIdx;
-        const active = i === currentIdx;
-        return (
-          <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div
-              className={moduleStepPillClass({ active, done, locked: false })}
-            >
-              {done ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : s.icon}
-              <span className="hidden sm:inline">{s.label}</span>
-              <span className="sm:hidden">{i + 1}</span>
-            </div>
-            {i < steps.length - 1 && (
-              <ChevronRight className="w-3 h-3 text-white/30 shrink-0" />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
   const [step, setStep] = useState<StepId>("review");
+  const [maxReached, setMaxReached] = useState(0);
 
   // Selected recommended program (set when a non-qualified client chooses an
   // alternative DOST program during prescreening). When present, the LOI is
@@ -129,6 +105,17 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     () => (hasProgram ? STEPS.filter((s) => s.id !== "commitment-refund") : STEPS),
     [hasProgram],
   );
+
+  const goToStep = (next: StepId) => {
+    const idx = steps.findIndex((s) => s.id === next);
+    if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
+    setStep(next);
+  };
+
+  useEffect(() => {
+    const idx = steps.findIndex((s) => s.id === step);
+    if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
+  }, [step, steps]);
 
   const [additional, setAdditional] = useState({
     dateEstablished: "",
@@ -230,6 +217,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     });
     if (saved?.bodyParagraphs?.length && savedLetterProgramId === currentProgramId) {
       setLoiDocument(saved);
+      setMaxReached(steps.length - 1);
       setStep("complete");
       if (saved.signature) {
         setGeneralAgreement((prev) => ({
@@ -265,6 +253,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       );
     } else {
       setLoiDocument(null);
+      setMaxReached(0);
       setStep("review");
       const md = app.moduleData ?? {};
       const savedPlan = md.productionPlanDocument as ModuleDocument | undefined;
@@ -601,6 +590,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         loiDocumentProgramId: String(applicant.moduleData?.selectedProgramId ?? ""),
       },
     });
+    notifyLoiSubmitted(applicant);
   };
 
   /** Persist LOI form progress without generating / submitting the letter. */
@@ -654,7 +644,12 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </p>
             </div>
           </div>
-          <StepHeader current={step} steps={steps} />
+          <ModuleStepHeader
+            steps={steps}
+            current={step}
+            maxReached={maxReached}
+            onStepClick={(id) => goToStep(id as StepId)}
+          />
           {draftNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{draftNotice}</p>
           )}
@@ -1518,6 +1513,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 onClick={() => {
                   setLoiDocument(null);
                   setGenerateError(null);
+                  setMaxReached(0);
                   setStep("review");
                   if (applicant) {
                     const md = { ...applicant.moduleData };

@@ -58,6 +58,16 @@ public class UserSeedRunner implements ApplicationRunner {
                 "regional",
                 List.of());
         seedStaff(
+                "rd-malawan",
+                "rd@dost.gov.ph",
+                "Sammy",
+                "P.",
+                "Malawan",
+                "regional-director",
+                "DOST SOCCSKSARGEN — Regional Office",
+                "regional",
+                List.of());
+        seedStaff(
                 "agent-001",
                 "agent@dost.gov.ph",
                 "DOST",
@@ -164,6 +174,7 @@ public class UserSeedRunner implements ApplicationRunner {
         account.setCreatedAt(now);
         account.setUpdatedAt(now);
         userAccountRepository.save(account);
+        log.info("Seeded staff user {} ({})", email, role);
     }
 
     private void seedApplicant(

@@ -6,7 +6,6 @@
  */
 
 import { useRef } from "react";
-import { moduleStepPillClass, MODULE_STEP_SCROLL } from "../moduleTheme";
 import { readAndUploadModuleDocument } from "../../utils/readFileAsDataUrl";
 export { ValidationRow } from "../ValidationRow";
 
@@ -21,7 +20,7 @@ export const labelCls =
 export const sectionTitle =
   "text-base font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4 flex items-center gap-2";
 
-// ─── Step definitions ────────────────────────────────────────────────────────
+// ─── Step definitions (rendered via shared ModuleStepHeader) ─────────────────
 export const STEPS = [
   { id: "identification", label: "Enterprise Info",     icon: "🏭" },
   { id: "attachment-a",  label: "Enterprise Profile",   icon: "📋" },
@@ -33,50 +32,6 @@ export const STEPS = [
   { id: "staff-review",  label: "Staff Review",         icon: "🔍" },
   { id: "reports",       label: "Complete",             icon: "✅" },
 ];
-
-/** Staff may jump to these steps when reviewing a submitted application */
-export const STAFF_NAV_STEPS = new Set(["complete", "staff-review", "reports"]);
-
-// ─── Step header (identical pattern to LOI StepHeader) ───────────────────────
-export function StepHeader({
-  current,
-  onNavigate,
-  allowStaffNav,
-}: {
-  current: string;
-  onNavigate?: (id: string) => void;
-  allowStaffNav?: boolean;
-}) {
-  const currentIdx = STEPS.findIndex(s => s.id === current);
-  return (
-    <div className={MODULE_STEP_SCROLL}>
-      {STEPS.map((s, i) => {
-        const done   = i < currentIdx;
-        const active = i === currentIdx;
-        const clickable = allowStaffNav && STAFF_NAV_STEPS.has(s.id) && onNavigate;
-        return (
-          <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              disabled={!clickable}
-              onClick={() => clickable && onNavigate?.(s.id)}
-              className={`${moduleStepPillClass({ active, done, locked: false })} ${
-                clickable ? "cursor-pointer hover:opacity-90" : "cursor-default"
-              }`}
-            >
-              {done ? <span className="text-green-300">✓</span> : <span>{s.icon}</span>}
-              <span className="hidden sm:inline">{s.label}</span>
-              <span className="sm:hidden">{i + 1}</span>
-            </button>
-            {i < STEPS.length - 1 && (
-              <span className="text-white/30 text-xs shrink-0">›</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 // ─── Readonly blue field (same as LOI ReadonlyField) ─────────────────────────
 export function ReadonlyField({ label, value }: { label: string; value?: string }) {

@@ -26,11 +26,11 @@ public final class SecurityUtils {
         }
     }
 
-    /** Regional admin only — staff user CRUD. */
+    /** Regional admin only — staff user CRUD (admin or regional director). */
     public static void requireAdmin() {
         UserPrincipal principal = requirePrincipal();
-        if (!principal.isAdmin()) {
-            throw new AccessDeniedException("Admin role required");
+        if (!principal.isRegionalAdmin()) {
+            throw new AccessDeniedException("Admin or Regional Director role required");
         }
     }
 

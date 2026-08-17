@@ -286,6 +286,12 @@ public class ModuleContentValidationService {
         require(errors, stringField(form, "enterpriseAddress"), "Enterprise address is required.");
         require(errors, stringField(form, "pstoOfficeName"), "PSTO office name is required.");
         require(errors, stringField(form, "signatoryName"), "Signatory name is required.");
+        // Notice of Approval publish requires Regional Director approval (except demo).
+        String rdDecision = stringField(data, "rdDecision");
+        if (!"approved".equalsIgnoreCase(rdDecision)) {
+            errors.add(
+                    "Regional Director must Approve the Notice of Approval before it can be published.");
+        }
         return errors;
     }
 

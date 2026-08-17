@@ -44,6 +44,7 @@ import {
   getApprovalLetterStored,
   hasRtecReportPrerequisite,
   publishApprovalLetter,
+  recordRdDecision,
   saveSignedMoa,
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
@@ -389,12 +390,14 @@ describe("system flow: registration through project close-out", () => {
     submitRtecReport(id, rtecForm);
     applicantStore.update(id, { currentModule: "approval-letter" });
 
-    // 10. Approval letter (Module 9) — publish gate, conforme, signed MOA
+    // 10. Approval letter (Module 9) — RD approve, publish gate, conforme, signed MOA
     expect(hasRtecReportPrerequisite(getApplicant(id))).toBe(true);
     expect(isAwaitingStaffReview(getApplicant(id))).toBe(true); // unpublished
     const approvalDraft = buildApprovalLetterDraft(getApplicant(id));
-    expect(validateApprovalLetterPublish(approvalDraft)).toEqual([]);
-    publishApprovalLetter(id, approvalDraft);
+    expect(validateApprovalLetterPublish(approvalDraft, getApplicant(id)).length).toBeGreaterThan(0);
+    recordRdDecision(id, "approved", "rd@dost.gov.ph", approvalDraft);
+    expect(validateApprovalLetterPublish(approvalDraft, getApplicant(id))).toEqual([]);
+    expect(publishApprovalLetter(id, approvalDraft).ok).toBe(true);
     expect(getApprovalLetterStored(getApplicant(id))?.published).toBe(true);
     expect(isAwaitingStaffReview(getApplicant(id))).toBe(false);
     acknowledgeApprovalLetter(id, "Test Applicant");

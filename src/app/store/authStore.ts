@@ -13,6 +13,7 @@ export type UserRole =
   | "client"
   | "agent"
   | "provincial-director"
+  | "regional-director"
   | "admin";
 
 export type LoginPortal = "client" | "admin";
@@ -99,41 +100,56 @@ export interface AuthUser {
   assignedProvinces?: string[];
 }
 
+/** Staff roles with admin-like regional access (all modules + account mgmt). */
+const STAFF_ADMIN_LIKE: UserRole[] = ["admin", "regional-director"];
+const STAFF_ALL: UserRole[] = [
+  "admin",
+  "regional-director",
+  "agent",
+  "provincial-director",
+];
+const STAFF_AND_CLIENT: UserRole[] = [
+  ...STAFF_ALL,
+  "client",
+  "applicant",
+];
+
 /** Views each role may access in the admin shell */
 const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
-  dashboard: ["admin", "agent", "provincial-director", "client", "applicant"],
-  prescreening: ["admin", "agent", "provincial-director", "client", "applicant"],
-  registration: ["admin", "agent", "provincial-director", "client", "applicant"],
-  "letter-of-intent": ["admin", "agent", "provincial-director", "client", "applicant"],
-  requirements: ["admin", "agent", "provincial-director", "client", "applicant"],
-  tna1: ["admin", "agent", "provincial-director", "client", "applicant"],
-  tna2: ["admin", "agent", "provincial-director", "client", "applicant"],
-  "project-proposal": ["admin", "agent", "provincial-director", "client", "applicant"],
-  "conduct-rtec": ["admin", "agent", "provincial-director"],
-  "approval-letter": ["admin", "agent", "provincial-director", "client", "applicant"],
-  "project-information-sheet": ["admin", "agent", "provincial-director", "client", "applicant"],
-  "landbank-withdrawal": ["admin", "agent", "provincial-director", "client", "applicant"],
-  "procurement-liquidation": ["admin", "agent", "provincial-director", "client", "applicant"],
-  "refund-delinquent": ["admin", "agent", "provincial-director", "client", "applicant"],
-  "project-closeout": ["admin", "agent", "provincial-director", "client", "applicant"],
-  clients: ["admin", "agent", "provincial-director"],
-  "client-files": ["admin", "agent", "provincial-director"],
-  "account-management": ["admin", "agent", "provincial-director"],
+  dashboard: STAFF_AND_CLIENT,
+  prescreening: STAFF_AND_CLIENT,
+  registration: STAFF_AND_CLIENT,
+  "letter-of-intent": STAFF_AND_CLIENT,
+  requirements: STAFF_AND_CLIENT,
+  tna1: STAFF_AND_CLIENT,
+  tna2: STAFF_AND_CLIENT,
+  "project-proposal": STAFF_AND_CLIENT,
+  "conduct-rtec": STAFF_ALL,
+  "approval-letter": STAFF_AND_CLIENT,
+  "project-information-sheet": STAFF_AND_CLIENT,
+  "landbank-withdrawal": STAFF_AND_CLIENT,
+  "procurement-liquidation": STAFF_AND_CLIENT,
+  "refund-delinquent": STAFF_AND_CLIENT,
+  "project-closeout": STAFF_AND_CLIENT,
+  clients: STAFF_ALL,
+  "client-files": STAFF_ALL,
+  "account-management": STAFF_ALL,
   "my-account": ["client", "applicant"],
-  "sent-emails": ["admin", "agent", "provincial-director"],
+  "sent-emails": STAFF_ALL,
 };
 
 const DASHBOARD_TAB_PERMISSIONS: Record<DashboardTab, UserRole[]> = {
-  overview: ["admin", "agent", "provincial-director", "client", "applicant"],
-  analytics: ["admin", "agent", "provincial-director"],
-  alerts: ["admin", "agent", "provincial-director"],
-  registry: ["admin", "agent", "provincial-director"],
+  overview: STAFF_AND_CLIENT,
+  analytics: STAFF_ALL,
+  alerts: STAFF_ALL,
+  registry: STAFF_ALL,
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
   agent: "DOST Agent",
   "provincial-director": "Provincial Director",
+  "regional-director": "Regional Director",
   client: "Client",
   applicant: "Applicant",
 };
@@ -230,8 +246,10 @@ export const authStore = {
     return false;
   },
 
-  isStaff: (role: UserRole) =>
-    role === "admin" || role === "agent" || role === "provincial-director",
+  isStaff: (role: UserRole) => STAFF_ALL.includes(role),
+
+  /** Admin or Regional Director — region-wide access (not office-scoped). */
+  isRegionalStaff: (role: UserRole) => STAFF_ADMIN_LIKE.includes(role),
 
   isClientRole: (role: UserRole) => role === "client" || role === "applicant",
 

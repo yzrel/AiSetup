@@ -605,6 +605,17 @@ export default function App() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
+  // Light polling so logged-in users see cross-session alerts without WebSockets.
+  useEffect(() => {
+    if (!user || !getAuthToken()) return;
+    const id = window.setInterval(() => {
+      if (authStore.getUser() && getAuthToken()) {
+        void notificationStore.hydrateFromBackend();
+      }
+    }, 45_000);
+    return () => window.clearInterval(id);
+  }, [user]);
+
   // Subscribe to auth changes
   useEffect(
     () =>

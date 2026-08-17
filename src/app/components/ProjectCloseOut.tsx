@@ -24,6 +24,7 @@ import type { EquipmentInventoryRow } from "../api/types";
 import { formatFormMention } from "../constants/setupForms";
 import { allowWhenDemo } from "../utils/demoMode";
 import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { notifyCloseoutComplete } from "../utils/notificationHelpers";
 
 interface ProjectCloseOutProps {
   user?: import("../store/authStore").AuthUser | null;
@@ -80,6 +81,7 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
       return;
     }
     setNotice("Project close-out complete. Certificate of ownership recorded.");
+    notifyCloseoutComplete(applicant);
     onSubmitSuccess?.();
   };
 

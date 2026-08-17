@@ -9,6 +9,7 @@ export type ApiRole =
   | "client"
   | "agent"
   | "provincial-director"
+  | "regional-director"
   | "admin";
 
 export interface ApiAuthResponse {
@@ -30,7 +31,11 @@ export interface ApiAuthResponse {
   };
 }
 
-export type ApiStaffRole = "admin" | "agent" | "provincial-director";
+export type ApiStaffRole =
+  | "admin"
+  | "agent"
+  | "provincial-director"
+  | "regional-director";
 
 export interface ApiStaffUser {
   id: string;
@@ -637,6 +642,11 @@ export interface ApprovalLetterStored {
   publishedAt?: string;
   acknowledged: boolean;
   acknowledgedAt?: string;
+  /** Regional Director decision before Notice of Approval may be published. */
+  rdDecision?: "approved" | "disapproved" | null;
+  rdDecidedBy?: string;
+  rdDecidedAt?: string;
+  rdRemarks?: string;
   signedMoa?: SignedMoaDocument;
   updatedAt?: string;
 }

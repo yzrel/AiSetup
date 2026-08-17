@@ -52,7 +52,13 @@ export function resolveApplicantOfficeId(applicant: Applicant): string {
 }
 
 export function staffCoversProvince(user: AuthUser, province: string): boolean {
-  if (user.role === "admin" || user.officeId === "regional") return true;
+  if (
+    user.role === "admin" ||
+    user.role === "regional-director" ||
+    user.officeId === "regional"
+  ) {
+    return true;
+  }
   if (user.assignedProvinces?.length) {
     const key = normalizeProvinceKey(province);
     return user.assignedProvinces.some(
@@ -67,18 +73,27 @@ export function staffCoversProvince(user: AuthUser, province: string): boolean {
 
 export function getApplicantsForStaff(user: AuthUser | null): Applicant[] {
   const all = applicantStore.getAll();
-  const staffRoles = ["admin", "agent", "provincial-director"];
+  const staffRoles = [
+    "admin",
+    "regional-director",
+    "agent",
+    "provincial-director",
+  ];
   if (!user || !staffRoles.includes(user.role)) {
     return all;
   }
-  if (user.role === "admin") return all;
+  if (user.role === "admin" || user.role === "regional-director") return all;
   return all.filter((a) =>
     staffCoversProvince(user, resolveApplicantProvince(a)),
   );
 }
 
 export function getStaffProvinces(user: AuthUser | null): string[] {
-  if (!user || user.role === "admin") {
+  if (
+    !user ||
+    user.role === "admin" ||
+    user.role === "regional-director"
+  ) {
     return [...REGION_12_PROVINCES];
   }
   if (user.assignedProvinces?.length) return [...user.assignedProvinces];

@@ -50,7 +50,12 @@ interface AccountManagementProps {
 type MgmtTab = "applicants" | "staff";
 type StatusFilter = "all" | "active" | "blocked";
 
-const STAFF_ROLES: ApiStaffRole[] = ["admin", "agent", "provincial-director"];
+const STAFF_ROLES: ApiStaffRole[] = [
+  "admin",
+  "agent",
+  "provincial-director",
+  "regional-director",
+];
 
 const emptyCreateForm = (): ApiCreateStaffRequest => ({
   email: "",
@@ -65,7 +70,8 @@ const emptyCreateForm = (): ApiCreateStaffRequest => ({
 });
 
 export function AccountManagement({ user }: AccountManagementProps) {
-  const isAdmin = user.role === "admin";
+  const isAdmin =
+    user.role === "admin" || user.role === "regional-director";
   const [tab, setTab] = useState<MgmtTab>("applicants");
 
   return (

@@ -43,7 +43,8 @@ import { syncTna1FormToBackendBestEffort } from "../utils/applicantPersistence";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 import type { Tna1Doc, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
-import { DOST_BLUE, DOST_MID, StepHeader } from "./tna1/tna1Ui";
+import { DOST_BLUE, DOST_MID, STEPS } from "./tna1/tna1Ui";
+import { ModuleStepHeader } from "./ModuleWorkflowLayout";
 import { IdentificationStep } from "./tna1/IdentificationStep";
 import { AttachmentAStep } from "./tna1/AttachmentAStep";
 import { BenchmarkStep } from "./tna1/BenchmarkStep";
@@ -62,6 +63,7 @@ export function TechnologyNeedsAssessment1({
   onSubmitSuccess?: () => void;
 }) {
   const [step, setStep] = useState("identification");
+  const [maxReached, setMaxReached] = useState(0);
   const { applicant, isStaff } = useStaffApplicant(user);
   const [staffMode, setStaffMode] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
@@ -172,11 +174,31 @@ export function TechnologyNeedsAssessment1({
       saved?.staffReviewNotesDraft ?? saved?.staffNotes ?? "",
     );
     if (draftNotes) setStaffNotes(draftNotes);
+    // Submitted / post-submit review: unlock all section tabs for navigation.
+    if (saved?.submitted || saved?.staffReviewed || saved?.directorValidated) {
+      setMaxReached(STEPS.length - 1);
+    } else {
+      setMaxReached(0);
+    }
+    setStep("identification");
   }, []);
 
   useEffect(() => {
     loadApplicantData(applicant);
   }, [applicant?.id, loadApplicantData]);
+
+  // Progress-gate: bump unlock as the user reaches new sections (Back does not lock again).
+  useEffect(() => {
+    const idx = STEPS.findIndex((s) => s.id === step);
+    if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
+  }, [step]);
+
+  // After submit / staff approval, unlock the full workflow for tab navigation.
+  useEffect(() => {
+    if (applicantSubmitted || staffApproved || directorValidated) {
+      setMaxReached(STEPS.length - 1);
+    }
+  }, [applicantSubmitted, staffApproved, directorValidated]);
 
   useEffect(() => {
     const fileName =
@@ -228,6 +250,8 @@ export function TechnologyNeedsAssessment1({
         });
         notifyTna1Resubmission(applicant);
         setApplicantSubmitted(false);
+        setStaffApproved(false);
+        setMaxReached(0);
         setStep("identification");
         return;
       }
@@ -414,6 +438,8 @@ export function TechnologyNeedsAssessment1({
 
   const goToStep = (next: string) => {
     if (applicant) saveTnaDraft(false, { notice: false });
+    const idx = STEPS.findIndex((s) => s.id === next);
+    if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
     setStep(next);
   };
 
@@ -605,10 +631,11 @@ export function TechnologyNeedsAssessment1({
             </button>
             )}
           </div>
-          <StepHeader
+          <ModuleStepHeader
+            steps={STEPS}
             current={step}
-            allowStaffNav={isStaff}
-            onNavigate={(id) => setStep(id)}
+            maxReached={maxReached}
+            onStepClick={(id) => goToStep(id)}
           />
           {saveNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{saveNotice}</p>

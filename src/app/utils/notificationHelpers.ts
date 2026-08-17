@@ -351,6 +351,173 @@ export function notifyProjectProposalSubmitted(applicant: Applicant) {
   ]);
 }
 
+export function notifyLoiSubmitted(applicant: Applicant) {
+  const officeId = staffOffice(applicant);
+  notificationStore.addMany([
+    {
+      id: `loi-staff-${applicant.id}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId,
+      kind: "action",
+      title: "Letter of Intent submitted",
+      message: `${applicant.enterpriseName} submitted a Letter of Intent for review.`,
+      urgent: true,
+      view: "letter-of-intent",
+    },
+    {
+      id: `loi-applicant-${applicant.id}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "info",
+      title: "Letter of Intent submitted",
+      message:
+        "Your Letter of Intent was recorded. Your provincial DOST office will continue with the next application steps.",
+      view: "letter-of-intent",
+    },
+  ]);
+}
+
+export function notifyRtecSubmitted(applicant: Applicant) {
+  const stamp = Date.now();
+  notificationStore.addMany([
+    {
+      id: `rtec-applicant-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "info",
+      title: `${formatFormMention("002")} completed`,
+      message:
+        "Your RTEC evaluation is complete. DOST staff will prepare your Notice of Approval for Regional Director decision.",
+      view: "dashboard",
+    },
+    {
+      id: `rtec-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "success",
+      title: `${formatFormMention("002")} completed`,
+      message: `${applicant.enterpriseName}'s RTEC report is complete. Proceed to Notice of Approval.`,
+      view: "approval-letter",
+    },
+  ]);
+}
+
+export function notifyApprovalLetterRdDecision(
+  applicant: Applicant,
+  decision: "approved" | "disapproved",
+) {
+  const stamp = Date.now();
+  const officeId = staffOffice(applicant);
+  if (decision === "approved") {
+    notificationStore.addMany([
+      {
+        id: `approval-rd-ok-applicant-${applicant.id}-${stamp}`,
+        audience: "applicant",
+        applicantId: applicant.id,
+        kind: "success",
+        title: "Regional Director approved",
+        message: `The Regional Director approved your ${formatFormMention("003")}. Staff will publish the Notice of Approval shortly.`,
+        view: "approval-letter",
+      },
+      {
+        id: `approval-rd-ok-staff-${applicant.id}-${stamp}`,
+        audience: "staff",
+        applicantId: applicant.id,
+        officeId,
+        kind: "action",
+        title: `${formatFormMention("003")} ready to publish`,
+        message: `${applicant.enterpriseName} was approved by the Regional Director. Publish the Notice of Approval.`,
+        urgent: true,
+        view: "approval-letter",
+      },
+    ]);
+    return;
+  }
+  notificationStore.addMany([
+    {
+      id: `approval-rd-no-applicant-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "warning",
+      title: "Regional Director disapproved",
+      message: `The Regional Director disapproved your ${formatFormMention("003")}. DOST staff will advise on next steps.`,
+      urgent: true,
+      view: "approval-letter",
+    },
+    {
+      id: `approval-rd-no-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId,
+      kind: "warning",
+      title: `${formatFormMention("003")} disapproved`,
+      message: `${applicant.enterpriseName} was disapproved by the Regional Director. Re-endorse before another RD decision.`,
+      urgent: true,
+      view: "approval-letter",
+    },
+  ]);
+}
+
+export function notifyApprovalLetterConforme(applicant: Applicant) {
+  notificationStore.add({
+    id: `approval-conforme-staff-${applicant.id}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "action",
+    title: "Conforme acknowledged",
+    message: `${applicant.enterpriseName} acknowledged conforme on the Notice of Approval. Continue with LandBank & Withdrawal.`,
+    view: "landbank-withdrawal",
+  });
+}
+
+export function notifyCloseoutComplete(applicant: Applicant) {
+  const stamp = Date.now();
+  notificationStore.addMany([
+    {
+      id: `closeout-applicant-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title: "Project close-out complete",
+      message:
+        "Your SETUP project close-out and certificate of ownership have been recorded.",
+      view: "project-closeout",
+    },
+    {
+      id: `closeout-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "success",
+      title: "Project close-out recorded",
+      message: `${applicant.enterpriseName} project close-out is complete.`,
+      view: "project-closeout",
+    },
+  ]);
+}
+
+export function notifyDelinquencyFlagged(
+  applicant: Applicant,
+  status: "delinquent" | "under-evaluation",
+) {
+  const label =
+    status === "delinquent" ? "Delinquent" : "Under Evaluation";
+  notificationStore.add({
+    id: `delinq-${applicant.id}-${status}-${Date.now()}`,
+    audience: "staff",
+    applicantId: applicant.id,
+    officeId: staffOffice(applicant),
+    kind: "warning",
+    title: `Account flagged: ${label}`,
+    message: `${applicant.enterpriseName} refund status set to ${label}. Coordinate follow-up with the provincial office.`,
+    urgent: true,
+    view: "refund-delinquent",
+  });
+}
+
 export function notifyWithNavigation(
   notificationId: string,
   view: AdminView,

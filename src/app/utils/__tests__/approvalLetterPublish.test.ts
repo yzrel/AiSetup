@@ -2,15 +2,23 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { applicantStore } from "../../store/applicantStore";
 import {
   emptyApprovalLetterForm,
   ensureApprovalLetterPublished,
   getApprovalLetterStored,
+  hasRdApprovedNotice,
   publishApprovalLetter,
+  recordRdDecision,
   saveApprovalLetterDraft,
 } from "../approvalLetter";
+import {
+  getAwaitingStaffReviewMessage,
+  isApplicantViewLocked,
+  isAwaitingStaffReview,
+} from "../applicantProgress";
+import { demoModeStore } from "../../store/demoModeStore";
 import {
   mergeApprovalLetterPreservePublished,
   normalizeApprovalLetterStored,
@@ -87,13 +95,34 @@ describe("normalizeCriticalModuleData", () => {
 });
 
 describe("approval letter publish merge", () => {
+  it("blocks publish without Regional Director approval", () => {
+    const applicant = seedApplicant();
+    const form = {
+      ...emptyApprovalLetterForm(),
+      projectTitle: "Approved Project",
+      referenceNumber: "REF-1",
+      recipientName: "A",
+      enterpriseName: "E",
+      enterpriseAddress: "Addr",
+      pstoOfficeName: "PSTO",
+      signatoryName: "RD",
+    };
+    const result = publishApprovalLetter(applicant.id, form);
+    expect(result.ok).toBe(false);
+    expect(
+      getApprovalLetterStored(applicantStore.getById(applicant.id)!)?.published,
+    ).not.toBe(true);
+  });
+
   it("draft save after publish does not clear published", () => {
     const applicant = seedApplicant();
     const form = {
       ...emptyApprovalLetterForm(),
       projectTitle: "Approved Project",
     };
-    publishApprovalLetter(applicant.id, form);
+    recordRdDecision(applicant.id, "approved", "rd@dost.gov.ph", form);
+    const result = publishApprovalLetter(applicant.id, form);
+    expect(result.ok).toBe(true);
     expect(
       getApprovalLetterStored(applicantStore.getById(applicant.id)!)?.published,
     ).toBe(true);
@@ -106,6 +135,20 @@ describe("approval letter publish merge", () => {
     const stored = getApprovalLetterStored(applicantStore.getById(applicant.id)!);
     expect(stored?.published).toBe(true);
     expect(stored?.form.projectTitle).toBe("Edited Title");
+    expect(stored?.rdDecision).toBe("approved");
+  });
+
+  it("staff draft save clears prior RD disapproval for re-endorsement", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    recordRdDecision(applicant.id, "disapproved", "rd@dost.gov.ph", form);
+    expect(
+      getApprovalLetterStored(applicantStore.getById(applicant.id)!)?.rdDecision,
+    ).toBe("disapproved");
+
+    saveApprovalLetterDraft(applicant.id, form, { clearRdDisapproval: true });
+    const stored = getApprovalLetterStored(applicantStore.getById(applicant.id)!);
+    expect(stored?.rdDecision).toBeNull();
   });
 
   it("ensureApprovalLetterPublished restores wiped flag", () => {
@@ -118,6 +161,7 @@ describe("approval letter publish merge", () => {
           published: false,
           acknowledged: false,
           publishedAt: "2026-07-15T00:00:00Z",
+          rdDecision: "approved",
         },
       },
     });
@@ -133,5 +177,70 @@ describe("approval letter publish merge", () => {
       moduleData: { approvalLetter: "corrupt" },
     });
     expect(getApprovalLetterStored(applicantStore.getById(applicant.id)!)).toBeNull();
+  });
+
+  it("normalizes rdDecision on hydrate", () => {
+    const stored = normalizeApprovalLetterStored({
+      form: { projectTitle: "X" },
+      published: false,
+      acknowledged: false,
+      rdDecision: "approved",
+      rdDecidedBy: "rd@dost.gov.ph",
+      rdDecidedAt: "2026-08-06T00:00:00Z",
+    });
+    expect(stored?.rdDecision).toBe("approved");
+    expect(stored?.rdDecidedBy).toBe("rd@dost.gov.ph");
+  });
+});
+
+describe("client RD approval progression gate", () => {
+  beforeEach(() => {
+    demoModeStore.setEnabled(false);
+  });
+
+  afterEach(() => {
+    demoModeStore.setEnabled(false);
+  });
+
+  it("locks landbank until RD approved and published", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    saveApprovalLetterDraft(applicant.id, form);
+
+    let app = applicantStore.getById(applicant.id)!;
+    expect(hasRdApprovedNotice(app)).toBe(false);
+    expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true);
+    expect(isAwaitingStaffReview(app)).toBe(true);
+    expect(getAwaitingStaffReviewMessage(app).title).toMatch(/Regional Director/i);
+
+    recordRdDecision(applicant.id, "approved", "rd@dost.gov.ph", form);
+    app = applicantStore.getById(applicant.id)!;
+    expect(hasRdApprovedNotice(app)).toBe(false);
+    expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true);
+    expect(getAwaitingStaffReviewMessage(app).title).toMatch(/being prepared/i);
+
+    expect(publishApprovalLetter(applicant.id, form).ok).toBe(true);
+    app = applicantStore.getById(applicant.id)!;
+    expect(hasRdApprovedNotice(app)).toBe(true);
+    expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true); // still at approval-letter module
+    expect(isAwaitingStaffReview(app)).toBe(false);
+
+    applicantStore.update(applicant.id, { currentModule: "landbank-withdrawal" });
+    app = applicantStore.getById(applicant.id)!;
+    expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(false);
+  });
+
+  it("shows disapproved awaiting message and keeps later modules locked", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    recordRdDecision(applicant.id, "disapproved", "rd@dost.gov.ph", form);
+    const app = applicantStore.getById(applicant.id)!;
+    expect(getAwaitingStaffReviewMessage(app).title).toMatch(/not approved/i);
+    expect(hasRdApprovedNotice(app)).toBe(false);
+
+    applicantStore.update(applicant.id, { currentModule: "landbank-withdrawal" });
+    const jumped = applicantStore.getById(applicant.id)!;
+    expect(isApplicantViewLocked(jumped, "landbank-withdrawal")).toBe(true);
+    expect(isAwaitingStaffReview(jumped)).toBe(true);
   });
 });

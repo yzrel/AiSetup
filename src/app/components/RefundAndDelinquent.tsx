@@ -27,7 +27,7 @@ import type { DelinquencyStatus, ModuleDocument, PDCEntry, PDCStatus } from "../
 import { DOST_BLUE, MODULE_SHELL } from "./moduleTheme";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { getApprovalLetterForm } from "../utils/approvalLetter";
-import { notifyRefundMonitoringComplete } from "../utils/notificationHelpers";
+import { notifyRefundMonitoringComplete, notifyDelinquencyFlagged } from "../utils/notificationHelpers";
 import {
   getRefundForm,
   getRefundStored,
@@ -744,7 +744,16 @@ export function RefundAndDelinquent({
                   <button
                     key={status}
                     type="button"
-                    onClick={() => setDelinquencyStatus(applicant.id, status)}
+                    onClick={() => {
+                      const prev = form.delinquencyStatus;
+                      setDelinquencyStatus(applicant.id, status);
+                      if (
+                        (status === "delinquent" || status === "under-evaluation") &&
+                        prev !== status
+                      ) {
+                        notifyDelinquencyFlagged(applicant, status);
+                      }
+                    }}
                     className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
                   >
                     Set: {DELINQUENCY_LABELS[status].label}

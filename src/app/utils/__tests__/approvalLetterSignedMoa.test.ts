@@ -12,6 +12,7 @@ import {
   buildApprovalLetterDraft,
   getSignedMoa,
   publishApprovalLetter,
+  recordRdDecision,
   saveApprovalLetterDraft,
   saveSignedMoa,
   saveSignedMoaDraft,
@@ -93,7 +94,8 @@ describe("signed MOA persistence", () => {
     });
 
     const form = buildApprovalLetterDraft(applicantStore.getById(applicantId)!);
-    publishApprovalLetter(applicantId, form);
+    recordRdDecision(applicantId, "approved", "rd@dost.gov.ph", form);
+    expect(publishApprovalLetter(applicantId, form).ok).toBe(true);
 
     const after = getSignedMoa(applicantStore.getById(applicantId)!);
     expect(after?.fileName).toBe("signed-moa.pdf");

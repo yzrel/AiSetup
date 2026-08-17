@@ -74,6 +74,7 @@ public class WorkflowGateService {
         }
         assertBranchCaps(to, incoming, existing);
         assertPublishGates(to, existing.moduleData(), existing.currentModule());
+        assertRdApprovalGate(to, existing.moduleData());
     }
 
     /**
@@ -221,5 +222,38 @@ public class WorkflowGateService {
                         "Approval and later modules require RTEC progress or a published RTEC report");
             }
         }
+    }
+
+    /**
+     * Clients cannot advance past Approval Letter until the Regional Director
+     * has approved and staff have published the Notice of Approval.
+     */
+    private void assertRdApprovalGate(String targetModule, Map<String, Object> existingModuleData) {
+        if (isDemoBypassAllowed()) {
+            return;
+        }
+        if (ModuleOrder.indexOf(targetModule) <= ModuleOrder.indexOf("approval-letter")) {
+            return;
+        }
+        if (!hasRdApprovedPublishedNotice(existingModuleData)) {
+            throw new AccessDeniedException(
+                    "LandBank and later modules require a Regional Director-approved, published Notice of Approval");
+        }
+    }
+
+    private static boolean hasRdApprovedPublishedNotice(Map<String, Object> moduleData) {
+        if (moduleData == null) {
+            return false;
+        }
+        Object raw = moduleData.get("approvalLetter");
+        if (!(raw instanceof Map<?, ?> letter)) {
+            return false;
+        }
+        Object published = letter.get("published");
+        if (!(published instanceof Boolean pub) || !pub) {
+            return false;
+        }
+        Object decision = letter.get("rdDecision");
+        return decision instanceof String s && "approved".equalsIgnoreCase(s.trim());
     }
 }

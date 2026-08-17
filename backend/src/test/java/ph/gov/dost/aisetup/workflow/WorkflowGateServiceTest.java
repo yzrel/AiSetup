@@ -156,4 +156,60 @@ class WorkflowGateServiceTest {
                 "app-1", "letter-of-intent", Map.of(), Map.of("qualified", true));
         assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
     }
+
+    @Test
+    void clientCannotAdvancePastApprovalWithoutRdApprovedNotice() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "approval-letter",
+                Map.of(
+                        "rtecReport", Map.of("published", true),
+                        "approvalLetter", Map.of("published", false)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "landbank-withdrawal",
+                existing.moduleData(),
+                Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientCannotAdvancePastApprovalWhenRdDisapproved() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "approval-letter",
+                Map.of(
+                        "rtecReport", Map.of("published", true),
+                        "approvalLetter",
+                        Map.of("published", true, "rdDecision", "disapproved")),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "landbank-withdrawal",
+                existing.moduleData(),
+                Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientMayAdvanceToLandBankWhenRdApprovedAndPublished() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "approval-letter",
+                Map.of(
+                        "rtecReport", Map.of("published", true),
+                        "approvalLetter",
+                        Map.of("published", true, "rdDecision", "approved")),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "landbank-withdrawal",
+                existing.moduleData(),
+                Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
 }

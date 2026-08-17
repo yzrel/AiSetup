@@ -313,6 +313,7 @@ export function LoginPage({ onRegister, onHome, defaultPortal }: LoginPageProps)
               {isStaff ? (
                 <>
                   <p className="text-[11px] text-gray-600"><span className="font-semibold text-purple-700">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
+                  <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Regional Director:</span> <span className="font-mono">rd@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-purple-700">Provincial Director:</span> <span className="font-mono">director.cotabato@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
                   <p className="text-[10px] text-gray-400 mt-0.5">Also: <span className="font-mono">director.southcot</span>, <span className="font-mono">director.sk</span>, <span className="font-mono">director.sargen</span> @dost.gov.ph</p>

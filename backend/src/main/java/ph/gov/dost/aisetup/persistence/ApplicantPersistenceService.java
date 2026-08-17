@@ -230,6 +230,12 @@ public class ApplicantPersistenceService {
             throw new AccessDeniedException(
                     "The Notice of Approval must be published before it can be acknowledged");
         }
+        Object rdDecision = letter.get("rdDecision");
+        if (!(rdDecision instanceof String decision)
+                || !"approved".equalsIgnoreCase(decision.trim())) {
+            throw new AccessDeniedException(
+                    "The Notice of Approval must be approved by the Regional Director before acknowledgment");
+        }
         String now = Instant.now().toString();
         letter.put("acknowledged", true);
         letter.put("acknowledgedAt", now);

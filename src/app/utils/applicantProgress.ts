@@ -20,7 +20,7 @@ import {
   getOfficialChecklistStepCount,
   getProprietorTrackLabel,
 } from "./proprietorTrack";
-import { getSignedMoa } from "./approvalLetter";
+import { getSignedMoa, hasRdApprovedNotice, getApprovalLetterStored } from "./approvalLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
 
 function countRequiredDocuments(applicant: Applicant | null): number {
@@ -167,6 +167,11 @@ export function isAwaitingStaffReview(applicant: Applicant | null): boolean {
       | undefined;
     return !stored?.published;
   }
+  // Even if currentModule jumped ahead, clients wait until RD approved + published.
+  const approvalIdx = MODULE_ORDER.indexOf("approval-letter");
+  if (getModuleIndex(current) > approvalIdx && !hasRdApprovedNotice(applicant)) {
+    return true;
+  }
   if (current === "landbank-withdrawal") {
     return !getSignedMoa(applicant) || !hasPdcsRecordedForDisbursement(applicant);
   }
@@ -190,6 +195,19 @@ export function getAwaitingStaffReviewMessage(
     };
   }
   if (current === "approval-letter") {
+    const stored = getApprovalLetterStored(applicant);
+    if (stored?.rdDecision === "disapproved") {
+      return {
+        title: "Application not approved",
+        body: "The Regional Director did not approve your Notice of Approval. DOST staff may revise and re-endorse your case. You will be notified if a decision changes.",
+      };
+    }
+    if (stored?.rdDecision !== "approved") {
+      return {
+        title: "Awaiting Regional Director decision",
+        body: "Your RTEC evaluation is complete. The Regional Director must Approve the Notice of Approval before you can proceed.",
+      };
+    }
     return {
       title: "Approval letter being prepared",
       body: "DOST is finalizing your Notice of Approval. You will be able to acknowledge conforme once it is published.",
@@ -244,7 +262,16 @@ export function isApplicantViewLocked(
   const currentIdx = getModuleIndex(applicant?.currentModule ?? "prescreening");
   const viewIdx = getModuleIndex(viewModule);
 
-  return viewIdx > currentIdx;
+  if (viewIdx > currentIdx) return true;
+
+  // Clients cannot open LandBank or later until RD approved + Notice published,
+  // even if currentModule was advanced early.
+  const approvalIdx = MODULE_ORDER.indexOf("approval-letter");
+  if (viewIdx > approvalIdx && !hasRdApprovedNotice(applicant)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function canApplicantAccessView(

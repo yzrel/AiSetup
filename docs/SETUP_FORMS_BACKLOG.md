@@ -8,7 +8,7 @@ Registry notes live in [`src/app/constants/setupForms.ts`](../src/app/constants/
 
 | App key | App title | Pack title | Notes |
 |---------|-----------|------------|-------|
-| Form 003 | Notice of Approval (Annex A-3) | Status Report | Notice of Approval is **not** in the pack |
+| Notice of Approval | Status Report | Notice of Approval is **not** in the pack |
 | Form 010 | Terminal Report | Completion Report | Pack Terminal Report is **Form 013** |
 
 ## Workflow gaps (not implemented)

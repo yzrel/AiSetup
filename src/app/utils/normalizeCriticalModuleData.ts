@@ -84,6 +84,9 @@ export function normalizeApprovalLetterStored(
   const formRaw = asRecord(obj.form) ?? {};
   const form = { ...formRaw } as unknown as ApprovalLetterForm;
   const published = asBool(obj.published) || asBool(formRaw.published);
+  const rdRaw = typeof obj.rdDecision === "string" ? obj.rdDecision.trim() : "";
+  const rdDecision =
+    rdRaw === "approved" || rdRaw === "disapproved" ? rdRaw : null;
   return {
     form,
     published,
@@ -91,6 +94,12 @@ export function normalizeApprovalLetterStored(
     acknowledged: asBool(obj.acknowledged),
     acknowledgedAt:
       typeof obj.acknowledgedAt === "string" ? obj.acknowledgedAt : undefined,
+    rdDecision,
+    rdDecidedBy:
+      typeof obj.rdDecidedBy === "string" ? obj.rdDecidedBy : undefined,
+    rdDecidedAt:
+      typeof obj.rdDecidedAt === "string" ? obj.rdDecidedAt : undefined,
+    rdRemarks: typeof obj.rdRemarks === "string" ? obj.rdRemarks : undefined,
     signedMoa: normalizeSignedMoaDocument(obj.signedMoa),
     updatedAt: typeof obj.updatedAt === "string" ? obj.updatedAt : undefined,
   };
@@ -344,5 +353,9 @@ export function mergeApprovalLetterPreservePublished(
     signedMoa: incoming.signedMoa ?? existing.signedMoa,
     acknowledged: incoming.acknowledged || existing.acknowledged,
     acknowledgedAt: incoming.acknowledgedAt ?? existing.acknowledgedAt,
+    rdDecision: incoming.rdDecision ?? existing.rdDecision,
+    rdDecidedBy: incoming.rdDecidedBy ?? existing.rdDecidedBy,
+    rdDecidedAt: incoming.rdDecidedAt ?? existing.rdDecidedAt,
+    rdRemarks: incoming.rdRemarks ?? existing.rdRemarks,
   };
 }

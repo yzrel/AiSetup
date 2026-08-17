@@ -8,12 +8,14 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Eye,
   FileText,
   RefreshCw,
   Save,
   Send,
+  ThumbsDown,
+  ThumbsUp,
   Upload,
+  XCircle,
 } from "lucide-react";
 import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
@@ -21,22 +23,25 @@ import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyApprovalLetterPublished } from "../utils/notificationHelpers";
+import { notifyApprovalLetterPublished, notifyApprovalLetterRdDecision, notifyApprovalLetterConforme } from "../utils/notificationHelpers";
 import type { ApprovalLetterForm } from "../api/types";
 import {
   acknowledgeApprovalLetter,
+  canPublishApprovalLetter,
   getApprovalLetterForm,
   getApprovalLetterStored,
   getSignedMoa,
+  hasRdApprovedNotice,
   hasRtecReportPrerequisite,
   publishApprovalLetter,
+  recordRdDecision,
   saveApprovalLetterDraft,
   syncApprovalLetterFromRtec,
   ensureApprovalLetterPublished,
   validateApprovalLetterAcknowledge,
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
-import { allowWhenDemo, gateOpen } from "../utils/demoMode";
+import { allowWhenDemo, gateOpen, isDemoModeActive } from "../utils/demoMode";
 import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
@@ -50,12 +55,11 @@ import { formatFormMention } from "../constants/setupForms";
 const STEPS: ModuleStep[] = [
   { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
   { id: "details", label: "Notice of Approval details", icon: <FileText className="w-4 h-4" /> },
-  { id: "preview", label: "Preview & PDF", icon: <Eye className="w-4 h-4" /> },
   { id: "publish", label: "Publish", icon: <Send className="w-4 h-4" /> },
   { id: "moa", label: "Signed MOA", icon: <Upload className="w-4 h-4" /> },
 ];
 
-const STEP_IDS = ["overview", "details", "preview", "publish", "moa"] as const;
+const STEP_IDS = ["overview", "details", "publish", "moa"] as const;
 
 type StepId = (typeof STEP_IDS)[number];
 
@@ -71,10 +75,16 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   const [saveNotice, setSaveNotice] = useState("");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [publishNotice, setPublishNotice] = useState("");
+  const [decisionNotice, setDecisionNotice] = useState("");
+  const [lastRdDecision, setLastRdDecision] = useState<
+    "approved" | "disapproved" | null
+  >(null);
   const [conformeName, setConformeName] = useState("");
   const [ackNotice, setAckNotice] = useState("");
   const [, setMoaRefresh] = useState(0);
   const moaPanelRef = useRef<SignedMoaUploadPanelHandle>(null);
+
+  const isRegionalDirector = user?.role === "regional-director";
 
   const loadForm = useCallback((app: Applicant | null) => {
     if (!app) {
@@ -101,6 +111,10 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   const isPublished =
     !!stored?.published || !!form?.published || assessedPublished;
   const isAcknowledged = !!stored?.acknowledged;
+  const rdDecision = stored?.rdDecision ?? null;
+  const rdApproved = rdDecision === "approved";
+  const rdDisapproved = rdDecision === "disapproved";
+  const canPublish = canPublishApprovalLetter(applicant);
   const signedMoa = getSignedMoa(applicant);
   const uploadedBy = user?.email ?? "staff";
 
@@ -117,35 +131,79 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     if (step === "moa") {
       moaPanelRef.current?.saveDraft();
     }
-    saveApprovalLetterDraft(applicant.id, form);
-    setSaveNotice("Draft saved.");
+    // Staff re-endorsement clears a prior RD disapproval so RD can decide again.
+    saveApprovalLetterDraft(applicant.id, form, {
+      clearRdDisapproval: isStaff && !isRegionalDirector,
+    });
+    setSaveNotice(
+      rdDisapproved && isStaff && !isRegionalDirector
+        ? "Draft saved. Prior Regional Director disapproval cleared for re-endorsement."
+        : "Draft saved.",
+    );
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
   const handleFormChange = (next: ApprovalLetterForm) => {
     setForm(next);
     if (!applicant) return;
-    saveApprovalLetterDraft(applicant.id, next);
+    saveApprovalLetterDraft(applicant.id, next, {
+      clearRdDisapproval: isStaff && !isRegionalDirector,
+    });
   };
 
   const handleSync = () => {
     if (!applicant || !form) return;
     const synced = syncApprovalLetterFromRtec(form, applicant);
     setForm(synced);
-    saveApprovalLetterDraft(applicant.id, synced);
+    saveApprovalLetterDraft(applicant.id, synced, {
+      clearRdDisapproval: isStaff && !isRegionalDirector,
+    });
     setSaveNotice("Synced from RTEC / Project Proposal.");
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
+  const handleRdDecision = (decision: "approved" | "disapproved") => {
+    if (!applicant || !form || !user) return;
+    if (!isRegionalDirector) return;
+    const nextForm = recordRdDecision(
+      applicant.id,
+      decision,
+      user.email,
+      form,
+    );
+    if (nextForm) setForm(nextForm);
+    setSubmitErrors([]);
+    setLastRdDecision(decision);
+    if (decision === "approved") {
+      setDecisionNotice(
+        "Approved. Notice of Approval generated — proceed to Publish when ready.",
+      );
+      setStep("publish");
+    } else {
+      setDecisionNotice(
+        "Disapproved. Notice of Approval cannot be published until staff re-endorse and the Regional Director decides again.",
+      );
+    }
+    setTimeout(() => {
+      setDecisionNotice("");
+      setLastRdDecision(null);
+    }, 6000);
+    notifyApprovalLetterRdDecision(applicant, decision);
+  };
+
   const handlePublish = () => {
     if (!applicant || !form) return;
-    const errors = validateApprovalLetterPublish(form);
+    const errors = validateApprovalLetterPublish(form, applicant);
     if (errors.length) {
       setSubmitErrors(errors);
       return;
     }
     setSubmitErrors([]);
-    publishApprovalLetter(applicant.id, form);
+    const result = publishApprovalLetter(applicant.id, form);
+    if (!result.ok) {
+      setSubmitErrors([result.error ?? "Could not publish."]);
+      return;
+    }
     // Re-read after publish — appending assessment with the pre-publish
     // applicant would overwrite approvalLetter.published back to false.
     const publishedApplicant = applicantStore.getById(applicant.id) ?? applicant;
@@ -156,7 +214,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
           decision: "approval-published",
           assessedBy: user.email,
           assessedAt: new Date().toISOString(),
-          remarks: "SETUP Form 003 Notice of Approval published",
+          remarks: "SETUP Notice of Approval published",
         }),
       });
     }
@@ -168,6 +226,12 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
 
   const handleAcknowledge = () => {
     if (!applicant || !form) return;
+    if (!hasRdApprovedNotice(applicant) && !isDemoModeActive()) {
+      setSubmitErrors([
+        "The Regional Director must Approve and staff must publish the Notice of Approval before you can acknowledge.",
+      ]);
+      return;
+    }
     const errors = validateApprovalLetterAcknowledge(conformeName);
     if (errors.length) {
       setSubmitErrors(errors);
@@ -176,6 +240,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     setSubmitErrors([]);
     acknowledgeApprovalLetter(applicant.id, conformeName.trim());
     applicantStore.update(applicant.id, { currentModule: "landbank-withdrawal" });
+    notifyApprovalLetterConforme(applicant);
     setAckNotice(
       "Conforme acknowledged. Proceed to LandBank & Withdrawal for MOA and account setup.",
     );
@@ -186,11 +251,17 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const showStaffWorkflow = isStaff;
   const demoStaffSteps = showStaffWorkflow;
+  const showRdActions =
+    showStaffWorkflow &&
+    isRegionalDirector &&
+    !!applicant &&
+    allowWhenDemo(rtecReady) &&
+    !isPublished;
 
   return (
     <ModuleWorkflowLayout
       formKey="003"
-      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare and publish; the applicant acknowledges conforme, then proceeds to LandBank & Withdrawal (signed MOA and PDCs required before fund release)."
+      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare; the Regional Director Approves or Disapproves; staff publish. The applicant acknowledges conforme, then proceeds to LandBank & Withdrawal (signed MOA and PDCs required before fund release)."
       user={user}
       steps={demoStaffSteps ? STEPS : undefined}
       currentStep={demoStaffSteps ? step : undefined}
@@ -212,6 +283,61 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                 <p className="mt-1">
                   Complete and mark the {formatFormMention("002")} before issuing the Notice of
                   Approval.
+                </p>
+              </div>
+            </div>
+          )}
+          {applicant &&
+            showStaffWorkflow &&
+            rtecReady &&
+            !isPublished &&
+            !rdDecision && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-sm text-amber-900">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Awaiting Regional Director decision</p>
+                  <p className="mt-1">
+                    After a signed RTEC report, only the Regional Director may Approve or
+                    Disapprove before the Notice of Approval can be published.
+                    {isDemoModeActive() &&
+                      " Demo mode may bypass the publish gate with this warning visible."}
+                  </p>
+                </div>
+              </div>
+            )}
+          {applicant && showStaffWorkflow && rdApproved && !isPublished && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex gap-3 text-sm text-emerald-800">
+              <CheckCircle className="w-5 h-5 shrink-0" />
+              <div>
+                <p className="font-semibold">Regional Director approved</p>
+                <p className="mt-1">
+                  {stored?.rdDecidedBy
+                    ? `Decided by ${stored.rdDecidedBy}`
+                    : "Approved"}
+                  {stored?.rdDecidedAt
+                    ? ` · ${new Date(stored.rdDecidedAt).toLocaleString("en-PH")}`
+                    : ""}
+                  . Staff may publish the Notice of Approval to the applicant.
+                </p>
+              </div>
+            </div>
+          )}
+          {applicant && showStaffWorkflow && rdDisapproved && !isPublished && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-sm text-red-800">
+              <XCircle className="w-5 h-5 shrink-0" />
+              <div>
+                <p className="font-semibold">Regional Director disapproved</p>
+                <p className="mt-1">
+                  Publishing is blocked. Staff may revise the draft and re-endorse; the
+                  Regional Director can then decide again.
+                  {stored?.rdDecidedBy
+                    ? ` (${stored.rdDecidedBy}`
+                    : ""}
+                  {stored?.rdDecidedAt
+                    ? ` · ${new Date(stored.rdDecidedAt).toLocaleString("en-PH")})`
+                    : stored?.rdDecidedBy
+                      ? ")"
+                      : ""}
                 </p>
               </div>
             </div>
@@ -245,7 +371,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   {!gateOpen(isPublished) ? (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 space-y-3">
                       <p>
-                        Publish the Notice of Approval (step 4) before uploading the signed
+                        Publish the Notice of Approval (Publish step) before uploading the signed
                         MOA.
                       </p>
                       <button
@@ -334,7 +460,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                 </>
               )}
 
-              {(step === "preview" || !showStaffWorkflow || step === "publish") && (
+              {(step === "publish" || !showStaffWorkflow) && (
                 <>
                   <ApprovalLetterPreview
                     form={form}
@@ -431,11 +557,31 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     <Save className="w-4 h-4" />
                     Save Draft
                   </button>
-                  {(step === "publish" || step === "preview") && !isPublished && (
+                  {showRdActions && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRdDecision("approved")}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
+                      >
+                        <ThumbsUp className="w-4 h-4" />
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRdDecision("disapproved")}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+                      >
+                        <ThumbsDown className="w-4 h-4" />
+                        Disapprove
+                      </button>
+                    </>
+                  )}
+                  {step === "publish" && !isPublished && (
                     <button
                       type="button"
                       onClick={handlePublish}
-                      disabled={!allowWhenDemo(rtecReady)}
+                      disabled={!allowWhenDemo(rtecReady && canPublish)}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
                     >
                       <Send className="w-4 h-4" />
@@ -448,6 +594,22 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               {saveNotice && (
                 <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   {saveNotice}
+                </p>
+              )}
+              {decisionNotice && (
+                <p
+                  className={`text-xs rounded-lg px-3 py-2 flex items-center gap-2 border ${
+                    lastRdDecision === "disapproved"
+                      ? "text-red-800 bg-red-50 border-red-200"
+                      : "text-emerald-800 bg-emerald-50 border-emerald-200"
+                  }`}
+                >
+                  {lastRdDecision === "disapproved" ? (
+                    <XCircle className="w-4 h-4" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  {decisionNotice}
                 </p>
               )}
               {publishNotice && (

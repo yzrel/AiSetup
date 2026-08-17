@@ -98,6 +98,43 @@ class ModuleContentValidationServiceTest {
     }
 
     @Test
+    void rejectsApprovalPublishWithoutRdDecision() {
+        Map<String, Object> payload = Map.of(
+                "form",
+                Map.of(
+                        "projectTitle", "P",
+                        "referenceNumber", "R",
+                        "recipientName", "N",
+                        "enterpriseName", "E",
+                        "enterpriseAddress", "A",
+                        "pstoOfficeName", "PSTO",
+                        "signatoryName", "RD"),
+                "rdDecision",
+                "disapproved");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.assertHardTransition("approvalLetter", payload, true));
+    }
+
+    @Test
+    void acceptsApprovalPublishWithRdApproved() {
+        Map<String, Object> payload = Map.of(
+                "form",
+                Map.of(
+                        "projectTitle", "P",
+                        "referenceNumber", "R",
+                        "recipientName", "N",
+                        "enterpriseName", "E",
+                        "enterpriseAddress", "A",
+                        "pstoOfficeName", "PSTO",
+                        "signatoryName", "RD"),
+                "rdDecision",
+                "approved");
+        assertDoesNotThrow(
+                () -> service.assertHardTransition("approvalLetter", payload, true));
+    }
+
+    @Test
     void rejectsIncompleteTna1Submit() {
         assertThrows(
                 IllegalArgumentException.class,

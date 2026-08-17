@@ -28,7 +28,8 @@ import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
-import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, ACTION_ROW, MODULE_STEP_SCROLL } from "./moduleTheme";
+import { MODULE_HEADER, MODULE_BODY, ACTION_ROW } from "./moduleTheme";
+import { ModuleStepHeader } from "./ModuleWorkflowLayout";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { api, ApiError } from "../api/client";
 import type {
@@ -103,34 +104,6 @@ const labelCls =
   "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5";
 const sectionTitle =
   "text-base font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4 flex items-center gap-2";
-
-function StepHeader({ current }: { current: StepId }) {
-  const currentIdx = STEPS.findIndex((s) => s.id === current);
-  return (
-    <div className={MODULE_STEP_SCROLL}>
-      {STEPS.map((s, i) => {
-        const done = i < currentIdx;
-        const active = i === currentIdx;
-        return (
-          <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div className={moduleStepPillClass({ active, done, locked: false })}>
-              {done ? (
-                <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-              ) : (
-                s.icon
-              )}
-              <span className="hidden sm:inline">{s.label}</span>
-              <span className="sm:hidden">{i + 1}</span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <span className="text-white/30 text-xs shrink-0">›</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 interface ProjectProposalProps {
   user?: AuthUser | null;
@@ -281,6 +254,7 @@ export function ProjectProposal({
     () => getProjectProposalStored(applicant)?.document ?? null,
   );
   const [step, setStep] = useState<StepId>("cover");
+  const [maxReached, setMaxReached] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState("");
@@ -308,11 +282,22 @@ export function ProjectProposal({
     setDocument(stored?.document ?? null);
     setSubmitted(stored?.submitted ?? false);
     setSubmitErrors([]);
+    if (stored?.submitted) {
+      setMaxReached(STEPS.length - 1);
+    } else {
+      setMaxReached(0);
+    }
+    setStep("cover");
   }, []);
 
   useEffect(() => {
     loadApplicant(applicant);
   }, [applicant?.id, loadApplicant]);
+
+  useEffect(() => {
+    const idx = STEPS.findIndex((s) => s.id === step);
+    if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
+  }, [step]);
 
   const formRef = useRef(form);
   const attachmentsRef = useRef(attachments);
@@ -432,6 +417,7 @@ export function ProjectProposal({
     submitProjectProposal(applicant.id, form, attachments, document ?? undefined);
     notifyProjectProposalSubmitted(applicant);
     setSubmitted(true);
+    setMaxReached(STEPS.length - 1);
     onSubmitSuccess?.();
   };
 
@@ -460,7 +446,17 @@ export function ProjectProposal({
   };
 
   const goNext = () => {
-    if (stepIdx < STEPS.length - 1) setStep(STEPS[stepIdx + 1].id);
+    if (stepIdx < STEPS.length - 1) {
+      const next = STEPS[stepIdx + 1].id;
+      setMaxReached((m) => Math.max(m, stepIdx + 1));
+      setStep(next);
+    }
+  };
+
+  const goToStep = (id: StepId) => {
+    const idx = STEPS.findIndex((s) => s.id === id);
+    if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
+    setStep(id);
   };
 
   const renderStep = () => {
@@ -887,7 +883,12 @@ export function ProjectProposal({
               }
             />
           </div>
-          <StepHeader current={step} />
+          <ModuleStepHeader
+            steps={STEPS}
+            current={step}
+            maxReached={maxReached}
+            onStepClick={(id) => goToStep(id as StepId)}
+          />
           <StaffApplicantPicker user={user} label="Review applicant proposal" />
         </div>
 
