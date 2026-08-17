@@ -6,10 +6,8 @@ import { normalizeAdminView, type AdminView } from "./authStore";
 
 const VIEW_STORAGE_KEY = "aisetup.app.currentView";
 const AUTH_PAGE_KEY = "aisetup.auth.page";
-const LOGIN_PORTAL_KEY = "aisetup.auth.loginPortal";
 
 export type AuthPage = "landing" | "login" | "register";
-export type LoginPortal = "applicant" | "staff";
 
 export function loadCurrentView(): AdminView | null {
   try {
@@ -63,33 +61,12 @@ export function saveAuthPage(page: AuthPage): void {
   }
 }
 
-export function loadLoginPortal(): LoginPortal | null {
-  try {
-    const raw =
-      sessionStorage.getItem(LOGIN_PORTAL_KEY) ??
-      localStorage.getItem(LOGIN_PORTAL_KEY);
-    if (raw === "applicant" || raw === "staff") return raw;
-  } catch {
-    /* storage unavailable */
-  }
-  return null;
-}
-
-export function saveLoginPortal(portal: LoginPortal | null): void {
-  try {
-    if (portal) {
-      sessionStorage.setItem(LOGIN_PORTAL_KEY, portal);
-      localStorage.setItem(LOGIN_PORTAL_KEY, portal);
-    } else {
-      sessionStorage.removeItem(LOGIN_PORTAL_KEY);
-      localStorage.removeItem(LOGIN_PORTAL_KEY);
-    }
-  } catch {
-    /* storage unavailable */
-  }
-}
-
 export function clearAuthUiState(): void {
   saveAuthPage("landing");
-  saveLoginPortal(null);
+  try {
+    sessionStorage.removeItem("aisetup.auth.loginPortal");
+    localStorage.removeItem("aisetup.auth.loginPortal");
+  } catch {
+    /* storage unavailable */
+  }
 }

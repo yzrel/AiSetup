@@ -29,7 +29,7 @@ import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
 import { authStore, AuthUser, AdminView, ROLE_LABELS, normalizeAdminView } from "./store/authStore";
-import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage, loadLoginPortal, saveLoginPortal } from "./store/navigationStore";
+import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage } from "./store/navigationStore";
 import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
@@ -543,9 +543,8 @@ export default function App() {
   const [registrationPrefill, setRegistrationPrefill] = useState<
     "DTI" | "SEC" | "CDA"
   >("DTI");
-  const [loginPortal, setLoginPortalState] = useState<
-    "applicant" | "staff" | null
-  >(() => loadLoginPortal());
+  /** One-shot banner on LoginPage after RegisterPage success / "back to login". */
+  const [fromRegistration, setFromRegistration] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(
     authStore.getUser(),
   );
@@ -558,16 +557,14 @@ export default function App() {
   const setAuthPage = (page: "landing" | "login" | "register") => {
     setAuthPageState(page);
     saveAuthPage(page);
-  };
-
-  const setLoginPortal = (portal: "applicant" | "staff" | null) => {
-    setLoginPortalState(portal);
-    saveLoginPortal(portal);
+    if (page !== "login") {
+      setFromRegistration(false);
+    }
   };
 
   const handleLogout = () => {
+    setFromRegistration(false);
     setAuthPage("landing");
-    setLoginPortal(null);
     authStore.logout();
   };
 
@@ -619,7 +616,11 @@ export default function App() {
   // Subscribe to auth changes
   useEffect(
     () =>
-      authStore.subscribe(() => setUser(authStore.getUser())),
+      authStore.subscribe(() => {
+        const next = authStore.getUser();
+        setUser(next);
+        if (next) setFromRegistration(false);
+      }),
     [],
   );
 
@@ -722,14 +723,8 @@ export default function App() {
     if (authPage === "landing") {
       return (
         <LandingPage
-          onLogin={() => {
-            setLoginPortal("applicant");
-            setAuthPage("login");
-          }}
-          onStaffLogin={() => {
-            setLoginPortal("staff");
-            setAuthPage("login");
-          }}
+          onLogin={() => setAuthPage("login")}
+          onStaffLogin={() => setAuthPage("login")}
           onRegister={(type) => {
             setRegistrationPrefill(
               type === "non-single-proprietor" ? "SEC" : "DTI",
@@ -744,11 +739,11 @@ export default function App() {
         <RegisterPage
           initialRegistrationType={registrationPrefill}
           onLogin={() => {
-            setLoginPortal("applicant");
+            setFromRegistration(false);
             setAuthPage("login");
           }}
           onSuccess={() => {
-            setLoginPortal("applicant");
+            setFromRegistration(true);
             setAuthPage("login");
           }}
           onHome={() => setAuthPage("landing")}
@@ -757,12 +752,9 @@ export default function App() {
     }
     return (
       <LoginPage
-        defaultPortal={loginPortal ?? undefined}
+        fromRegistration={fromRegistration}
         onRegister={() => setAuthPage("register")}
-        onHome={() => {
-          setLoginPortal(null);
-          setAuthPage("landing");
-        }}
+        onHome={() => setAuthPage("landing")}
       />
     );
   }
