@@ -40,3 +40,4 @@ backend/data/
 # backend/src/main/java/ph/gov/dost/aisetup/ on Windows.
 /Aisetup/
 .tmp-setup-forms/
+scripts/.local-import/

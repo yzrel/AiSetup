@@ -56,6 +56,8 @@ interface ModuleStepHeaderProps {
   current: string;
   maxReached?: number;
   onStepClick?: (stepId: string) => void;
+  /** `onBlue` for the dark module header; `onLight` for white/card bodies. */
+  variant?: "onBlue" | "onLight";
 }
 
 export function ModuleStepHeader({
@@ -63,9 +65,11 @@ export function ModuleStepHeader({
   current,
   maxReached = steps.length - 1,
   onStepClick,
+  variant = "onBlue",
 }: ModuleStepHeaderProps) {
   const currentIdx = steps.findIndex((s) => s.id === current);
   const demoMode = isDemoModeActive();
+  const onLight = variant === "onLight";
 
   return (
     <div className={MODULE_STEP_SCROLL}>
@@ -77,12 +81,18 @@ export function ModuleStepHeader({
 
         const pill = (
           <div
-            className={`${moduleStepPillClass({ active, done, locked })} ${
-              clickable ? "cursor-pointer hover:bg-white/25" : ""
+            className={`${moduleStepPillClass({ active, done, locked, variant })} ${
+              clickable
+                ? onLight
+                  ? "cursor-pointer hover:bg-blue-50"
+                  : "cursor-pointer hover:bg-white/25"
+                : ""
             }`}
           >
             {done ? (
-              <CheckCircle className="w-3.5 h-3.5 text-green-300" />
+              <CheckCircle
+                className={`w-3.5 h-3.5 ${onLight ? "text-green-600" : "text-green-300"}`}
+              />
             ) : (
               s.icon ?? <span className="w-3.5 text-center font-bold">{i + 1}</span>
             )}
@@ -101,7 +111,9 @@ export function ModuleStepHeader({
               pill
             )}
             {i < steps.length - 1 && (
-              <ChevronRight className="w-3 h-3 text-white/25 shrink-0" />
+              <ChevronRight
+                className={`w-3 h-3 shrink-0 ${onLight ? "text-gray-300" : "text-white/25"}`}
+              />
             )}
           </div>
         );

@@ -514,6 +514,116 @@ export interface ProjectProposalGenerationRequest {
   attachmentKinds?: string[];
 }
 
+// ── Projected financial statements (5-year) ───────────────────────────────────
+
+export type FinancialTaxMethod = "sole8" | "soleGraduated" | "cit";
+
+export interface FinancialNamedAmountRow {
+  id: string;
+  name: string;
+  amount: number;
+  lifeYears: number;
+}
+
+export interface FinancialYear1ProductLine {
+  id: string;
+  name: string;
+  srpQ1: number;
+  srpQ2: number;
+  srpQ3: number;
+  srpQ4: number;
+  costQ1: number;
+  qtyQ1: number;
+  qtyQ2: number;
+  qtyQ3: number;
+  qtyQ4: number;
+}
+
+export interface FinancialProjectionInputs {
+  productName: string;
+  equipment: FinancialNamedAmountRow[];
+  preoperating: FinancialNamedAmountRow[];
+  products: FinancialYear1ProductLine[];
+  loanAmount: number;
+  loanTermYears: number;
+  loanInterestRate: number;
+  equity: number;
+  inventoryYear1: number;
+  salesGrowth: number;
+  cosIncrease: number;
+  salaryIncrease: number;
+  inflation: number;
+  marketing: number;
+  salaries: number;
+  logistics: number;
+  itSoftware: number;
+  transportation: number;
+  rental: number;
+  utilities: number;
+  communication: number;
+  taxesLicenses: number;
+  otherExpenses: number;
+  taxMethod: FinancialTaxMethod;
+  /** Annual SETUP iFund refund outflow for Years 1–5. */
+  setupRefundByYear: number[];
+}
+
+export interface FinancialYearSeries {
+  label: string;
+  values: number[];
+}
+
+export interface FinancialRatioRow {
+  year: number;
+  currentAssets: number;
+  inventory: number;
+  currentLiabilities: number;
+  liquidity: number | null;
+  quick: number | null;
+  netIncome: number;
+  investment: number;
+  roi: number | null;
+}
+
+export interface FinancialProjectionSnapshot {
+  years: number[];
+  depreciationAnnual: number;
+  amortizationAnnual: number;
+  equipmentTotal: number;
+  preoperatingTotal: number;
+  incomeStatement: Record<string, number[]>;
+  cashFlow: Record<string, number[]>;
+  balanceSheet: Record<string, number[]>;
+  ratios: FinancialRatioRow[];
+  npv: number | null;
+  irr: number | null;
+  balanced: boolean;
+}
+
+export interface FinancialProjectionStored {
+  inputs: FinancialProjectionInputs;
+  snapshot?: FinancialProjectionSnapshot;
+  frozenAt?: string;
+  source: "wizard";
+  submitted?: boolean;
+}
+
+export interface FinancialProjectionGenerationRequest {
+  applicationId?: string;
+  applicantId?: string;
+  inputs: FinancialProjectionInputs;
+}
+
+export interface FinancialProjectionDocumentResponse {
+  applicationId?: string;
+  generatedAt: string;
+  inputs: FinancialProjectionInputs;
+  snapshot: FinancialProjectionSnapshot;
+  frozenAt: string;
+  source: "wizard";
+  submitted: boolean;
+}
+
 // ── Shared AI field suggestion ────────────────────────────────────────────────
 
 export type AiSuggestModule = "project-proposal" | "loi" | "tna1" | "tna2";

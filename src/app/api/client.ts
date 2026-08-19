@@ -263,6 +263,17 @@ export const api = {
       },
     ),
 
+  generateFinancialProjection: (
+    payload: import("./types").FinancialProjectionGenerationRequest,
+  ) =>
+    apiFetch<import("./types").FinancialProjectionDocumentResponse>(
+      "/financial-projection/generate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+
   suggestAiField: (payload: import("./types").AiFieldSuggestionRequest) =>
     apiFetch<import("./types").AiFieldSuggestionResponse>("/ai/suggest-field", {
       method: "POST",

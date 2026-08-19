@@ -24,6 +24,14 @@ import {
 const inputCls = aiAssistInputCls;
 const labelCls = aiAssistLabelCls + " mb-1";
 
+function asInterventionRows(
+  rows: Tna2InterventionRow[] | undefined,
+): Tna2InterventionRow[] {
+  if (Array.isArray(rows)) return rows;
+  if (rows && typeof rows === "object") return [rows as Tna2InterventionRow];
+  return [];
+}
+
 interface TnaForm02EditorProps {
   document: Tna2DocumentResponse;
   onChange: (document: Tna2DocumentResponse) => void;
@@ -223,13 +231,19 @@ export function TnaForm02Editor({
     });
 
   const updateEquipment = (index: number, row: Tna2EquipmentRow) => {
-    const rows = [...doc.recommendedEquipment];
+    const current = Array.isArray(doc.recommendedEquipment)
+      ? doc.recommendedEquipment
+      : [];
+    const rows = [...current];
     rows[index] = row;
     patch({ recommendedEquipment: rows });
   };
 
   const updateKpi = (index: number, kpi: Tna2Kpi) => {
-    const kpis = [...doc.productivityImprovement.kpis];
+    const current = Array.isArray(doc.productivityImprovement.kpis)
+      ? doc.productivityImprovement.kpis
+      : [];
+    const kpis = [...current];
     kpis[index] = kpi;
     patchProductivity({ kpis });
   };
@@ -334,8 +348,8 @@ export function TnaForm02Editor({
         />
         <div className="space-y-2">
           <p className="text-xs font-bold text-gray-500 uppercase">Intervention table</p>
-          {(doc.interventionRows?.length
-            ? doc.interventionRows
+          {(asInterventionRows(doc.interventionRows).length
+            ? asInterventionRows(doc.interventionRows)
             : [{ problem: "", intervention: "", equipment: "", impact: "" }]
           ).map((row, i) => (
             <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border border-gray-100 rounded-lg p-3">
@@ -352,9 +366,10 @@ export function TnaForm02Editor({
                   label={label}
                   value={row[key]}
                   onChange={(v) => {
+                    const existing = asInterventionRows(doc.interventionRows);
                     const rows: Tna2InterventionRow[] = [
-                      ...(doc.interventionRows?.length
-                        ? doc.interventionRows
+                      ...(existing.length
+                        ? existing
                         : [{ problem: "", intervention: "", equipment: "", impact: "" }]),
                     ];
                     rows[i] = { ...rows[i], [key]: v };
@@ -370,7 +385,7 @@ export function TnaForm02Editor({
             onClick={() =>
               patch({
                 interventionRows: [
-                  ...(doc.interventionRows ?? []),
+                  ...asInterventionRows(doc.interventionRows),
                   { problem: "", intervention: "", equipment: "", impact: "" },
                 ],
               })
@@ -447,7 +462,10 @@ export function TnaForm02Editor({
 
       <section className="space-y-3">
         <h3 className="text-sm font-bold text-gray-700">VI. Recommended equipment</h3>
-        {doc.recommendedEquipment.map((row, i) => (
+        {(Array.isArray(doc.recommendedEquipment)
+          ? doc.recommendedEquipment
+          : []
+        ).map((row, i) => (
           <div key={i} className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
             <Field label="Name" value={row.name ?? ""} onChange={(v) => updateEquipment(i, { ...row, name: v })} />
             <Field label="Specifications" value={row.specifications ?? ""} onChange={(v) => updateEquipment(i, { ...row, specifications: v })} />
@@ -488,7 +506,10 @@ export function TnaForm02Editor({
 
       <section className="space-y-3">
         <h3 className="text-sm font-bold text-gray-700">VII. Productivity improvement</h3>
-        {doc.productivityImprovement.kpis.map((kpi, i) => (
+        {(Array.isArray(doc.productivityImprovement.kpis)
+          ? doc.productivityImprovement.kpis
+          : []
+        ).map((kpi, i) => (
           <div key={i} className="grid grid-cols-1 sm:grid-cols-4 gap-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
             <Field label="KPI label" value={kpi.label ?? ""} onChange={(v) => updateKpi(i, { ...kpi, label: v })} />
             <Field label="Before" value={kpi.before ?? ""} onChange={(v) => updateKpi(i, { ...kpi, before: v })} />

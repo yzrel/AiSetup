@@ -263,10 +263,13 @@ export function TnaForm02Document({ document: raw }: TnaForm02DocumentProps) {
             <p className="tna2-form-empty">—</p>
           ) : (
             findings.map((section) => {
-              const subs = (section.subsections ?? []).filter((s) =>
-                val(s.content),
-              );
-              const hasSubs = (section.subsections ?? []).length > 0;
+              const subsectionList = Array.isArray(section.subsections)
+                ? section.subsections
+                : section.subsections
+                  ? [section.subsections]
+                  : [];
+              const subs = subsectionList.filter((s) => val(s.content));
+              const hasSubs = subsectionList.length > 0;
               return (
                 <div key={section.title} className="tna2-form-finding-block">
                   <p className="tna2-form-finding-title">{section.title}</p>

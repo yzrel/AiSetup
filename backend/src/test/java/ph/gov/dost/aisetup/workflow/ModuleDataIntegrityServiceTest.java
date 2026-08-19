@@ -31,6 +31,7 @@ class ModuleDataIntegrityServiceTest {
         assertTrue(ModuleDataIntegrityService.OBJECT_REQUIRED_KEYS.contains("procurement"));
         assertTrue(ModuleDataIntegrityService.OBJECT_REQUIRED_KEYS.contains("refund"));
         assertTrue(ModuleDataIntegrityService.OBJECT_REQUIRED_KEYS.contains("projectCloseOut"));
+        assertTrue(ModuleDataIntegrityService.OBJECT_REQUIRED_KEYS.contains("financialProjection"));
         assertFalse(ModuleDataIntegrityService.OBJECT_REQUIRED_KEYS.contains("coreProducts"));
     }
 

@@ -38,6 +38,7 @@ import { getAuthToken } from "./api/authToken";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
 import { isSentEmailsNavUnlocked } from "./utils/documentDelivery";
+import { getSetupFormTitle } from "./constants/setupForms";
 import { emailOutboxStore } from "./store/emailOutboxStore";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import {
@@ -202,13 +203,13 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
     items: [
       {
         id: "tna1" as ViewType,
-        label: "TNA 1 Assessment",
+        label: "Application for TNA",
         icon: BarChart2,
         module: "Module 5",
       },
       {
         id: "tna2" as ViewType,
-        label: "TNA 2 Technical Report",
+        label: "TNA Report",
         icon: FileText,
         module: "Module 6",
       },
@@ -333,12 +334,12 @@ const viewTitles: Record<
     subtitle: "Step 4 — Documentary Submission",
   },
   tna1: {
-    title: "TNA 1 Assessment",
+    title: getSetupFormTitle("tna01"),
     subtitle: "Module 5 — Technology Needs Assessment",
   },
   tna2: {
-    title: "TNA 2 Technical Report",
-    subtitle: "Module 6 — Technical Analysis",
+    title: getSetupFormTitle("tna02"),
+    subtitle: "Module 6 — Technology Needs Assessment Report",
   },
   "project-proposal": {
     title: "Project Proposal",

@@ -8,7 +8,23 @@ $phone = "0917$($stamp.Substring(6,6))"
 $password = "Demo@1234"
 $appId = "LOI-$(Get-Date -Format 'yyyy')-{0:D6}" -f ([int]($stamp.Substring(8,6)) % 1000000)
 $applicantId = [guid]::NewGuid().ToString()
-$enterprise = "Koronadal Valley Foods"
+# Rotate unique Region XII MSME names so repeated rehearsals do not flood the
+# client list with the same "Koronadal Valley Foods" label.
+$enterprisePool = @(
+  "Koronadal Valley Foods",
+  "Marbel Fruit Packers",
+  "Tupi Pineapple Processors",
+  "Polomolok Cacao Works",
+  "Lake Sebu Coffee Roasters",
+  "Alabel Seaweed Snacks",
+  "Tacurong Rice Millers",
+  "Kidapawan Arabica Growers",
+  "Surallah Vegetable Packers",
+  "Glan Dried Fish Traders",
+  "Isulan Coconut Processors",
+  "Midsayap Corn Millers"
+)
+$enterprise = $enterprisePool[[int]($stamp.Substring(8, 6)) % $enterprisePool.Length]
 $log = New-Object System.Collections.Generic.List[string]
 
 function Step([string]$name, [bool]$ok, [string]$detail = "") {
@@ -208,6 +224,57 @@ PatchModule $applicantId $appToken "projectProposal" @{
   )
   submitted = $true
 } | Out-Null
+
+$fpInputs = @{
+  productName       = "Dried mangoes"
+  equipment         = @(, @{ id = "e1"; name = "Vacuum sealer"; amount = 500000; lifeYears = 5 })
+  preoperating      = @(, @{ id = "p1"; name = "Product development"; amount = 50000; lifeYears = 5 })
+  products          = @(, @{
+    id = "pr1"; name = "Dried mangoes"
+    srpQ1 = 100; srpQ2 = 100; srpQ3 = 100; srpQ4 = 100
+    costQ1 = 40; qtyQ1 = 1000; qtyQ2 = 1000; qtyQ3 = 1000; qtyQ4 = 1000
+  })
+  loanAmount        = 200000
+  loanTermYears     = 5
+  loanInterestRate  = 0.1
+  equity            = 300000
+  inventoryYear1    = 20000
+  salesGrowth       = 0.1
+  cosIncrease       = 0.05
+  salaryIncrease    = 0.05
+  inflation         = 0.03
+  marketing         = 10000
+  salaries          = 120000
+  logistics         = 5000
+  itSoftware        = 2000
+  transportation    = 3000
+  rental            = 24000
+  utilities         = 6000
+  communication     = 2400
+  taxesLicenses     = 1200
+  otherExpenses     = 1000
+  taxMethod         = "sole8"
+  setupRefundByYear = @(0, 50000, 50000, 50000, 50000)
+}
+$fpGen = ApiJson "POST" "/financial-projection/generate" $appToken @{
+  applicationId = $appId
+  applicantId   = $applicantId
+  inputs        = $fpInputs
+}
+Step "Generate financial projection" ([bool]$fpGen.snapshot.balanced) "balanced=$($fpGen.snapshot.balanced) y1Sales=$($fpGen.snapshot.incomeStatement.grossSales[0])"
+PatchModule $applicantId $appToken "financialProjection" @{
+  inputs    = $fpInputs
+  snapshot  = $fpGen.snapshot
+  frozenAt  = $fpGen.frozenAt
+  source    = "wizard"
+  submitted = $true
+} | Out-Null
+$afterFp = ApiJson "GET" "/applicants/$applicantId" $appToken $null
+$fpIsland = $afterFp.moduleData.financialProjection
+Step "Persist frozen projection island" (
+  ($null -ne $fpIsland.snapshot) -and ($fpIsland.submitted -eq $true)
+) "frozenAt=$($fpIsland.frozenAt)"
+
 SetHeader $applicantId $appToken "requirements" $profileBase | Out-Null
 Step "Project proposal to requirements" $true
 
@@ -242,6 +309,7 @@ PatchModule $applicantId $staffToken "approvalLetter" @{
     signatoryName     = "Provincial Director"
     approvedAmount    = "2000000"
   }
+  rdDecision  = "approved"
   publishedAt = (Get-Date).ToString("o")
 } $true | Out-Null
 ApiJson "PUT" "/applicants/$applicantId/approval-letter/acknowledge" $appToken @{

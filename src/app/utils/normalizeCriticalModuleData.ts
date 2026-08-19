@@ -25,6 +25,28 @@ function asBool(value: unknown, fallback = false): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
+/**
+ * Coerce a JSON array, or a single object (1-element array collapsed by
+ * PowerShell ConvertTo-Json), into a list. Scalars become [].
+ */
+export function asObjectList<T = unknown>(value: unknown): T[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === "object") return [value as T];
+  return [];
+}
+
+function coerceArrayKeys(
+  target: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...target };
+  for (const key of keys) {
+    if (key in out) out[key] = asObjectList(out[key]);
+  }
+  return out;
+}
+
 /** Shared publish-document coerce: object + form object + published boolean. */
 export function normalizePublishDocumentStored(
   raw: unknown,
@@ -83,6 +105,14 @@ export function normalizeApprovalLetterStored(
   if (!obj) return null;
   const formRaw = asRecord(obj.form) ?? {};
   const form = { ...formRaw } as unknown as ApprovalLetterForm;
+  const body = formRaw.bodyParagraphs;
+  if (Array.isArray(body)) {
+    form.bodyParagraphs = body.map((line) => String(line ?? ""));
+  } else if (typeof body === "string" && body.trim()) {
+    form.bodyParagraphs = [body];
+  } else if (body && typeof body === "object") {
+    form.bodyParagraphs = [String(body)];
+  }
   const published = asBool(obj.published) || asBool(formRaw.published);
   const rdRaw = typeof obj.rdDecision === "string" ? obj.rdDecision.trim() : "";
   const rdDecision =
@@ -131,7 +161,16 @@ export function normalizeLoiDocument(
 ): Record<string, unknown> | undefined {
   const obj = asRecord(raw);
   if (!obj) return undefined;
-  return { ...obj };
+  const out = coerceArrayKeys(obj, ["bodyParagraphs"]);
+  const regional = asRecord(out.regionalAddressee);
+  if (regional) {
+    out.regionalAddressee = coerceArrayKeys(regional, ["lines", "addressLines"]);
+  }
+  const thru = asRecord(out.thruAddressee);
+  if (thru) {
+    out.thruAddressee = coerceArrayKeys(thru, ["lines", "addressLines"]);
+  }
+  return out;
 }
 
 /**
@@ -141,7 +180,12 @@ export function normalizeTna1Stored(raw: unknown): Record<string, unknown> | und
   const obj = asRecord(raw);
   if (!obj) return undefined;
   const form = asRecord(obj.form) ?? {};
-  const tables = asRecord(obj.tables) ?? {};
+  const tablesRaw = asRecord(obj.tables) ?? {};
+  const tables = coerceArrayKeys(tablesRaw, [
+    "rawMaterials",
+    "production",
+    "equipment",
+  ]);
   return {
     ...obj,
     form,
@@ -150,15 +194,60 @@ export function normalizeTna1Stored(raw: unknown): Record<string, unknown> | und
   };
 }
 
+export function normalizeFinancialProjectionStored(
+  raw: unknown,
+): Record<string, unknown> | undefined {
+  const obj = asRecord(raw);
+  if (!obj) return undefined;
+  const inputs = asRecord(obj.inputs);
+  if (!inputs) return undefined;
+  const out: Record<string, unknown> = {
+    ...obj,
+    inputs: coerceArrayKeys(inputs, [
+      "equipment",
+      "preoperating",
+      "products",
+      "setupRefundByYear",
+    ]),
+    source: "wizard",
+    submitted: asBool(obj.submitted),
+  };
+  if (obj.snapshot != null) {
+    const snapshot = asRecord(obj.snapshot);
+    if (snapshot) out.snapshot = snapshot;
+    else delete out.snapshot;
+  }
+  if (typeof obj.frozenAt === "string") out.frozenAt = obj.frozenAt;
+  else delete out.frozenAt;
+  return out;
+}
+
 export function normalizeProjectProposalStored(
   raw: unknown,
 ): Record<string, unknown> | undefined {
   const obj = asRecord(raw);
   if (!obj) return undefined;
-  const form = asRecord(obj.form) ?? {};
+  const form = coerceArrayKeys(asRecord(obj.form) ?? {}, [
+    "specificObjectives",
+    "rawMaterialsTable",
+    "productPriceTable",
+    "marketStrategies",
+    "equipmentTable",
+    "interventionCostTable",
+    "fabricatorTable",
+    "scheduleTable",
+    "expectedOutputBullets",
+    "liquidityRatioTable",
+    "quickRatioTable",
+    "roiTable",
+    "budgetItems",
+    "refundSchedule",
+    "riskRows",
+  ]);
   const out: Record<string, unknown> = {
     ...obj,
     form,
+    attachments: asObjectList(obj.attachments),
     submitted: asBool(obj.submitted),
   };
   if ("published" in obj) {
@@ -182,7 +271,31 @@ export function normalizeTna2DocumentStored(
 export function normalizeRtecReportStored(
   raw: unknown,
 ): Record<string, unknown> | undefined {
-  return normalizePublishDocumentStored(raw);
+  const base = normalizePublishDocumentStored(raw);
+  if (!base) return undefined;
+  const form = asRecord(base.form);
+  if (form) {
+    const next = coerceArrayKeys(form, [
+      "constraintRows",
+      "fabricatorRows",
+      "complianceItems",
+      "attachmentRefs",
+    ]);
+    const snapshot = asRecord(next.proposalSnapshot);
+    if (snapshot) {
+      next.proposalSnapshot = coerceArrayKeys(snapshot, [
+        "specificObjectives",
+        "marketStrategies",
+        "budgetItems",
+        "riskRows",
+        "fabricatorTable",
+        "expectedOutputBullets",
+        "refundSchedule",
+      ]);
+    }
+    base.form = next;
+  }
+  return base;
 }
 
 export function normalizeConductRtecStored(
@@ -221,7 +334,14 @@ export function normalizeFormModuleStored(
 ): Record<string, unknown> | undefined {
   const obj = asRecord(raw);
   if (!obj) return undefined;
-  const form = asRecord(obj.form) ?? {};
+  const form = coerceArrayKeys(asRecord(obj.form) ?? {}, [
+    "documents",
+    "items",
+    "liquidations",
+    "pdcs",
+    "refundSchedule",
+    "equipmentInventory",
+  ]);
   return {
     ...obj,
     form,
@@ -240,6 +360,24 @@ export function normalizeLandBankStored(
   const out: Record<string, unknown> = { ...obj };
   if (obj.form != null && !asRecord(obj.form)) {
     delete out.form;
+  } else if (asRecord(obj.form)) {
+    const form = { ...asRecord(obj.form)! };
+    const tranches = asRecord(form.tranches);
+    if (tranches) {
+      const nextTranches: Record<string, unknown> = { ...tranches };
+      for (const key of ["first", "second"] as const) {
+        const pack = asRecord(tranches[key]);
+        if (pack) {
+          nextTranches[key] = coerceArrayKeys(pack, [
+            "equipment",
+            "quotations",
+            "equipmentPhotos",
+          ]);
+        }
+      }
+      form.tranches = nextTranches;
+    }
+    out.form = form;
   }
   const intro = obj.introductionLetter;
   if (intro != null) {
@@ -284,6 +422,13 @@ export function normalizeModuleDataForHydrate(
   }
   if ("projectProposal" in out) {
     putNormalized(out, "projectProposal", normalizeProjectProposalStored(out.projectProposal));
+  }
+  if ("financialProjection" in out) {
+    putNormalized(
+      out,
+      "financialProjection",
+      normalizeFinancialProjectionStored(out.financialProjection),
+    );
   }
   if ("tna2" in out) {
     putNormalized(out, "tna2", normalizeTna2Stored(out.tna2));

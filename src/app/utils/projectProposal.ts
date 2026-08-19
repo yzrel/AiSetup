@@ -225,21 +225,26 @@ export function buildProjectProposalDraft(
   const tna2 = getPublishedTna2(applicant) as Tna2StoredDocument | null;
   const recommendedEquipment = Array.isArray(tna2?.recommendedEquipment)
     ? tna2.recommendedEquipment
-    : [];
+    : tna2?.recommendedEquipment
+      ? [tna2.recommendedEquipment]
+      : [];
   const technologyGaps = Array.isArray(tna2?.technologyGaps)
     ? tna2.technologyGaps
-    : [];
+    : tna2?.technologyGaps
+      ? [String(tna2.technologyGaps)]
+      : [];
   const proposedInterventions = Array.isArray(tna2?.proposedInterventions)
     ? tna2.proposedInterventions
-    : [];
+    : tna2?.proposedInterventions
+      ? [String(tna2.proposedInterventions)]
+      : [];
   const productivityOutcomes = Array.isArray(
     tna2?.productivityImprovement?.outcomes,
   )
     ? tna2.productivityImprovement.outcomes
-    : [];
-  // #region agent log
-  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'A',location:'projectProposal.ts:buildProjectProposalDraft',message:'tna2 arrays after guard',data:{hasTna2:!!tna2,recEqIsArray:Array.isArray(recommendedEquipment),recEqLen:recommendedEquipment.length,gapsIsArray:Array.isArray(technologyGaps),interventionsIsArray:Array.isArray(proposedInterventions),outcomesLen:productivityOutcomes.length},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+    : tna2?.productivityImprovement?.outcomes
+      ? [String(tna2.productivityImprovement.outcomes)]
+      : [];
 
   const projectDesc = String(
     md.projectDescription ?? form.reasonsForAssistance ?? "",
@@ -289,9 +294,6 @@ export function buildProjectProposalDraft(
   }
   if (budgetItems.length === 0) budgetItems.push(emptyBudgetRow());
 
-  // #region agent log
-  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'C',location:'projectProposal.ts:beforeJoin',message:'using guarded gap/intervention arrays',data:{gapsLen:technologyGaps.length,interventionsLen:proposedInterventions.length,recEqLen:recommendedEquipment.length},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const interventionProblem = String(
     form.productionProblemsConcerns ??
       technologyGaps.join("; ") ??
@@ -302,9 +304,6 @@ export function buildProjectProposalDraft(
       proposedInterventions.join("; ") ??
       "",
   );
-  // #region agent log
-  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'A',location:'projectProposal.ts:interventionEquipment',message:'mapping guarded recommendedEquipment v2',data:{recEqIsArray:Array.isArray(recommendedEquipment),recEqLen:recommendedEquipment.length,hasMapFn:typeof recommendedEquipment.map==='function'},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const interventionEquipment = recommendedEquipment
     .map((row) => row.name)
     .filter(Boolean)
@@ -497,7 +496,10 @@ export function getProjectProposalForm(
 export function getProjectProposalAttachments(
   applicant: Applicant | null,
 ): ProjectProposalAttachment[] {
-  return getProjectProposalStored(applicant)?.attachments ?? [];
+  const attachments = getProjectProposalStored(applicant)?.attachments;
+  if (Array.isArray(attachments)) return attachments;
+  if (attachments) return [attachments];
+  return [];
 }
 
 export function saveProjectProposalDraft(

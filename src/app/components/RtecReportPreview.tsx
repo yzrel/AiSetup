@@ -10,6 +10,9 @@ import type {
   RtecReportForm,
 } from "../api/types";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
+import { snapshotStatementTables } from "../utils/financialProjection";
+import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
+import { applicantStore } from "../store/applicantStore";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { RTEC_DOST_BLUE } from "../utils/rtecReport";
 import { PreviewFieldRow, PreviewTable } from "./PreviewLayout";
@@ -161,6 +164,12 @@ export function RtecReportPreview({
   const pp = form.proposalSnapshot;
   const findAtt = (kind: ProjectProposalAttachment["kind"]) =>
     form.attachmentRefs.find((a) => a.kind === kind);
+  const projTables = applicantId
+    ? (() => {
+        const snap = getFinancialProjectionStored(applicantStore.getById(applicantId))?.snapshot;
+        return snap ? snapshotStatementTables(snap) : null;
+      })()
+    : null;
 
   const equipmentRows = pp.equipmentTable
     .filter((r) => r.some((c) => c.trim()))
@@ -341,7 +350,7 @@ export function RtecReportPreview({
               "Proposed S&T intervention-related equipment/skills upgrading",
               "Impact",
             ]}
-            rows={form.constraintRows.map((r) => [
+            rows={(Array.isArray(form.constraintRows) ? form.constraintRows : []).map((r) => [
               r.processProblem,
               r.proposedIntervention,
               r.equipmentSkills,
@@ -373,7 +382,7 @@ export function RtecReportPreview({
           </p>
           <Table
             headers={["Name", "Address", "Contact No."]}
-            rows={form.fabricatorRows.map((r) => [r.name, r.address, r.contactNo])}
+            rows={(Array.isArray(form.fabricatorRows) ? form.fabricatorRows : []).map((r) => [r.name, r.address, r.contactNo])}
           />
           <h3 className="text-xs font-bold uppercase text-gray-600 mt-6 mb-2">c. Marketing Aspect</h3>
           <p className="text-xs font-bold text-gray-500 mb-1">Market Situation</p>
@@ -418,11 +427,25 @@ export function RtecReportPreview({
           />
           <p className="text-xs font-bold text-gray-500 mt-3 mb-1">Financial constraints</p>
           <Narrative text={pp.financialConstraintsNote} />
+          {projTables && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-bold text-gray-500">Projected income statement</p>
+              <Table headers={projTables.income[0] ?? []} rows={projTables.income.slice(1)} />
+            </div>
+          )}
           <Footer page="8" />
         </div>
 
         {/* Page 9 — budget + refund */}
         <div className="rtec-page-break">
+          {projTables && (
+            <>
+              <p className="text-xs font-bold text-gray-500 mb-1">Projected cash flow</p>
+              <Table headers={projTables.cashFlow[0] ?? []} rows={projTables.cashFlow.slice(1)} />
+              <p className="text-xs font-bold text-gray-500 mt-3 mb-1">Projected balance sheet</p>
+              <Table headers={projTables.balance[0] ?? []} rows={projTables.balance.slice(1)} />
+            </>
+          )}
           <p className="text-xs font-bold text-gray-500 mb-1">Budgetary Requirement for the proposed project</p>
           <Table
             headers={["Item of Expenditure", "Qty", "Unit Cost", "SETUP", "Cooperator", "Total"]}

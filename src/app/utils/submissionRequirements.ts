@@ -112,6 +112,8 @@ export interface StoredRequirementUpload {
   uploadedAt?: string;
   /** Backend file_uploads id when mirrored via the file API. */
   fileId?: string;
+  /** Set when the projected FS row is generated from the financial projection island. */
+  generatedFrom?: string;
 }
 
 export type RequirementReviewStatus = "ok" | "flagged" | "";
@@ -280,6 +282,7 @@ export function buildRequirementUploadList(
       fileSizeBytes: prev?.fileSizeBytes,
       uploadedAt: prev?.uploadedAt,
       fileId: prev?.fileId,
+      generatedFrom: prev?.generatedFrom,
     };
   });
 }
@@ -310,6 +313,7 @@ export function persistRequirementUploads(
           fileSizeBytes,
           uploadedAt,
           fileId,
+          generatedFrom,
         }) => ({
           id,
           complianceId,
@@ -322,6 +326,7 @@ export function persistRequirementUploads(
           fileSizeBytes,
           uploadedAt,
           fileId,
+          generatedFrom,
         }),
       ),
       documents: uploads.filter((u) => u.uploaded),

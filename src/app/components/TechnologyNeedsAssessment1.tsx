@@ -614,7 +614,6 @@ export function TechnologyNeedsAssessment1({
               </div>
               <ModuleFormHeader
                 formKey="tna01"
-                title="Technology Needs Assessment 1"
                 subtitle="DOST SETUP Program · Module 5"
               />
             </div>

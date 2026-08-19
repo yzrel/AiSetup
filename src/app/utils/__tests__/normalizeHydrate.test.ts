@@ -9,6 +9,7 @@ import {
   normalizeModuleDataForHydrate,
   normalizeTna1Stored,
   normalizeApprovalLetterStored,
+  normalizeRtecReportStored,
 } from "../normalizeCriticalModuleData";
 import { stripHeavyPayloads, stripTna1FormForSync } from "../stripModuleDataForSync";
 
@@ -19,6 +20,7 @@ describe("normalizeModuleDataForHydrate", () => {
       loiDocument: { bodyParagraphs: ["Hello"], thruAddressee: { officeName: "PSTO" } },
       tna1: { form: { sector: "Food" }, tables: { a: 1 }, submitted: "yes" },
       projectProposal: { form: { title: "P" }, submitted: "no" },
+      financialProjection: "bad",
       tna2Document: { published: true, form: {} },
       rtecReport: "corrupt",
       conductRtec: { published: false },
@@ -45,6 +47,7 @@ describe("normalizeModuleDataForHydrate", () => {
       form: { title: "P" },
       submitted: false,
     });
+    expect(hydrated.financialProjection).toBeUndefined();
     expect(hydrated.tna2Document).toMatchObject({ published: true, form: {} });
     expect(hydrated.rtecReport).toBeUndefined();
     expect(hydrated.conductRtec).toMatchObject({ published: false });
@@ -62,6 +65,54 @@ describe("normalizeModuleDataForHydrate", () => {
       "letter-of-intent",
     ]);
     expect(hydrated.coreProducts).toBe("Mango");
+  });
+
+  it("wraps singleton RTEC / LandBank / procurement lists collapsed by PowerShell JSON", () => {
+    const rtec = normalizeRtecReportStored({
+      published: true,
+      form: {
+        constraintRows: {
+          id: "c1",
+          processProblem: "No tarpaulin printer",
+          proposedIntervention: "Buy ecosolvent",
+          equipmentSkills: "10.5 ft printer",
+          impact: "In-house printing",
+        },
+        fabricatorRows: { id: "f1", name: "MCH Commercial", address: "Antipas", contactNo: "0910" },
+        complianceItems: { id: "loi", status: "complied" },
+      },
+    });
+    const form = rtec?.form as {
+      constraintRows: unknown[];
+      fabricatorRows: unknown[];
+      complianceItems: unknown[];
+    };
+    expect(form.constraintRows).toHaveLength(1);
+    expect(form.fabricatorRows).toHaveLength(1);
+    expect(form.complianceItems).toHaveLength(1);
+
+    const land = normalizeLandBankStored({
+      form: {
+        tranches: {
+          first: {
+            tranche: 1,
+            equipment: { id: "we-t1", item: "Printer", amount: "785000" },
+          },
+        },
+      },
+    });
+    const first = (land?.form as { tranches: { first: { equipment: unknown[] } } })
+      .tranches.first;
+    expect(first.equipment).toHaveLength(1);
+
+    const hydrated = normalizeModuleDataForHydrate({
+      procurement: {
+        form: { items: { id: "po-tarp", description: "Printer" } },
+        submitted: true,
+      },
+    });
+    const procForm = (hydrated.procurement as { form: { items: unknown[] } }).form;
+    expect(procForm.items).toHaveLength(1);
   });
 
   it("normalizes approval letter published from legacy form flag", () => {

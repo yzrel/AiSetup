@@ -34,6 +34,7 @@ public class ModuleDataIntegrityService {
             fallback.add("loiDocument");
             fallback.add("tna1");
             fallback.add("projectProposal");
+            fallback.add("financialProjection");
             fallback.add("landBank");
             fallback.add("signedDocuments");
             fallback.add("procurement");

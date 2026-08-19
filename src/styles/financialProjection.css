@@ -1,0 +1,109 @@
+/* Author: Yzrel Jade B. Eborde — projected FS A4 print */
+
+#financial-projection-print-root {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #111827;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff;
+}
+
+#financial-projection-print-root .fp-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10mm 0 8mm;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+#financial-projection-print-root .fp-form-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+#financial-projection-print-root .fp-form-meta {
+  font-size: 10px;
+  text-align: center;
+  margin: 0 0 6px;
+  color: #4b5563;
+}
+
+#financial-projection-print-root .fp-form-block {
+  margin-bottom: 12px;
+  break-inside: avoid;
+}
+
+#financial-projection-print-root .fp-form-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 10px 0 6px;
+  text-transform: uppercase;
+}
+
+#financial-projection-print-root .fp-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5px;
+}
+
+#financial-projection-print-root .fp-form-table th,
+#financial-projection-print-root .fp-form-table td {
+  border: 1px solid #111827;
+  padding: 3px 4px;
+  text-align: left;
+}
+
+#financial-projection-print-root .fp-form-table th {
+  background: #f3f4f6;
+}
+
+@media print {
+  body.financial-projection-printing {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.financial-projection-printing > *:not(#financial-projection-print-root) {
+    display: none !important;
+  }
+
+  body.financial-projection-printing #financial-projection-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  @page financial-projection-sheet {
+    size: A4 portrait;
+    margin: 14mm 12mm 18mm;
+
+    @bottom-center {
+      content: "Projected Financial Statements (next 5 years) — DOST SETUP Region XII  Page "
+        counter(page) " of " counter(pages);
+      font-family: Arial, "Segoe UI", sans-serif;
+      font-size: 8.5px;
+      color: #6b7280;
+    }
+  }
+
+  body.financial-projection-printing #financial-projection-print-root {
+    page: financial-projection-sheet;
+  }
+}

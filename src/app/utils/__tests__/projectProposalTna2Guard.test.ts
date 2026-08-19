@@ -2,32 +2,10 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { appendFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Applicant } from "../../store/applicantStore";
 import { buildProjectProposalDraft } from "../projectProposal";
 import { getPublishedTna2 } from "../tnaForm02";
-
-function debugLog(
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-) {
-  appendFileSync(
-    join(process.cwd(), "debug-ee6d9d.log"),
-    JSON.stringify({
-      sessionId: "ee6d9d",
-      runId: "post-fix",
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }) + "\n",
-  );
-}
 
 describe("project proposal tolerates string tna2 lists", () => {
   it("does not throw when recommendedEquipment is a legacy string", () => {
@@ -63,22 +41,10 @@ describe("project proposal tolerates string tna2 lists", () => {
     } as unknown as Applicant;
 
     const published = getPublishedTna2(applicant);
-    debugLog("E", "vitest:getPublishedTna2", "enriched published tna2", {
-      recEqIsArray: Array.isArray(published?.recommendedEquipment),
-      gapsIsArray: Array.isArray(published?.technologyGaps),
-      processIsObject:
-        !!published?.productionProcessAnalysis &&
-        typeof published.productionProcessAnalysis === "object",
-    });
-
     expect(Array.isArray(published?.recommendedEquipment)).toBe(true);
 
     expect(() => buildProjectProposalDraft(applicant)).not.toThrow();
     const draft = buildProjectProposalDraft(applicant);
-    debugLog("A", "vitest:buildProjectProposalDraft", "draft built without throw", {
-      hasTitle: !!draft.projectTitle,
-      budgetRows: draft.budgetItems?.length ?? 0,
-    });
     expect(draft.projectTitle.length).toBeGreaterThan(0);
   });
 });

@@ -94,10 +94,9 @@ export const SETUP_FORMS = {
   },
   tna02: {
     key: "tna02",
-    title: "Technical Report",
+    title: "Technology Needs Assessment Report",
     number: "02",
     program: "DOST TNA",
-    packTitle: "Technology Needs Assessment Report",
     confirmed: true,
   },
 } as const satisfies Record<string, SetupFormMeta>;

@@ -7,6 +7,7 @@
 import { MODULE_BODY } from "../moduleTheme";
 import { TnaForm01Preview, printTnaForm01 } from "../TnaForm01Preview";
 import { DocumentDeliveryPanel } from "../DocumentDeliveryPanel";
+import { formatFormMention } from "../../constants/setupForms";
 import type { Tna1StepContext } from "./stepContext";
 import { AILoader, DOST_BLUE, InfoBanner } from "./tna1Ui";
 
@@ -82,7 +83,7 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
         applicant={applicant}
         user={user}
         moduleKey="tna1"
-        documentTitle="TNA Form 01"
+        documentTitle={formatFormMention("tna01")}
       />
 
       <div className="flex flex-col sm:flex-row gap-3 print:hidden">

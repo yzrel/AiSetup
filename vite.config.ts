@@ -21,6 +21,9 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, './shared'),
     },
   },
+  optimizeDeps: {
+    include: ["exceljs"],
+  },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],

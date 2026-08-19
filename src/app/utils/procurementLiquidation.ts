@@ -39,8 +39,14 @@ export function normalizeProcurementForm(
 
   const legacyDocs = Array.isArray(form.liquidationDocuments)
     ? form.liquidationDocuments
-    : [];
-  let liquidations = Array.isArray(form.liquidations) ? [...form.liquidations] : [];
+    : form.liquidationDocuments
+      ? [form.liquidationDocuments]
+      : [];
+  let liquidations = Array.isArray(form.liquidations)
+    ? [...form.liquidations]
+    : form.liquidations
+      ? [form.liquidations]
+      : [];
 
   if (liquidations.length === 0 && legacyDocs.length > 0) {
     liquidations = [
@@ -69,8 +75,16 @@ export function normalizeProcurementForm(
   }));
 
   return {
-    documents: Array.isArray(form.documents) ? form.documents : [],
-    items: Array.isArray(form.items) ? form.items : [],
+    documents: Array.isArray(form.documents)
+      ? form.documents
+      : form.documents
+        ? [form.documents]
+        : [],
+    items: Array.isArray(form.items)
+      ? form.items
+      : form.items
+        ? [form.items]
+        : [],
     liquidations,
     staffReview: form.staffReview,
     untagged: !!form.untagged,

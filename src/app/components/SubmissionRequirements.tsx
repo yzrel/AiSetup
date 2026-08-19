@@ -7,7 +7,7 @@ import {
   Upload, FileText, CheckCircle, AlertCircle, X, Info,
   ClipboardCheck, Eye, UserCheck, ShieldCheck, RefreshCw,
   ChevronRight, Building, Banknote, ArrowRight, BadgeCheck,
-  AlertTriangle, Pencil, Send, Clock,
+  AlertTriangle, Pencil, Send, Clock,   Printer, FileSpreadsheet,
 } from "lucide-react";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser, authStore } from "../store/authStore";
@@ -38,6 +38,13 @@ import {
 } from "../utils/proprietorTrack";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { SubmittedFileActions } from "./SubmittedFileActions";
+import { printFinancialProjection } from "../utils/financialProjectionPrint";
+import { downloadFinancialProjectionXlsx } from "../utils/financialProjectionExcel";
+import {
+  hasFrozenFinancialProjection,
+  markProjectedRequirementGenerated,
+  getFinancialProjectionStored,
+} from "../utils/financialProjectionStore";
 
 interface SubmissionRequirementsProps {
   user?: AuthUser | null;
@@ -286,6 +293,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 fileSizeBytes: file.size,
                 uploadedAt: moduleDoc.uploadedAt,
                 fileId: moduleDoc.fileId,
+                generatedFrom: undefined,
               }
             : d,
         );
@@ -310,6 +318,8 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               dataUrl: undefined,
               fileSizeBytes: undefined,
               uploadedAt: undefined,
+              fileId: undefined,
+              generatedFrom: undefined,
             }
           : d,
       );
@@ -317,6 +327,42 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
       return next;
     });
     if (fileRefs.current[id]) fileRefs.current[id]!.value = "";
+  };
+
+  const handleGenerateProjected = () => {
+    if (!applicant) return;
+    if (!hasFrozenFinancialProjection(applicant)) {
+      alert("Freeze the 5-year projection on Project Proposal → Financial first.");
+      return;
+    }
+    markProjectedRequirementGenerated(applicant.id, applicant.applicationId);
+    setDocuments(buildRequirementUploadList(applicantStore.getById(applicant.id) ?? applicant));
+  };
+
+  const handlePrintProjected = () => {
+    if (!applicant) return;
+    const stored = getFinancialProjectionStored(applicant);
+    if (!stored?.snapshot) {
+      alert("No frozen projection to print. Complete Project Proposal → Financial first.");
+      return;
+    }
+    void printFinancialProjection(stored.snapshot, applicant.applicationId, stored.frozenAt);
+  };
+
+  const handleExcelProjected = () => {
+    if (!applicant) return;
+    const stored = getFinancialProjectionStored(applicant);
+    if (!stored?.snapshot) {
+      alert("No frozen projection to export. Complete Project Proposal → Financial first.");
+      return;
+    }
+    void downloadFinancialProjectionXlsx({
+      inputs: stored.inputs,
+      snapshot: stored.snapshot,
+      applicationId: applicant.applicationId,
+      enterpriseName: applicant.enterpriseName,
+      frozenAt: stored.frozenAt,
+    });
   };
 
   const { required: requiredCount, uploaded: uploadedReq } = countRequiredUploads(documents);
@@ -522,9 +568,44 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                           {doc.uploaded && doc.file && (
                             <p className="text-xs text-gray-400 truncate">{doc.file.name} · {(doc.file.size / 1024).toFixed(1)} KB</p>
                           )}
+                          {doc.uploaded && !doc.file && doc.fileName && (
+                            <p className="text-xs text-gray-400 truncate">{doc.fileName}</p>
+                          )}
+                          {doc.id === "projected" && doc.generatedFrom === "financialProjection" && (
+                            <p className="text-xs text-green-700">Generated from project proposal financial projection</p>
+                          )}
+                          {doc.id === "projected" && !doc.uploaded && (
+                            <p className="text-xs text-gray-500">Freeze the projection on Project Proposal → Financial, then Generate — or upload a signed PDF.</p>
+                          )}
                         </div>
                       </div>
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 flex flex-wrap gap-1.5 justify-end">
+                        {doc.id === "projected" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handlePrintProjected}
+                              className="flex items-center gap-1.5 text-xs text-[#0C2461] border border-[#0C2461]/30 px-3 py-1.5 rounded-lg hover:bg-blue-50"
+                            >
+                              <Printer className="w-3 h-3" /> Print
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleExcelProjected}
+                              className="flex items-center gap-1.5 text-xs text-[#0C2461] border border-[#0C2461]/30 px-3 py-1.5 rounded-lg hover:bg-blue-50"
+                            >
+                              <FileSpreadsheet className="w-3 h-3" /> Excel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleGenerateProjected}
+                              className="flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg"
+                              style={{ background: DOST_BLUE }}
+                            >
+                              <FileText className="w-3 h-3" /> Generate
+                            </button>
+                          </>
+                        )}
                         {doc.uploaded ? (
                           <button onClick={() => removeDoc(doc.id)} className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
                             <X className="w-3 h-3" /> Remove

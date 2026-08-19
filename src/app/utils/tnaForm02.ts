@@ -11,9 +11,12 @@ import {
 } from "../constants/tnaForm02Layout";
 import type {
   Tna2DocumentResponse,
+  Tna2EquipmentRow,
   Tna2FindingSection,
   Tna2FindingSubsection,
   Tna2GenerationRequest,
+  Tna2InterventionRow,
+  Tna2Kpi,
   Tna2ScopeItem,
   Tna2StoredDocument,
 } from "../api/types";
@@ -27,9 +30,25 @@ function joinNonBlank(...parts: unknown[]): string {
   return parts.map(str).filter(Boolean).join(" ");
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Coerce a JSON array, or a single object (PowerShell ConvertTo-Json collapse
+ * of a 1-element array), into a list. Scalars become [].
+ */
+function asObjectList<T>(value: unknown): T[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value as T[];
+  if (isPlainObject(value)) return [value as T];
+  return [];
+}
+
 /** Coerce string or array payloads into a string list (full-field / legacy tolerant). */
 function asStringList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(str).filter(Boolean);
+  if (isPlainObject(value)) return [];
   const s = str(value);
   return s ? [s] : [];
 }
@@ -63,6 +82,7 @@ function asTeamMember(value: unknown): { name: string; title?: string } {
 
 function asTeamMembers(value: unknown): { name: string; title?: string }[] {
   if (Array.isArray(value)) return value.map(asTeamMember);
+  if (isPlainObject(value)) return [asTeamMember(value)];
   const s = str(value);
   if (!s) return [];
   return s.split(/[,;]+/).map((part) => ({ name: str(part) })).filter((m) => m.name);
@@ -85,13 +105,14 @@ function subsectionMap(
   sections: Tna2FindingSection[] | undefined,
 ): Map<string, string> {
   const map = new Map<string, string>();
-  for (const section of sections ?? []) {
-    for (const sub of section.subsections ?? []) {
+  for (const section of asObjectList<Tna2FindingSection>(sections)) {
+    const subs = asObjectList<Tna2FindingSubsection>(section.subsections);
+    for (const sub of subs) {
       if (sub.id && str(sub.content)) map.set(sub.id, str(sub.content));
     }
     // Legacy: single content blob maps to first subsection of that section
-    if (str(section.content) && !(section.subsections ?? []).some((s) => str(s.content))) {
-      const firstId = section.subsections?.[0]?.id;
+    if (str(section.content) && !subs.some((s) => str(s.content))) {
+      const firstId = subs[0]?.id;
       if (firstId && !map.has(firstId)) map.set(firstId, str(section.content));
     }
   }
@@ -109,9 +130,10 @@ function findingSectionKey(section: unknown): string {
 export function normalizeFindingsByArea(
   saved?: Tna2FindingSection[] | null,
 ): Tna2FindingSection[] {
-  const byId = subsectionMap(saved ?? undefined);
+  const savedList = asObjectList<Tna2FindingSection>(saved);
+  const byId = subsectionMap(savedList);
   const byTitle = new Map<string, Tna2FindingSection>();
-  for (const section of saved ?? []) {
+  for (const section of savedList) {
     const key = findingSectionKey(section);
     if (key) byTitle.set(key, section);
   }
@@ -319,7 +341,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
       ? doc.productivityImprovement
       : null;
   const productivity = {
-    kpis: Array.isArray(productivityRaw?.kpis) ? productivityRaw.kpis : [],
+    kpis: asObjectList<Tna2Kpi>(productivityRaw?.kpis),
     outcomes: asStringList(
       productivityRaw?.outcomes ??
         (typeof doc.productivityImprovement === "string"
@@ -327,9 +349,7 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
           : undefined),
     ),
   };
-  const equipment = Array.isArray(doc.recommendedEquipment)
-    ? doc.recommendedEquipment
-    : [];
+  const equipment = asObjectList<Tna2EquipmentRow>(doc.recommendedEquipment);
 
   const background =
     str(doc.background) ||
@@ -410,9 +430,12 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
         ? interventions
         : productivity.outcomes;
 
+  const storedInterventionRows = asObjectList<Tna2InterventionRow>(
+    doc.interventionRows,
+  );
   const interventionRows =
-    doc.interventionRows?.length
-      ? doc.interventionRows
+    storedInterventionRows.length
+      ? storedInterventionRows
       : gaps.map((gap, i) => ({
           problem: gap,
           intervention: interventions[i] || interventions[0] || "",
@@ -658,9 +681,6 @@ export function getPublishedTna2(applicant: Applicant | null): Tna2StoredDocumen
   if (!doc?.published) return null;
   // Coerce legacy/full-field string list fields before consumers call .map/.join.
   const enriched = enrichTna2Summary(doc) as Tna2StoredDocument;
-  // #region agent log
-  fetch('http://127.0.0.1:7649/ingest/b278e0d6-e1d1-4ceb-bd36-1c5bac478819',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee6d9d'},body:JSON.stringify({sessionId:'ee6d9d',runId:'post-fix',hypothesisId:'E',location:'tnaForm02.ts:getPublishedTna2',message:'published tna2 after enrich',data:{published:true,rawRecEqType:typeof (doc as {recommendedEquipment?:unknown}).recommendedEquipment,rawRecEqIsArray:Array.isArray(doc.recommendedEquipment),recEqType:typeof enriched.recommendedEquipment,recEqIsArray:Array.isArray(enriched.recommendedEquipment),gapsIsArray:Array.isArray(enriched.technologyGaps),interventionsIsArray:Array.isArray(enriched.proposedInterventions),processIsObject:!!enriched.productionProcessAnalysis&&typeof enriched.productionProcessAnalysis==='object'},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return {
     ...enriched,
     published: true,

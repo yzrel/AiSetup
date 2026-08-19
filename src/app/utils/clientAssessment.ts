@@ -7,6 +7,7 @@ import { hasLbpIntroductionPublished } from "./lbpIntroductionLetter";
 import { hasProcurementComplete } from "./procurementLiquidation";
 import { hasRefundComplete } from "./refundDelinquent";
 import { hasCloseOutComplete } from "./projectCloseOut";
+import { formatFormMention } from "../constants/setupForms";
 import { AdminView } from "../store/authStore";
 import {
   MODULE_ORDER,
@@ -196,17 +197,17 @@ export function getAssessmentTasks(applicant: Applicant): AssessmentTask[] {
     },
     {
       stage: "tna1",
-      label: "TNA Form 01",
+      label: formatFormMention("tna01"),
       status: tna1Status(applicant),
       view: "tna1",
       description: "Review technology needs assessment and staff remarks.",
     },
     {
       stage: "tna2",
-      label: "TNA Form 02",
+      label: formatFormMention("tna02"),
       status: tna2Status(applicant),
       view: "tna2",
-      description: "Generate, edit, and publish the technical report.",
+      description: "Generate, edit, and publish the Technology Needs Assessment Report.",
     },
     {
       stage: "post-proposal",

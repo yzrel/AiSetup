@@ -10,6 +10,8 @@ import type {
 } from "../api/types";
 import { ProjectProposalDocument } from "../components/projectProposal/ProjectProposalDocument";
 import { hydrateStoredFileDataUrls } from "./storedFilePreview";
+import { applicantStore } from "../store/applicantStore";
+import { getFinancialProjectionStored } from "./financialProjectionStore";
 
 const PRINT_BODY_CLASS = "project-proposal-printing";
 const PRINT_ROOT_ID = "project-proposal-print-root";
@@ -59,12 +61,17 @@ export async function printProjectProposalPdf(
   window.document.body.appendChild(printRoot);
 
   let reactRoot: Root | null = createRoot(printRoot);
+  const projectionSnapshot = applicantId
+    ? getFinancialProjectionStored(applicantStore.getById(applicantId))?.snapshot
+    : undefined;
+
   reactRoot.render(
     <ProjectProposalDocument
       form={form}
       document={document}
       attachments={hydratedAttachments}
       applicantId={applicantId}
+      projectionSnapshot={projectionSnapshot}
     />,
   );
 

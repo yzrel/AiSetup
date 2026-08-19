@@ -58,6 +58,7 @@ import {
 import type { ProposalAiField } from "../utils/projectProposal";
 import { ProjectProposalPreview, printProjectProposal } from "./ProjectProposalPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
+import { FinancialProjectionWizard } from "./projectProposal/financialProjection/FinancialProjectionWizard";
 import { notifyProjectProposalSubmitted } from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
@@ -740,6 +741,12 @@ export function ProjectProposal({
       case "financial":
         return (
           <div className="space-y-4">
+            {applicant && (
+              <FinancialProjectionWizard
+                applicant={applicant}
+                onProposalPatch={(patch) => patchForm(patch)}
+              />
+            )}
             <TableEditor label="Liquidity Ratio (Current Ratio)" headers={["Year", "Current Assets", "Current Liabilities", "Ratio"]} rows={form.liquidityRatioTable} onChange={(liquidityRatioTable) => patchForm({ liquidityRatioTable })} />
             <TableEditor label="Quick Ratio" headers={["Year", "Current Assets", "Inventory", "Current Liabilities", "Ratio"]} rows={form.quickRatioTable} onChange={(quickRatioTable) => patchForm({ quickRatioTable })} />
             <TableEditor label="Return on Investment" headers={["Year", "Net Income", "Investment", "ROI"]} rows={form.roiTable} onChange={(roiTable) => patchForm({ roiTable })} />

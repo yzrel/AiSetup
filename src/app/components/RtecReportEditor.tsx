@@ -149,13 +149,27 @@ function ComplianceSection({
   );
 }
 
+function asRowList<T>(value: T[] | T | undefined | null): T[] {
+  if (Array.isArray(value)) return value;
+  if (value) return [value];
+  return [];
+}
+
 export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps) {
-  const patch = (partial: Partial<RtecReportForm>) => onChange({ ...form, ...partial });
+  const formSafe: RtecReportForm = {
+    ...form,
+    constraintRows: asRowList(form.constraintRows),
+    fabricatorRows: asRowList(form.fabricatorRows),
+    complianceItems: asRowList(form.complianceItems),
+    attachmentRefs: asRowList(form.attachmentRefs),
+  };
+  const patch = (partial: Partial<RtecReportForm>) =>
+    onChange({ ...formSafe, ...partial });
 
   if (step === "compliance") {
     return (
       <ComplianceSection
-        items={form.complianceItems}
+        items={formSafe.complianceItems}
         onChange={(complianceItems) => patch({ complianceItems })}
       />
     );
@@ -167,7 +181,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
         <div>
           <FieldLabel>Financial ratio narrative (III.d)</FieldLabel>
           <TextArea
-            value={form.ratioNarrative}
+            value={formSafe.ratioNarrative}
             onChange={(ratioNarrative) => patch({ ratioNarrative })}
             rows={5}
             placeholder="Summarize liquidity, ROI, and financial constraints…"
@@ -182,7 +196,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
               onClick={() =>
                 patch({
                   constraintRows: [
-                    ...form.constraintRows,
+                    ...formSafe.constraintRows,
                     {
                       id: uid(),
                       processProblem: "",
@@ -200,16 +214,16 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
             </button>
           </div>
           <div className="space-y-3">
-            {form.constraintRows.map((row, ri) => (
+            {formSafe.constraintRows.map((row, ri) => (
               <div key={row.id} className="border border-gray-200 rounded-xl p-3 space-y-2 bg-white">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-gray-500">Row {ri + 1}</span>
-                  {form.constraintRows.length > 1 && (
+                  {formSafe.constraintRows.length > 1 && (
                     <button
                       type="button"
                       onClick={() =>
                         patch({
-                          constraintRows: form.constraintRows.filter((r) => r.id !== row.id),
+                          constraintRows: formSafe.constraintRows.filter((r) => r.id !== row.id),
                         })
                       }
                       className="text-red-500 hover:text-red-700"
@@ -222,7 +236,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                   value={row.processProblem}
                   onChange={(v) =>
                     patch({
-                      constraintRows: form.constraintRows.map((r) =>
+                      constraintRows: formSafe.constraintRows.map((r) =>
                         r.id === row.id ? { ...r, processProblem: v } : r,
                       ),
                     })
@@ -234,7 +248,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                   value={row.proposedIntervention}
                   onChange={(v) =>
                     patch({
-                      constraintRows: form.constraintRows.map((r) =>
+                      constraintRows: formSafe.constraintRows.map((r) =>
                         r.id === row.id ? { ...r, proposedIntervention: v } : r,
                       ),
                     })
@@ -246,7 +260,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                   value={row.equipmentSkills}
                   onChange={(v) =>
                     patch({
-                      constraintRows: form.constraintRows.map((r) =>
+                      constraintRows: formSafe.constraintRows.map((r) =>
                         r.id === row.id ? { ...r, equipmentSkills: v } : r,
                       ),
                     })
@@ -258,7 +272,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                   value={row.impact}
                   onChange={(v) =>
                     patch({
-                      constraintRows: form.constraintRows.map((r) =>
+                      constraintRows: formSafe.constraintRows.map((r) =>
                         r.id === row.id ? { ...r, impact: v } : r,
                       ),
                     })
@@ -279,7 +293,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
               onClick={() =>
                 patch({
                   fabricatorRows: [
-                    ...form.fabricatorRows,
+                    ...formSafe.fabricatorRows,
                     { id: uid(), name: "", address: "", contactNo: "" },
                   ],
                 })
@@ -291,7 +305,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
             </button>
           </div>
           <div className="space-y-3">
-            {form.fabricatorRows.map((row, ri) => (
+            {formSafe.fabricatorRows.map((row, ri) => (
               <div key={row.id} className="grid sm:grid-cols-3 gap-2 border border-gray-200 rounded-xl p-3 bg-white">
                 <div>
                   <FieldLabel>Name</FieldLabel>
@@ -299,7 +313,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                     value={row.name}
                     onChange={(v) =>
                       patch({
-                        fabricatorRows: form.fabricatorRows.map((r) =>
+                        fabricatorRows: formSafe.fabricatorRows.map((r) =>
                           r.id === row.id ? { ...r, name: v } : r,
                         ),
                       })
@@ -312,7 +326,7 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                     value={row.address}
                     onChange={(v) =>
                       patch({
-                        fabricatorRows: form.fabricatorRows.map((r) =>
+                        fabricatorRows: formSafe.fabricatorRows.map((r) =>
                           r.id === row.id ? { ...r, address: v } : r,
                         ),
                       })
@@ -326,19 +340,19 @@ export function RtecReportEditor({ form, onChange, step }: RtecReportEditorProps
                       value={row.contactNo}
                       onChange={(v) =>
                         patch({
-                          fabricatorRows: form.fabricatorRows.map((r) =>
+                          fabricatorRows: formSafe.fabricatorRows.map((r) =>
                             r.id === row.id ? { ...r, contactNo: v } : r,
                           ),
                         })
                       }
                     />
                   </div>
-                  {form.fabricatorRows.length > 1 && (
+                  {formSafe.fabricatorRows.length > 1 && (
                     <button
                       type="button"
                       onClick={() =>
                         patch({
-                          fabricatorRows: form.fabricatorRows.filter((r) => r.id !== row.id),
+                          fabricatorRows: formSafe.fabricatorRows.filter((r) => r.id !== row.id),
                         })
                       }
                       className="text-red-500 hover:text-red-700 p-2"

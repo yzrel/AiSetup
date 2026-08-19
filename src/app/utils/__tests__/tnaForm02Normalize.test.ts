@@ -136,4 +136,65 @@ describe("enrichTna2Summary", () => {
     expect(doc.tnaTeam?.members.map((m) => m.name)).toEqual(["A", "B"]);
     expect(doc.findingsByArea?.length).toBeGreaterThan(0);
   });
+
+  it("does not crash when PowerShell collapsed 1-element arrays into objects", () => {
+    const raw = {
+      documentRef: "TNA2-PS",
+      assessmentDate: "2026-08-18",
+      enterpriseProfile: { enterpriseName: "Three K Printshop" },
+      findingsByArea: {
+        title: "5. Environmental Aspect",
+        subsections: {
+          id: "waste-management",
+          label: "Waste Management",
+          content: "Color-coded bins.",
+        },
+      },
+      interventionRows: {
+        problem: "No tarpaulin printer",
+        intervention: "Buy ecosolvent printer",
+        equipment: "10.5 ft ecosolvent",
+        impact: "+100% productivity",
+      },
+      tnaTeam: {
+        leader: { name: "DR. MICHAEL T. MAYO", title: "Provincial Director" },
+        members: { name: "PSTO Cotabato TNA Team", title: "PSTO - Cotabato" },
+      },
+      recommendedEquipment: {
+        name: "10.5 ft Tarpaulin Printing Machine",
+        quantity: "1",
+      },
+      productivityImprovement: {
+        kpis: { label: "Capacity", before: "outsourced", after: "in-house" },
+        outcomes: "Meet election demand",
+      },
+      siteValidationFindings: ["Site confirmed"],
+      generatedAt: new Date().toISOString(),
+      aiGenerated: false,
+    } as unknown as Tna2DocumentResponse;
+
+    const doc = enrichTna2Summary(raw);
+    expect(doc.findingsByArea?.length).toBeGreaterThan(0);
+    const waste = doc.findingsByArea
+      ?.flatMap((s) => s.subsections ?? [])
+      .find((s) => s.id === "waste-management");
+    expect(waste?.content).toContain("Color-coded bins");
+    expect(doc.interventionRows).toEqual([
+      {
+        problem: "No tarpaulin printer",
+        intervention: "Buy ecosolvent printer",
+        equipment: "10.5 ft ecosolvent",
+        impact: "+100% productivity",
+      },
+    ]);
+    expect(doc.tnaTeam?.members).toEqual([
+      { name: "PSTO Cotabato TNA Team", title: "PSTO - Cotabato" },
+    ]);
+    expect(doc.recommendedEquipment).toEqual([
+      { name: "10.5 ft Tarpaulin Printing Machine", quantity: "1" },
+    ]);
+    expect(doc.productivityImprovement.kpis).toEqual([
+      { label: "Capacity", before: "outsourced", after: "in-house" },
+    ]);
+  });
 });

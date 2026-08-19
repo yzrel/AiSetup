@@ -370,8 +370,13 @@ function withDefaultSignatures(form: RtecReportForm): RtecReportForm {
 export function getRtecReportForm(applicant: Applicant | null): RtecReportForm {
   const stored = getRtecReportStored(applicant);
   if (stored?.form) {
+    const savedCompliance = Array.isArray(stored.form.complianceItems)
+      ? stored.form.complianceItems
+      : stored.form.complianceItems
+        ? [stored.form.complianceItems]
+        : [];
     const savedById = new Map(
-      (stored.form.complianceItems ?? []).map((item) => [item.id, item]),
+      savedCompliance.map((item) => [item.id, item]),
     );
     // Keep staff-saved statuses; only fill newly added checklist rows.
     const complianceItems = emptyComplianceItems().map((item) => {
@@ -383,6 +388,21 @@ export function getRtecReportForm(applicant: Applicant | null): RtecReportForm {
     return withDefaultSignatures({
       ...stored.form,
       complianceItems,
+      constraintRows: Array.isArray(stored.form.constraintRows)
+        ? stored.form.constraintRows
+        : stored.form.constraintRows
+          ? [stored.form.constraintRows]
+          : [],
+      fabricatorRows: Array.isArray(stored.form.fabricatorRows)
+        ? stored.form.fabricatorRows
+        : stored.form.fabricatorRows
+          ? [stored.form.fabricatorRows]
+          : [],
+      attachmentRefs: Array.isArray(stored.form.attachmentRefs)
+        ? stored.form.attachmentRefs
+        : stored.form.attachmentRefs
+          ? [stored.form.attachmentRefs]
+          : [],
     });
   }
   return withDefaultSignatures(buildRtecReportDraft(applicant));
@@ -398,6 +418,16 @@ export function syncRtecFromProjectProposal(
   const pick = (local: string, upstream: string) =>
     local.trim() ? local : upstream;
 
+  const constraintRows = Array.isArray(existing.constraintRows)
+    ? existing.constraintRows
+    : existing.constraintRows
+      ? [existing.constraintRows]
+      : [];
+  const fabricatorRows = Array.isArray(existing.fabricatorRows)
+    ? existing.fabricatorRows
+    : existing.fabricatorRows
+      ? [existing.fabricatorRows]
+      : [];
   return {
     ...existing,
     projectCostProponent: pick(existing.projectCostProponent, costs.proponent),
@@ -405,15 +435,15 @@ export function syncRtecFromProjectProposal(
     projectCostTotal: pick(existing.projectCostTotal, costs.total),
     proposalSnapshot,
     attachmentRefs,
-    constraintRows: existing.constraintRows.some((r) =>
+    constraintRows: constraintRows.some((r) =>
       Object.values(r).some((v) => String(v).trim()),
     )
-      ? existing.constraintRows
+      ? constraintRows
       : buildConstraintRows(proposalSnapshot, applicant),
-    fabricatorRows: existing.fabricatorRows.some((r) =>
+    fabricatorRows: fabricatorRows.some((r) =>
       [r.name, r.address, r.contactNo].some((v) => v.trim()),
     )
-      ? existing.fabricatorRows
+      ? fabricatorRows
       : buildFabricatorRows(proposalSnapshot),
     ratioNarrative: pick(
       existing.ratioNarrative,

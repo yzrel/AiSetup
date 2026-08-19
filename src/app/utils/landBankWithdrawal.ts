@@ -82,9 +82,21 @@ function normalizeTranche(
     ...raw,
     tranche,
     supplierName: raw.supplierName ?? "",
-    equipment: Array.isArray(raw.equipment) ? raw.equipment : [],
-    quotations: Array.isArray(raw.quotations) ? raw.quotations : [],
-    equipmentPhotos: Array.isArray(raw.equipmentPhotos) ? raw.equipmentPhotos : [],
+    equipment: Array.isArray(raw.equipment)
+      ? raw.equipment
+      : raw.equipment
+        ? [raw.equipment]
+        : [],
+    quotations: Array.isArray(raw.quotations)
+      ? raw.quotations
+      : raw.quotations
+        ? [raw.quotations]
+        : [],
+    equipmentPhotos: Array.isArray(raw.equipmentPhotos)
+      ? raw.equipmentPhotos
+      : raw.equipmentPhotos
+        ? [raw.equipmentPhotos]
+        : [],
     signedLetter: raw.signedLetter ?? null,
   };
 }

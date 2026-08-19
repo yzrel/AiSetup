@@ -55,6 +55,7 @@ public class ModuleContentValidationService {
             case "landBank" -> errors.addAll(validateLandBank(data));
             case "projectCloseOut" -> errors.addAll(validateCloseOut(data));
             case "refund" -> errors.addAll(validateRefund(data));
+            case "financialProjection" -> errors.addAll(validateFinancialProjection(data));
             default -> {
                 // No content rules for this key yet.
             }
@@ -199,6 +200,32 @@ public class ModuleContentValidationService {
         require(errors, stringField(form, "applicantName"), "Applicant name is required.");
         require(errors, stringField(form, "enterpriseName"), "Enterprise name is required.");
         require(errors, stringField(form, "projectDescription"), "Project description is required.");
+        return errors;
+    }
+
+    public void assertFinancialProjectionGenerate(Map<String, Object> inputs) {
+        if (workflowGateService.isDemoBypassAllowed()) {
+            return;
+        }
+        if (inputs == null) {
+            throw new IllegalArgumentException("Financial projection inputs are required.");
+        }
+    }
+
+    private List<String> validateFinancialProjection(Map<String, Object> data) {
+        List<String> errors = new ArrayList<>();
+        if (asMap(data.get("inputs")) == null) {
+            errors.add("Financial projection inputs are required.");
+        }
+        Map<String, Object> snapshot = asMap(data.get("snapshot"));
+        if (snapshot == null) {
+            errors.add("Frozen financial projection snapshot is required.");
+        } else if (asMap(snapshot.get("incomeStatement")) == null
+                || asMap(snapshot.get("cashFlow")) == null
+                || asMap(snapshot.get("balanceSheet")) == null) {
+            errors.add("Projected income statement, cash flow, and balance sheet are required.");
+        }
+        require(errors, stringField(data, "frozenAt"), "Projection freeze timestamp is required.");
         return errors;
     }
 

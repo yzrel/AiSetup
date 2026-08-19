@@ -1,0 +1,22 @@
+---
+description: Projected financial statements (5-year) print layout
+globs: src/app/components/projectProposal/financialProjection/**,src/styles/financialProjection.css,src/app/utils/financialProjectionPrint.tsx
+alwaysApply: false
+---
+
+# Projected financial statements layout
+
+## Document title
+
+`Projected Financial Statements (Next Five Years)`
+
+## Print path
+
+- In-page `window.print()` via `#financial-projection-print-root` + `body.financial-projection-printing`.
+- `index.css` must exclude `.financial-projection-printing` from the default print `visibility: hidden` rule, or the page prints blank.
+- Official output: `FinancialProjectionDocument` (do not clone the wizard preview).
+- Excel download uses the 2024 template sheet names (Year 0, Year 1, Cash Flow, Income Statement, Balance Sheet) filled from the engine snapshot.
+
+## Content
+
+Income statement, cash flow, and balance sheet for Years 1–5, plus ratio summary. Freeze timestamp is metadata; hide portal chrome.

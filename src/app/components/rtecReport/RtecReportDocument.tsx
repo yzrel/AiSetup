@@ -53,6 +53,9 @@ import {
   isOptionChecked,
 } from "../../constants/rtecReportLayout";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
+import { snapshotStatementTables } from "../../utils/financialProjection";
+import { getFinancialProjectionStored } from "../../utils/financialProjectionStore";
+import { applicantStore } from "../../store/applicantStore";
 import { StoredFileImage } from "../StoredFilePreview";
 import { isImageFile } from "../../utils/storedFilePreview";
 
@@ -310,6 +313,12 @@ function registrationRowValues(
 
 export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProps) {
   const pp = form.proposalSnapshot;
+  const projectionSnapshot = applicantId
+    ? getFinancialProjectionStored(applicantStore.getById(applicantId))?.snapshot
+    : undefined;
+  const projTables = projectionSnapshot
+    ? snapshotStatementTables(projectionSnapshot)
+    : null;
 
   const findAttachment = (kind: ProjectProposalAttachmentKind) =>
     form.attachmentRefs.find((a) => a.kind === kind);
@@ -349,7 +358,7 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
       : ["Months", "Y1", "Y2", "Y3", "Y4", "Total"];
 
   const constraintRows =
-    form.constraintRows.length > 0
+    (Array.isArray(form.constraintRows) ? form.constraintRows : []).length > 0
       ? form.constraintRows
       : [
           {
@@ -362,7 +371,7 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
         ];
 
   const fabricatorRows =
-    form.fabricatorRows.length > 0
+    (Array.isArray(form.fabricatorRows) ? form.fabricatorRows : []).length > 0
       ? form.fabricatorRows.map((r) => [r.name, r.address, r.contactNo])
       : pp.fabricatorTable;
 
@@ -653,7 +662,18 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
         <FieldLabel>Financial constraints</FieldLabel>
         <NarrativeBlock text={pp.financialConstraintsNote || PP_FINANCIAL_ATTACH_NOTE} />
         <FieldLabel>Cash flow/ financial statement/ balance sheet</FieldLabel>
-        <NarrativeBlock text={PP_FINANCIAL_ATTACH_NOTE} />
+        {projTables ? (
+          <>
+            <FieldLabel>Income Statement (Years 1–5)</FieldLabel>
+            <DataTable columns={projTables.income[0] ?? []} rows={projTables.income.slice(1)} />
+            <FieldLabel>Cash Flow (Years 1–5)</FieldLabel>
+            <DataTable columns={projTables.cashFlow[0] ?? []} rows={projTables.cashFlow.slice(1)} />
+            <FieldLabel>Balance Sheet (end of year)</FieldLabel>
+            <DataTable columns={projTables.balance[0] ?? []} rows={projTables.balance.slice(1)} />
+          </>
+        ) : (
+          <NarrativeBlock text={PP_FINANCIAL_ATTACH_NOTE} />
+        )}
         <FieldLabel>Budgetary Requirement for the proposed project</FieldLabel>
         <DataTable columns={PP_BUDGET_COLUMNS} rows={budgetRows} />
         <p className="rtec-form-note">{PP_BUDGET_NOTE}</p>

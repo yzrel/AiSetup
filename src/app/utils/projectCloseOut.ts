@@ -31,7 +31,14 @@ export function getCloseOutStored(applicant: Applicant | null): ProjectCloseOutS
 }
 
 export function getCloseOutForm(applicant: Applicant | null): ProjectCloseOutForm {
-  return getCloseOutStored(applicant)?.form ?? emptyCloseOutForm();
+  const form = getCloseOutStored(applicant)?.form;
+  if (!form) return emptyCloseOutForm();
+  const inventory = Array.isArray(form.equipmentInventory)
+    ? form.equipmentInventory
+    : form.equipmentInventory
+      ? [form.equipmentInventory]
+      : emptyCloseOutForm().equipmentInventory;
+  return { ...form, equipmentInventory: inventory };
 }
 
 export function hasCloseOutPrerequisite(applicant: Applicant | null): boolean {

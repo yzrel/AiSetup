@@ -11,6 +11,9 @@ import type {
 } from "../api/types";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
 import { printProjectProposalPdf } from "../utils/projectProposalPrint";
+import { snapshotStatementTables } from "../utils/financialProjection";
+import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
+import { applicantStore } from "../store/applicantStore";
 import { StoredFileImage } from "./StoredFilePreview";
 import { isImageFile } from "../utils/storedFilePreview";
 import {
@@ -148,6 +151,12 @@ export function ProjectProposalPreview({
 }: ProjectProposalPreviewProps) {
   const findAttachment = (kind: string) =>
     attachments.find((a) => a.kind === kind);
+  const projectionSnapshot = applicantId
+    ? getFinancialProjectionStored(applicantStore.getById(applicantId))?.snapshot
+    : undefined;
+  const projTables = projectionSnapshot
+    ? snapshotStatementTables(projectionSnapshot)
+    : null;
 
   const narrative = (field: keyof ProjectProposalForm, docField?: keyof ProjectProposalDocumentResponse) => {
     if (doc && docField && doc[docField]) return String(doc[docField]);
@@ -411,6 +420,16 @@ export function ProjectProposalPreview({
 
         <Section title="Financial Statements & Constraints">
           <Narrative text={form.financialConstraintsNote} />
+          {projTables && (
+            <div className="mt-3 space-y-3">
+              <p className="text-xs font-bold text-gray-600">Income statement (Years 1–5)</p>
+              <Table headers={projTables.income[0] ?? []} rows={projTables.income.slice(1)} />
+              <p className="text-xs font-bold text-gray-600">Cash flow</p>
+              <Table headers={projTables.cashFlow[0] ?? []} rows={projTables.cashFlow.slice(1)} />
+              <p className="text-xs font-bold text-gray-600">Balance sheet</p>
+              <Table headers={projTables.balance[0] ?? []} rows={projTables.balance.slice(1)} />
+            </div>
+          )}
           <div className="mt-3">
             <AttachmentFigure
               attachment={findAttachment("financialReports")}

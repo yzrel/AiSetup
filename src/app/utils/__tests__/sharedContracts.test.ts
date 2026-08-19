@@ -30,6 +30,7 @@ describe("shared domain contracts", () => {
     expect(moduleKeys.objectModuleKeys).toContain("tna2Document");
     expect(moduleKeys.objectModuleKeys).toContain("procurement");
     expect(moduleKeys.objectModuleKeys).toContain("refund");
+    expect(moduleKeys.objectModuleKeys).toContain("financialProjection");
   });
 
   it("FE office contacts match shared/region12-offices.json", () => {

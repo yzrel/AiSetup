@@ -28,6 +28,14 @@ import {
   submitProjectProposal,
 } from "../utils/projectProposal";
 import {
+  computeFinancialProjection,
+  emptyFinancialProjectionInputs,
+} from "../utils/financialProjection";
+import {
+  freezeFinancialProjectionLocal,
+  hasFrozenFinancialProjection,
+} from "../utils/financialProjectionStore";
+import {
   buildRequirementUploadList,
   countRequiredUploads,
   persistRequirementUploads,
@@ -340,6 +348,58 @@ describe("system flow: registration through project close-out", () => {
       employeesFemale: proposalDraft.employeesFemale || "5",
     };
     submitProjectProposal(id, proposalForm, []);
+    const projectionInputs = {
+      ...emptyFinancialProjectionInputs(),
+      productName: "Dried mangoes",
+      equipment: [{ id: "e1", name: "Vacuum sealer", amount: 500_000, lifeYears: 5 }],
+      preoperating: [{ id: "p1", name: "Product development", amount: 50_000, lifeYears: 5 }],
+      products: [
+        {
+          id: "pr1",
+          name: "Dried mangoes",
+          srpQ1: 100,
+          srpQ2: 100,
+          srpQ3: 100,
+          srpQ4: 100,
+          costQ1: 40,
+          qtyQ1: 1000,
+          qtyQ2: 1000,
+          qtyQ3: 1000,
+          qtyQ4: 1000,
+        },
+      ],
+      loanAmount: 200_000,
+      loanTermYears: 5,
+      loanInterestRate: 0.1,
+      equity: 300_000,
+      inventoryYear1: 20_000,
+      salesGrowth: 0.1,
+      cosIncrease: 0.05,
+      salaryIncrease: 0.05,
+      inflation: 0.03,
+      marketing: 10_000,
+      salaries: 120_000,
+      logistics: 5_000,
+      itSoftware: 2_000,
+      transportation: 3_000,
+      rental: 24_000,
+      utilities: 6_000,
+      communication: 2_400,
+      taxesLicenses: 1_200,
+      otherExpenses: 1_000,
+      taxMethod: "sole8" as const,
+      setupRefundByYear: [0, 50_000, 50_000, 50_000, 50_000],
+    };
+    freezeFinancialProjectionLocal(
+      id,
+      projectionInputs,
+      computeFinancialProjection(projectionInputs),
+      new Date().toISOString(),
+    );
+    expect(hasFrozenFinancialProjection(getApplicant(id))).toBe(true);
+    const projected = buildRequirementUploadList(getApplicant(id)).find((u) => u.id === "projected");
+    expect(projected?.uploaded).toBe(true);
+    expect(projected?.generatedFrom).toBe("financialProjection");
     applicantStore.update(id, { currentModule: "requirements" });
 
     // 8. Submission requirements (Step 4) — uploads + staff approval

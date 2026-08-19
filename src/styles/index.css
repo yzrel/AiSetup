@@ -6,6 +6,7 @@
 @import './tnaForm01.css';
 @import './tnaForm02.css';
 @import './projectProposal.css';
+@import './financialProjection.css';
 @import './rtecReport.css';
 
 .scrollbar-hide {
@@ -123,7 +124,16 @@
     visibility: visible !important;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing) * {
+  body.financial-projection-printing * {
+    visibility: hidden !important;
+  }
+
+  body.financial-projection-printing #financial-projection-print-root,
+  body.financial-projection-printing #financial-projection-print-root * {
+    visibility: visible !important;
+  }
+
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) * {
     visibility: hidden;
   }
 
@@ -146,12 +156,12 @@
     visibility: visible;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing) #tna-form-01-preview,
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing) #tna-form-01-preview * {
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) #tna-form-01-preview,
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) #tna-form-01-preview * {
     visibility: visible;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing) #tna-form-01-preview {
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) #tna-form-01-preview {
     position: absolute;
     left: 0;
     right: 0;

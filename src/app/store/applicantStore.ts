@@ -19,6 +19,7 @@ import {
 } from "../utils/applicantPersistence";
 import { normalizeModuleDataForHydrate } from "../utils/normalizeCriticalModuleData";
 import { api } from "../api/client";
+import { getSetupFormTitle } from "../constants/setupForms";
 import { authStore } from "./authStore";
 // Simple in-memory store using a singleton + event-based reactivity
 
@@ -612,8 +613,8 @@ export const MODULE_LABELS: Record<ModuleStatus, string> = {
   'registration': 'Registration',
   'letter-of-intent': 'Letter of Intent',
   'requirements': 'Submit Requirements',
-  'tna1': 'TNA 1 Assessment',
-  'tna2': 'TNA 2 Technical Report',
+  'tna1': getSetupFormTitle('tna01'),
+  'tna2': getSetupFormTitle('tna02'),
   'project-proposal': 'Project Proposal',
   'conduct-rtec': 'Conduct of RTEC',
   'approval-letter': 'Approval Letter',

@@ -6,6 +6,7 @@
 
 import type { ReactNode } from "react";
 import type {
+  FinancialProjectionSnapshot,
   ProjectProposalAttachment,
   ProjectProposalAttachmentKind,
   ProjectProposalDocumentResponse,
@@ -46,6 +47,7 @@ import {
   isOptionChecked,
 } from "../../constants/projectProposalLayout";
 import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
+import { snapshotStatementTables } from "../../utils/financialProjection";
 import { StoredFileImage } from "../StoredFilePreview";
 import { isImageFile } from "../../utils/storedFilePreview";
 
@@ -54,6 +56,7 @@ export interface ProjectProposalDocumentProps {
   document?: ProjectProposalDocumentResponse | null;
   attachments?: ProjectProposalAttachment[];
   applicantId?: string;
+  projectionSnapshot?: FinancialProjectionSnapshot | null;
 }
 
 function val(value: unknown): string {
@@ -286,8 +289,12 @@ export function ProjectProposalDocument({
   document: doc,
   attachments = [],
   applicantId,
+  projectionSnapshot,
 }: ProjectProposalDocumentProps) {
   const { narrative, bullets, riskRows } = useMergedData(form, doc);
+  const projTables = projectionSnapshot
+    ? snapshotStatementTables(projectionSnapshot)
+    : null;
 
   const findAttachment = (kind: ProjectProposalAttachmentKind) =>
     attachments.find((a) => a.kind === kind);
@@ -653,7 +660,18 @@ export function ProjectProposalDocument({
         <SubHeading>B. Financial constraints</SubHeading>
         <FieldValue>{form.financialConstraintsNote || PP_FINANCIAL_ATTACH_NOTE}</FieldValue>
         <SubHeading>C. Cash flow/ financial statement/ balance sheet</SubHeading>
-        <FieldValue>{PP_FINANCIAL_ATTACH_NOTE}</FieldValue>
+        {projTables ? (
+          <>
+            <FieldLabel>Income Statement (Years 1–5)</FieldLabel>
+            <DataTable columns={projTables.income[0] ?? []} rows={projTables.income.slice(1)} />
+            <FieldLabel>Cash Flow (Years 1–5)</FieldLabel>
+            <DataTable columns={projTables.cashFlow[0] ?? []} rows={projTables.cashFlow.slice(1)} />
+            <FieldLabel>Balance Sheet (end of year)</FieldLabel>
+            <DataTable columns={projTables.balance[0] ?? []} rows={projTables.balance.slice(1)} />
+          </>
+        ) : (
+          <FieldValue>{PP_FINANCIAL_ATTACH_NOTE}</FieldValue>
+        )}
         <SubHeading>D. Budgetary Requirement for the proposed project</SubHeading>
         <DataTable columns={PP_BUDGET_COLUMNS} rows={budgetRows} />
         <p className="pp-form-note">{PP_BUDGET_NOTE}</p>

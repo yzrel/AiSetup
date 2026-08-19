@@ -151,7 +151,7 @@ export function ReportsStep({ ctx }: { ctx: Tna1StepContext }) {
             </p>
             <p className="text-sm text-green-600">
               {directorValidated
-                ? "Next: generate and publish TNA Form 02 (Technical Report)."
+                ? `Next: generate and publish ${formatFormMention("tna02")}.`
                 : "TNA 2 unlocks after Provincial Director validation."}
             </p>
           </div>

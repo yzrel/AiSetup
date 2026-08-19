@@ -71,7 +71,7 @@ export function ClientSubmittedFilesPanel({
       .then((rows) => {
         if (cancelled) return;
         setServerRows(
-          (rows ?? []).map((r) => ({
+          (Array.isArray(rows) ? rows : []).map((r) => ({
             id: String(r.id ?? ""),
             moduleKey: r.moduleKey,
             originalFilename: r.originalFilename,
@@ -89,10 +89,14 @@ export function ClientSubmittedFilesPanel({
     };
   }, [applicant.id, applicant.lastUpdated]);
 
-  const baseFiles = useMemo(
-    () => collectApplicantSubmittedFiles(applicant, { scope }),
-    [applicant.id, applicant.lastUpdated, applicant.moduleData, scope],
-  );
+  const baseFiles = useMemo(() => {
+    try {
+      return collectApplicantSubmittedFiles(applicant, { scope });
+    } catch (err) {
+      console.error("[aisetup] collectApplicantSubmittedFiles", err);
+      return [];
+    }
+  }, [applicant.id, applicant.lastUpdated, applicant.moduleData, scope]);
 
   const allFiles = useMemo(
     () => mergeServerFilesIntoCatalog(baseFiles, serverRows),

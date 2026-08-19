@@ -334,6 +334,9 @@ function asLines(value: unknown, fallback: string[] = []): string[] {
   if (Array.isArray(value)) {
     return value.map((line) => String(line ?? "").trim()).filter(Boolean);
   }
+  if (typeof value === "string" && value.trim()) {
+    return [value.trim()];
+  }
   return fallback;
 }
 

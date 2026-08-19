@@ -67,13 +67,28 @@ export function moduleStepPillClass({
   active,
   done,
   locked = false,
+  variant = "onBlue",
 }: {
   active: boolean;
   done: boolean;
   locked?: boolean;
+  variant?: "onBlue" | "onLight";
 }): string {
   const base =
     "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border";
+
+  if (variant === "onLight") {
+    if (active) {
+      return `${base} bg-[#0C2461] text-white shadow-sm border-[#0C2461]`;
+    }
+    if (done) {
+      return `${base} bg-blue-50 text-[#0C2461] border-blue-200`;
+    }
+    if (locked) {
+      return `${base} bg-gray-50 text-gray-400 border-gray-200`;
+    }
+    return `${base} bg-white text-gray-700 border-gray-200`;
+  }
 
   if (active) {
     return `${base} bg-white text-blue-900 shadow-sm border-white`;

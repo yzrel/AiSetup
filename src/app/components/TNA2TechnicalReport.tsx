@@ -294,7 +294,7 @@ export function TNA2TechnicalReport({
                 applicant={applicant}
                 user={user}
                 moduleKey="tna2"
-                documentTitle="TNA Form 02 Technical Report"
+                documentTitle={formatFormMention("tna02")}
               />
             </>
           )}

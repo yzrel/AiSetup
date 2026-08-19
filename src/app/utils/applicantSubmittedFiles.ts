@@ -5,7 +5,10 @@
 import type { Applicant } from "../store/applicantStore";
 import type { AdminView } from "../store/authStore";
 import type {
+  LiquidationEntry,
   ModuleDocument,
+  PDCEntry,
+  PisOngoingFiling,
   ProcurementDocument,
   ProjectProposalAttachment,
   SignedMoaDocument,
@@ -25,6 +28,25 @@ import { getCloseOutForm } from "./projectCloseOut";
 import { printTnaForm02Pdf } from "./tnaForm02Print";
 import { printProjectProposalPdf } from "./projectProposalPrint";
 import { printRtecReportPdf } from "./rtecReportPrint";
+import { asObjectList } from "./normalizeCriticalModuleData";
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** Array, id-keyed map, or a single collapsed row — never throw on for-of. */
+function asRowList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (!isPlainObject(value)) return [];
+  const vals = Object.values(value);
+  const asMap =
+    vals.length > 0 &&
+    vals.every((v) => isPlainObject(v)) &&
+    !("fileName" in value) &&
+    !("mimeType" in value) &&
+    !("dataUrl" in value);
+  return (asMap ? vals : [value]) as T[];
+}
 
 export type SubmittedFileCategory =
   | "registration"
@@ -389,12 +411,13 @@ export function mergeServerFilesIntoCatalog(
   files: ApplicantSubmittedFile[],
   serverRows: ServerFileRow[],
 ): ApplicantSubmittedFile[] {
-  if (!serverRows.length) return files;
+  const rows = asObjectList<ServerFileRow>(serverRows);
+  if (!rows.length) return files;
   const existingNames = new Set(
     files.map((f) => `${(f.fileName || "").toLowerCase()}|${f.category}`),
   );
   const merged = [...files];
-  for (const row of serverRows) {
+  for (const row of rows) {
     const fileName = String(row.originalFilename ?? "").trim();
     if (!fileName || !row.id) continue;
     const moduleKey = String(row.moduleKey ?? "general");
@@ -490,7 +513,7 @@ export function collectApplicantSubmittedFiles(
     }
   }
 
-  for (const upload of (md.requirementUploads ?? []) as StoredRequirementUpload[]) {
+  for (const upload of asRowList<StoredRequirementUpload>(md.requirementUploads)) {
     pushRequirement(files, upload);
   }
 
@@ -597,7 +620,7 @@ export function collectApplicantSubmittedFiles(
   }
 
   const proposal = getProjectProposalStored(applicant);
-  for (const att of proposal?.attachments ?? []) {
+  for (const att of asRowList<ProjectProposalAttachment>(proposal?.attachments)) {
     pushAttachment(files, att);
   }
   if (proposal?.document || proposal?.form) {
@@ -667,7 +690,7 @@ export function collectApplicantSubmittedFiles(
       navigateView: "landbank-withdrawal",
     });
   }
-  for (const filing of pis?.ongoingFilings ?? []) {
+  for (const filing of asRowList<PisOngoingFiling>(pis?.ongoingFilings)) {
     pushGenerated(files, {
       id: `generated-pis-ongoing-${filing.id}`,
       category: "pis",
@@ -718,7 +741,7 @@ export function collectApplicantSubmittedFiles(
     label: "Withdrawal letter request (2nd tranche)",
     sourceModule: "LandBank & Withdrawal",
   });
-  for (const [i, doc] of (t1?.quotations ?? []).entries()) {
+  for (const [i, doc] of asRowList<ModuleDocument>(t1?.quotations).entries()) {
     pushModuleDocument(files, doc, {
       id: `landbank-quotation-t1-${i}`,
       category: "landbank",
@@ -726,7 +749,7 @@ export function collectApplicantSubmittedFiles(
       sourceModule: "LandBank & Withdrawal",
     });
   }
-  for (const [i, doc] of (t1?.equipmentPhotos ?? []).entries()) {
+  for (const [i, doc] of asRowList<ModuleDocument>(t1?.equipmentPhotos).entries()) {
     pushModuleDocument(files, doc, {
       id: `landbank-photo-t1-${i}`,
       category: "landbank",
@@ -734,7 +757,7 @@ export function collectApplicantSubmittedFiles(
       sourceModule: "LandBank & Withdrawal",
     });
   }
-  for (const [i, doc] of (t2?.quotations ?? []).entries()) {
+  for (const [i, doc] of asRowList<ModuleDocument>(t2?.quotations).entries()) {
     pushModuleDocument(files, doc, {
       id: `landbank-quotation-t2-${i}`,
       category: "landbank",
@@ -742,7 +765,7 @@ export function collectApplicantSubmittedFiles(
       sourceModule: "LandBank & Withdrawal",
     });
   }
-  for (const [i, doc] of (t2?.equipmentPhotos ?? []).entries()) {
+  for (const [i, doc] of asRowList<ModuleDocument>(t2?.equipmentPhotos).entries()) {
     pushModuleDocument(files, doc, {
       id: `landbank-photo-t2-${i}`,
       category: "landbank",
@@ -752,11 +775,11 @@ export function collectApplicantSubmittedFiles(
   }
 
   const procurementForm = getProcurementForm(applicant);
-  for (const doc of procurementForm.documents) {
+  for (const doc of asRowList<ProcurementDocument>(procurementForm.documents)) {
     pushProcurementDoc(files, doc, "procurement");
   }
-  for (const entry of procurementForm.liquidations) {
-    for (const [i, doc] of entry.attachments.entries()) {
+  for (const entry of asRowList<LiquidationEntry>(procurementForm.liquidations)) {
+    for (const [i, doc] of asRowList(entry.attachments).entries()) {
       pushModuleDocument(
         files,
         {
@@ -779,8 +802,14 @@ export function collectApplicantSubmittedFiles(
     }
   }
 
-  const refundForm = getRefundForm(applicant);
-  for (const pdc of refundForm.pdcs ?? []) {
+  let refundForm;
+  try {
+    refundForm = getRefundForm(applicant);
+  } catch (err) {
+    console.error("[aisetup] getRefundForm", err);
+    refundForm = { pdcs: [] };
+  }
+  for (const pdc of asRowList<PDCEntry>(refundForm.pdcs)) {
     if (pdc.paymentReceipt?.fileName) {
       pushModuleDocument(files, pdc.paymentReceipt, {
         id: `refund-receipt-${pdc.id}`,
