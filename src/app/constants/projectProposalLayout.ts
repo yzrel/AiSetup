@@ -20,6 +20,9 @@ export const PP_SECTION_FINANCIAL = "FINANCIAL ASPECT";
 export const PP_SECTION_RISK = "RISK MANAGEMENT";
 export const PP_SECTION_WASTE = "WASTE MANAGEMENT/DISPOSAL";
 
+export const PP_SUBHEADING_CAPACITY =
+  "Capacity, volume and cost of production";
+
 export const PP_ORGANIZATION_TYPES = [
   "Single Proprietorship",
   "Partnership",
@@ -88,6 +91,35 @@ export const PP_EXPECTED_OUTPUT_HEADINGS = [
   "Percentage decrease in rejects",
   "Additional clients",
   "Others (please specify)",
+] as const;
+
+export const PP_COMPENSATION_COLUMNS = [
+  "Particulars",
+  "# of workers",
+  "Daily Rate",
+  "Days",
+  "Weekly",
+  "Monthly Salary",
+  "Annually",
+] as const;
+
+export const PP_RAW_MATERIAL_COST_COLUMNS = [
+  "Particulars",
+  "Qty",
+  "UOM",
+  "Unit Cost",
+  "Total Cost per batch",
+  "# of batches",
+  "Weekly",
+  "Monthly",
+  "Annually",
+  "Source/Supplier",
+] as const;
+
+export const PP_RAW_MATERIAL_ALLOCATION_COLUMNS = [
+  "Particulars",
+  "Ratio",
+  "Weekly",
 ] as const;
 
 export const PP_RAW_MATERIAL_COLUMNS = [

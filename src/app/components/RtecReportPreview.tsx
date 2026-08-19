@@ -9,7 +9,17 @@ import type {
   RtecComplianceItem,
   RtecReportForm,
 } from "../api/types";
-import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
+import {
+  compensationTableFooterRow,
+  PROPOSAL_ATTACHMENT_LABELS,
+  rawMaterialAllocationFooterRow,
+  rawMaterialCostFooterRow,
+} from "../utils/projectProposal";
+import {
+  PP_COMPENSATION_COLUMNS,
+  PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
+  PP_RAW_MATERIAL_COST_COLUMNS,
+} from "../constants/projectProposalLayout";
 import { snapshotStatementTables } from "../utils/financialProjection";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
 import { applicantStore } from "../store/applicantStore";
@@ -71,7 +81,12 @@ function Table({
   return (
     <PreviewTable
       className={colClasses}
-      columns={headers.map((h, i) => ({ key: String(i), header: h, mobileLabel: h }))}
+      columns={headers.map((h, i) => ({
+        key: String(i),
+        header: h,
+        mobileLabel: h,
+        className: h === "Particulars" ? "min-w-[12rem] wrap" : undefined,
+      }))}
       rows={rows.length ? rows : []}
     />
   );
@@ -314,7 +329,20 @@ export function RtecReportPreview({
             </div>
             <div className="mt-3">
               <p className="text-xs font-bold text-gray-500 mb-1">Compensation</p>
-              <Narrative text={pp.compensation} />
+              <Table
+                headers={[...PP_COMPENSATION_COLUMNS]}
+                rows={[
+                  ...(pp.compensationTable ?? []).filter((r) =>
+                    r.some((c) => c.trim()),
+                  ),
+                  compensationTableFooterRow(pp.compensationTable),
+                ]}
+              />
+              {pp.compensation?.trim() ? (
+                <div className="mt-2">
+                  <Narrative text={pp.compensation} />
+                </div>
+              ) : null}
             </div>
           </Section>
           <Footer page="3" />
@@ -330,6 +358,26 @@ export function RtecReportPreview({
           <Narrative text={pp.productionProcess} />
           <p className="text-xs font-bold text-gray-500 mt-4 mb-1">b. Material Balance</p>
           <Narrative text={pp.rawMaterialsNarrative} />
+          <p className="text-xs font-bold text-gray-500 mt-4 mb-1">Raw Material Cost</p>
+          <Table
+            headers={[...PP_RAW_MATERIAL_COST_COLUMNS]}
+            rows={[
+              ...(pp.rawMaterialCostTable ?? []).filter((r) =>
+                r.some((c) => c.trim()),
+              ),
+              rawMaterialCostFooterRow(pp.rawMaterialCostTable),
+            ]}
+          />
+          <p className="text-xs font-bold text-gray-500 mt-4 mb-1">Raw Materials Allocation</p>
+          <Table
+            headers={[...PP_RAW_MATERIAL_ALLOCATION_COLUMNS]}
+            rows={[
+              ...(pp.rawMaterialAllocationTable ?? []).filter((r) =>
+                r.some((c) => c.trim()),
+              ),
+              rawMaterialAllocationFooterRow(pp.rawMaterialAllocationTable),
+            ]}
+          />
           <p className="text-xs font-bold text-gray-500 mt-4 mb-1">2. Existing Production Equipment</p>
           <Table
             headers={["Type of Equipment", "No. of Units", "Year Acquired"]}

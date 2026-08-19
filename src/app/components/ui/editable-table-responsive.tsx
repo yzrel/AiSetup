@@ -15,6 +15,12 @@ export interface EditableTableResponsiveProps {
   /** Show delete button per row (Project Proposal tables) */
   deletable?: boolean;
   headerVariant?: "dost" | "gray";
+  /** Column indexes that display computed values (not editable). */
+  readOnlyColumns?: number[];
+  /** Column indexes that use a wrapping textarea (e.g. Particulars). */
+  multilineColumns?: number[];
+  columnClassNames?: string[];
+  tableClassName?: string;
 }
 
 export function EditableTableResponsive({
@@ -25,8 +31,16 @@ export function EditableTableResponsive({
   addLabel = "+ Add Row",
   deletable = false,
   headerVariant = "dost",
+  readOnlyColumns,
+  multilineColumns,
+  columnClassNames,
+  tableClassName,
 }: EditableTableResponsiveProps) {
+  const readOnly = new Set(readOnlyColumns ?? []);
+  const multiline = new Set(multilineColumns ?? []);
+
   const updateCell = (ri: number, ci: number, value: string) => {
+    if (readOnly.has(ci)) return;
     const next = rows.map((r) => [...r]);
     while (next[ri].length < columns.length) next[ri].push("");
     next[ri][ci] = value;
@@ -38,7 +52,42 @@ export function EditableTableResponsive({
   };
 
   const inputCls =
-    "w-full border border-gray-200 rounded px-2 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300";
+    "w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300";
+  const readOnlyCls = "bg-gray-50 text-gray-700 cursor-default";
+
+  const renderCell = (row: string[], ri: number, ci: number, desktop: boolean) => {
+    const value = row[ci] ?? "";
+    const locked = readOnly.has(ci);
+    const wrap = multiline.has(ci);
+    const shared = desktop
+      ? headerVariant === "dost"
+        ? `w-full border-none bg-transparent text-xs px-2 py-1 leading-tight outline-none rounded ${
+            locked ? readOnlyCls : "focus:bg-blue-50"
+          }`
+        : `w-full px-2 py-0.5 leading-tight border border-gray-100 rounded ${locked ? readOnlyCls : ""}`
+      : `${inputCls} ${locked ? readOnlyCls : ""}`;
+
+    if (wrap) {
+      return (
+        <input
+          value={value}
+          readOnly={locked}
+          onChange={(e) => updateCell(ri, ci, e.target.value)}
+          className={`${shared} min-w-0`}
+          title={value}
+        />
+      );
+    }
+
+    return (
+      <input
+        value={value}
+        readOnly={locked}
+        onChange={(e) => updateCell(ri, ci, e.target.value)}
+        className={shared}
+      />
+    );
+  };
 
   return (
     <div className="mb-3">
@@ -54,11 +103,7 @@ export function EditableTableResponsive({
                 <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">
                   {col}
                 </label>
-                <input
-                  value={row[ci] ?? ""}
-                  onChange={(e) => updateCell(ri, ci, e.target.value)}
-                  className={inputCls}
-                />
+                {renderCell(row, ri, ci, false)}
               </div>
             ))}
             {deletable && (
@@ -76,7 +121,9 @@ export function EditableTableResponsive({
 
       {/* Desktop: table */}
       <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-lg">
-        <table className="w-full text-xs border-collapse">
+        <table
+          className={`w-full text-xs border-collapse ${tableClassName ?? ""}`.trim()}
+        >
           <thead>
             <tr
               className={headerVariant === "gray" ? "bg-gray-50" : undefined}
@@ -85,7 +132,9 @@ export function EditableTableResponsive({
               {columns.map((col, i) => (
                 <th
                   key={i}
-                  className={`px-3 py-2 font-semibold text-left whitespace-nowrap ${
+                  className={`px-3 py-2 font-semibold text-left ${
+                    i === 0 ? "whitespace-normal" : "whitespace-nowrap"
+                  } ${columnClassNames?.[i] ?? ""} ${
                     headerVariant === "dost"
                       ? "text-white"
                       : "text-gray-600 border-b border-gray-200"
@@ -101,16 +150,11 @@ export function EditableTableResponsive({
             {rows.map((row, ri) => (
               <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 {columns.map((_, ci) => (
-                  <td key={ci} className="border border-gray-100 p-1">
-                    <input
-                      value={row[ci] ?? ""}
-                      onChange={(e) => updateCell(ri, ci, e.target.value)}
-                      className={
-                        headerVariant === "dost"
-                          ? "w-full border-none bg-transparent text-xs px-2 py-1.5 outline-none focus:bg-blue-50 rounded"
-                          : "w-full px-2 py-1 border border-gray-100 rounded"
-                      }
-                    />
+                  <td
+                    key={ci}
+                    className={`border border-gray-100 p-0.5 align-middle ${columnClassNames?.[ci] ?? ""}`}
+                  >
+                    {renderCell(row, ri, ci, true)}
                   </td>
                 ))}
                 {deletable && (

@@ -31,7 +31,34 @@ alwaysApply: false
 
 ## Official sections (order)
 
-Cover → PROJECT BACKGROUND (Company Profile with checkbox grids) → Management → Plant site → Capacity/Raw materials → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT.
+Cover → PROJECT BACKGROUND (Company Profile with checkbox grids) → Management → Plant site → Capacity, volume and cost of production / Raw materials → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT.
+
+## Compensation table
+
+Under **B.3 Compensation** (`3. Compensation`):
+
+1. Seven-column table: Particulars, # of workers, Daily Rate, Days, Weekly, Monthly Salary, Annually (`PP_COMPENSATION_COLUMNS` / `form.compensationTable`)
+2. Staff enter Particulars, # of workers, Daily Rate, and Days (days per week). Weekly / Monthly / Annually are computed:
+   - Weekly = Daily Rate × Days × # of workers
+   - Monthly = Weekly × 4
+   - Annually = Monthly × 12
+3. Particulars column is wide enough to show full job titles (wrap; do not clip).
+4. Bold **Total** footer: Daily Rate cell is Σ(Daily Rate × workers); Days blank; Weekly / Monthly / Annually summed. Do not total Particulars or # of workers.
+5. Optional narrative notes (`form.compensation`) below the table when filled
+
+## Capacity tables (section D)
+
+Under **D. Capacity, volume and cost of production**:
+
+1. Narrative (`capacityVolumeNarrative`)
+2. **Raw Material Cost** (`rawMaterialCostTable` / `PP_RAW_MATERIAL_COST_COLUMNS`): Particulars, Qty, UOM, Unit Cost, Total Cost per batch, # of batches, Weekly, Monthly, Annually, Source/Supplier
+   - Total Cost per batch = Qty × Unit Cost
+   - Weekly = Total Cost per batch × # of batches (per week)
+   - Monthly = Weekly × 4; Annually = Monthly × 12
+   - Total footer sums per-batch, Weekly, Monthly, Annually
+3. **Raw Materials Allocation** (`rawMaterialAllocationTable`): Particulars, Ratio, Weekly — Total footer sums Ratio and Weekly
+
+The later **E. Raw material/s** table (`rawMaterialsTable`) is unchanged.
 
 ## Checkbox grids
 

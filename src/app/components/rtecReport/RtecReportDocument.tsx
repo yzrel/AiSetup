@@ -16,6 +16,7 @@ import {
   PP_BUDGET_COLUMNS,
   PP_BUDGET_NOTE,
   PP_BUSINESS_ACTIVITY_PAIRS,
+  PP_COMPENSATION_COLUMNS,
   PP_EQUIPMENT_COLUMNS,
   PP_EXPECTED_OUTPUT_HEADINGS,
   PP_FABRICATOR_COLUMNS,
@@ -28,6 +29,8 @@ import {
   PP_PRODUCT_PRICE_COLUMNS,
   PP_PROFIT_TYPES,
   PP_QUICK_RATIO_COLUMNS,
+  PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
+  PP_RAW_MATERIAL_COST_COLUMNS,
   PP_REFUND_NOTE,
   PP_RISK_COLUMNS,
   PP_RISK_FOOTNOTE,
@@ -52,7 +55,12 @@ import {
   formatCurrencyDisplay,
   isOptionChecked,
 } from "../../constants/rtecReportLayout";
-import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
+import {
+  compensationTableFooterRow,
+  PROPOSAL_ATTACHMENT_LABELS,
+  rawMaterialAllocationFooterRow,
+  rawMaterialCostFooterRow,
+} from "../../utils/projectProposal";
 import { snapshotStatementTables } from "../../utils/financialProjection";
 import { getFinancialProjectionStored } from "../../utils/financialProjectionStore";
 import { applicantStore } from "../../store/applicantStore";
@@ -172,15 +180,19 @@ function CheckBulletList({ items }: { items: string[] }) {
 function DataTable({
   columns,
   rows,
+  footerRow,
+  className = "",
 }: {
   columns: readonly string[];
   rows: string[][];
+  footerRow?: readonly string[];
+  className?: string;
 }) {
   const filtered = rows.filter((r) => r.some((c) => val(c)));
   const body = filtered.length > 0 ? filtered : [columns.map(() => "")];
 
   return (
-    <FormTable>
+    <FormTable className={className}>
       <thead>
         <tr>
           {columns.map((col) => (
@@ -192,11 +204,22 @@ function DataTable({
         {body.map((row, i) => (
           <tr key={i}>
             {columns.map((_, j) => (
-              <td key={j}>{val(row[j]) || "\u00a0"}</td>
+              <td key={j} className={j === 0 ? "rtec-form-particulars" : undefined}>
+                {val(row[j]) || "\u00a0"}
+              </td>
             ))}
           </tr>
         ))}
       </tbody>
+      {footerRow ? (
+        <tfoot>
+          <tr>
+            {columns.map((_, j) => (
+              <td key={j}>{val(footerRow[j]) || "\u00a0"}</td>
+            ))}
+          </tr>
+        </tfoot>
+      ) : null}
     </FormTable>
   );
 }
@@ -587,7 +610,15 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
         <FieldLabel>Skills and expertise of employee/owner (proponent)</FieldLabel>
         <NarrativeBlock text={pp.skillsExpertise} />
         <FieldLabel>Compensation</FieldLabel>
-        <NarrativeBlock text={pp.compensation} />
+        <DataTable
+          className="rtec-form-compensation-table"
+          columns={PP_COMPENSATION_COLUMNS}
+          rows={pp.compensationTable ?? []}
+          footerRow={compensationTableFooterRow(pp.compensationTable)}
+        />
+        {pp.compensation?.trim() ? (
+          <NarrativeBlock text={pp.compensation} />
+        ) : null}
       </FormBlock>
 
       <FormBlock>
@@ -597,6 +628,20 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
         <NarrativeBlock text={pp.productionProcess} />
         <FieldLabel>b. Material Balance</FieldLabel>
         <NarrativeBlock text={pp.rawMaterialsNarrative} />
+        <FieldLabel>Raw Material Cost</FieldLabel>
+        <DataTable
+          className="rtec-form-rm-cost-table"
+          columns={PP_RAW_MATERIAL_COST_COLUMNS}
+          rows={pp.rawMaterialCostTable ?? []}
+          footerRow={rawMaterialCostFooterRow(pp.rawMaterialCostTable)}
+        />
+        <FieldLabel>Raw Materials Allocation</FieldLabel>
+        <DataTable
+          className="rtec-form-rm-alloc-table"
+          columns={PP_RAW_MATERIAL_ALLOCATION_COLUMNS}
+          rows={pp.rawMaterialAllocationTable ?? []}
+          footerRow={rawMaterialAllocationFooterRow(pp.rawMaterialAllocationTable)}
+        />
         <FieldLabel>2. Existing Production Equipment</FieldLabel>
         <DataTable columns={PP_EQUIPMENT_COLUMNS} rows={equipmentRows} />
         <FieldLabel>

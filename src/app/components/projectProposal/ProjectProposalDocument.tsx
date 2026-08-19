@@ -17,6 +17,7 @@ import {
   PP_BUDGET_COLUMNS,
   PP_BUDGET_NOTE,
   PP_BUSINESS_ACTIVITY_PAIRS,
+  PP_COMPENSATION_COLUMNS,
   PP_EQUIPMENT_COLUMNS,
   PP_EXPECTED_OUTPUT_HEADINGS,
   PP_FABRICATOR_COLUMNS,
@@ -28,7 +29,9 @@ import {
   PP_ORGANIZATION_TYPES,
   PP_PRODUCT_PRICE_COLUMNS,
   PP_PROFIT_TYPES,
+  PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
   PP_RAW_MATERIAL_COLUMNS,
+  PP_RAW_MATERIAL_COST_COLUMNS,
   PP_REFUND_NOTE,
   PP_REGISTRATION_OFFICES,
   PP_RISK_COLUMNS,
@@ -41,12 +44,18 @@ import {
   PP_SECTION_RISK,
   PP_SECTION_TECHNOLOGICAL,
   PP_SECTION_WASTE,
+  PP_SUBHEADING_CAPACITY,
   PROJECT_PROPOSAL_TITLE,
   displayValue,
   formatCurrencyDisplay,
   isOptionChecked,
 } from "../../constants/projectProposalLayout";
-import { PROPOSAL_ATTACHMENT_LABELS } from "../../utils/projectProposal";
+import {
+  compensationTableFooterRow,
+  PROPOSAL_ATTACHMENT_LABELS,
+  rawMaterialAllocationFooterRow,
+  rawMaterialCostFooterRow,
+} from "../../utils/projectProposal";
 import { snapshotStatementTables } from "../../utils/financialProjection";
 import { StoredFileImage } from "../StoredFilePreview";
 import { isImageFile } from "../../utils/storedFilePreview";
@@ -168,9 +177,13 @@ function CheckBulletList({ items }: { items: string[] }) {
 function DataTable({
   columns,
   rows,
+  footerRow,
+  className = "",
 }: {
   columns: readonly string[];
   rows: string[][];
+  footerRow?: readonly string[];
+  className?: string;
 }) {
   const filtered = rows.filter((r) => r.some((c) => val(c)));
   const body =
@@ -179,7 +192,7 @@ function DataTable({
       : [columns.map(() => "")];
 
   return (
-    <FormTable>
+    <FormTable className={className}>
       <thead>
         <tr>
           {columns.map((col) => (
@@ -191,11 +204,22 @@ function DataTable({
         {body.map((row, i) => (
           <tr key={i}>
             {columns.map((_, j) => (
-              <td key={j}>{val(row[j]) || "\u00a0"}</td>
+              <td key={j} className={j === 0 ? "pp-form-particulars" : undefined}>
+                {val(row[j]) || "\u00a0"}
+              </td>
             ))}
           </tr>
         ))}
       </tbody>
+      {footerRow ? (
+        <tfoot>
+          <tr>
+            {columns.map((_, j) => (
+              <td key={j}>{val(footerRow[j]) || "\u00a0"}</td>
+            ))}
+          </tr>
+        </tfoot>
+      ) : null}
     </FormTable>
   );
 }
@@ -530,7 +554,15 @@ export function ProjectProposalDocument({
         </p>
         <NarrativeBlock text={narrative("skillsExpertise", "skillsExpertise")} />
         <p className="pp-form-numbered-label">3. Compensation</p>
-        <NarrativeBlock text={form.compensation} />
+        <DataTable
+          className="pp-form-compensation-table"
+          columns={PP_COMPENSATION_COLUMNS}
+          rows={form.compensationTable ?? []}
+          footerRow={compensationTableFooterRow(form.compensationTable)}
+        />
+        {form.compensation?.trim() ? (
+          <NarrativeBlock text={form.compensation} />
+        ) : null}
         <p className="pp-form-numbered-label">
           4. Gender and Development (GAD) — Participation and Involvement
         </p>
@@ -548,9 +580,23 @@ export function ProjectProposalDocument({
       </FormBlock>
 
       <FormBlock>
-        <SubHeading>D. Capacity, volume and cost of production</SubHeading>
+        <SubHeading>D. {PP_SUBHEADING_CAPACITY}</SubHeading>
         <NarrativeBlock
           text={narrative("capacityVolumeNarrative", "capacityVolumeNarrative")}
+        />
+        <FieldLabel>Raw Material Cost</FieldLabel>
+        <DataTable
+          className="pp-form-rm-cost-table"
+          columns={PP_RAW_MATERIAL_COST_COLUMNS}
+          rows={form.rawMaterialCostTable ?? []}
+          footerRow={rawMaterialCostFooterRow(form.rawMaterialCostTable)}
+        />
+        <FieldLabel>Raw Materials Allocation</FieldLabel>
+        <DataTable
+          className="pp-form-rm-alloc-table"
+          columns={PP_RAW_MATERIAL_ALLOCATION_COLUMNS}
+          rows={form.rawMaterialAllocationTable ?? []}
+          footerRow={rawMaterialAllocationFooterRow(form.rawMaterialAllocationTable)}
         />
         <SubHeading>E. Raw material/s used and sources of raw material</SubHeading>
         <NarrativeBlock text={narrative("rawMaterialsNarrative", "rawMaterialsNarrative")} />

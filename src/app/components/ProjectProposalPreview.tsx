@@ -9,7 +9,18 @@ import type {
   ProjectProposalForm,
   ProjectProposalDocumentResponse,
 } from "../api/types";
-import { PROPOSAL_ATTACHMENT_LABELS } from "../utils/projectProposal";
+import {
+  compensationTableFooterRow,
+  PROPOSAL_ATTACHMENT_LABELS,
+  rawMaterialAllocationFooterRow,
+  rawMaterialCostFooterRow,
+} from "../utils/projectProposal";
+import {
+  PP_COMPENSATION_COLUMNS,
+  PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
+  PP_RAW_MATERIAL_COST_COLUMNS,
+  PP_SUBHEADING_CAPACITY,
+} from "../constants/projectProposalLayout";
 import { printProjectProposalPdf } from "../utils/projectProposalPrint";
 import { snapshotStatementTables } from "../utils/financialProjection";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
@@ -94,7 +105,12 @@ function Table({
 }) {
   return (
     <PreviewTable
-      columns={headers.map((h, i) => ({ key: String(i), header: h, mobileLabel: h }))}
+      columns={headers.map((h, i) => ({
+        key: String(i),
+        header: h,
+        mobileLabel: h,
+        className: h === "Particulars" ? "min-w-[12rem] wrap" : undefined,
+      }))}
       rows={rows}
     />
   );
@@ -279,7 +295,20 @@ export function ProjectProposalPreview({
           </div>
           <div className="mt-3">
             <p className="text-xs font-bold text-gray-500 uppercase mb-1">B.3 Compensation</p>
-            <Narrative text={form.compensation} />
+            <Table
+              headers={[...PP_COMPENSATION_COLUMNS]}
+              rows={[
+                ...(form.compensationTable ?? []).filter((r) =>
+                  r.some((c) => c.trim()),
+                ),
+                compensationTableFooterRow(form.compensationTable),
+              ]}
+            />
+            {form.compensation?.trim() ? (
+              <div className="mt-2">
+                <Narrative text={form.compensation} />
+              </div>
+            ) : null}
           </div>
           <div className="mt-3">
             <p className="text-xs font-bold text-gray-500 uppercase mb-1">
@@ -300,8 +329,34 @@ export function ProjectProposalPreview({
           </div>
         </Section>
 
-        <Section title="Production Capacity">
+        <Section title={PP_SUBHEADING_CAPACITY}>
           <Narrative text={narrative("capacityVolumeNarrative", "capacityVolumeNarrative")} />
+          <div className="mt-3">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Raw Material Cost</p>
+            <Table
+              headers={[...PP_RAW_MATERIAL_COST_COLUMNS]}
+              rows={[
+                ...(form.rawMaterialCostTable ?? []).filter((r) =>
+                  r.some((c) => c.trim()),
+                ),
+                rawMaterialCostFooterRow(form.rawMaterialCostTable),
+              ]}
+            />
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-1">
+              Raw Materials Allocation
+            </p>
+            <Table
+              headers={[...PP_RAW_MATERIAL_ALLOCATION_COLUMNS]}
+              rows={[
+                ...(form.rawMaterialAllocationTable ?? []).filter((r) =>
+                  r.some((c) => c.trim()),
+                ),
+                rawMaterialAllocationFooterRow(form.rawMaterialAllocationTable),
+              ]}
+            />
+          </div>
         </Section>
 
         <Section title="Raw Materials">

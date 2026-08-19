@@ -141,6 +141,40 @@
   text-align: center;
 }
 
+#project-proposal-print-root .pp-form-table tfoot td {
+  font-weight: 700;
+  background: #f3f4f6;
+}
+
+#project-proposal-print-root .pp-form-compensation-table {
+  table-layout: fixed;
+}
+
+#project-proposal-print-root .pp-form-compensation-table th:first-child,
+#project-proposal-print-root .pp-form-compensation-table td.pp-form-particulars {
+  width: 28%;
+  min-width: 28%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+#project-proposal-print-root .pp-form-rm-cost-table,
+#project-proposal-print-root .pp-form-rm-alloc-table {
+  table-layout: fixed;
+  font-size: 9px;
+}
+
+#project-proposal-print-root .pp-form-rm-cost-table th:first-child,
+#project-proposal-print-root .pp-form-rm-cost-table td.pp-form-particulars,
+#project-proposal-print-root .pp-form-rm-alloc-table th:first-child,
+#project-proposal-print-root .pp-form-rm-alloc-table td.pp-form-particulars {
+  width: 18%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 #project-proposal-print-root .pp-form-label {
   font-weight: 600;
   width: 32%;

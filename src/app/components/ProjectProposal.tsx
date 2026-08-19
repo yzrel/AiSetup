@@ -53,6 +53,16 @@ import {
   saveProjectProposalDraft,
   submitProjectProposal,
   sumBudgetItems,
+  COMPENSATION_COMPUTED_COLUMNS,
+  emptyCompensationRow,
+  emptyRawMaterialAllocationRow,
+  emptyRawMaterialCostRow,
+  RAW_MATERIAL_COST_COMPUTED_COLUMNS,
+  recomputeCompensationTable,
+  recomputeRawMaterialCostTable,
+  sumCompensationColumns,
+  sumRawMaterialAllocationColumns,
+  sumRawMaterialCostColumns,
   validateProjectProposalSubmit,
 } from "../utils/projectProposal";
 import type { ProposalAiField } from "../utils/projectProposal";
@@ -67,11 +77,13 @@ import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { StoredFileImage } from "./StoredFilePreview";
 import { isImageFile } from "../utils/storedFilePreview";
+import { AiAssistNotice, AiAssistStringList, AiAssistTextarea } from "./AiAssistField";
 import {
-  AiAssistNotice,
-  AiAssistStringList,
-  AiAssistTextarea,
-} from "./AiAssistField";
+  PP_COMPENSATION_COLUMNS,
+  PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
+  PP_RAW_MATERIAL_COST_COLUMNS,
+  PP_SUBHEADING_CAPACITY,
+} from "../constants/projectProposalLayout";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -217,11 +229,19 @@ function TableEditor({
   headers,
   rows,
   onChange,
+  readOnlyColumns,
+  multilineColumns,
+  columnClassNames,
+  tableClassName,
 }: {
   label: string;
   headers: string[];
   rows: string[][];
   onChange: (rows: string[][]) => void;
+  readOnlyColumns?: number[];
+  multilineColumns?: number[];
+  columnClassNames?: string[];
+  tableClassName?: string;
 }) {
   return (
     <div>
@@ -234,8 +254,45 @@ function TableEditor({
         addLabel="Add row"
         deletable
         headerVariant="gray"
+        readOnlyColumns={readOnlyColumns}
+        multilineColumns={multilineColumns}
+        columnClassNames={columnClassNames}
+        tableClassName={tableClassName}
       />
     </div>
+  );
+}
+
+function CompensationTotalsLine({ rows }: { rows: string[][] | undefined }) {
+  const totals = sumCompensationColumns(rows);
+  return (
+    <p className="text-xs text-gray-500 mt-1.5">
+      Totals — Daily payroll: {totals.rate || "—"} · Weekly: {totals.weekly || "—"} ·
+      Monthly salary: {totals.monthlySalary || "—"} · Annually: {totals.annually || "—"}
+    </p>
+  );
+}
+
+function RawMaterialCostTotalsLine({ rows }: { rows: string[][] | undefined }) {
+  const totals = sumRawMaterialCostColumns(rows);
+  return (
+    <p className="text-xs text-gray-500 mt-1.5">
+      Totals — Per batch: {totals.batch || "—"} · Weekly: {totals.weekly || "—"} · Monthly:{" "}
+      {totals.monthly || "—"} · Annually: {totals.annually || "—"}
+    </p>
+  );
+}
+
+function RawMaterialAllocationTotalsLine({
+  rows,
+}: {
+  rows: string[][] | undefined;
+}) {
+  const totals = sumRawMaterialAllocationColumns(rows);
+  return (
+    <p className="text-xs text-gray-500 mt-1.5">
+      Totals — Ratio: {totals.ratio || "—"} · Weekly: {totals.weekly || "—"}
+    </p>
   );
 }
 
@@ -579,6 +636,33 @@ export function ProjectProposal({
                 />
               </div>
               <div className="mt-4">
+                <TableEditor
+                  label="Compensation table"
+                  headers={[...PP_COMPENSATION_COLUMNS]}
+                  rows={form.compensationTable ?? [emptyCompensationRow()]}
+                  onChange={(rows) =>
+                    patchForm({ compensationTable: recomputeCompensationTable(rows) })
+                  }
+                  readOnlyColumns={[...COMPENSATION_COMPUTED_COLUMNS]}
+                  multilineColumns={[0]}
+                  tableClassName="table-fixed"
+                  columnClassNames={[
+                    "w-[28%] min-w-[12rem]",
+                    "w-[9%]",
+                    "w-[11%]",
+                    "w-[8%]",
+                    "w-[12%]",
+                    "w-[16%]",
+                    "w-[16%]",
+                  ]}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Weekly = Daily Rate × Days × # of workers. Monthly = Weekly × 4. Annually =
+                  Monthly × 12.
+                </p>
+                <CompensationTotalsLine rows={form.compensationTable} />
+              </div>
+              <div className="mt-4">
                 <AiAssistTextarea
                   label="Gender and Development (GAD) — Participation and Involvement"
                   value={form.genderInvolvement}
@@ -619,14 +703,58 @@ export function ProjectProposal({
               </div>
             </div>
             <div>
-              <h2 className={sectionTitle}>Production Capacity</h2>
+              <h2 className={sectionTitle}>{PP_SUBHEADING_CAPACITY}</h2>
               <AiAssistTextarea
-                label="Capacity, Volume and Cost of Production"
+                label="Narrative"
                 value={form.capacityVolumeNarrative}
                 onChange={(capacityVolumeNarrative) => patchForm({ capacityVolumeNarrative })}
                 minHeight="min-h-[120px]"
                 {...ai("capacityVolumeNarrative")}
               />
+              <div className="mt-4">
+                <TableEditor
+                  label="Raw Material Cost"
+                  headers={[...PP_RAW_MATERIAL_COST_COLUMNS]}
+                  rows={form.rawMaterialCostTable ?? [emptyRawMaterialCostRow()]}
+                  onChange={(rows) =>
+                    patchForm({ rawMaterialCostTable: recomputeRawMaterialCostTable(rows) })
+                  }
+                  readOnlyColumns={[...RAW_MATERIAL_COST_COMPUTED_COLUMNS]}
+                  multilineColumns={[0]}
+                  tableClassName="table-fixed min-w-[64rem]"
+                  columnClassNames={[
+                    "w-[22%] min-w-[14rem]",
+                    "w-[6%]",
+                    "w-[6%]",
+                    "w-[8%]",
+                    "w-[11%]",
+                    "w-[8%]",
+                    "w-[8%]",
+                    "w-[8%]",
+                    "w-[9%]",
+                    "w-[14%] min-w-[8rem]",
+                  ]}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Total cost per batch = Qty × Unit Cost. Weekly = per batch × # of batches.
+                  Monthly = Weekly × 4. Annually = Monthly × 12.
+                </p>
+                <RawMaterialCostTotalsLine rows={form.rawMaterialCostTable} />
+              </div>
+              <div className="mt-4">
+                <TableEditor
+                  label="Raw Materials Allocation"
+                  headers={[...PP_RAW_MATERIAL_ALLOCATION_COLUMNS]}
+                  rows={form.rawMaterialAllocationTable ?? [emptyRawMaterialAllocationRow()]}
+                  onChange={(rawMaterialAllocationTable) =>
+                    patchForm({ rawMaterialAllocationTable })
+                  }
+                  multilineColumns={[0]}
+                  tableClassName="table-fixed"
+                  columnClassNames={["w-[50%] min-w-[12rem]", "w-[25%]", "w-[25%]"]}
+                />
+                <RawMaterialAllocationTotalsLine rows={form.rawMaterialAllocationTable} />
+              </div>
             </div>
             <div>
               <h2 className={sectionTitle}>Raw Materials</h2>

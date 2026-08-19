@@ -230,6 +230,9 @@ export function normalizeProjectProposalStored(
   const form = coerceArrayKeys(asRecord(obj.form) ?? {}, [
     "specificObjectives",
     "rawMaterialsTable",
+    "rawMaterialCostTable",
+    "rawMaterialAllocationTable",
+    "compensationTable",
     "productPriceTable",
     "marketStrategies",
     "equipmentTable",
@@ -291,6 +294,9 @@ export function normalizeRtecReportStored(
         "fabricatorTable",
         "expectedOutputBullets",
         "refundSchedule",
+        "compensationTable",
+        "rawMaterialCostTable",
+        "rawMaterialAllocationTable",
       ]);
     }
     base.form = next;

@@ -40,6 +40,7 @@ export interface PreviewTableColumn {
   header: ReactNode;
   /** Label for mobile card rows */
   mobileLabel?: string;
+  className?: string;
 }
 
 export function PreviewTable({
@@ -84,7 +85,9 @@ export function PreviewTable({
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="text-left px-3 py-2 font-semibold text-gray-700 whitespace-nowrap"
+                  className={`text-left px-3 py-2 font-semibold text-gray-700 ${
+                    col.className?.includes("wrap") ? "whitespace-normal" : "whitespace-nowrap"
+                  } ${col.className ?? ""}`}
                 >
                   {col.header}
                 </th>
@@ -95,7 +98,12 @@ export function PreviewTable({
             {rows.map((cells, rowIndex) => (
               <tr key={rowIndex} className="border-b border-gray-100">
                 {cells.map((cell, colIndex) => (
-                  <td key={colIndex} className="px-3 py-2 text-gray-800 align-top">
+                  <td
+                    key={colIndex}
+                    className={`px-3 py-2 text-gray-800 align-top break-words ${
+                      columns[colIndex]?.className ?? ""
+                    }`}
+                  >
                     {cell ?? "—"}
                   </td>
                 ))}

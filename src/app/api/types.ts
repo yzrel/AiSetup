@@ -428,8 +428,11 @@ export interface ProjectProposalForm {
   enterpriseBackground: string;
   skillsExpertise: string;
   compensation: string;
+  compensationTable: string[][];
   plantSiteNarrative: string;
   capacityVolumeNarrative: string;
+  rawMaterialCostTable: string[][];
+  rawMaterialAllocationTable: string[][];
   rawMaterialsNarrative: string;
   rawMaterialsTable: string[][];
   marketSituation: string;

@@ -144,6 +144,40 @@
   text-align: center;
 }
 
+#rtec-report-print-root .rtec-form-table tfoot td {
+  font-weight: 700;
+  background: #f3f4f6;
+}
+
+#rtec-report-print-root .rtec-form-compensation-table {
+  table-layout: fixed;
+}
+
+#rtec-report-print-root .rtec-form-compensation-table th:first-child,
+#rtec-report-print-root .rtec-form-compensation-table td.rtec-form-particulars {
+  width: 28%;
+  min-width: 28%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+#rtec-report-print-root .rtec-form-rm-cost-table,
+#rtec-report-print-root .rtec-form-rm-alloc-table {
+  table-layout: fixed;
+  font-size: 9px;
+}
+
+#rtec-report-print-root .rtec-form-rm-cost-table th:first-child,
+#rtec-report-print-root .rtec-form-rm-cost-table td.rtec-form-particulars,
+#rtec-report-print-root .rtec-form-rm-alloc-table th:first-child,
+#rtec-report-print-root .rtec-form-rm-alloc-table td.rtec-form-particulars {
+  width: 18%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 #rtec-report-print-root .rtec-form-label {
   font-weight: 600;
   width: 32%;

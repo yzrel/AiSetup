@@ -482,7 +482,7 @@ public class AiFieldSuggestionService {
                     enterprise, nature);
 
             case "capacityVolumeNarrative" -> """
-                    %s currently operates at a production volume consistent with its market share in the %s segment, with capacity constrained by equipment condition and manual bottlenecks. Target volume following technology upgrading will be documented using baseline throughput data collected before installation. Additional capacity is intended to meet documented customer demand without compromising quality. Seasonal or peak-demand scenarios have been considered in sizing the proposed intervention.""".formatted(
+                    %s currently operates at a production volume consistent with its market share in the %s segment, with capacity constrained by equipment condition and manual bottlenecks. Cost of production reflects prevailing input, labor, and overhead rates for this scale of operation. Target volume following technology upgrading will be documented using baseline throughput data collected before installation. Additional capacity is intended to meet documented customer demand without compromising quality. Seasonal or peak-demand scenarios have been considered in sizing the proposed intervention.""".formatted(
                     enterprise, sector);
 
             case "rawMaterialsNarrative" -> """
@@ -661,8 +661,8 @@ public class AiFieldSuggestionService {
                         "Write 3-4 sentences on wage levels, benefits, and incentives aligned with MSME practice."),
                 entry("plantSiteNarrative", "Plant Site Description", "Plant & Facilities", false,
                         "Write 4-5 sentences describing plant location, layout, utilities, and suitability for upgrading."),
-                entry("capacityVolumeNarrative", "Capacity and Production Volume", "Production Capacity", false,
-                        "Write 4-5 sentences on current and target capacity, shifts, and volume trends."),
+                entry("capacityVolumeNarrative", "Capacity, volume and cost of production", "Capacity, volume and cost of production", false,
+                        "Write 4-5 sentences on current and target capacity, production volume, and cost of production."),
                 entry("rawMaterialsNarrative", "Raw Materials", "Materials", false,
                         "Write 4-5 sentences on key inputs, sourcing, quality control, and supply reliability."),
                 entry("marketSituation", "Market Situation", "Market", false,

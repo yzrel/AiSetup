@@ -92,8 +92,11 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     enterpriseBackground: "",
     skillsExpertise: "",
     compensation: "",
+    compensationTable: [emptyCompensationRow()],
     plantSiteNarrative: "",
     capacityVolumeNarrative: "",
+    rawMaterialCostTable: [emptyRawMaterialCostRow()],
+    rawMaterialAllocationTable: [emptyRawMaterialAllocationRow()],
     rawMaterialsNarrative: "",
     rawMaterialsTable: [["", "", ""]],
     marketSituation: "",
@@ -447,6 +450,13 @@ function mergeProposalForm(
     }
     (merged as Record<string, unknown>)[key] = cur;
   }
+  merged.compensationTable = recomputeCompensationTable(merged.compensationTable);
+  merged.rawMaterialCostTable = recomputeRawMaterialCostTable(
+    merged.rawMaterialCostTable,
+  );
+  merged.rawMaterialAllocationTable = normalizeRawMaterialAllocationTable(
+    merged.rawMaterialAllocationTable,
+  );
   return merged;
 }
 
@@ -818,4 +828,260 @@ export function sumBudgetItems(items: ProjectProposalBudgetRow[]): string {
     if (!Number.isNaN(t)) total += t;
   }
   return total > 0 ? formatMoney(total) : "";
+}
+
+export const COMPENSATION_COL_COUNT = 7;
+export const COMPENSATION_COMPUTED_COLUMNS = [4, 5, 6] as const;
+
+export function emptyCompensationRow(): string[] {
+  return Array(COMPENSATION_COL_COUNT).fill("");
+}
+
+export interface CompensationColumnTotals {
+  rate: string;
+  weekly: string;
+  monthlySalary: string;
+  annually: string;
+}
+
+function parseCompensationAmount(value: string | undefined): number {
+  const n = parseFloat(String(value ?? "").replace(/[^\d.]/g, ""));
+  return Number.isNaN(n) ? 0 : n;
+}
+
+function formatCompensationTotal(sum: number): string {
+  return sum > 0 ? formatMoney(sum) : "";
+}
+
+/**
+ * Weekly = Daily Rate × Days × # of workers.
+ * Monthly = Weekly × 4. Annually = Monthly × 12.
+ * Legacy 6-column rows insert a blank Days cell at index 3.
+ */
+export function computeCompensationRow(row: unknown): string[] {
+  const raw = Array.isArray(row) ? row.map((c) => String(c ?? "")) : [];
+  const cells =
+    raw.length === 6
+      ? [raw[0], raw[1], raw[2], "", raw[3], raw[4], raw[5]]
+      : [...raw];
+  while (cells.length < COMPENSATION_COL_COUNT) cells.push("");
+  const particulars = cells[0] ?? "";
+  const workersRaw = cells[1] ?? "";
+  const rateRaw = cells[2] ?? "";
+  const daysRaw = cells[3] ?? "";
+  const workers = parseCompensationAmount(workersRaw);
+  const rate = parseCompensationAmount(rateRaw);
+  const days = parseCompensationAmount(daysRaw);
+  const weeklyNum =
+    rate > 0 && days > 0 && workers > 0 ? rate * days * workers : 0;
+  const monthlyNum = weeklyNum * 4;
+  const annuallyNum = monthlyNum * 12;
+  return [
+    particulars,
+    workersRaw,
+    rateRaw,
+    daysRaw,
+    formatCompensationTotal(weeklyNum),
+    formatCompensationTotal(monthlyNum),
+    formatCompensationTotal(annuallyNum),
+  ];
+}
+
+export function recomputeCompensationTable(
+  rows: string[][] | undefined,
+): string[][] {
+  const list = rows?.length ? rows : [emptyCompensationRow()];
+  return list.map((row) => computeCompensationRow(row));
+}
+
+/** Daily Rate total is Σ(rate × workers). Weekly/Monthly/Annually sum computed cells. */
+export function sumCompensationColumns(
+  rows: string[][] | undefined,
+): CompensationColumnTotals {
+  const computed = recomputeCompensationTable(rows);
+  let dailyPayroll = 0;
+  let weekly = 0;
+  let monthlySalary = 0;
+  let annually = 0;
+  for (const row of computed) {
+    const workers = parseCompensationAmount(row[1]);
+    const rate = parseCompensationAmount(row[2]);
+    dailyPayroll += rate * workers;
+    weekly += parseCompensationAmount(row[4]);
+    monthlySalary += parseCompensationAmount(row[5]);
+    annually += parseCompensationAmount(row[6]);
+  }
+  return {
+    rate: formatCompensationTotal(dailyPayroll),
+    weekly: formatCompensationTotal(weekly),
+    monthlySalary: formatCompensationTotal(monthlySalary),
+    annually: formatCompensationTotal(annually),
+  };
+}
+
+export function compensationTableFooterRow(
+  rows: string[][] | undefined,
+): string[] {
+  const totals = sumCompensationColumns(rows);
+  return [
+    "Total",
+    "",
+    totals.rate,
+    "",
+    totals.weekly,
+    totals.monthlySalary,
+    totals.annually,
+  ];
+}
+
+export const RAW_MATERIAL_COST_COL_COUNT = 10;
+export const RAW_MATERIAL_COST_COMPUTED_COLUMNS = [4, 6, 7, 8] as const;
+export const RAW_MATERIAL_ALLOCATION_COL_COUNT = 3;
+
+export function emptyRawMaterialCostRow(): string[] {
+  return Array(RAW_MATERIAL_COST_COL_COUNT).fill("");
+}
+
+export function emptyRawMaterialAllocationRow(): string[] {
+  return Array(RAW_MATERIAL_ALLOCATION_COL_COUNT).fill("");
+}
+
+export interface RawMaterialCostTotals {
+  batch: string;
+  weekly: string;
+  monthly: string;
+  annually: string;
+}
+
+export interface RawMaterialAllocationTotals {
+  ratio: string;
+  weekly: string;
+}
+
+function formatAllocationNumber(sum: number): string {
+  if (sum <= 0) return "";
+  return sum.toLocaleString("en-PH", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Total Cost per batch = Qty × Unit Cost.
+ * Weekly = Total Cost per batch × # of batches (per week).
+ * Monthly = Weekly × 4. Annually = Monthly × 12.
+ */
+export function computeRawMaterialCostRow(row: unknown): string[] {
+  const raw = Array.isArray(row) ? row.map((c) => String(c ?? "")) : [];
+  const cells = [...raw];
+  while (cells.length < RAW_MATERIAL_COST_COL_COUNT) cells.push("");
+  const particulars = cells[0] ?? "";
+  const qtyRaw = cells[1] ?? "";
+  const uom = cells[2] ?? "";
+  const unitCostRaw = cells[3] ?? "";
+  const batchesRaw = cells[5] ?? "";
+  const source = cells[9] ?? "";
+  const qty = parseCompensationAmount(qtyRaw);
+  const unitCost = parseCompensationAmount(unitCostRaw);
+  const batches = parseCompensationAmount(batchesRaw);
+  const batchCost = qty > 0 && unitCost > 0 ? qty * unitCost : 0;
+  const weeklyNum = batchCost > 0 && batches > 0 ? batchCost * batches : 0;
+  const monthlyNum = weeklyNum * 4;
+  const annuallyNum = monthlyNum * 12;
+  return [
+    particulars,
+    qtyRaw,
+    uom,
+    unitCostRaw,
+    formatCompensationTotal(batchCost),
+    batchesRaw,
+    formatCompensationTotal(weeklyNum),
+    formatCompensationTotal(monthlyNum),
+    formatCompensationTotal(annuallyNum),
+    source,
+  ];
+}
+
+export function recomputeRawMaterialCostTable(
+  rows: string[][] | undefined,
+): string[][] {
+  const list = rows?.length ? rows : [emptyRawMaterialCostRow()];
+  return list.map((row) => computeRawMaterialCostRow(row));
+}
+
+export function sumRawMaterialCostColumns(
+  rows: string[][] | undefined,
+): RawMaterialCostTotals {
+  const computed = recomputeRawMaterialCostTable(rows);
+  let batch = 0;
+  let weekly = 0;
+  let monthly = 0;
+  let annually = 0;
+  for (const row of computed) {
+    batch += parseCompensationAmount(row[4]);
+    weekly += parseCompensationAmount(row[6]);
+    monthly += parseCompensationAmount(row[7]);
+    annually += parseCompensationAmount(row[8]);
+  }
+  return {
+    batch: formatCompensationTotal(batch),
+    weekly: formatCompensationTotal(weekly),
+    monthly: formatCompensationTotal(monthly),
+    annually: formatCompensationTotal(annually),
+  };
+}
+
+export function rawMaterialCostFooterRow(
+  rows: string[][] | undefined,
+): string[] {
+  const totals = sumRawMaterialCostColumns(rows);
+  return [
+    "Total",
+    "",
+    "",
+    "",
+    totals.batch,
+    "",
+    totals.weekly,
+    totals.monthly,
+    totals.annually,
+    "",
+  ];
+}
+
+export function normalizeRawMaterialAllocationRow(row: unknown): string[] {
+  const raw = Array.isArray(row) ? row.map((c) => String(c ?? "")) : [];
+  const cells = [...raw];
+  while (cells.length < RAW_MATERIAL_ALLOCATION_COL_COUNT) cells.push("");
+  return cells.slice(0, RAW_MATERIAL_ALLOCATION_COL_COUNT);
+}
+
+export function normalizeRawMaterialAllocationTable(
+  rows: string[][] | undefined,
+): string[][] {
+  const list = rows?.length ? rows : [emptyRawMaterialAllocationRow()];
+  return list.map((row) => normalizeRawMaterialAllocationRow(row));
+}
+
+export function sumRawMaterialAllocationColumns(
+  rows: string[][] | undefined,
+): RawMaterialAllocationTotals {
+  const computed = normalizeRawMaterialAllocationTable(rows);
+  let ratio = 0;
+  let weekly = 0;
+  for (const row of computed) {
+    ratio += parseCompensationAmount(row[1]);
+    weekly += parseCompensationAmount(row[2]);
+  }
+  return {
+    ratio: formatAllocationNumber(ratio),
+    weekly: formatAllocationNumber(weekly),
+  };
+}
+
+export function rawMaterialAllocationFooterRow(
+  rows: string[][] | undefined,
+): string[] {
+  const totals = sumRawMaterialAllocationColumns(rows);
+  return ["Total", totals.ratio, totals.weekly];
 }
