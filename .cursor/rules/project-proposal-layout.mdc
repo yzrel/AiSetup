@@ -1,6 +1,6 @@
 ---
-description: SETUP Form 001 Project Proposal print-only official layout conventions
-globs: src/app/components/projectProposal/**,src/styles/projectProposal.css,src/app/constants/projectProposalLayout.ts,src/app/utils/projectProposalPrint.tsx
+description: SETUP Form 001 Project Proposal official layout (print + preview indent)
+globs: src/app/components/projectProposal/**,src/app/components/ProjectProposalPreview.tsx,src/styles/projectProposal.css,src/app/constants/projectProposalLayout.ts,src/app/utils/projectProposalPrint.tsx
 alwaysApply: false
 ---
 
@@ -8,20 +8,44 @@ alwaysApply: false
 
 ## Scope
 
-- **Print only** — on-screen preview in `ProjectProposalPreview.tsx` stays modern/summary layout.
-- Official output via `ProjectProposalDocument` rendered at print time (`printProjectProposalPdf`).
+- **Print** is the official Form 001 via `ProjectProposalDocument` at print time (`printProjectProposalPdf`).
+- **On-screen preview** in `ProjectProposalPreview.tsx` approximates Form 001 (same section order, heading indent, table columns) with portal chrome allowed (Application ID, AI/draft, signature block). Do **not** mount `ProjectProposalDocument` in the preview.
+- Official PDF is still in-page print of the document, not a browser print of the preview.
 
 ## Document title
 
 `SETUP Form 001 - Project Proposal Format`
 
+## Indent scale
+
+Heading and body that belong together share one wrapper. Do **not** nest `pp-form-indent-*` (paddings would add).
+
+- **0** — cover title, section heads (`PROJECT BACKGROUND`), company-profile table, risk table
+- **0.5in** (`.pp-form-indent-1`) — `A.` `B.` `C.` / `OBJECTIVES:` and narrative under those subheads
+- **0.75in** (`.pp-form-indent-2`) — numbered items (`1. Organizational chart`), nested labels (`Market Situation`, Raw Material Cost)
+- **1.0in** (`.pp-form-indent-3`) — dash items (`- Process Flow…`) and expected-output numbered blocks
+
+Constants: `PP_FORM_INDENT_CLASS` / `PP_FORM_INDENT_IN`. Employee Production / Non-Production stay `.pp-form-subrow` (0.35in inside the table).
+
 ## Pagination
 
 - Physical page footers via named `@page project-proposal-sheet`:
   - `@top-center`: `Effectivity: 2025`
-  - `@bottom-center`: Annex A-1 footer with `counter(page)` / `counter(pages)`
+  - `@bottom-center`: `SETUP Guidelines (Revision 3.0) Annex A-1: SETUP Form 001 - SETUP Project Proposal Page ` + `counter(page)` / `counter(pages)` (Arial Narrow 12pt)
+- Page: A4 portrait, **1in margins** on all sides (Word `pgMar` 1440 twips).
 - No per-section inline footers (avoid cross-bleed with TNA forms or fixed "Page X of 20").
 - `FormBlock` + `break-inside: avoid` — section titles stay with content; long tables may break across pages.
+
+## Print typography
+
+Match SETUP Form 001 Word (direct formatting, not Aptos theme):
+
+- Body / titles / section heads / cover labels: **Arial 12pt**. Title centered; section names justified.
+- Subsection list items: Arial 12pt; first subsection indent **0.5in** (see Indent scale). Body text aligns with its heading — do not indent headings only.
+- Tables, checkbox labels, refund months: **"Arial Narrow", Arial, sans-serif** at 11–12pt.
+- Instructions (“please check appropriate box…”): Arial Narrow 12pt italic.
+- Paragraph spacing after ≈ **8pt**; body line-height ≈ **1.08**. Cover fields line-height ≈ **1.15**.
+- Use `pt` in print CSS (not 11px/Segoe). Table cells: ~2–4pt padding, 0.5pt black borders.
 
 ## Print path
 
@@ -31,7 +55,37 @@ alwaysApply: false
 
 ## Official sections (order)
 
-Cover → PROJECT BACKGROUND (Company Profile with checkbox grids) → Management → Plant site → Capacity, volume and cost of production / Raw materials → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT.
+Cover → PROJECT BACKGROUND (A. Company Profile with checkbox grids, B. Management, C. Plant site, D. Capacity, E. Raw materials) → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT.
+
+## Marketing (official A–F)
+
+`PP_MARKETING_SUBHEADINGS`:
+
+- A. Market Situation, product demand and supply
+  - **Market Situation** — `marketSituation` narrative
+  - **Product demand** — `productDemandSupply` narrative plus **Volume of orders** table (`volumeOfOrdersTable`): Name of company, Address, Volume of orders
+  - Production / Non-Production style nesting: Product demand and the table sit under heading A; do not add a separate supply field
+- B. Product specifications and product price (`productPriceTable`)
+- C. Distribution channel (local/export)
+- D. Competitors
+- E. Existing problems (if any) — `existingMarketingProblems` (do **not** reuse S&T `interventionProblem`)
+- F. Market plans/strategies
+
+## Waste (official A–C)
+
+A. Volume monthly / B. Kinds / C. Methods. If those three are empty, print legacy `wasteManagement` under A.
+
+## Financial (official A–F)
+
+`PP_FINANCIAL_SUBHEADINGS`. After **E. Proposed Refund Schedule**, print **F. Investment Decision Analysis** with caption **Return on Investment** (`PP_IDA_ROI_CAPTION`). Two columns: Year | Annual Income (`PP_IDA_COLUMNS`).
+
+Computed by `buildInvestmentDecisionAnalysis` (not a stored table):
+
+- Year 1–5 annual income = frozen projection `ratios[].netIncome` (Net Income after Tax). If there is no snapshot, fall back to `form.roiTable` net-income column.
+- Total = sum of those five years. Average Asset's Life = 5 (`YEAR_COUNT`). Average Income = Total ÷ 5.
+- Divided by total project cost = budgetary requirement total (`sumBudgetItems`) when it is greater than 0, otherwise cover `projectCost`.
+- Return on Investment = Average Income ÷ project cost, rounded to a whole percent.
+- Keep the A. Financial capacity per-year ROI table (`form.roiTable`) unchanged.
 
 ## Compensation table
 
@@ -46,6 +100,32 @@ Under **B.3 Compensation** (`3. Compensation`):
 4. Bold **Total** footer: Daily Rate cell is Σ(Daily Rate × workers); Days blank; Weekly / Monthly / Annually summed. Do not total Particulars or # of workers.
 5. Optional narrative notes (`form.compensation`) below the table when filled
 
+## Schedule of activities (section F)
+
+Under **F. Schedule of activities for the proposed project**:
+
+1. Editor is Activity plus **M1–M8** checkboxes (`form.scheduleTable`). Clients check every month the activity occupies. Do **not** collect a Timeline text column, Responsible party, or week-level checkboxes.
+2. Each stored row is 9 cells: `[activity, m1…m8]`. Checked months are `"1"`. Legacy 2-col `[activity, timeline]` keeps the activity and clears months.
+3. Preview (`ScheduleGanttTable` `weeksPerMonth={1}`) is a Gantt with **one cell per month** (Activity | M1–M8). A checked month fills that cell black. Print still uses 4 visual week cells per month; week cells are not separately editable.
+
+## Existing production equipment
+
+Editor label **Existing production equipment**. Print heading **B. Existing production equipment**. Preview and RTEC use the same 9-column snapshot (do not squash to Type / Quantity / Year).
+
+Columns (`PP_EQUIPMENT_COLUMNS` / `form.equipmentTable`): Particulars, Year acquired, Acquisition cost, Qty, Total cost, EUL, Annual depreciation, RUL, Book Value.
+
+Staff enter Particulars, Year acquired, Acquisition cost, Qty, EUL, RUL. Computed (read-only), straight-line with salvage 0:
+
+- Total cost = Qty × Acquisition cost
+- Annual depreciation = Total cost / EUL
+- Book value = Total cost − Annual depreciation × (EUL − RUL)
+
+If EUL is missing or ≤ 0, leave depreciation and book value blank. If RUL > EUL, treat years-used as 0 (book value = total cost).
+
+Footer **Total** sums **Total cost** and **Book Value** only (Year, Acquisition cost, Qty, EUL, Annual depreciation, and RUL stay blank). Print as a dense 8pt fixed-layout table so 9 columns fit A4.
+
+Legacy 3-col `[Type, Quantity, Year Acquired]` and TNA 5-col `[Type, Specs, Capacity, Units, Year]` migrate on recompute. Generated documents copy the staff/TNA grid (`equipmentTable` on the document response) and must not ask the model to invent rows.
+
 ## Capacity tables (section D)
 
 Under **D. Capacity, volume and cost of production**:
@@ -56,14 +136,32 @@ Under **D. Capacity, volume and cost of production**:
    - Weekly = Total Cost per batch × # of batches (per week)
    - Monthly = Weekly × 4; Annually = Monthly × 12
    - Total footer sums per-batch, Weekly, Monthly, Annually
+   - Print as a dense 8pt fixed-layout table so 10 columns fit A4: wrap headers (Source/Supplier), right-align money, wrap Particulars and Source — do not clip or overlap adjacent cells
 3. **Raw Materials Allocation** (`rawMaterialAllocationTable`): Particulars, Ratio, Weekly — Total footer sums Ratio and Weekly
+
+Other wide print tables (Compensation, Budget, Refund, financial ratios) use the same wrap + right-align number pattern; Budget/projections share the dense 8pt treatment.
 
 The later **E. Raw material/s** table (`rawMaterialsTable`) is unchanged.
 
-## Checkbox grids
+## Company Profile (print tables)
 
-- Organization type, profit/non-profit, MSME size: match via `isOptionChecked()` against free-text form fields.
-- Business activities: 2-column grid from `PP_BUSINESS_ACTIVITY_PAIRS`; RDC specify via `prioritySectorSpecify`.
+A. Company Profile is **one 9-column table** matching Word `tblGrid` / `vMerge` / `gridSpan` (class `pp-form-company-profile`):
+
+- Identity: Name of Firm, Address, Contact Person, Contact No., e-mail Address, Year established, then Business Permit (number + date) as label + `colSpan={8}`
+- Type of Organization: left label `rowSpan={3}` (`PP_ORGANIZATION_INSTRUCTION`). Row 1 is four checkbox+label pairs (Single Proprietorship, Partnership, Cooperative, Corporation). Row 2 is Profit + Non-Profit (`colSpan={5}`). Row 3 is Micro + Small + Medium (`colSpan={3}`). Match via `isOptionChecked()` — `Profit` must not match `Non-Profit`.
+- Number of Employee: left label `rowSpan={6}` (`PP_EMPLOYEE_TABLE_CAPTION`); inner headers Type of Employment | Male | Female | Total (`colSpan={2}` each)
+- Registration: left label `rowSpan={6}`; Office | Registration Number | Date of Registration. Check `isRegistrationOfficeChecked()` so DTI/SEC/CDA/LGU do not also fill Others.
+- Business activities continue in the same table (empty first cell + checkbox | label `colSpan={3}` × 2) from `PP_BUSINESS_ACTIVITY_PAIRS`; RDC specify via `prioritySectorSpecify` on that cell
+- Products/Services and Brief Enterprise Background as label + `colSpan={8}`
+
+## Employee table
+
+`Number of Employee (Please indicate number of employee)` — Type of Employment | Male | Female | Total.
+
+- **Direct Workers** is the parent row only — print Male / Female / Total **blank** (do not copy TNA `employeesMale` / `employeesFemale` onto this row).
+- **Production** shows `employeesProduction*`. If Production is empty, TNA-forwarded Direct male/female print here instead. **Non-Production** shows `employeesNonProduction*` only when those fields have values.
+- The editor collects Production / Non-Production, not Direct Workers. TNA draft forwards TNA1 Direct counts into Production.
+- **Indirect/Contract Workers** from `employeesIndirectMale` / `employeesIndirectFemale`. **Total** = Production + Non-Production + Indirect.
 
 ## Attachments (print slots)
 
@@ -75,6 +173,9 @@ The later **E. Raw material/s** table (`rawMaterialsTable`) is unchanged.
 ## Key files
 
 - `src/app/components/projectProposal/ProjectProposalDocument.tsx`
+- `src/app/components/projectProposal/InvestmentDecisionAnalysisTable.tsx`
+- `src/app/components/projectProposal/ScheduleGanttTable.tsx`
+- `src/app/components/ProjectProposalPreview.tsx`
 - `src/app/utils/projectProposalPrint.tsx`
 - `src/styles/projectProposal.css`
-- `src/app/constants/projectProposalLayout.ts`
+- `src/app/constants/projectProposalLayout.ts

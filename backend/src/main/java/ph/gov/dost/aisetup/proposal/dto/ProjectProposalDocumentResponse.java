@@ -23,15 +23,22 @@ public class ProjectProposalDocumentResponse {
     private String productDemandSupply;
     private String distributionChannel;
     private String competitors;
+    private String existingMarketingProblems;
     private List<String> marketStrategies = new ArrayList<>();
     private String productionProcess;
+    private String materialBalance;
     private String equipmentNarrative;
+    private List<List<String>> equipmentTable = new ArrayList<>();
     private String interventionProblem;
     private String interventionProposed;
     private String interventionEquipment;
     private String interventionImpact;
     private List<String> expectedOutputBullets = new ArrayList<>();
     private String wasteManagement;
+    private String wasteVolumeMonthly;
+    private String wasteKinds;
+    private String wasteDisposalMethods;
+    private String partialBudgetAnalysis;
     private String financialAnalysis;
     private String genderInvolvement;
     private List<ProjectProposalRiskRowDto> riskRows = new ArrayList<>();
@@ -81,14 +88,23 @@ public class ProjectProposalDocumentResponse {
     public String getCompetitors() { return competitors; }
     public void setCompetitors(String competitors) { this.competitors = competitors; }
 
+    public String getExistingMarketingProblems() { return existingMarketingProblems; }
+    public void setExistingMarketingProblems(String existingMarketingProblems) { this.existingMarketingProblems = existingMarketingProblems; }
+
     public List<String> getMarketStrategies() { return marketStrategies; }
     public void setMarketStrategies(List<String> marketStrategies) { this.marketStrategies = marketStrategies; }
 
     public String getProductionProcess() { return productionProcess; }
     public void setProductionProcess(String productionProcess) { this.productionProcess = productionProcess; }
 
+    public String getMaterialBalance() { return materialBalance; }
+    public void setMaterialBalance(String materialBalance) { this.materialBalance = materialBalance; }
+
     public String getEquipmentNarrative() { return equipmentNarrative; }
     public void setEquipmentNarrative(String equipmentNarrative) { this.equipmentNarrative = equipmentNarrative; }
+
+    public List<List<String>> getEquipmentTable() { return equipmentTable; }
+    public void setEquipmentTable(List<List<String>> equipmentTable) { this.equipmentTable = equipmentTable; }
 
     public String getInterventionProblem() { return interventionProblem; }
     public void setInterventionProblem(String interventionProblem) { this.interventionProblem = interventionProblem; }
@@ -107,6 +123,18 @@ public class ProjectProposalDocumentResponse {
 
     public String getWasteManagement() { return wasteManagement; }
     public void setWasteManagement(String wasteManagement) { this.wasteManagement = wasteManagement; }
+
+    public String getWasteVolumeMonthly() { return wasteVolumeMonthly; }
+    public void setWasteVolumeMonthly(String wasteVolumeMonthly) { this.wasteVolumeMonthly = wasteVolumeMonthly; }
+
+    public String getWasteKinds() { return wasteKinds; }
+    public void setWasteKinds(String wasteKinds) { this.wasteKinds = wasteKinds; }
+
+    public String getWasteDisposalMethods() { return wasteDisposalMethods; }
+    public void setWasteDisposalMethods(String wasteDisposalMethods) { this.wasteDisposalMethods = wasteDisposalMethods; }
+
+    public String getPartialBudgetAnalysis() { return partialBudgetAnalysis; }
+    public void setPartialBudgetAnalysis(String partialBudgetAnalysis) { this.partialBudgetAnalysis = partialBudgetAnalysis; }
 
     public String getFinancialAnalysis() { return financialAnalysis; }
     public void setFinancialAnalysis(String financialAnalysis) { this.financialAnalysis = financialAnalysis; }

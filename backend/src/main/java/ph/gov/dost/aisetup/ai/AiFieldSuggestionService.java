@@ -505,9 +505,17 @@ public class AiFieldSuggestionService {
                     Competitors in the %s space include established firms and imports that set price and quality benchmarks for %s. %s differentiates through service responsiveness and relationship with key accounts rather than scale alone. Process upgrading through SETUP is intended to narrow quality and cost gaps relative to stronger competitors. Competitive positioning will be supported by measurable performance improvements.""".formatted(
                     sector, products, enterprise);
 
+            case "existingMarketingProblems" -> """
+                    Existing marketing problems for %s, if any, relate to limited ability to fill orders consistently and to differentiate %s against stronger competitors, rather than an absence of demand. Brand reach and promotional documentation remain modest at current MSME scale. Production constraints currently cap market expansion more than channel access. SETUP upgrading is expected to reduce these marketing constraints by improving quality, volume, and delivery reliability.""".formatted(
+                    enterprise, products);
+
             case "productionProcess" -> """
                     Production at %s follows a defined sequence from input preparation through processing, in-process verification, finishing, and release for distribution. Critical control points are identified though some rely on manual judgment where instrumentation is limited. The SETUP intervention targets stages with highest impact on cycle time, yield, and rework. Updated process documentation will reflect revised flows after equipment commissioning.""".formatted(
                     enterprise);
+
+            case "materialBalance" -> """
+                    Material balance for %s accounts for raw material inputs converted to finished %s, with in-process losses, rejects, and packaging residuals recorded at each stage. Yield is currently limited by equipment condition and manual handling at bottleneck workstations. The proposed intervention is expected to improve conversion efficiency and reduce unaccounted losses. Updated material balance figures will be validated during commissioning against baseline usage.""".formatted(
+                    enterprise, products);
 
             case "equipmentNarrative" -> """
                     Existing equipment at %s supports current output but includes units that are aging, under-instrumented, or prone to downtime affecting schedule reliability. Maintenance is performed on a preventive and corrective basis within resource constraints. The proposed SETUP package specifies equipment suited to %s requirements with supplier support for installation and training. Legacy equipment will be integrated or phased out as appropriate to the implementation plan.""".formatted(
@@ -528,6 +536,22 @@ public class AiFieldSuggestionService {
             case "wasteManagement" -> """
                     %s segregates process waste, recyclables, and general refuse in accordance with local environmental requirements applicable to %s operations. Hazardous or regulated waste streams, if any, are handled per supplier and regulatory guidance. The upgraded process is expected to reduce material waste through improved yield and process control. Waste management practices will be reviewed during site validation and implementation monitoring.""".formatted(
                     enterprise, nature);
+
+            case "wasteVolumeMonthly" -> """
+                    %s generates a modest monthly volume of process and packaging waste consistent with current throughput in its %s operations. Exact quantities will be confirmed from site records and remeasured after SETUP equipment commissioning. Waste volume is not expected to increase proportionally with output if yield improvements materialize. Monitoring will be coordinated with PSTO implementation visits.""".formatted(
+                    enterprise, nature);
+
+            case "wasteKinds" -> """
+                    Waste streams at %s typically include packaging materials (paper and plastics), process or organic residues associated with %s, and incidental metal or chemical discards where applicable. Segregation practices distinguish recyclables from residuals requiring disposal. No unregistered hazardous waste streams are asserted beyond those already managed under local guidelines. Kinds of waste will be listed in the proposal consistent with plant observation.""".formatted(
+                    enterprise, products);
+
+            case "wasteDisposalMethods" -> """
+                    Disposal methods at %s include segregation at source, recycling or reuse of recoverable packaging, and hauling of residuals through accredited service providers in accordance with LGU environmental ordinances. Process upgrades are expected to reduce residual waste through better yield. Staff will be briefed on any revised handling procedures after equipment installation. Compliance with applicable environmental requirements will be maintained throughout implementation.""".formatted(
+                    enterprise);
+
+            case "partialBudgetAnalysis" -> """
+                    Partial budget analysis for %s compares incremental costs of the SETUP intervention (equipment, installation, training, and related operating changes) with incremental returns from higher throughput, lower rejects, and improved product quality for %s. Net incremental benefit is expected to support counterpart contribution and SETUP refund obligations over the repayment period. Figures remain conservative pending attached financial statements and PSTO review. Sensitivity to delayed commissioning and demand variation is noted as a planning risk.""".formatted(
+                    enterprise, products);
 
             case "financialAnalysis" -> """
                     Financial statements and projections for %s indicate capacity to provide the enterprise counterpart contribution and service SETUP repayment obligations under agreed terms. Liquidity and profitability metrics will be supported by attached documentation in this proposal. Improved operations following technology upgrading are expected to strengthen cash generation over the repayment period. Financial assumptions are conservative and subject to PSTO evaluation.""".formatted(
@@ -673,10 +697,14 @@ public class AiFieldSuggestionService {
                         "Write 3-4 sentences on how products reach customers and channel partners."),
                 entry("competitors", "Competitors", "Market", false,
                         "Write 3-4 sentences on competitive landscape without unsupported claims."),
+                entry("existingMarketingProblems", "Existing problems (if any)", "Marketing", false,
+                        "Write 3-4 sentences on existing marketing problems only; do not copy production S&T constraints. If none, state that clearly."),
                 entry("marketStrategies", "Marketing Strategies", "Marketing", true,
                         "Provide 5-6 actionable marketing strategy bullet points."),
                 entry("productionProcess", "Production Process", "Technology", false,
                         "Write 4-5 sentences describing end-to-end production process and control points."),
+                entry("materialBalance", "Material Balance", "Technology", false,
+                        "Write 3-4 sentences on material inputs, conversion, losses, and expected yield after intervention."),
                 entry("equipmentNarrative", "Equipment Narrative", "Technology", false,
                         "Write 4-5 sentences on existing equipment, condition, and upgrade needs."),
                 entry("interventionProblem", "Problem or Constraint", "Intervention", false,
@@ -689,6 +717,14 @@ public class AiFieldSuggestionService {
                         "Provide 5-7 specific, measurable bullet points for deliverables and results."),
                 entry("wasteManagement", "Waste Management", "Environment", false,
                         "Write 4-5 sentences on waste types, segregation, disposal, and compliance."),
+                entry("wasteVolumeMonthly", "Volume of waste generated monthly", "Environment", false,
+                        "Write 2-4 sentences on monthly waste volume at current capacity without inventing exact kilograms unless provided."),
+                entry("wasteKinds", "Kinds of wastes", "Environment", false,
+                        "Write 2-4 sentences listing kinds of waste (plastics, paper, metals, chemicals, pollutants, etc.)."),
+                entry("wasteDisposalMethods", "Methods of disposal", "Environment", false,
+                        "Write 3-4 sentences on segregation, recycling, and disposal methods."),
+                entry("partialBudgetAnalysis", "Partial budget analysis", "Financial", false,
+                        "Write 3-5 sentences comparing incremental SETUP costs with incremental returns."),
                 entry("financialAnalysis", "Financial Analysis", "Financial", false,
                         "Write 4-5 sentences on financial capacity, ratios, and ability to co-fund and repay."),
                 entry("genderInvolvement", "Gender and Development (GAD) — Participation and Involvement", "Management / GAD", false,

@@ -42,6 +42,7 @@ import type {
 } from "../api/types";
 import {
   applyGeneratedDocument,
+  buildInvestmentDecisionAnalysis,
   buildLocalProjectProposalDocument,
   buildProjectProposalGenerationPayload,
   defaultExpectedOutputBullets,
@@ -53,14 +54,19 @@ import {
   saveProjectProposalDraft,
   submitProjectProposal,
   sumBudgetItems,
+  withDerivedEmploymentCounts,
   COMPENSATION_COMPUTED_COLUMNS,
   emptyCompensationRow,
+  emptyExistingEquipmentRow,
   emptyRawMaterialAllocationRow,
   emptyRawMaterialCostRow,
+  EXISTING_EQUIPMENT_COMPUTED_COLUMNS,
   RAW_MATERIAL_COST_COMPUTED_COLUMNS,
   recomputeCompensationTable,
+  recomputeExistingEquipmentTable,
   recomputeRawMaterialCostTable,
   sumCompensationColumns,
+  sumExistingEquipmentColumns,
   sumRawMaterialAllocationColumns,
   sumRawMaterialCostColumns,
   validateProjectProposalSubmit,
@@ -69,10 +75,13 @@ import type { ProposalAiField } from "../utils/projectProposal";
 import { ProjectProposalPreview, printProjectProposal } from "./ProjectProposalPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { FinancialProjectionWizard } from "./projectProposal/financialProjection/FinancialProjectionWizard";
+import { ScheduleGanttEditor } from "./projectProposal/ScheduleGanttEditor";
+import { InvestmentDecisionAnalysisEditor } from "./projectProposal/InvestmentDecisionAnalysisEditor";
 import { notifyProjectProposalSubmitted } from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { getPublishedTna2 } from "../utils/tnaForm02";
+import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { StoredFileImage } from "./StoredFilePreview";
@@ -80,9 +89,15 @@ import { isImageFile } from "../utils/storedFilePreview";
 import { AiAssistNotice, AiAssistStringList, AiAssistTextarea } from "./AiAssistField";
 import {
   PP_COMPENSATION_COLUMNS,
+  PP_EQUIPMENT_COLUMNS,
+  PP_MARKETING_SUBHEADINGS,
+  PP_NPM_COLUMNS,
   PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
   PP_RAW_MATERIAL_COST_COLUMNS,
   PP_SUBHEADING_CAPACITY,
+  PP_VOLUME_OF_ORDERS_COLUMNS,
+  PP_MARKETING_A_LABELS,
+  PP_WASTE_SUBHEADINGS,
 } from "../constants/projectProposalLayout";
 
 const DOST_BLUE = "#0C2461";
@@ -296,6 +311,16 @@ function RawMaterialAllocationTotalsLine({
   );
 }
 
+function ExistingEquipmentTotalsLine({ rows }: { rows: string[][] | undefined }) {
+  const totals = sumExistingEquipmentColumns(rows);
+  return (
+    <p className="text-xs text-gray-500 mt-1.5">
+      Totals — Total cost: {totals.totalCost || "—"} · Book Value:{" "}
+      {totals.bookValue || "—"}
+    </p>
+  );
+}
+
 export function ProjectProposal({
   user,
   onSubmitSuccess,
@@ -385,7 +410,7 @@ export function ProjectProposal({
 
   const patchForm = (patch: Partial<ProjectProposalForm>) => {
     setForm((prev) => {
-      const next = { ...prev, ...patch };
+      const next = withDerivedEmploymentCounts({ ...prev, ...patch });
       formRef.current = next;
       return next;
     });
@@ -579,16 +604,29 @@ export function ProjectProposal({
                 <div><label className={labelCls}>Organization Type</label><input className={inputCls} value={form.organizationType} onChange={(e) => patchForm({ organizationType: e.target.value })} /></div>
                 <div><label className={labelCls}>Profit / Non-profit</label><input className={inputCls} value={form.profitType} onChange={(e) => patchForm({ profitType: e.target.value })} /></div>
                 <div><label className={labelCls}>MSME Size</label><input className={inputCls} value={form.msmeSize} onChange={(e) => patchForm({ msmeSize: e.target.value })} /></div>
-                <div><label className={labelCls}>Employees Male / Female</label>
-                  <div className="flex gap-2">
-                    <input className={inputCls} placeholder="Male" value={form.employeesMale} onChange={(e) => patchForm({ employeesMale: e.target.value })} />
-                    <input className={inputCls} placeholder="Female" value={form.employeesFemale} onChange={(e) => patchForm({ employeesFemale: e.target.value })} />
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Direct workers</label>
+                  <div className="mt-2 ml-3 sm:ml-5 space-y-3 border-l border-slate-200 pl-3">
+                    <div>
+                      <label className={labelCls}>Production</label>
+                      <div className="flex gap-2">
+                        <input className={inputCls} placeholder="Male" value={form.employeesProductionMale} onChange={(e) => patchForm({ employeesProductionMale: e.target.value })} />
+                        <input className={inputCls} placeholder="Female" value={form.employeesProductionFemale} onChange={(e) => patchForm({ employeesProductionFemale: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Non-production</label>
+                      <div className="flex gap-2">
+                        <input className={inputCls} placeholder="Male" value={form.employeesNonProductionMale} onChange={(e) => patchForm({ employeesNonProductionMale: e.target.value })} />
+                        <input className={inputCls} placeholder="Female" value={form.employeesNonProductionFemale} onChange={(e) => patchForm({ employeesNonProductionFemale: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div><label className={labelCls}>Employees Direct / Indirect</label>
+                <div><label className={labelCls}>Indirect / contract</label>
                   <div className="flex gap-2">
-                    <input className={inputCls} placeholder="Direct" value={form.employeesDirect} onChange={(e) => patchForm({ employeesDirect: e.target.value })} />
-                    <input className={inputCls} placeholder="Indirect" value={form.employeesIndirect} onChange={(e) => patchForm({ employeesIndirect: e.target.value })} />
+                    <input className={inputCls} placeholder="Male" value={form.employeesIndirectMale} onChange={(e) => patchForm({ employeesIndirectMale: e.target.value })} />
+                    <input className={inputCls} placeholder="Female" value={form.employeesIndirectFemale} onChange={(e) => patchForm({ employeesIndirectFemale: e.target.value })} />
                   </div>
                 </div>
                 <div><label className={labelCls}>Registration Office</label><input className={inputCls} value={form.registrationOffice} onChange={(e) => patchForm({ registrationOffice: e.target.value })} /></div>
@@ -775,12 +813,32 @@ export function ProjectProposal({
       case "marketing":
         return (
           <div className="space-y-4">
-            <AiAssistTextarea label="Market Situation" value={form.marketSituation} onChange={(marketSituation) => patchForm({ marketSituation })} {...ai("marketSituation")} />
-            <AiAssistTextarea label="Product Demand and Supply" value={form.productDemandSupply} onChange={(productDemandSupply) => patchForm({ productDemandSupply })} {...ai("productDemandSupply")} />
-            <TableEditor label="Product Specifications and Price" headers={["Product / Specification", "Price"]} rows={form.productPriceTable} onChange={(productPriceTable) => patchForm({ productPriceTable })} />
-            <AiAssistTextarea label="Distribution Channel" value={form.distributionChannel} onChange={(distributionChannel) => patchForm({ distributionChannel })} minHeight="min-h-[60px]" {...ai("distributionChannel")} />
-            <AiAssistTextarea label="Competitors" value={form.competitors} onChange={(competitors) => patchForm({ competitors })} minHeight="min-h-[60px]" {...ai("competitors")} />
-            <AiAssistStringList label="Market Plans / Strategies" items={form.marketStrategies} onChange={(marketStrategies) => patchForm({ marketStrategies })} {...ai("marketStrategies")} />
+            <h2 className={sectionTitle}>{PP_MARKETING_SUBHEADINGS.A}</h2>
+            <AiAssistTextarea
+              label={PP_MARKETING_A_LABELS.marketSituation}
+              value={form.marketSituation}
+              onChange={(marketSituation) => patchForm({ marketSituation })}
+              {...ai("marketSituation")}
+            />
+            <div className="ml-3 sm:ml-5 space-y-3 border-l border-slate-200 pl-3">
+              <AiAssistTextarea
+                label={PP_MARKETING_A_LABELS.productDemand}
+                value={form.productDemandSupply}
+                onChange={(productDemandSupply) => patchForm({ productDemandSupply })}
+                {...ai("productDemandSupply")}
+              />
+              <TableEditor
+                label={PP_MARKETING_A_LABELS.volumeOfOrders}
+                headers={[...PP_VOLUME_OF_ORDERS_COLUMNS]}
+                rows={form.volumeOfOrdersTable}
+                onChange={(volumeOfOrdersTable) => patchForm({ volumeOfOrdersTable })}
+              />
+            </div>
+            <TableEditor label={PP_MARKETING_SUBHEADINGS.B} headers={["Product / Specification", "Price"]} rows={form.productPriceTable} onChange={(productPriceTable) => patchForm({ productPriceTable })} />
+            <AiAssistTextarea label={PP_MARKETING_SUBHEADINGS.C} value={form.distributionChannel} onChange={(distributionChannel) => patchForm({ distributionChannel })} minHeight="min-h-[60px]" {...ai("distributionChannel")} />
+            <AiAssistTextarea label={PP_MARKETING_SUBHEADINGS.D} value={form.competitors} onChange={(competitors) => patchForm({ competitors })} minHeight="min-h-[60px]" {...ai("competitors")} />
+            <AiAssistTextarea label={PP_MARKETING_SUBHEADINGS.E} value={form.existingMarketingProblems} onChange={(existingMarketingProblems) => patchForm({ existingMarketingProblems })} minHeight="min-h-[60px]" hint="Marketing constraints only. Leave a brief note if none." {...ai("existingMarketingProblems")} />
+            <AiAssistStringList label={PP_MARKETING_SUBHEADINGS.F} items={form.marketStrategies} onChange={(marketStrategies) => patchForm({ marketStrategies })} {...ai("marketStrategies")} />
           </div>
         );
 
@@ -793,12 +851,21 @@ export function ProjectProposal({
                 Production & Equipment
               </h2>
               <AiAssistTextarea
-                label="Production Process"
+                label="A. Production Process — Process Flow of Production"
                 value={form.productionProcess}
                 onChange={(productionProcess) => patchForm({ productionProcess })}
                 minHeight="min-h-[100px]"
                 {...ai("productionProcess")}
               />
+              <div className="mt-4">
+                <AiAssistTextarea
+                  label="Material Balance"
+                  value={form.materialBalance}
+                  onChange={(materialBalance) => patchForm({ materialBalance })}
+                  minHeight="min-h-[80px]"
+                  {...ai("materialBalance")}
+                />
+              </div>
               <div className="mt-4">
                 <AiAssistTextarea
                   label="Equipment Narrative"
@@ -809,7 +876,36 @@ export function ProjectProposal({
                 />
               </div>
               <div className="mt-4">
-                <TableEditor label="Existing Equipment" headers={["Type", "Quantity", "Year Acquired"]} rows={form.equipmentTable} onChange={(equipmentTable) => patchForm({ equipmentTable })} />
+                <TableEditor
+                  label="Existing production equipment"
+                  headers={[...PP_EQUIPMENT_COLUMNS]}
+                  rows={form.equipmentTable ?? [emptyExistingEquipmentRow()]}
+                  onChange={(rows) =>
+                    patchForm({
+                      equipmentTable: recomputeExistingEquipmentTable(rows),
+                    })
+                  }
+                  readOnlyColumns={[...EXISTING_EQUIPMENT_COMPUTED_COLUMNS]}
+                  multilineColumns={[0]}
+                  tableClassName="table-fixed min-w-[64rem]"
+                  columnClassNames={[
+                    "w-[18%] min-w-[10rem]",
+                    "w-[9%]",
+                    "w-[12%]",
+                    "w-[6%]",
+                    "w-[12%]",
+                    "w-[6%]",
+                    "w-[14%]",
+                    "w-[6%]",
+                    "w-[12%]",
+                  ]}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Total cost = Qty × Acquisition cost. Annual depreciation = Total
+                  cost / EUL. Book Value = Total cost − Annual depreciation × (EUL −
+                  RUL). Salvage is 0.
+                </p>
+                <ExistingEquipmentTotalsLine rows={form.equipmentTable} />
               </div>
             </div>
             <div>
@@ -848,7 +944,10 @@ export function ProjectProposal({
               <h2 className={sectionTitle}>Implementation Details</h2>
               <TableEditor label="Equipment Fabricators" headers={["Name", "Address", "Contact"]} rows={form.fabricatorTable} onChange={(fabricatorTable) => patchForm({ fabricatorTable })} />
               <div className="mt-4">
-                <TableEditor label="Schedule of Activities" headers={["Activity", "Timeline"]} rows={form.scheduleTable} onChange={(scheduleTable) => patchForm({ scheduleTable })} />
+                <ScheduleGanttEditor
+                  rows={form.scheduleTable}
+                  onChange={(scheduleTable) => patchForm({ scheduleTable })}
+                />
               </div>
             </div>
           </div>
@@ -856,14 +955,37 @@ export function ProjectProposal({
 
       case "waste":
         return (
-          <AiAssistTextarea
-            label="Waste Management / Disposal"
-            value={form.wasteManagement}
-            onChange={(wasteManagement) => patchForm({ wasteManagement })}
-            minHeight="min-h-[120px]"
-            hint="Describe segregation, recycling, and proper disposal of process waste."
-            {...ai("wasteManagement")}
-          />
+          <div className="space-y-4">
+            <AiAssistTextarea
+              label={PP_WASTE_SUBHEADINGS.A}
+              value={form.wasteVolumeMonthly}
+              onChange={(wasteVolumeMonthly) => patchForm({ wasteVolumeMonthly })}
+              minHeight="min-h-[80px]"
+              {...ai("wasteVolumeMonthly")}
+            />
+            <AiAssistTextarea
+              label={PP_WASTE_SUBHEADINGS.B}
+              value={form.wasteKinds}
+              onChange={(wasteKinds) => patchForm({ wasteKinds })}
+              minHeight="min-h-[80px]"
+              {...ai("wasteKinds")}
+            />
+            <AiAssistTextarea
+              label={PP_WASTE_SUBHEADINGS.C}
+              value={form.wasteDisposalMethods}
+              onChange={(wasteDisposalMethods) => patchForm({ wasteDisposalMethods })}
+              minHeight="min-h-[80px]"
+              {...ai("wasteDisposalMethods")}
+            />
+            <AiAssistTextarea
+              label="Combined narrative (legacy / summary)"
+              value={form.wasteManagement}
+              onChange={(wasteManagement) => patchForm({ wasteManagement })}
+              minHeight="min-h-[80px]"
+              hint="Used if volume, kinds, or methods are empty."
+              {...ai("wasteManagement")}
+            />
+          </div>
         );
 
       case "financial":
@@ -878,6 +1000,8 @@ export function ProjectProposal({
             <TableEditor label="Liquidity Ratio (Current Ratio)" headers={["Year", "Current Assets", "Current Liabilities", "Ratio"]} rows={form.liquidityRatioTable} onChange={(liquidityRatioTable) => patchForm({ liquidityRatioTable })} />
             <TableEditor label="Quick Ratio" headers={["Year", "Current Assets", "Inventory", "Current Liabilities", "Ratio"]} rows={form.quickRatioTable} onChange={(quickRatioTable) => patchForm({ quickRatioTable })} />
             <TableEditor label="Return on Investment" headers={["Year", "Net Income", "Investment", "ROI"]} rows={form.roiTable} onChange={(roiTable) => patchForm({ roiTable })} />
+            <TableEditor label="Net profit margin ratio" headers={[...PP_NPM_COLUMNS]} rows={form.netProfitMarginTable} onChange={(netProfitMarginTable) => patchForm({ netProfitMarginTable })} />
+            <div><AiAssistTextarea label="Partial budget analysis" value={form.partialBudgetAnalysis} onChange={(partialBudgetAnalysis) => patchForm({ partialBudgetAnalysis })} {...ai("partialBudgetAnalysis")} /></div>
             <div><AiAssistTextarea label="Financial Analysis Narrative" value={form.financialAnalysis} onChange={(financialAnalysis) => patchForm({ financialAnalysis })} {...ai("financialAnalysis")} /></div>
             <div><label className={labelCls}>Financial Constraints Note</label><input className={inputCls} value={form.financialConstraintsNote} onChange={(e) => patchForm({ financialConstraintsNote: e.target.value })} /></div>
             <AttachmentUpload kind="financialReports" attachment={attachments.find((a) => a.kind === "financialReports")} onUpload={setAttachment} onRemove={() => removeAttachment("financialReports")} applicantId={applicant?.id} />
@@ -907,6 +1031,10 @@ export function ProjectProposal({
                           <input className={inputCls} placeholder="SETUP share" value={item.setupShare} onChange={(e) => updateBudgetItem(item.id, { setupShare: e.target.value })} />
                         </div>
                         <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">LGIA share</label>
+                          <input className={inputCls} placeholder="LGIA" value={item.lgiaShare} onChange={(e) => updateBudgetItem(item.id, { lgiaShare: e.target.value })} />
+                        </div>
+                        <div className="col-span-2">
                           <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block mb-1">Total</label>
                           <input className={inputCls} placeholder="Total" value={item.total} onChange={(e) => updateBudgetItem(item.id, { total: e.target.value })} />
                         </div>
@@ -915,11 +1043,12 @@ export function ProjectProposal({
                         <Trash2 className="w-3 h-3" /> Remove line
                       </button>
                     </div>
-                    <div className="hidden md:grid grid-cols-6 gap-2 items-center">
+                    <div className="hidden md:grid grid-cols-7 gap-2 items-center">
                       <input className={inputClsExtra("col-span-2")} placeholder="Item" value={item.item} onChange={(e) => updateBudgetItem(item.id, { item: e.target.value })} />
                       <input className={inputCls} placeholder="Qty" value={item.qty} onChange={(e) => updateBudgetItem(item.id, { qty: e.target.value })} />
                       <input className={inputCls} placeholder="Unit cost" value={item.unitCost} onChange={(e) => updateBudgetItem(item.id, { unitCost: e.target.value })} />
                       <input className={inputCls} placeholder="SETUP share" value={item.setupShare} onChange={(e) => updateBudgetItem(item.id, { setupShare: e.target.value })} />
+                      <input className={inputCls} placeholder="LGIA" value={item.lgiaShare} onChange={(e) => updateBudgetItem(item.id, { lgiaShare: e.target.value })} />
                       <div className="flex gap-1">
                         <input className={inputCls} placeholder="Total" value={item.total} onChange={(e) => updateBudgetItem(item.id, { total: e.target.value })} />
                         <button type="button" onClick={() => patchForm({ budgetItems: form.budgetItems.filter((b) => b.id !== item.id) })} className="text-red-400"><Trash2 className="w-4 h-4" /></button>
@@ -927,20 +1056,29 @@ export function ProjectProposal({
                     </div>
                   </div>
                 ))}
-                <button type="button" onClick={() => patchForm({ budgetItems: [...form.budgetItems, { id: uid(), item: "", qty: "1", unitCost: "", setupShare: "", total: "" }] })} className="text-xs text-[#0C2461] font-semibold flex items-center gap-1"><Plus className="w-3 h-3" /> Add budget line</button>
+                <button type="button" onClick={() => patchForm({ budgetItems: [...form.budgetItems, { id: uid(), item: "", qty: "1", unitCost: "", setupShare: "", lgiaShare: "", total: "" }] })} className="text-xs text-[#0C2461] font-semibold flex items-center gap-1"><Plus className="w-3 h-3" /> Add budget line</button>
                 <p className="text-xs text-gray-500">Budget total: {sumBudgetItems(form.budgetItems) || "—"}</p>
               </div>
             </div>
-            <TableEditor label="Proposed Refund Schedule" headers={form.refundSchedule[0] ?? ["Months", "Y1", "Y2", "Y3", "Y4", "Total"]} rows={form.refundSchedule.slice(1)} onChange={(body) => patchForm({ refundSchedule: [form.refundSchedule[0], ...body] })} />
+            <TableEditor label="E. Proposed Refund Schedule" headers={form.refundSchedule[0] ?? ["Months", "Y1", "Y2", "Y3", "Y4", "Y5", "Total"]} rows={form.refundSchedule.slice(1)} onChange={(body) => patchForm({ refundSchedule: [form.refundSchedule[0], ...body] })} />
+            <InvestmentDecisionAnalysisEditor
+              analysis={buildInvestmentDecisionAnalysis(
+                form,
+                applicant
+                  ? getFinancialProjectionStored(applicant)?.snapshot
+                  : undefined,
+              )}
+            />
           </div>
         );
 
       case "risk":
         return (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Three-column risk management table per {formatFormMention("001")}.</p>
+            <p className="text-xs text-gray-500">Official columns: OBJECTIVES | RISKS AND ASSUMPTIONS | RISK MANAGEMENT PLAN.</p>
             {form.riskRows.map((row) => (
-              <div key={row.id} className="grid sm:grid-cols-3 gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+              <div key={row.id} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <div><label className={labelCls}>Objective</label><textarea className={inputClsExtra("min-h-[60px]")} value={row.objective} onChange={(e) => updateRiskRow(row.id, { objective: e.target.value })} /></div>
                 <div><label className={labelCls}>Risk</label><textarea className={inputClsExtra("min-h-[60px]")} value={row.risk} onChange={(e) => updateRiskRow(row.id, { risk: e.target.value })} /></div>
                 <div><label className={labelCls}>Assumption</label><textarea className={inputClsExtra("min-h-[60px]")} value={row.assumption} onChange={(e) => updateRiskRow(row.id, { assumption: e.target.value })} /></div>
                 <div className="flex flex-col gap-1">
@@ -950,7 +1088,7 @@ export function ProjectProposal({
                 </div>
               </div>
             ))}
-            <button type="button" onClick={() => patchForm({ riskRows: [...form.riskRows, { id: uid(), risk: "", assumption: "", plan: "" }] })} className="text-xs text-[#0C2461] font-semibold flex items-center gap-1"><Plus className="w-3 h-3" /> Add risk row</button>
+            <button type="button" onClick={() => patchForm({ riskRows: [...form.riskRows, { id: uid(), objective: "", risk: "", assumption: "", plan: "" }] })} className="text-xs text-[#0C2461] font-semibold flex items-center gap-1"><Plus className="w-3 h-3" /> Add risk row</button>
           </div>
         );
 

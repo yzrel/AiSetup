@@ -47,6 +47,28 @@ function coerceArrayKeys(
   return out;
 }
 
+const SCHEDULE_MONTH_COUNT = 8;
+const SCHEDULE_COL_COUNT = 1 + SCHEDULE_MONTH_COUNT;
+
+/** Keep activity from legacy 2-col Activity/Timeline rows; do not infer months. */
+function normalizeScheduleTableStored(raw: unknown): string[][] {
+  const rows = asObjectList(raw);
+  const normalized = rows.map((row) => {
+    const cells = Array.isArray(row)
+      ? row.map((c) => String(c ?? ""))
+      : [];
+    if (cells.length <= 2) {
+      return [cells[0] ?? "", ...Array(SCHEDULE_MONTH_COUNT).fill("")];
+    }
+    const next = [...cells];
+    while (next.length < SCHEDULE_COL_COUNT) next.push("");
+    return next.slice(0, SCHEDULE_COL_COUNT);
+  });
+  return normalized.length
+    ? normalized
+    : [Array(SCHEDULE_COL_COUNT).fill("")];
+}
+
 /** Shared publish-document coerce: object + form object + published boolean. */
 export function normalizePublishDocumentStored(
   raw: unknown,
@@ -234,6 +256,7 @@ export function normalizeProjectProposalStored(
     "rawMaterialAllocationTable",
     "compensationTable",
     "productPriceTable",
+    "volumeOfOrdersTable",
     "marketStrategies",
     "equipmentTable",
     "interventionCostTable",
@@ -243,10 +266,12 @@ export function normalizeProjectProposalStored(
     "liquidityRatioTable",
     "quickRatioTable",
     "roiTable",
+    "netProfitMarginTable",
     "budgetItems",
     "refundSchedule",
     "riskRows",
   ]);
+  form.scheduleTable = normalizeScheduleTableStored(form.scheduleTable);
   const out: Record<string, unknown> = {
     ...obj,
     form,

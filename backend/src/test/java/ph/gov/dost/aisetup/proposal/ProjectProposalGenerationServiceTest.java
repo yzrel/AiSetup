@@ -38,13 +38,16 @@ class ProjectProposalGenerationServiceTest {
         request.setProjectDescription("Upgrade packaging and dehydration line");
         request.setExpectedOutcome("Increase capacity by 40%");
         request.setBudget("2500000");
-        request.setForm(new HashMap<>(Map.of(
-                "projectTitle", "Technology upgrading for ABC Food Processing",
-                "proponentName", "ABC Food Processing",
-                "interventionProblem", "Manual packing bottlenecks",
-                "interventionProposed", "Automated packaging line",
-                "productionProcess", "Receiving → processing → packaging → delivery"
-        )));
+        Map<String, Object> form = new HashMap<>();
+        form.put("projectTitle", "Technology upgrading for ABC Food Processing");
+        form.put("proponentName", "ABC Food Processing");
+        form.put("interventionProblem", "Manual packing bottlenecks");
+        form.put("interventionProposed", "Automated packaging line");
+        form.put("productionProcess", "Receiving → processing → packaging → delivery");
+        form.put("equipmentTable", List.of(
+                List.of("Dryer", "2018", "100000", "2", "", "10", "", "7", "")
+        ));
+        request.setForm(form);
         request.setAttachmentKinds(List.of("vicinityMap", "plantLayout"));
 
         ProjectProposalDocumentResponse response = service.generate(request);
@@ -56,5 +59,42 @@ class ProjectProposalGenerationServiceTest {
         assertFalse(response.getEnterpriseBackground().isBlank());
         assertFalse(response.getRiskRows().isEmpty());
         assertEquals("Technology upgrading for ABC Food Processing", response.getFormTitle());
+        assertFalse(response.getExistingMarketingProblems().isBlank());
+        assertFalse(response.getMaterialBalance().isBlank());
+        assertFalse(response.getWasteVolumeMonthly().isBlank());
+        assertFalse(response.getPartialBudgetAnalysis().isBlank());
+        assertEquals(1, response.getEquipmentTable().size());
+        assertEquals("Dryer", response.getEquipmentTable().get(0).get(0));
+        assertEquals("2018", response.getEquipmentTable().get(0).get(1));
+    }
+
+    @Test
+    void aiGeneratedDocumentKeepsFormEquipmentTable() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        AnthropicClient client = mock(AnthropicClient.class);
+        when(client.generateJsonObject(anyString())).thenReturn(mapper.readTree("""
+                {
+                  "generalObjective": "AI objective",
+                  "enterpriseBackground": "AI background",
+                  "equipmentTable": [["Invented by model"]]
+                }
+                """));
+
+        ProjectProposalGenerationService service =
+                new ProjectProposalGenerationService(client, mapper);
+
+        ProjectProposalGenerationRequest request = new ProjectProposalGenerationRequest();
+        request.setEnterpriseName("ABC Food Processing");
+        Map<String, Object> form = new HashMap<>();
+        form.put("equipmentTable", List.of(
+                List.of("Staff dryer", "2018", "100000", "2", "", "10", "", "7", "")
+        ));
+        request.setForm(form);
+
+        ProjectProposalDocumentResponse response = service.generate(request);
+
+        assertTrue(response.isAiGenerated());
+        assertEquals("Staff dryer", response.getEquipmentTable().get(0).get(0));
+        assertEquals(9, response.getEquipmentTable().get(0).size());
     }
 }

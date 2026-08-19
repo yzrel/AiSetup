@@ -1,0 +1,24 @@
+﻿[PASS] Health - demoModeEnabled=True
+[PASS] Staff login
+[PASS] Register new client - applicantId=55b6c76e-b360-4b63-b5f2-f34bbd47f9bd applicationId=LOI-2026-101728
+[PASS] Cold create case at prescreening
+[PASS] Advance to registration
+[PASS] SETUP LOI stored
+[PASS] TNA1 submit and staff review to tna2
+[PASS] Client cannot see unpublished TNA2 - tna2Document present=False
+[PASS] TNA2 publish to project-proposal
+[PASS] Generate financial projection - balanced=True y1Sales=400000.0
+[PASS] Persist frozen projection island - frozenAt=2026-08-18T02:17:30.562176800Z
+[PASS] Project proposal to requirements
+[PASS] Requirements approved SETUP to conduct-rtec
+[PASS] RTEC submit to approval-letter
+[PASS] Approval publish and conforme to landbank-withdrawal
+[PASS] Staff upload signedMoa file - http=200
+[PASS] PDCs and LBP intro published
+[PASS] LandBank submitted to procurement
+[PASS] Procurement to refund
+[PASS] Refund to project-closeout
+[PASS] Close-out to completed - currentModule=completed
+[PASS] Client sees published approval letter
+META applicationId=LOI-2026-101728 applicantId=55b6c76e-b360-4b63-b5f2-f34bbd47f9bd email=rehearsal.20260818101728@example.com password=Demo@1234
+META demoModeEnabled=True

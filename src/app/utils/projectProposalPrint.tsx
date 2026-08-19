@@ -37,7 +37,7 @@ function waitForImages(root: HTMLElement): Promise<void> {
 
 /**
  * Renders the official SETUP Form 001 document at body level and prints in-page.
- * The on-screen preview is not modified or cloned.
+ * The on-screen preview is not cloned; it uses the same indent CSS independently.
  */
 export async function printProjectProposalPdf(
   form: ProjectProposalForm,

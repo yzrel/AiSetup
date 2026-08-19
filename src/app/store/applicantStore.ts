@@ -157,6 +157,18 @@ const seedApplicants: Applicant[] = [
         },
       },
       tna2Document: abcFoodTna2Document(),
+      projectProposal: {
+        form: {
+          equipmentNarrative:
+            "Existing production equipment includes tray dehydrators and impulse sealers used for dried fruit processing, with remaining useful life that supports SETUP upgrading of the packaging line.",
+          equipmentTable: [
+            ["Tray dehydrator", "2018", "85000", "2", "", "10", "", "4", ""],
+            ["Manual sealer", "2020", "15000", "3", "", "8", "", "4", ""],
+          ],
+        },
+        attachments: [],
+        submitted: false,
+      },
     },
   },
   {

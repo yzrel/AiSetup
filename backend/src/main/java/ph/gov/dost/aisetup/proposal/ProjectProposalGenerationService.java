@@ -71,6 +71,8 @@ public class ProjectProposalGenerationService {
                     request.getEnterpriseName()
             ));
         }
+        // Staff/TNA grid — never let the model invent or overwrite figures.
+        response.setEquipmentTable(stringGrid(form.get("equipmentTable")));
     }
 
     private boolean isEmptyDocument(ProjectProposalDocumentResponse doc) {
@@ -127,6 +129,14 @@ public class ProjectProposalGenerationService {
                 You are a DOST SETUP program officer drafting SETUP Form 001 (Project Proposal) narratives for an MSME applicant.
 
                 Write formal, professional content aligned with DOST SETUP Form 001 section headings. Do NOT invent specific peso amounts or equipment models not supported by the data; use conservative language where estimates are needed.
+                Write MARKETING ASPECTS as distinct slots matching official lettering:
+                A. Market Situation, product demand and supply (marketSituation + productDemandSupply)
+                B. Product specifications and product price (do not invent a table; narratives only)
+                C. Distribution channel (local/export)
+                D. Competitors
+                E. Existing problems (if any) — existingMarketingProblems; marketing constraints only, not production S&T problems
+                F. Market plans/strategies
+                Also write Material Balance (under Production Process), waste volume/kinds/methods, and Partial budget analysis as their own fields.
                 %s
 
                 Return ONLY a valid JSON object (no markdown) with this structure:
@@ -142,8 +152,10 @@ public class ProjectProposalGenerationService {
                   "productDemandSupply": "",
                   "distributionChannel": "",
                   "competitors": "",
+                  "existingMarketingProblems": "",
                   "marketStrategies": ["", ""],
                   "productionProcess": "",
+                  "materialBalance": "",
                   "equipmentNarrative": "",
                   "interventionProblem": "",
                   "interventionProposed": "",
@@ -151,10 +163,14 @@ public class ProjectProposalGenerationService {
                   "interventionImpact": "",
                   "expectedOutputBullets": ["", ""],
                   "wasteManagement": "",
+                  "wasteVolumeMonthly": "",
+                  "wasteKinds": "",
+                  "wasteDisposalMethods": "",
+                  "partialBudgetAnalysis": "",
                   "financialAnalysis": "",
                   "genderInvolvement": "",
                   "riskRows": [
-                    { "id": "1", "risk": "", "assumption": "", "plan": "" }
+                    { "id": "1", "objective": "", "risk": "", "assumption": "", "plan": "" }
                   ]
                 }
 
@@ -232,6 +248,11 @@ public class ProjectProposalGenerationService {
                 "Local competitors exist; differentiation is through service quality and turnaround time."
         ));
 
+        doc.setExistingMarketingProblems(firstNonBlank(
+                stringVal(form.get("existingMarketingProblems")),
+                "No major market constraints are recorded beyond limited production capacity to meet growing demand."
+        ));
+
         List<String> strategies = stringList(form.get("marketStrategies"));
         if (strategies.isEmpty()) {
             strategies = List.of(
@@ -244,6 +265,11 @@ public class ProjectProposalGenerationService {
         doc.setProductionProcess(firstNonBlank(
                 stringVal(form.get("productionProcess")),
                 "Order reception → preparation → production → quality check → packaging → delivery."
+        ));
+
+        doc.setMaterialBalance(firstNonBlank(
+                stringVal(form.get("materialBalance")),
+                "Raw material inputs are converted to finished goods with process losses and rejects accounted for at each production stage."
         ));
 
         doc.setEquipmentNarrative(firstNonBlank(
@@ -277,6 +303,27 @@ public class ProjectProposalGenerationService {
                 "Waste segregation, recycling of paper and packaging materials, and proper disposal of process waste per local guidelines."
         ));
 
+        doc.setWasteVolumeMonthly(firstNonBlank(
+                stringVal(form.get("wasteVolumeMonthly")),
+                "Monthly process and packaging waste volume is modest at current capacity and will be remeasured after equipment commissioning."
+        ));
+
+        doc.setWasteKinds(firstNonBlank(
+                stringVal(form.get("wasteKinds")),
+                "Typical wastes include packaging (paper, plastics), organic or process residues, and incidental metal or chemical discards depending on the production line."
+        ));
+
+        doc.setWasteDisposalMethods(firstNonBlank(
+                stringVal(form.get("wasteDisposalMethods")),
+                stringVal(form.get("wasteManagement")),
+                "Segregation at source, recycling of recoverable materials, and disposal of residuals through accredited haulers in accordance with LGU environmental guidelines."
+        ));
+
+        doc.setPartialBudgetAnalysis(firstNonBlank(
+                stringVal(form.get("partialBudgetAnalysis")),
+                "Partial budget analysis compares incremental costs of the SETUP intervention against incremental returns from higher throughput, lower rejects, and improved product quality."
+        ));
+
         doc.setFinancialAnalysis(firstNonBlank(
                 stringVal(form.get("financialAnalysis")),
                 "Financial capacity will be supported by attached statements and projected cash flows from improved operations."
@@ -303,6 +350,7 @@ public class ProjectProposalGenerationService {
                 if (item instanceof Map<?, ?> map) {
                     ProjectProposalRiskRowDto row = new ProjectProposalRiskRowDto();
                     row.setId(stringVal(map.get("id")));
+                    row.setObjective(stringVal(map.get("objective")));
                     row.setRisk(stringVal(map.get("risk")));
                     row.setAssumption(stringVal(map.get("assumption")));
                     row.setPlan(stringVal(map.get("plan")));
@@ -315,21 +363,25 @@ public class ProjectProposalGenerationService {
         }
 
         return List.of(
-                riskRow("Equipment malfunction causing production delays",
+                riskRow("Maintain uninterrupted production during equipment commissioning",
+                        "Equipment malfunction causing production delays",
                         "Equipment will operate efficiently with regular maintenance",
                         "Schedule regular maintenance and maintain service contracts"),
-                riskRow("Supplier delays for raw materials",
+                riskRow("Secure reliable raw material supply for scaled output",
+                        "Supplier delays for raw materials",
                         "Suppliers will deliver on time",
                         "Maintain multiple suppliers and buffer stock"),
-                riskRow("Market competition",
+                riskRow("Retain and expand the enterprise client base",
+                        "Market competition",
                         "Enterprise will retain and attract clients",
                         "Competitive pricing and quality improvement initiatives")
         );
     }
 
-    private static ProjectProposalRiskRowDto riskRow(String risk, String assumption, String plan) {
+    private static ProjectProposalRiskRowDto riskRow(String objective, String risk, String assumption, String plan) {
         ProjectProposalRiskRowDto row = new ProjectProposalRiskRowDto();
         row.setId(String.valueOf(risk.hashCode()));
+        row.setObjective(objective);
         row.setRisk(risk);
         row.setAssumption(assumption);
         row.setPlan(plan);
@@ -345,6 +397,20 @@ public class ProjectProposalGenerationService {
                 String s = String.valueOf(item).trim();
                 if (!s.isEmpty()) out.add(s);
             }
+        }
+        return out;
+    }
+
+    private static List<List<String>> stringGrid(Object value) {
+        if (!(value instanceof List<?> rows)) return List.of();
+        List<List<String>> out = new ArrayList<>();
+        for (Object row : rows) {
+            if (!(row instanceof List<?> cells)) continue;
+            List<String> copy = new ArrayList<>();
+            for (Object cell : cells) {
+                copy.add(cell == null ? "" : String.valueOf(cell));
+            }
+            out.add(copy);
         }
         return out;
     }

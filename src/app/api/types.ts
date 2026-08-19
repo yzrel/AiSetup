@@ -386,11 +386,13 @@ export interface ProjectProposalBudgetRow {
   qty: string;
   unitCost: string;
   setupShare: string;
+  lgiaShare: string;
   total: string;
 }
 
 export interface ProjectProposalRiskRow {
   id: string;
+  objective: string;
   risk: string;
   assumption: string;
   plan: string;
@@ -417,6 +419,12 @@ export interface ProjectProposalForm {
   employeesFemale: string;
   employeesDirect: string;
   employeesIndirect: string;
+  employeesProductionMale: string;
+  employeesProductionFemale: string;
+  employeesNonProductionMale: string;
+  employeesNonProductionFemale: string;
+  employeesIndirectMale: string;
+  employeesIndirectFemale: string;
   registrationOffice: string;
   registrationNumber: string;
   registrationDate: string;
@@ -437,11 +445,14 @@ export interface ProjectProposalForm {
   rawMaterialsTable: string[][];
   marketSituation: string;
   productDemandSupply: string;
+  volumeOfOrdersTable: string[][];
   productPriceTable: string[][];
   distributionChannel: string;
   competitors: string;
+  existingMarketingProblems: string;
   marketStrategies: string[];
   productionProcess: string;
+  materialBalance: string;
   equipmentTable: string[][];
   equipmentNarrative: string;
   interventionProblem: string;
@@ -453,9 +464,14 @@ export interface ProjectProposalForm {
   scheduleTable: string[][];
   expectedOutputBullets: string[];
   wasteManagement: string;
+  wasteVolumeMonthly: string;
+  wasteKinds: string;
+  wasteDisposalMethods: string;
   liquidityRatioTable: string[][];
   quickRatioTable: string[][];
   roiTable: string[][];
+  netProfitMarginTable: string[][];
+  partialBudgetAnalysis: string;
   financialAnalysis: string;
   genderInvolvement: string;
   financialConstraintsNote: string;
@@ -489,15 +505,22 @@ export interface ProjectProposalDocumentResponse {
   productDemandSupply?: string;
   distributionChannel?: string;
   competitors?: string;
+  existingMarketingProblems?: string;
   marketStrategies?: string[];
   productionProcess?: string;
+  materialBalance?: string;
   equipmentNarrative?: string;
+  equipmentTable?: string[][];
   interventionProblem?: string;
   interventionProposed?: string;
   interventionEquipment?: string;
   interventionImpact?: string;
   expectedOutputBullets?: string[];
   wasteManagement?: string;
+  wasteVolumeMonthly?: string;
+  wasteKinds?: string;
+  wasteDisposalMethods?: string;
+  partialBudgetAnalysis?: string;
   financialAnalysis?: string;
   genderInvolvement?: string;
   riskRows?: ProjectProposalRiskRow[];

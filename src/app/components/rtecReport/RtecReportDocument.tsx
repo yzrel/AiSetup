@@ -26,6 +26,7 @@ import {
   PP_LIQUIDITY_COLUMNS,
   PP_MSME_SIZES,
   PP_ORGANIZATION_TYPES,
+  PP_MARKETING_A_LABELS,
   PP_PRODUCT_PRICE_COLUMNS,
   PP_PROFIT_TYPES,
   PP_QUICK_RATIO_COLUMNS,
@@ -35,6 +36,7 @@ import {
   PP_RISK_COLUMNS,
   PP_RISK_FOOTNOTE,
   PP_ROI_COLUMNS,
+  PP_VOLUME_OF_ORDERS_COLUMNS,
   RTEC_COMPLIANCE_COLUMNS,
   RTEC_REGISTRATION_OFFICES,
   RTEC_REPORT_TITLE,
@@ -57,9 +59,12 @@ import {
 } from "../../constants/rtecReportLayout";
 import {
   compensationTableFooterRow,
+  existingEquipmentFooterRow,
+  formatRiskAndAssumptions,
   PROPOSAL_ATTACHMENT_LABELS,
   rawMaterialAllocationFooterRow,
   rawMaterialCostFooterRow,
+  toBudgetPrintRow,
 } from "../../utils/projectProposal";
 import { snapshotStatementTables } from "../../utils/financialProjection";
 import { getFinancialProjectionStored } from "../../utils/financialProjectionStore";
@@ -350,29 +355,13 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
   const female = parseInt(pp.employeesFemale, 10) || 0;
   const totalEmployees = male + female || "";
 
-  const equipmentRows = pp.equipmentTable
-    .filter((r) => r.some((c) => c.trim()))
-    .map((r) => [r[0] ?? "", r[1] ?? r[3] ?? "", r[2] ?? r[4] ?? ""]);
+  const equipmentRows = (pp.equipmentTable ?? []).filter((r) =>
+    r.some((c) => c.trim()),
+  );
 
   const budgetRows = pp.budgetItems
     .filter((b) => b.item.trim() || b.total.trim())
-    .map((b) => {
-      const totalNum = parseFloat(b.total.replace(/[^\d.]/g, "")) || 0;
-      const setupNum = parseFloat(b.setupShare.replace(/[^\d.]/g, "")) || 0;
-      const cooperator =
-        totalNum > 0 && setupNum >= 0 && totalNum > setupNum
-          ? String(totalNum - setupNum)
-          : "";
-      return [
-        b.item,
-        b.qty,
-        b.unitCost,
-        b.total || b.unitCost,
-        b.setupShare,
-        cooperator,
-        b.total,
-      ];
-    });
+    .map((b) => toBudgetPrintRow(b));
 
   const refundRows = pp.refundSchedule.length > 1 ? pp.refundSchedule.slice(1) : [];
   const refundHeaders =
@@ -642,8 +631,13 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
           rows={pp.rawMaterialAllocationTable ?? []}
           footerRow={rawMaterialAllocationFooterRow(pp.rawMaterialAllocationTable)}
         />
-        <FieldLabel>2. Existing Production Equipment</FieldLabel>
-        <DataTable columns={PP_EQUIPMENT_COLUMNS} rows={equipmentRows} />
+        <FieldLabel>2. Existing production equipment</FieldLabel>
+        <DataTable
+          className="rtec-form-equipment-table"
+          columns={PP_EQUIPMENT_COLUMNS}
+          rows={equipmentRows}
+          footerRow={existingEquipmentFooterRow(pp.equipmentTable)}
+        />
         <FieldLabel>
           3. Technical constraints on the production line and proposed S&T intervention
         </FieldLabel>
@@ -680,12 +674,19 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
 
       <FormBlock>
         <SubHeading>{RTEC_SUBSECTION_MARKETING}</SubHeading>
-        <FieldLabel>Market Situation</FieldLabel>
+        <FieldLabel>{PP_MARKETING_A_LABELS.marketSituation}</FieldLabel>
         <NarrativeBlock text={pp.marketSituation} />
-        <FieldLabel>Product Demand and Supply</FieldLabel>
+        <FieldLabel>{PP_MARKETING_A_LABELS.productDemand}</FieldLabel>
         <NarrativeBlock text={pp.productDemandSupply} />
+        <FieldLabel>{PP_MARKETING_A_LABELS.volumeOfOrders}</FieldLabel>
+        <DataTable
+          columns={PP_VOLUME_OF_ORDERS_COLUMNS}
+          rows={pp.volumeOfOrdersTable ?? []}
+        />
         <FieldLabel>Product specifications and product price</FieldLabel>
         <DataTable columns={PP_PRODUCT_PRICE_COLUMNS} rows={pp.productPriceTable} />
+        <FieldLabel>Existing problems (if any)</FieldLabel>
+        <NarrativeBlock text={pp.existingMarketingProblems} />
         <FieldLabel>Market plans/strategies</FieldLabel>
         <CheckBulletList items={pp.marketStrategies} />
       </FormBlock>
@@ -759,15 +760,16 @@ export function RtecReportDocument({ form, applicantId }: RtecReportDocumentProp
             </tr>
           </thead>
           <tbody>
-            {(pp.riskRows.length ? pp.riskRows : [{ id: "0", risk: "", assumption: "", plan: "" }]).map(
-              (row) => (
-                <tr key={row.id}>
-                  <td>{val(row.risk) || "\u00a0"}</td>
-                  <td>{val(row.assumption) || "\u00a0"}</td>
-                  <td>{val(row.plan) || "\u00a0"}</td>
-                </tr>
-              ),
-            )}
+            {(pp.riskRows.length
+              ? pp.riskRows
+              : [{ id: "0", objective: "", risk: "", assumption: "", plan: "" }]
+            ).map((row) => (
+              <tr key={row.id}>
+                <td>{val(row.objective) || "\u00a0"}</td>
+                <td>{val(formatRiskAndAssumptions(row)) || "\u00a0"}</td>
+                <td>{val(row.plan) || "\u00a0"}</td>
+              </tr>
+            ))}
           </tbody>
         </FormTable>
         <div className="rtec-form-risk-footnote">

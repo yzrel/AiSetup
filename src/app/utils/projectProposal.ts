@@ -14,12 +14,25 @@ import type {
   ProjectProposalRiskRow,
   ProjectProposalStored,
   Tna2StoredDocument,
+  FinancialProjectionSnapshot,
 } from "../api/types";
-import { getPublishedTna2 } from "./tnaForm02";
+import { getPublishedTna2, normalizeFindingsByArea } from "./tnaForm02";
 import { yearFromDateEstablished } from "./applicantPrefill";
 import { isDemoModeActive } from "./demoMode";
 import { requiredTrimmed } from "./fieldValidators";
 import { normalizeProjectProposalStored } from "./normalizeCriticalModuleData";
+import {
+  YEAR_COUNT,
+  formatPhp,
+  parseMoney,
+  round2,
+} from "./financialProjection";
+import {
+  PP_IDA_ASSET_LIFE_LABEL,
+  PP_IDA_PROJECT_COST_LABEL,
+  PP_IDA_ROI_CAPTION,
+  PP_VOLUME_OF_ORDERS_SAMPLE_ROWS,
+} from "../constants/projectProposalLayout";
 
 export const PROPOSAL_ATTACHMENT_LABELS: Record<
   ProjectProposalAttachmentKind,
@@ -45,7 +58,7 @@ function rowId() {
 }
 
 function emptyRiskRow(): ProjectProposalRiskRow {
-  return { id: rowId(), risk: "", assumption: "", plan: "" };
+  return { id: rowId(), objective: "", risk: "", assumption: "", plan: "" };
 }
 
 function emptyBudgetRow(): ProjectProposalBudgetRow {
@@ -55,8 +68,134 @@ function emptyBudgetRow(): ProjectProposalBudgetRow {
     qty: "1",
     unitCost: "",
     setupShare: "",
+    lgiaShare: "",
     total: "",
   };
+}
+
+export function normalizeBudgetItem(
+  row: Partial<ProjectProposalBudgetRow> | null | undefined,
+): ProjectProposalBudgetRow {
+  return {
+    id: row?.id || rowId(),
+    item: String(row?.item ?? ""),
+    qty: String(row?.qty ?? "1"),
+    unitCost: String(row?.unitCost ?? ""),
+    setupShare: String(row?.setupShare ?? ""),
+    lgiaShare: String(row?.lgiaShare ?? ""),
+    total: String(row?.total ?? ""),
+  };
+}
+
+export function normalizeRiskRow(
+  row: Partial<ProjectProposalRiskRow> | null | undefined,
+): ProjectProposalRiskRow {
+  return {
+    id: row?.id || rowId(),
+    objective: String(row?.objective ?? ""),
+    risk: String(row?.risk ?? ""),
+    assumption: String(row?.assumption ?? ""),
+    plan: String(row?.plan ?? ""),
+  };
+}
+
+export function formatRiskAndAssumptions(row: ProjectProposalRiskRow): string {
+  const risk = (row.risk ?? "").trim();
+  const assumption = (row.assumption ?? "").trim();
+  if (risk && assumption) return `${risk}; ${assumption}`;
+  return risk || assumption;
+}
+
+function parseHeadcount(value: string | undefined): number {
+  const n = parseInt(String(value ?? "").trim(), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function hasHeadcount(...values: Array<string | undefined>): boolean {
+  return values.some((v) => String(v ?? "").trim() !== "");
+}
+
+function sumHeadcount(...values: Array<string | undefined>): string {
+  if (!hasHeadcount(...values)) return "";
+  return String(values.reduce((acc, v) => acc + parseHeadcount(v), 0));
+}
+
+/** Direct Workers / totals are derived from Production + Non-Production + Indirect boxes. */
+export function deriveDirectEmploymentCounts(
+  form: Pick<
+    ProjectProposalForm,
+    | "employeesMale"
+    | "employeesFemale"
+    | "employeesDirect"
+    | "employeesIndirect"
+    | "employeesProductionMale"
+    | "employeesProductionFemale"
+    | "employeesNonProductionMale"
+    | "employeesNonProductionFemale"
+    | "employeesIndirectMale"
+    | "employeesIndirectFemale"
+  >,
+): Pick<
+  ProjectProposalForm,
+  "employeesMale" | "employeesFemale" | "employeesDirect" | "employeesIndirect"
+> {
+  const productionFilled = hasHeadcount(
+    form.employeesProductionMale,
+    form.employeesProductionFemale,
+    form.employeesNonProductionMale,
+    form.employeesNonProductionFemale,
+  );
+  const employeesMale = productionFilled
+    ? sumHeadcount(form.employeesProductionMale, form.employeesNonProductionMale)
+    : String(form.employeesMale ?? "").trim();
+  const employeesFemale = productionFilled
+    ? sumHeadcount(
+        form.employeesProductionFemale,
+        form.employeesNonProductionFemale,
+      )
+    : String(form.employeesFemale ?? "").trim();
+  const employeesDirect = sumHeadcount(employeesMale, employeesFemale);
+
+  const indirectSexFilled = hasHeadcount(
+    form.employeesIndirectMale,
+    form.employeesIndirectFemale,
+  );
+  const employeesIndirect = indirectSexFilled
+    ? sumHeadcount(form.employeesIndirectMale, form.employeesIndirectFemale)
+    : String(form.employeesIndirect ?? "").trim();
+
+  return {
+    employeesMale,
+    employeesFemale,
+    employeesDirect,
+    employeesIndirect,
+  };
+}
+
+export function withDerivedEmploymentCounts(
+  form: ProjectProposalForm,
+): ProjectProposalForm {
+  return { ...form, ...deriveDirectEmploymentCounts(form) };
+}
+
+export function toBudgetPrintRow(b: ProjectProposalBudgetRow): string[] {
+  const totalNum = parseFloat(String(b.total).replace(/[^\d.]/g, "")) || 0;
+  const setupNum = parseFloat(String(b.setupShare).replace(/[^\d.]/g, "")) || 0;
+  const lgiaNum = parseFloat(String(b.lgiaShare ?? "").replace(/[^\d.]/g, "")) || 0;
+  const counterpart =
+    totalNum > 0 && totalNum > setupNum + lgiaNum
+      ? String(totalNum - setupNum - lgiaNum)
+      : "";
+  return [
+    b.item,
+    b.qty,
+    b.unitCost,
+    b.total || b.unitCost,
+    b.setupShare,
+    b.lgiaShare ?? "",
+    counterpart,
+    b.total,
+  ];
 }
 
 export function emptyProjectProposalForm(): ProjectProposalForm {
@@ -81,6 +220,12 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     employeesFemale: "",
     employeesDirect: "",
     employeesIndirect: "",
+    employeesProductionMale: "",
+    employeesProductionFemale: "",
+    employeesNonProductionMale: "",
+    employeesNonProductionFemale: "",
+    employeesIndirectMale: "",
+    employeesIndirectFemale: "",
     registrationOffice: "",
     registrationNumber: "",
     registrationDate: "",
@@ -101,12 +246,15 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     rawMaterialsTable: [["", "", ""]],
     marketSituation: "",
     productDemandSupply: "",
+    volumeOfOrdersTable: [["", "", ""]],
     productPriceTable: [["", ""]],
     distributionChannel: "",
     competitors: "",
+    existingMarketingProblems: "",
     marketStrategies: [""],
     productionProcess: "",
-    equipmentTable: [["", "", ""]],
+    materialBalance: "",
+    equipmentTable: [emptyExistingEquipmentRow()],
     equipmentNarrative: "",
     interventionProblem: "",
     interventionProposed: "",
@@ -114,9 +262,12 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     interventionImpact: "",
     interventionCostTable: [["", "", "", ""]],
     fabricatorTable: [["", "", ""]],
-    scheduleTable: [["", ""]],
+    scheduleTable: [emptyScheduleRow()],
     expectedOutputBullets: [""],
     wasteManagement: "",
+    wasteVolumeMonthly: "",
+    wasteKinds: "",
+    wasteDisposalMethods: "",
     liquidityRatioTable: [
       ["1", "", "", ""],
       ["2", "", "", ""],
@@ -130,6 +281,12 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
       ["2", "", "", ""],
       ["3", "", "", ""],
     ],
+    netProfitMarginTable: [
+      ["1", "", "", ""],
+      ["2", "", "", ""],
+      ["3", "", "", ""],
+    ],
+    partialBudgetAnalysis: "",
     financialAnalysis: "",
     genderInvolvement: "",
     financialConstraintsNote: "Please refer to the attached financial reports.",
@@ -158,29 +315,43 @@ export function buildDefaultRefundSchedule(
     "December",
   ];
   const amt = parseFloat(String(amountRequested).replace(/[^\d.]/g, "")) || 0;
-  const years = Math.min(4, Math.max(1, parseInt(repaymentYears, 10) || 4));
+  const years = Math.min(5, Math.max(1, parseInt(repaymentYears, 10) || 4));
   const monthly = years > 0 && amt > 0 ? Math.round(amt / years / 12) : 0;
   const monthlyStr = monthly > 0 ? String(monthly) : "";
 
-  const header = ["Months", "Y1", "Y2", "Y3", "Y4", "Total"];
+  const header = ["Months", "Y1", "Y2", "Y3", "Y4", "Y5", "Total"];
   const rows = months.map((m) => {
-    const yearCols = Array.from({ length: 4 }, (_, i) =>
+    const yearCols = Array.from({ length: 5 }, (_, i) =>
       i < years ? monthlyStr : "",
     );
     const total =
       monthly > 0
-        ? String(monthly * Math.min(years, 4))
+        ? String(monthly * Math.min(years, 5))
         : "";
     return [m, ...yearCols, total];
   });
   const totalRow = [
     "Total",
-    ...Array.from({ length: 4 }, (_, i) =>
+    ...Array.from({ length: 5 }, (_, i) =>
       i < years && monthly > 0 ? String(monthly * 12) : "",
     ),
     monthly > 0 ? String(monthly * 12 * years) : "",
   ];
   return [header, ...rows, totalRow];
+}
+
+/** Insert Y5 before Total when hydrating legacy Y1–Y4 schedules. */
+export function normalizeRefundSchedule(
+  rows: string[][] | undefined,
+): string[][] {
+  if (!rows?.length) return buildDefaultRefundSchedule("", "");
+  const header = rows[0] ?? [];
+  if (header.some((c) => String(c).toUpperCase() === "Y5")) return rows;
+  return rows.map((row, i) => {
+    if (i === 0) return ["Months", "Y1", "Y2", "Y3", "Y4", "Y5", "Total"];
+    if (row.length >= 6) return [...row.slice(0, 5), "", row[row.length - 1]];
+    return row;
+  });
 }
 
 function getTna1Data(applicant: Applicant) {
@@ -192,6 +363,20 @@ function getTna1Data(applicant: Applicant) {
     form: tna1?.form ?? {},
     tables: tna1?.tables ?? EMPTY_TNA_TABLES,
   };
+}
+
+/** Read a published TNA2 findings subsection by official id (empty if missing). */
+function tna2SubsectionContent(
+  tna2: Tna2StoredDocument | null,
+  id: string,
+): string {
+  if (!tna2) return "";
+  for (const section of normalizeFindingsByArea(tna2.findingsByArea)) {
+    for (const sub of section.subsections ?? []) {
+      if (sub.id === id) return String(sub.content ?? "").trim();
+    }
+  }
+  return "";
 }
 
 function formatMoney(value: string | number | undefined): string {
@@ -214,6 +399,40 @@ function tableFromTna(
     while (cells.length < minCols) cells.push("");
     return cells.slice(0, minCols);
   });
+}
+
+function isBlankStringTable(rows: unknown): boolean {
+  if (!Array.isArray(rows) || rows.length === 0) return true;
+  return rows.every(
+    (row) =>
+      Array.isArray(row) &&
+      row.every((cell) => !String(cell ?? "").trim()),
+  );
+}
+
+function looksLikePrintshop(
+  applicant: Applicant | null,
+  form?: Partial<ProjectProposalForm>,
+): boolean {
+  const tna = applicant ? getTna1Data(applicant).form : {};
+  const hay = [
+    applicant?.enterpriseName,
+    applicant?.businessNature,
+    applicant?.businessSector,
+    form?.firmName,
+    form?.productsServices,
+    tna.enterpriseName,
+    tna.sector,
+    tna.commodity,
+    tna.mainProduct,
+  ]
+    .map((v) => String(v ?? "").toLowerCase())
+    .join(" ");
+  return /\bprint(shop|ing|er)?s?\b/.test(hay);
+}
+
+function copyVolumeOfOrdersSample(): string[][] {
+  return PP_VOLUME_OF_ORDERS_SAMPLE_ROWS.map((row) => [...row]);
 }
 
 export function buildProjectProposalDraft(
@@ -281,6 +500,7 @@ export function buildProjectProposalDraft(
         qty: eq.quantity || "1",
         unitCost: eq.estimatedCost || "",
         setupShare: eq.estimatedCost || "",
+        lgiaShare: "",
         total: eq.estimatedCost || "",
       });
     }
@@ -292,6 +512,7 @@ export function buildProjectProposalDraft(
       qty: "1",
       unitCost: budgetRaw,
       setupShare: amountReq || budgetRaw,
+      lgiaShare: "",
       total: budgetRaw,
     });
   }
@@ -311,6 +532,12 @@ export function buildProjectProposalDraft(
     .map((row) => row.name)
     .filter(Boolean)
     .join(", ");
+
+  const wasteKindsFromTna2 = tna2SubsectionContent(tna2, "waste-management");
+  const wasteDisposalFromTna2 = tna2SubsectionContent(
+    tna2,
+    "methods-of-disposal",
+  );
 
   const draft: ProjectProposalForm = {
     ...base,
@@ -343,6 +570,12 @@ export function buildProjectProposalDraft(
     employeesFemale: String(form.employeesFemale ?? ""),
     employeesDirect: String(form.employeesMale ?? ""),
     employeesIndirect: "",
+    employeesProductionMale: String(form.employeesMale ?? ""),
+    employeesProductionFemale: String(form.employeesFemale ?? ""),
+    employeesNonProductionMale: "",
+    employeesNonProductionFemale: "",
+    employeesIndirectMale: String(form.employeesIndirect ?? ""),
+    employeesIndirectFemale: String(form.employeesContract ?? ""),
     registrationOffice: String(md.registrationType ?? ""),
     registrationNumber: String(md.registrationNumber ?? ""),
     registrationDate: "",
@@ -369,7 +602,7 @@ export function buildProjectProposalDraft(
         form.processFlow ??
         "",
     ),
-    equipmentTable: tableFromTna(tables.equipment, 3),
+    equipmentTable: recomputeExistingEquipmentTable(tables.equipment),
     equipmentNarrative: "",
     interventionProblem,
     interventionProposed,
@@ -398,28 +631,46 @@ export function buildProjectProposalDraft(
       String(md.repaymentTerm ?? "4"),
     ),
     marketSituation: "",
-    productDemandSupply: "",
-    distributionChannel: "Local",
-    competitors: "",
-    marketStrategies: [""],
+    productDemandSupply: looksLikePrintshop(applicant)
+      ? "Schools, LGUs, and MSMEs in SOCCSKSARGEN place recurring orders for forms, modules, receipts, labels, and outdoor tarpaulins; current press capacity limits peak-season fill rates."
+      : "",
+    volumeOfOrdersTable: looksLikePrintshop(applicant)
+      ? copyVolumeOfOrdersSample()
+      : [["", "", ""]],
+    distributionChannel: String(form.marketOutlets ?? "").trim() || "Local",
+    competitors: String(form.marketCompetitors ?? ""),
+    existingMarketingProblems: "",
+    marketStrategies: (() => {
+      const fromTna = [form.marketingPlan, form.promotionalStrategies]
+        .map((v) => String(v ?? "").trim())
+        .filter(Boolean);
+      return fromTna.length ? fromTna : [""];
+    })(),
     wasteManagement: "",
+    wasteVolumeMonthly: "",
+    wasteKinds: wasteKindsFromTna2 || String(form.wasteManagement ?? ""),
+    wasteDisposalMethods: wasteDisposalFromTna2,
+    partialBudgetAnalysis: "",
     financialAnalysis: "",
     genderInvolvement: String(form.genderInvolvement ?? ""),
     riskRows: [
       {
         id: rowId(),
+        objective: "Maintain uninterrupted production during equipment commissioning",
         risk: "Equipment malfunction causing production delays",
         assumption: "Equipment will operate efficiently with regular maintenance",
         plan: "Schedule regular maintenance and maintain service contracts",
       },
       {
         id: rowId(),
+        objective: "Secure reliable raw material supply for scaled output",
         risk: "Supplier delays for raw materials",
         assumption: "Suppliers will deliver on time",
         plan: "Maintain multiple suppliers and buffer stock",
       },
       {
         id: rowId(),
+        objective: "Retain and expand the enterprise client base",
         risk: "Market competition",
         assumption: "Enterprise will retain and attract clients",
         plan: "Competitive pricing and quality improvement",
@@ -439,6 +690,7 @@ function mergeProposalForm(
     const cur = current[key];
     if (cur === undefined || cur === null) continue;
     if (typeof cur === "string" && cur.trim() === "") continue;
+    if (key === "volumeOfOrdersTable" && isBlankStringTable(cur)) continue;
     if (
       Array.isArray(cur) &&
       cur.length === 1 &&
@@ -451,13 +703,27 @@ function mergeProposalForm(
     (merged as Record<string, unknown>)[key] = cur;
   }
   merged.compensationTable = recomputeCompensationTable(merged.compensationTable);
+  merged.equipmentTable = recomputeExistingEquipmentTable(merged.equipmentTable);
   merged.rawMaterialCostTable = recomputeRawMaterialCostTable(
     merged.rawMaterialCostTable,
   );
   merged.rawMaterialAllocationTable = normalizeRawMaterialAllocationTable(
     merged.rawMaterialAllocationTable,
   );
-  return merged;
+  merged.budgetItems = (merged.budgetItems ?? []).map((row) =>
+    normalizeBudgetItem(row),
+  );
+  merged.riskRows = (merged.riskRows ?? []).map((row) => normalizeRiskRow(row));
+  merged.refundSchedule = normalizeRefundSchedule(merged.refundSchedule);
+  merged.scheduleTable = normalizeScheduleTable(merged.scheduleTable);
+  merged.netProfitMarginTable = merged.netProfitMarginTable?.length
+    ? merged.netProfitMarginTable
+    : [
+        ["1", "", "", ""],
+        ["2", "", "", ""],
+        ["3", "", "", ""],
+      ];
+  return withDerivedEmploymentCounts(merged);
 }
 
 export function submitProjectProposal(
@@ -468,11 +734,12 @@ export function submitProjectProposal(
 ): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
+  const nextForm = withDerivedEmploymentCounts(form);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
       projectProposal: {
-        form,
+        form: nextForm,
         attachments,
         document,
         submitted: true,
@@ -521,11 +788,12 @@ export function saveProjectProposalDraft(
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
   const existing = getProjectProposalStored(applicant);
+  const nextForm = withDerivedEmploymentCounts(form);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
       projectProposal: {
-        form,
+        form: nextForm,
         attachments,
         document: document ?? existing?.document,
         submitted: existing?.submitted ?? false,
@@ -562,12 +830,20 @@ export function applyGeneratedDocument(
     distributionChannel:
       document.distributionChannel ?? form.distributionChannel,
     competitors: document.competitors ?? form.competitors,
+    existingMarketingProblems:
+      document.existingMarketingProblems ?? form.existingMarketingProblems,
     marketStrategies:
       document.marketStrategies?.length
         ? document.marketStrategies
         : form.marketStrategies,
     productionProcess: document.productionProcess ?? form.productionProcess,
+    materialBalance: document.materialBalance ?? form.materialBalance,
     equipmentNarrative: document.equipmentNarrative ?? form.equipmentNarrative,
+    equipmentTable: recomputeExistingEquipmentTable(
+      document.equipmentTable?.length
+        ? document.equipmentTable
+        : form.equipmentTable,
+    ),
     interventionProblem:
       document.interventionProblem ?? form.interventionProblem,
     interventionProposed:
@@ -580,6 +856,13 @@ export function applyGeneratedDocument(
         ? document.expectedOutputBullets
         : form.expectedOutputBullets,
     wasteManagement: document.wasteManagement ?? form.wasteManagement,
+    wasteVolumeMonthly:
+      document.wasteVolumeMonthly ?? form.wasteVolumeMonthly,
+    wasteKinds: document.wasteKinds ?? form.wasteKinds,
+    wasteDisposalMethods:
+      document.wasteDisposalMethods ?? form.wasteDisposalMethods,
+    partialBudgetAnalysis:
+      document.partialBudgetAnalysis ?? form.partialBudgetAnalysis,
     financialAnalysis: document.financialAnalysis ?? form.financialAnalysis,
     genderInvolvement: document.genderInvolvement ?? form.genderInvolvement,
     riskRows:
@@ -589,7 +872,7 @@ export function applyGeneratedDocument(
     applicantStore.getById(applicantId) ?? null,
   );
   saveProjectProposalDraft(applicantId, merged, attachments, document);
-  return merged;
+  return withDerivedEmploymentCounts(merged);
 }
 
 export function buildProjectProposalGenerationPayload(
@@ -659,6 +942,9 @@ export function buildLocalProjectProposalDocument(
     competitors:
       f.competitors ||
       "Local competitors exist; differentiation is through service quality and turnaround time.",
+    existingMarketingProblems:
+      f.existingMarketingProblems ||
+      "No major market constraints are recorded beyond limited production capacity to meet growing demand.",
     marketStrategies: f.marketStrategies.filter(Boolean).length
       ? f.marketStrategies.filter(Boolean)
       : [
@@ -668,9 +954,13 @@ export function buildLocalProjectProposalDocument(
     productionProcess:
       f.productionProcess ||
       "Order reception → design/preparation → production → quality check → packaging → delivery.",
+    materialBalance:
+      f.materialBalance ||
+      "Raw material inputs are converted to finished goods with process losses and rejects accounted for at each production stage.",
     equipmentNarrative:
       f.equipmentNarrative ||
       "Existing equipment supports current output levels with room for upgrading.",
+    equipmentTable: recomputeExistingEquipmentTable(f.equipmentTable),
     interventionProblem: f.interventionProblem,
     interventionProposed: f.interventionProposed,
     interventionEquipment: f.interventionEquipment,
@@ -687,6 +977,19 @@ export function buildLocalProjectProposalDocument(
     wasteManagement:
       f.wasteManagement ||
       "Waste segregation, recycling of paper and packaging, and proper disposal of process waste per local guidelines.",
+    wasteVolumeMonthly:
+      f.wasteVolumeMonthly ||
+      "Monthly process and packaging waste volume is modest at current capacity and will be remeasured after equipment commissioning.",
+    wasteKinds:
+      f.wasteKinds ||
+      "Typical wastes include packaging (paper, plastics), organic or process residues, and incidental metal or chemical discards depending on the production line.",
+    wasteDisposalMethods:
+      f.wasteDisposalMethods ||
+      f.wasteManagement ||
+      "Segregation at source, recycling of recoverable materials, and disposal of residuals through accredited haulers in accordance with LGU environmental guidelines.",
+    partialBudgetAnalysis:
+      f.partialBudgetAnalysis ||
+      "Partial budget analysis compares incremental costs of the SETUP intervention against incremental returns from higher throughput, lower rejects, and improved product quality.",
     financialAnalysis:
       f.financialAnalysis ||
       "Financial capacity will be supported by attached statements and projected cash flows from improved operations.",
@@ -711,14 +1014,20 @@ export type ProposalAiField =
   | "productDemandSupply"
   | "distributionChannel"
   | "competitors"
+  | "existingMarketingProblems"
   | "marketStrategies"
   | "productionProcess"
+  | "materialBalance"
   | "equipmentNarrative"
   | "interventionProblem"
   | "interventionProposed"
   | "interventionImpact"
   | "expectedOutputBullets"
   | "wasteManagement"
+  | "wasteVolumeMonthly"
+  | "wasteKinds"
+  | "wasteDisposalMethods"
+  | "partialBudgetAnalysis"
   | "financialAnalysis"
   | "genderInvolvement";
 
@@ -759,12 +1068,16 @@ export function extractProposalFieldSuggestion(
       return doc.distributionChannel ?? form.distributionChannel;
     case "competitors":
       return doc.competitors ?? form.competitors;
+    case "existingMarketingProblems":
+      return doc.existingMarketingProblems ?? form.existingMarketingProblems;
     case "marketStrategies":
       return doc.marketStrategies?.length
         ? doc.marketStrategies
         : form.marketStrategies;
     case "productionProcess":
       return doc.productionProcess ?? form.productionProcess;
+    case "materialBalance":
+      return doc.materialBalance ?? form.materialBalance;
     case "equipmentNarrative":
       return doc.equipmentNarrative ?? form.equipmentNarrative;
     case "interventionProblem":
@@ -779,6 +1092,14 @@ export function extractProposalFieldSuggestion(
         : form.expectedOutputBullets;
     case "wasteManagement":
       return doc.wasteManagement ?? form.wasteManagement;
+    case "wasteVolumeMonthly":
+      return doc.wasteVolumeMonthly ?? form.wasteVolumeMonthly;
+    case "wasteKinds":
+      return doc.wasteKinds ?? form.wasteKinds;
+    case "wasteDisposalMethods":
+      return doc.wasteDisposalMethods ?? form.wasteDisposalMethods;
+    case "partialBudgetAnalysis":
+      return doc.partialBudgetAnalysis ?? form.partialBudgetAnalysis;
     case "financialAnalysis":
       return doc.financialAnalysis ?? form.financialAnalysis;
     case "genderInvolvement":
@@ -828,6 +1149,95 @@ export function sumBudgetItems(items: ProjectProposalBudgetRow[]): string {
     if (!Number.isNaN(t)) total += t;
   }
   return total > 0 ? formatMoney(total) : "";
+}
+
+export interface InvestmentDecisionAnalysisRow {
+  label: string;
+  value: string;
+  bold?: boolean;
+}
+
+export interface InvestmentDecisionAnalysis {
+  assetLife: number;
+  projectCost: number;
+  total: number;
+  averageIncome: number;
+  roi: number | null;
+  rows: InvestmentDecisionAnalysisRow[];
+}
+
+function annualIncomesFromRoiTable(form: ProjectProposalForm): {
+  amounts: number[];
+  hasData: boolean;
+} {
+  const amounts = Array.from({ length: YEAR_COUNT }, () => 0);
+  let hasData = false;
+  for (const row of form.roiTable ?? []) {
+    const year = parseInt(String(row[0] ?? "").replace(/\D/g, ""), 10);
+    if (year < 1 || year > YEAR_COUNT) continue;
+    const raw = String(row[1] ?? "").trim();
+    if (!raw) continue;
+    amounts[year - 1] = parseMoney(raw);
+    hasData = true;
+  }
+  return { amounts, hasData };
+}
+
+function idaMoney(n: number, show: boolean): string {
+  return show ? formatPhp(n) : "";
+}
+
+export function buildInvestmentDecisionAnalysis(
+  form: ProjectProposalForm,
+  snapshot?: FinancialProjectionSnapshot | null,
+): InvestmentDecisionAnalysis {
+  const assetLife = YEAR_COUNT;
+  const fromSnapshot = Array.isArray(snapshot?.ratios) && snapshot.ratios.length > 0;
+  const fallback = annualIncomesFromRoiTable(form);
+  const hasIncome = fromSnapshot || fallback.hasData;
+  const amounts = fromSnapshot
+    ? Array.from({ length: YEAR_COUNT }, (_, i) => snapshot!.ratios[i]?.netIncome ?? 0)
+    : fallback.amounts;
+  const total = round2(amounts.reduce((s, n) => s + n, 0));
+  const averageIncome = hasIncome ? round2(total / assetLife) : 0;
+  const budgetTotal = parseMoney(sumBudgetItems(form.budgetItems ?? []));
+  const coverCost = parseMoney(form.projectCost);
+  const projectCost = budgetTotal > 0 ? budgetTotal : coverCost;
+  const roi =
+    hasIncome && projectCost > 0 ? averageIncome / projectCost : null;
+
+  const rows: InvestmentDecisionAnalysisRow[] = amounts.map((n, i) => ({
+    label: `Year ${i + 1}`,
+    value: idaMoney(n, hasIncome),
+  }));
+  rows.push({ label: "Total", value: idaMoney(total, hasIncome), bold: true });
+  rows.push({
+    label: PP_IDA_ASSET_LIFE_LABEL,
+    value: String(assetLife),
+  });
+  rows.push({
+    label: "Average Income",
+    value: idaMoney(averageIncome, hasIncome),
+    bold: true,
+  });
+  rows.push({
+    label: PP_IDA_PROJECT_COST_LABEL,
+    value: projectCost > 0 ? formatPhp(projectCost) : "",
+  });
+  rows.push({
+    label: PP_IDA_ROI_CAPTION,
+    value: roi == null ? "" : `${Math.round(roi * 100)}%`,
+    bold: true,
+  });
+
+  return {
+    assetLife,
+    projectCost,
+    total,
+    averageIncome,
+    roi,
+    rows,
+  };
 }
 
 export const COMPENSATION_COL_COUNT = 7;
@@ -1084,4 +1494,162 @@ export function rawMaterialAllocationFooterRow(
 ): string[] {
   const totals = sumRawMaterialAllocationColumns(rows);
   return ["Total", totals.ratio, totals.weekly];
+}
+
+export const SCHEDULE_MONTH_COUNT = 8;
+export const SCHEDULE_COL_COUNT = 1 + SCHEDULE_MONTH_COUNT;
+
+export function emptyScheduleRow(): string[] {
+  return Array(SCHEDULE_COL_COUNT).fill("");
+}
+
+export function isScheduleMonthChecked(cell: string | undefined): boolean {
+  const v = String(cell ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "x" || v === "yes" || v === "✓";
+}
+
+function normalizeScheduleRow(raw: unknown): string[] {
+  const cells = Array.isArray(raw)
+    ? raw.map((c) => String(c ?? ""))
+    : [];
+  if (cells.length <= 2) {
+    return [cells[0] ?? "", ...Array(SCHEDULE_MONTH_COUNT).fill("")];
+  }
+  const next = [...cells];
+  while (next.length < SCHEDULE_COL_COUNT) next.push("");
+  return next.slice(0, SCHEDULE_COL_COUNT);
+}
+
+export function normalizeScheduleTable(
+  rows: string[][] | undefined,
+): string[][] {
+  const list = Array.isArray(rows) ? rows : [];
+  const normalized = list.map((row) => normalizeScheduleRow(row));
+  return normalized.length ? normalized : [emptyScheduleRow()];
+}
+
+export const EXISTING_EQUIPMENT_COL_COUNT = 9;
+export const EXISTING_EQUIPMENT_COMPUTED_COLUMNS = [4, 6, 8] as const;
+
+export function emptyExistingEquipmentRow(): string[] {
+  return Array(EXISTING_EQUIPMENT_COL_COUNT).fill("");
+}
+
+export interface ExistingEquipmentColumnTotals {
+  totalCost: string;
+  bookValue: string;
+}
+
+/**
+ * Legacy 3-col: Type, Quantity, Year Acquired.
+ * TNA 5-col: Type, Specs, Capacity, Units, Year.
+ */
+function migrateExistingEquipmentRow(raw: string[]): string[] {
+  if (raw.length <= 3) {
+    return [
+      raw[0] ?? "",
+      raw[2] ?? "",
+      "",
+      raw[1] ?? "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ];
+  }
+  if (raw.length === 5) {
+    return [
+      raw[0] ?? "",
+      raw[4] ?? "",
+      "",
+      raw[3] ?? "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ];
+  }
+  const cells = [...raw];
+  while (cells.length < EXISTING_EQUIPMENT_COL_COUNT) cells.push("");
+  return cells.slice(0, EXISTING_EQUIPMENT_COL_COUNT);
+}
+
+/**
+ * Total cost = Qty × Acquisition cost.
+ * Annual depreciation = Total cost / EUL (straight-line, salvage 0).
+ * Book value = Total cost − Annual depreciation × (EUL − RUL).
+ * If EUL is missing or ≤ 0, depreciation and book value stay blank.
+ * If RUL > EUL, years-used is 0 (book value = total cost).
+ */
+export function computeExistingEquipmentRow(row: unknown): string[] {
+  const raw = Array.isArray(row) ? row.map((c) => String(c ?? "")) : [];
+  const cells = migrateExistingEquipmentRow(raw);
+  const particulars = cells[0] ?? "";
+  const yearAcquired = cells[1] ?? "";
+  const acquisitionCostRaw = cells[2] ?? "";
+  const qtyRaw = cells[3] ?? "";
+  const eulRaw = cells[5] ?? "";
+  const rulRaw = cells[7] ?? "";
+  const qty = parseCompensationAmount(qtyRaw);
+  const acquisitionCost = parseCompensationAmount(acquisitionCostRaw);
+  const eul = parseCompensationAmount(eulRaw);
+  const rul = parseCompensationAmount(rulRaw);
+  const totalCost =
+    qty > 0 && acquisitionCost > 0 ? qty * acquisitionCost : 0;
+  const annualDep = eul > 0 && totalCost > 0 ? totalCost / eul : 0;
+  const yearsUsed = eul > 0 ? Math.max(0, eul - rul) : 0;
+  const bookValue = annualDep > 0 ? totalCost - annualDep * yearsUsed : 0;
+  return [
+    particulars,
+    yearAcquired,
+    acquisitionCostRaw,
+    qtyRaw,
+    formatCompensationTotal(totalCost),
+    eulRaw,
+    eul > 0 && totalCost > 0 ? formatCompensationTotal(annualDep) : "",
+    rulRaw,
+    eul > 0 && totalCost > 0 ? formatCompensationTotal(bookValue) : "",
+  ];
+}
+
+export function recomputeExistingEquipmentTable(
+  rows: string[][] | undefined,
+): string[][] {
+  const list = rows?.length ? rows : [emptyExistingEquipmentRow()];
+  return list.map((row) => computeExistingEquipmentRow(row));
+}
+
+export function sumExistingEquipmentColumns(
+  rows: string[][] | undefined,
+): ExistingEquipmentColumnTotals {
+  const computed = recomputeExistingEquipmentTable(rows);
+  let totalCost = 0;
+  let bookValue = 0;
+  for (const row of computed) {
+    totalCost += parseCompensationAmount(row[4]);
+    bookValue += parseCompensationAmount(row[8]);
+  }
+  return {
+    totalCost: formatCompensationTotal(totalCost),
+    bookValue: formatCompensationTotal(bookValue),
+  };
+}
+
+export function existingEquipmentFooterRow(
+  rows: string[][] | undefined,
+): string[] {
+  const totals = sumExistingEquipmentColumns(rows);
+  return [
+    "Total",
+    "",
+    "",
+    "",
+    totals.totalCost,
+    "",
+    "",
+    "",
+    totals.bookValue,
+  ];
 }

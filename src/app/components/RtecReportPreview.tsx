@@ -11,14 +11,18 @@ import type {
 } from "../api/types";
 import {
   compensationTableFooterRow,
+  existingEquipmentFooterRow,
   PROPOSAL_ATTACHMENT_LABELS,
   rawMaterialAllocationFooterRow,
   rawMaterialCostFooterRow,
 } from "../utils/projectProposal";
 import {
   PP_COMPENSATION_COLUMNS,
+  PP_EQUIPMENT_COLUMNS,
+  PP_MARKETING_A_LABELS,
   PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
   PP_RAW_MATERIAL_COST_COLUMNS,
+  PP_VOLUME_OF_ORDERS_COLUMNS,
 } from "../constants/projectProposalLayout";
 import { snapshotStatementTables } from "../utils/financialProjection";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
@@ -186,9 +190,9 @@ export function RtecReportPreview({
       })()
     : null;
 
-  const equipmentRows = pp.equipmentTable
-    .filter((r) => r.some((c) => c.trim()))
-    .map((r) => [r[0] ?? "", r[3] ?? r[2] ?? "1", r[4] ?? ""]);
+  const equipmentRows = (pp.equipmentTable ?? []).filter((r) =>
+    r.some((c) => c.trim()),
+  );
 
   const budgetRows = pp.budgetItems
     .filter((b) => b.item.trim())
@@ -378,10 +382,13 @@ export function RtecReportPreview({
               rawMaterialAllocationFooterRow(pp.rawMaterialAllocationTable),
             ]}
           />
-          <p className="text-xs font-bold text-gray-500 mt-4 mb-1">2. Existing Production Equipment</p>
+          <p className="text-xs font-bold text-gray-500 mt-4 mb-1">2. Existing production equipment</p>
           <Table
-            headers={["Type of Equipment", "No. of Units", "Year Acquired"]}
-            rows={equipmentRows}
+            headers={[...PP_EQUIPMENT_COLUMNS]}
+            rows={[
+              ...equipmentRows,
+              existingEquipmentFooterRow(pp.equipmentTable),
+            ]}
           />
           <Footer page="4" />
         </div>
@@ -433,10 +440,15 @@ export function RtecReportPreview({
             rows={(Array.isArray(form.fabricatorRows) ? form.fabricatorRows : []).map((r) => [r.name, r.address, r.contactNo])}
           />
           <h3 className="text-xs font-bold uppercase text-gray-600 mt-6 mb-2">c. Marketing Aspect</h3>
-          <p className="text-xs font-bold text-gray-500 mb-1">Market Situation</p>
+          <p className="text-xs font-bold text-gray-500 mb-1">{PP_MARKETING_A_LABELS.marketSituation}</p>
           <Narrative text={pp.marketSituation} />
-          <p className="text-xs font-bold text-gray-500 mt-3 mb-1">Product Demand and Supply</p>
+          <p className="text-xs font-bold text-gray-500 mt-3 mb-1">{PP_MARKETING_A_LABELS.productDemand}</p>
           <Narrative text={pp.productDemandSupply} />
+          <p className="text-xs font-bold text-gray-500 mt-3 mb-1">{PP_MARKETING_A_LABELS.volumeOfOrders}</p>
+          <Table
+            headers={[...PP_VOLUME_OF_ORDERS_COLUMNS]}
+            rows={(pp.volumeOfOrdersTable ?? []).filter((r) => r.some((c) => c.trim()))}
+          />
           <Footer page="6" />
         </div>
 

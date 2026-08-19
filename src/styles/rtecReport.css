@@ -163,13 +163,16 @@
 }
 
 #rtec-report-print-root .rtec-form-rm-cost-table,
+#rtec-report-print-root .rtec-form-equipment-table,
 #rtec-report-print-root .rtec-form-rm-alloc-table {
   table-layout: fixed;
-  font-size: 9px;
+  font-size: 8pt;
 }
 
 #rtec-report-print-root .rtec-form-rm-cost-table th:first-child,
 #rtec-report-print-root .rtec-form-rm-cost-table td.rtec-form-particulars,
+#rtec-report-print-root .rtec-form-equipment-table th:first-child,
+#rtec-report-print-root .rtec-form-equipment-table td.rtec-form-particulars,
 #rtec-report-print-root .rtec-form-rm-alloc-table th:first-child,
 #rtec-report-print-root .rtec-form-rm-alloc-table td.rtec-form-particulars {
   width: 18%;

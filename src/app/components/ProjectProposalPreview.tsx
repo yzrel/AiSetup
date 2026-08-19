@@ -1,5 +1,8 @@
 /**
  * Author: Yzrel Jade B. Eborde
+ *
+ * On-screen A4 preview that approximates SETUP Form 001 (section order, indent,
+ * table columns). Official PDF still prints via ProjectProposalDocument.
  */
 
 import { Printer } from "lucide-react";
@@ -10,16 +13,56 @@ import type {
   ProjectProposalDocumentResponse,
 } from "../api/types";
 import {
+  buildInvestmentDecisionAnalysis,
   compensationTableFooterRow,
+  existingEquipmentFooterRow,
+  formatRiskAndAssumptions,
   PROPOSAL_ATTACHMENT_LABELS,
   rawMaterialAllocationFooterRow,
   rawMaterialCostFooterRow,
+  toBudgetPrintRow,
 } from "../utils/projectProposal";
 import {
+  PP_BUDGET_COLUMNS,
+  PP_BUDGET_NOTE,
   PP_COMPENSATION_COLUMNS,
+  PP_EMPLOYEE_ROWS,
+  PP_EQUIPMENT_COLUMNS,
+  PP_EXPECTED_OUTPUT_HEADINGS,
+  PP_FABRICATOR_COLUMNS,
+  PP_FINANCIAL_ATTACH_NOTE,
+  PP_FINANCIAL_CAPACITY_DASH_ITEMS,
+  PP_FINANCIAL_SUBHEADINGS,
+  PP_FORM_INDENT_CLASS,
+  PP_INTERVENTION_COLUMNS,
+  PP_INTERVENTION_COST_COLUMNS,
+  PP_LIQUIDITY_COLUMNS,
+  PP_MARKETING_A_LABELS,
+  PP_MARKETING_SUBHEADINGS,
+  PP_NPM_COLUMNS,
+  PP_PRODUCT_PRICE_COLUMNS,
+  PP_PRODUCTION_DASH_ITEMS,
+  PP_QUICK_RATIO_COLUMNS,
   PP_RAW_MATERIAL_ALLOCATION_COLUMNS,
+  PP_RAW_MATERIAL_COLUMNS,
   PP_RAW_MATERIAL_COST_COLUMNS,
+  PP_REFUND_NOTE,
+  PP_RISK_COLUMNS,
+  PP_RISK_FOOTNOTE,
+  PP_ROI_COLUMNS,
+  PP_SECTION_FINANCIAL,
+  PP_SECTION_MARKETING,
+  PP_SECTION_PROJECT_BACKGROUND,
+  PP_SECTION_RISK,
+  PP_SECTION_TECHNOLOGICAL,
+  PP_SECTION_WASTE,
   PP_SUBHEADING_CAPACITY,
+  PP_VOLUME_OF_ORDERS_COLUMNS,
+  PP_WASTE_SUBHEADINGS,
+  PROJECT_PROPOSAL_TITLE,
+  companyProfileEmployeeTotals,
+  displayValue,
+  formatCurrencyDisplay,
 } from "../constants/projectProposalLayout";
 import { printProjectProposalPdf } from "../utils/projectProposalPrint";
 import { snapshotStatementTables } from "../utils/financialProjection";
@@ -27,14 +70,9 @@ import { getFinancialProjectionStored } from "../utils/financialProjectionStore"
 import { applicantStore } from "../store/applicantStore";
 import { StoredFileImage } from "./StoredFilePreview";
 import { isImageFile } from "../utils/storedFilePreview";
-import {
-  PreviewFieldRow,
-  PreviewSection,
-  PreviewTable,
-  PreviewToolbar,
-} from "./PreviewLayout";
-
-const DOST_BLUE = "#0C2461";
+import { PreviewToolbar } from "./PreviewLayout";
+import { ScheduleGanttTable } from "./projectProposal/ScheduleGanttTable";
+import { InvestmentDecisionAnalysisTable } from "./projectProposal/InvestmentDecisionAnalysisTable";
 
 interface ProjectProposalPreviewProps {
   form: ProjectProposalForm;
@@ -48,71 +86,95 @@ interface ProjectProposalPreviewProps {
   compact?: boolean;
 }
 
-function Section({
-  title,
-  children,
-  pageBreak,
-}: {
-  title: string;
-  children: ReactNode;
-  pageBreak?: boolean;
-}) {
-  return (
-    <div className={`mb-6 pp-print-section ${pageBreak ? "pp-page-break" : ""}`}>
-      <h3
-        className="text-sm font-bold text-white px-3 py-2 rounded-t-lg"
-        style={{ background: DOST_BLUE }}
-      >
-        {title}
-      </h3>
-      <div className="border border-t-0 border-gray-200 rounded-b-lg p-4 bg-white">
-        {children}
-      </div>
-    </div>
-  );
+function val(value: unknown): string {
+  return displayValue(value);
 }
 
-function Row({ label, value }: { label: string; value?: string | null }) {
-  return <PreviewFieldRow label={label} value={value} />;
+function Indent({
+  level,
+  children,
+}: {
+  level: 1 | 2 | 3;
+  children: ReactNode;
+}) {
+  return <div className={PP_FORM_INDENT_CLASS[level]}>{children}</div>;
 }
 
 function Narrative({ text }: { text?: string }) {
+  const content = String(text ?? "").trim();
+  if (!content) return <p className="pp-form-empty">{"\u00a0"}</p>;
+  return <p className="pp-form-narrative">{content}</p>;
+}
+
+function Bullets({ items, check }: { items?: string[]; check?: boolean }) {
+  const list = items?.map((s) => val(s)).filter(Boolean) ?? [];
+  if (!list.length) return <p className="pp-form-empty">{"\u00a0"}</p>;
   return (
-    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-      {text?.trim() ? text : "—"}
-    </p>
+    <ul className={check ? "pp-form-check-bullet-list" : "pp-form-bullet-list"}>
+      {list.map((item, i) => (
+        <li key={i}>
+          {check ? <span className="pp-form-check-bullet">{"\u2713"}</span> : null}
+          {item}
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function Bullets({ items }: { items?: string[] }) {
-  const list = items?.filter((s) => s.trim()) ?? [];
-  if (!list.length) return <p className="text-sm text-gray-400">—</p>;
-  return (
-    <ol className="list-decimal list-inside space-y-1.5 text-sm text-gray-700">
-      {list.map((item, i) => (
-        <li key={i}>{item}</li>
-      ))}
-    </ol>
-  );
+function cellClass(colIndex: number, numericCols: readonly number[]): string | undefined {
+  const classes: string[] = [];
+  if (colIndex === 0) classes.push("pp-form-particulars");
+  if (numericCols.includes(colIndex)) classes.push("pp-form-num");
+  return classes.length ? classes.join(" ") : undefined;
 }
 
 function Table({
   headers,
   rows,
+  className = "",
+  numericCols = [],
+  footerRow,
 }: {
-  headers: string[];
+  headers: readonly string[];
   rows: string[][];
+  className?: string;
+  numericCols?: readonly number[];
+  footerRow?: readonly string[];
 }) {
+  const body = rows.filter((r) => r.some((c) => String(c ?? "").trim()));
+  const shown = body.length ? body : [headers.map(() => "")];
   return (
-    <PreviewTable
-      columns={headers.map((h, i) => ({
-        key: String(i),
-        header: h,
-        mobileLabel: h,
-        className: h === "Particulars" ? "min-w-[12rem] wrap" : undefined,
-      }))}
-      rows={rows}
-    />
+    <table className={`pp-form-table ${className}`.trim()}>
+      <thead>
+        <tr>
+          {headers.map((h) => (
+            <th key={h}>{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {shown.map((row, i) => (
+          <tr key={i}>
+            {headers.map((_, j) => (
+              <td key={j} className={cellClass(j, numericCols)}>
+                {val(row[j]) || "\u00a0"}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+      {footerRow ? (
+        <tfoot>
+          <tr>
+            {headers.map((_, j) => (
+              <td key={j} className={cellClass(j, numericCols)}>
+                {val(footerRow[j]) || "\u00a0"}
+              </td>
+            ))}
+          </tr>
+        </tfoot>
+      ) : null}
+    </table>
   );
 }
 
@@ -127,8 +189,8 @@ function AttachmentFigure({
 }) {
   if (!attachment) {
     return (
-      <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-400">
-        {label} — not attached
+      <div className="pp-form-attachment-placeholder">
+        <p className="pp-form-attachment-label">{label}</p>
       </div>
     );
   }
@@ -138,19 +200,27 @@ function AttachmentFigure({
     attachment.dataUrl,
   );
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-semibold text-gray-600">{label}</p>
+    <div className="pp-form-attachment">
+      <p className="pp-form-attachment-label">{label}</p>
       {isImage ? (
         <StoredFileImage
           applicantId={applicantId}
           file={attachment}
           alt={attachment.fileName}
-          className="max-h-64 mx-auto border border-gray-200 rounded"
         />
       ) : (
-        <p className="text-xs text-gray-500">{attachment.fileName} (PDF attached)</p>
+        <p className="pp-form-attachment-file">{attachment.fileName}</p>
       )}
     </div>
+  );
+}
+
+function ProfileRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <tr>
+      <td className="pp-form-label">{label}</td>
+      <td className="pp-form-value">{val(value) || "\u00a0"}</td>
+    </tr>
   );
 }
 
@@ -173,6 +243,7 @@ export function ProjectProposalPreview({
   const projTables = projectionSnapshot
     ? snapshotStatementTables(projectionSnapshot)
     : null;
+  const emp = companyProfileEmployeeTotals(form);
 
   const narrative = (field: keyof ProjectProposalForm, docField?: keyof ProjectProposalDocumentResponse) => {
     if (doc && docField && doc[docField]) return String(doc[docField]);
@@ -189,14 +260,34 @@ export function ProjectProposalPreview({
         return docValue as string[];
       }
     }
-    const val = form[formField];
-    return Array.isArray(val) ? (val as string[]) : [];
+    const v = form[formField];
+    return Array.isArray(v) ? (v as string[]) : [];
   };
+
+  const expectedBullets = bulletField("expectedOutputBullets", "expectedOutputBullets");
+  const wasteVolume = narrative("wasteVolumeMonthly", "wasteVolumeMonthly");
+  const wasteKindsText = narrative("wasteKinds", "wasteKinds");
+  const wasteMethods = narrative("wasteDisposalMethods", "wasteDisposalMethods");
+  const wasteCombined = narrative("wasteManagement", "wasteManagement");
+  const hasSplitWaste = Boolean(wasteVolume || wasteKindsText || wasteMethods);
+  const riskRows = doc?.riskRows?.length ? doc.riskRows : form.riskRows;
+  const budgetRows = form.budgetItems
+    .filter((b) => b.item.trim() || b.total.trim())
+    .map((b) => toBudgetPrintRow(b));
+  const refundRows =
+    form.refundSchedule.length > 1 ? form.refundSchedule.slice(1) : [];
+  const refundHeaders =
+    form.refundSchedule.length > 0
+      ? form.refundSchedule[0]
+      : ["Months", "Y1", "Y2", "Y3", "Y4", "Y5", "Total"];
+
+  const empCell = (n: number | string) =>
+    n === 0 || n === "" ? "\u00a0" : String(n);
 
   return (
     <div className={compact ? "" : "space-y-4"}>
       {!compact && onPrint && (
-        <div className="flex justify-end print:hidden">
+        <PreviewToolbar className="justify-end print:hidden">
           <button
             type="button"
             onClick={onPrint}
@@ -205,345 +296,463 @@ export function ProjectProposalPreview({
             <Printer className="w-4 h-4" />
             Print / Save as PDF
           </button>
-        </div>
+        </PreviewToolbar>
       )}
 
-      <div
-        id="project-proposal-preview"
-        className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-gray-800 pp-form-document"
-      >
-        <div className="text-center border-b border-gray-200 pb-4 mb-6 pp-print-section">
-          <p className="text-[10px] uppercase tracking-widest text-gray-400">
-            Republic of the Philippines
-          </p>
-          <p className="font-bold text-base">Department of Science and Technology</p>
-          <p className="text-xs text-gray-500">
-            Small Enterprise Technology Upgrading Program (SETUP)
-          </p>
-          <p className="font-black text-lg mt-3" style={{ color: DOST_BLUE }}>
-            SETUP Form 001 — Project Proposal
-          </p>
-          {applicationId && (
-            <p className="text-xs text-gray-500 mt-1">
-              Application ID: <span className="font-mono font-semibold">{applicationId}</span>
-            </p>
-          )}
-          {doc?.generatedAt && (
-            <p className="text-xs text-gray-500 mt-1">
-              Generated: {new Date(doc.generatedAt).toLocaleString()}
-              {aiGenerated !== undefined && (
-                <span className="block mt-1">
+      <div id="project-proposal-preview" className="pp-form-document">
+        <div className="pp-form-block pp-print-section">
+          <h1 className="pp-form-title">{PROJECT_PROPOSAL_TITLE}</h1>
+          {(applicationId || doc?.generatedAt || aiGenerated !== undefined) && (
+            <div className="pp-form-preview-meta">
+              {applicationId ? (
+                <p>
+                  Application ID: <span className="font-mono font-semibold">{applicationId}</span>
+                </p>
+              ) : null}
+              {doc?.generatedAt ? (
+                <p>Generated: {new Date(doc.generatedAt).toLocaleString()}</p>
+              ) : null}
+              {aiGenerated !== undefined ? (
+                <p>
                   {aiGenerated ? "AI-assisted draft" : "Template-assisted draft"}
                   {submitted ? " · Submitted" : " · Draft"}
-                </span>
-              )}
-            </p>
+                </p>
+              ) : null}
+            </div>
           )}
+          <div className="pp-form-cover-field">
+            <span className="pp-form-cover-label">PROJECT TITLE:</span>
+            <span className="pp-form-cover-value">{val(form.projectTitle) || "\u00a0"}</span>
+          </div>
+          <div className="pp-form-cover-field">
+            <span className="pp-form-cover-label">PROPONENT:</span>
+            <span className="pp-form-cover-value">{val(form.proponentName) || "\u00a0"}</span>
+          </div>
+          {val(form.proponentAddress) ? (
+            <p className="pp-form-cover-address">{val(form.proponentAddress)}</p>
+          ) : null}
+          <div className="pp-form-cover-field">
+            <span className="pp-form-cover-label">PROJECT COST:</span>
+            <span className="pp-form-cover-value">
+              {formatCurrencyDisplay(form.projectCost) || form.projectCost || "\u00a0"}
+            </span>
+          </div>
+          <div className="pp-form-cover-field">
+            <span className="pp-form-cover-label">AMOUNT REQUESTED:</span>
+            <span className="pp-form-cover-value">
+              {formatCurrencyDisplay(form.amountRequested) || form.amountRequested || "\u00a0"}
+            </span>
+          </div>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">OBJECTIVES:</h3>
+          </Indent>
+          <Indent level={2}>
+            <p className="pp-form-field-label">General Objectives:</p>
+            <Narrative text={narrative("generalObjective", "generalObjective")} />
+            <p className="pp-form-field-label">Specific Objectives:</p>
+            <Bullets items={bulletField("specificObjectives", "specificObjectives")} />
+          </Indent>
         </div>
 
-        <Section title="Cover">
-          <Row label="Project Title" value={form.projectTitle} />
-          <Row label="Proponent" value={form.proponentName} />
-          <Row label="Proponent Address" value={form.proponentAddress} />
-          <Row label="Project Cost" value={form.projectCost} />
-          <Row label="Amount Requested from SETUP" value={form.amountRequested} />
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">General Objective</p>
-            <Narrative text={narrative("generalObjective", "generalObjective")} />
-          </div>
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Specific Objectives</p>
-            <Bullets items={bulletField("specificObjectives", "specificObjectives")} />
-          </div>
-        </Section>
+        <div className="pp-form-block pp-print-section">
+          <h2 className="pp-form-section-heading">{PP_SECTION_PROJECT_BACKGROUND}</h2>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">A. Company Profile:</h3>
+          </Indent>
+          <table className="pp-form-table">
+            <tbody>
+              <ProfileRow label="Name of Firm" value={form.firmName} />
+              <ProfileRow label="Address" value={form.firmAddress} />
+              <ProfileRow label="Contact Person" value={form.contactPerson} />
+              <ProfileRow label="Contact No." value={form.contactNumber} />
+              <ProfileRow label="e-mail Address" value={form.email} />
+              <ProfileRow label="Year established" value={form.yearEstablished} />
+              <ProfileRow
+                label="Business Permit"
+                value={[form.businessPermitNumber, form.businessPermitDate].filter(Boolean).join(" · ")}
+              />
+              <ProfileRow label="Type of Organization" value={form.organizationType} />
+              <ProfileRow label="Profit / Non-Profit" value={form.profitType} />
+              <ProfileRow label="MSME Size" value={form.msmeSize} />
+              <ProfileRow label="Registration Office" value={form.registrationOffice} />
+              <ProfileRow label="Registration Number" value={form.registrationNumber} />
+              <ProfileRow label="Date of Registration" value={form.registrationDate} />
+              <ProfileRow label="Business Activity" value={form.businessActivity} />
+              <ProfileRow label="Business Sector (Specify)" value={form.prioritySectorSpecify} />
+              <ProfileRow label="Products/Services" value={form.productsServices} />
+              <tr>
+                <td className="pp-form-label">Brief Enterprise Background</td>
+                <td className="pp-form-value pp-form-narrative-cell">
+                  {val(narrative("enterpriseBackground", "enterpriseBackground")) || "\u00a0"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <table className="pp-form-table">
+            <thead>
+              <tr>
+                <th>Type of Employment</th>
+                <th>Male</th>
+                <th>Female</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{PP_EMPLOYEE_ROWS[0].label}</td>
+                <td className="pp-form-center">{"\u00a0"}</td>
+                <td className="pp-form-center">{"\u00a0"}</td>
+                <td className="pp-form-center">{"\u00a0"}</td>
+              </tr>
+              <tr>
+                <td className="pp-form-subrow">{PP_EMPLOYEE_ROWS[1].label}</td>
+                <td className="pp-form-center">{empCell(emp.productionMale)}</td>
+                <td className="pp-form-center">{empCell(emp.productionFemale)}</td>
+                <td className="pp-form-center">{empCell(emp.productionTotal)}</td>
+              </tr>
+              <tr>
+                <td className="pp-form-subrow">{PP_EMPLOYEE_ROWS[2].label}</td>
+                <td className="pp-form-center">{empCell(emp.nonProductionMale)}</td>
+                <td className="pp-form-center">{empCell(emp.nonProductionFemale)}</td>
+                <td className="pp-form-center">{empCell(emp.nonProductionTotal)}</td>
+              </tr>
+              <tr>
+                <td>{PP_EMPLOYEE_ROWS[3].label}</td>
+                <td className="pp-form-center">{val(form.employeesIndirectMale) || "\u00a0"}</td>
+                <td className="pp-form-center">{val(form.employeesIndirectFemale) || "\u00a0"}</td>
+                <td className="pp-form-center">{empCell(emp.indirectTotal)}</td>
+              </tr>
+              <tr>
+                <td>{PP_EMPLOYEE_ROWS[4].label}</td>
+                <td className="pp-form-center">{empCell(emp.totalMale)}</td>
+                <td className="pp-form-center">{empCell(emp.totalFemale)}</td>
+                <td className="pp-form-center">{empCell(emp.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-        <Section title="Company Profile" pageBreak>
-          <Row label="Name of Firm" value={form.firmName} />
-          <Row label="Address" value={form.firmAddress} />
-          <Row label="Contact Person" value={form.contactPerson} />
-          <Row label="Contact Number" value={form.contactNumber} />
-          <Row label="Email" value={form.email} />
-          <Row label="Year Established" value={form.yearEstablished} />
-          <Row label="Organization Type" value={form.organizationType} />
-          <Row label="Profit / Non-profit" value={form.profitType} />
-          <Row label="MSME Size" value={form.msmeSize} />
-          <Row label="Employees (Male / Female)" value={`${form.employeesMale} / ${form.employeesFemale}`} />
-          <Row label="Employees (Direct / Indirect)" value={`${form.employeesDirect} / ${form.employeesIndirect}`} />
-          <Row label="Registration Office" value={form.registrationOffice} />
-          <Row label="Registration Number" value={form.registrationNumber} />
-          <Row label="Registration Date" value={form.registrationDate} />
-          <Row label="Business Permit No." value={form.businessPermitNumber} />
-          <Row label="Business Permit Date" value={form.businessPermitDate} />
-          <Row label="Business Activity" value={form.businessActivity} />
-          <Row label="Business Sector (Specify)" value={form.prioritySectorSpecify} />
-          <Row label="Products / Services" value={form.productsServices} />
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Brief Enterprise Background</p>
-            <Narrative text={narrative("enterpriseBackground", "enterpriseBackground")} />
-          </div>
-        </Section>
-
-        <Section title="Management & Organization">
-          <AttachmentFigure
-            attachment={findAttachment("orgChart")}
-            label={PROPOSAL_ATTACHMENT_LABELS.orgChart}
-            applicantId={applicantId}
-          />
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">B.2 Skills and Expertise</p>
-            <Narrative text={narrative("skillsExpertise", "skillsExpertise")} />
-          </div>
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">B.3 Compensation</p>
-            <Table
-              headers={[...PP_COMPENSATION_COLUMNS]}
-              rows={[
-                ...(form.compensationTable ?? []).filter((r) =>
-                  r.some((c) => c.trim()),
-                ),
-                compensationTableFooterRow(form.compensationTable),
-              ]}
+        <div className="pp-form-block pp-print-section">
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">B. Management/Administrative Aspect</h3>
+          </Indent>
+          <Indent level={2}>
+            <p className="pp-form-numbered-label">1. Organizational chart</p>
+            <AttachmentFigure
+              attachment={findAttachment("orgChart")}
+              label={PROPOSAL_ATTACHMENT_LABELS.orgChart}
+              applicantId={applicantId}
             />
-            {form.compensation?.trim() ? (
-              <div className="mt-2">
-                <Narrative text={form.compensation} />
-              </div>
-            ) : null}
-          </div>
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">
-              Gender and Development (GAD) — Participation and Involvement
+            <p className="pp-form-numbered-label">
+              2. Skills and expertise of employee/owner (proponent)
+            </p>
+            <Narrative text={narrative("skillsExpertise", "skillsExpertise")} />
+            <p className="pp-form-numbered-label">3. Compensation</p>
+            <Table
+              className="pp-form-compensation-table"
+              headers={PP_COMPENSATION_COLUMNS}
+              rows={form.compensationTable ?? []}
+              footerRow={compensationTableFooterRow(form.compensationTable)}
+              numericCols={[1, 2, 3, 4, 5, 6]}
+            />
+            {form.compensation?.trim() ? <Narrative text={form.compensation} /> : null}
+            <p className="pp-form-numbered-label">
+              4. Gender and Development (GAD) — Participation and Involvement
             </p>
             <Narrative text={narrative("genderInvolvement", "genderInvolvement")} />
-          </div>
-        </Section>
+          </Indent>
+        </div>
 
-        <Section title="Plant Site & Location" pageBreak>
-          <Narrative text={narrative("plantSiteNarrative", "plantSiteNarrative")} />
-          <div className="mt-4">
+        <div className="pp-form-block pp-print-section">
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">C. Plant site or location (including vicinity map)</h3>
+            <Narrative text={narrative("plantSiteNarrative", "plantSiteNarrative")} />
             <AttachmentFigure
               attachment={findAttachment("vicinityMap")}
               label={PROPOSAL_ATTACHMENT_LABELS.vicinityMap}
               applicantId={applicantId}
             />
-          </div>
-        </Section>
+          </Indent>
+        </div>
 
-        <Section title={PP_SUBHEADING_CAPACITY}>
-          <Narrative text={narrative("capacityVolumeNarrative", "capacityVolumeNarrative")} />
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Raw Material Cost</p>
+        <div className="pp-form-block pp-print-section">
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">D. {PP_SUBHEADING_CAPACITY}</h3>
+            <Narrative text={narrative("capacityVolumeNarrative", "capacityVolumeNarrative")} />
+          </Indent>
+          <Indent level={2}>
+            <p className="pp-form-field-label">Raw Material Cost</p>
             <Table
-              headers={[...PP_RAW_MATERIAL_COST_COLUMNS]}
-              rows={[
-                ...(form.rawMaterialCostTable ?? []).filter((r) =>
-                  r.some((c) => c.trim()),
-                ),
-                rawMaterialCostFooterRow(form.rawMaterialCostTable),
-              ]}
+              className="pp-form-rm-cost-table"
+              headers={PP_RAW_MATERIAL_COST_COLUMNS}
+              rows={form.rawMaterialCostTable ?? []}
+              footerRow={rawMaterialCostFooterRow(form.rawMaterialCostTable)}
+              numericCols={[1, 3, 4, 5, 6, 7, 8]}
             />
-          </div>
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">
-              Raw Materials Allocation
-            </p>
+            <p className="pp-form-field-label">Raw Materials Allocation</p>
             <Table
-              headers={[...PP_RAW_MATERIAL_ALLOCATION_COLUMNS]}
-              rows={[
-                ...(form.rawMaterialAllocationTable ?? []).filter((r) =>
-                  r.some((c) => c.trim()),
-                ),
-                rawMaterialAllocationFooterRow(form.rawMaterialAllocationTable),
-              ]}
+              className="pp-form-rm-alloc-table"
+              headers={PP_RAW_MATERIAL_ALLOCATION_COLUMNS}
+              rows={form.rawMaterialAllocationTable ?? []}
+              footerRow={rawMaterialAllocationFooterRow(form.rawMaterialAllocationTable)}
+              numericCols={[1, 2]}
             />
-          </div>
-        </Section>
+          </Indent>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">E. Raw material/s used and sources of raw material</h3>
+            <Narrative text={narrative("rawMaterialsNarrative", "rawMaterialsNarrative")} />
+            <Table headers={PP_RAW_MATERIAL_COLUMNS} rows={form.rawMaterialsTable} />
+          </Indent>
+        </div>
 
-        <Section title="Raw Materials">
-          <Narrative text={narrative("rawMaterialsNarrative", "rawMaterialsNarrative")} />
-          <div className="mt-3">
-            <Table
-              headers={["Item", "Volume / Year", "Source"]}
-              rows={form.rawMaterialsTable.filter((r) => r.some((c) => c.trim()))}
-            />
-          </div>
-        </Section>
-
-        <Section title="Market Situation" pageBreak>
-          <Narrative text={narrative("marketSituation", "marketSituation")} />
-          <div className="mt-3">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Product Demand and Supply</p>
+        <div className="pp-form-block pp-print-section">
+          <h2 className="pp-form-section-heading">{PP_SECTION_MARKETING}</h2>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.A}</h3>
+          </Indent>
+          <Indent level={2}>
+            <p className="pp-form-field-label">{PP_MARKETING_A_LABELS.marketSituation}</p>
+            <Narrative text={narrative("marketSituation", "marketSituation")} />
+            <p className="pp-form-field-label">{PP_MARKETING_A_LABELS.productDemand}</p>
             <Narrative text={narrative("productDemandSupply", "productDemandSupply")} />
-          </div>
-          <div className="mt-3">
+            <p className="pp-form-field-label">{PP_MARKETING_A_LABELS.volumeOfOrders}</p>
+            <Table headers={PP_VOLUME_OF_ORDERS_COLUMNS} rows={form.volumeOfOrdersTable ?? []} />
+          </Indent>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.B}</h3>
             <Table
-              headers={["Product / Specification", "Price"]}
-              rows={form.productPriceTable.filter((r) => r.some((c) => c.trim()))}
+              headers={PP_PRODUCT_PRICE_COLUMNS}
+              rows={form.productPriceTable}
+              numericCols={[1]}
             />
-          </div>
-        </Section>
+            <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.C}</h3>
+            <Narrative text={narrative("distributionChannel", "distributionChannel")} />
+            <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.D}</h3>
+            <Narrative text={narrative("competitors", "competitors")} />
+            <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.E}</h3>
+            <Narrative text={narrative("existingMarketingProblems", "existingMarketingProblems")} />
+            <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.F}</h3>
+            <Bullets check items={bulletField("marketStrategies", "marketStrategies")} />
+          </Indent>
+        </div>
 
-        <Section title="Distribution Channel">
-          <Narrative text={narrative("distributionChannel", "distributionChannel")} />
-        </Section>
-
-        <Section title="Competitors">
-          <Narrative text={narrative("competitors", "competitors")} />
-        </Section>
-
-        <Section title="Market Plans & Strategies">
-          <Bullets items={bulletField("marketStrategies", "marketStrategies")} />
-        </Section>
-
-        <Section title="Production Process" pageBreak>
-          <Narrative text={narrative("productionProcess", "productionProcess")} />
-        </Section>
-
-        <Section title="Existing Production Equipment">
-          <Narrative text={narrative("equipmentNarrative", "equipmentNarrative")} />
-          <div className="mt-3">
+        <div className="pp-form-block pp-print-section">
+          <h2 className="pp-form-section-heading">{PP_SECTION_TECHNOLOGICAL}</h2>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">A. Production Process</h3>
+          </Indent>
+          <Indent level={3}>
+            <p className="pp-form-dash-label">- {PP_PRODUCTION_DASH_ITEMS[0]}</p>
+            <Narrative text={narrative("productionProcess", "productionProcess")} />
+            <p className="pp-form-dash-label">- {PP_PRODUCTION_DASH_ITEMS[1]}</p>
+            <Narrative text={narrative("materialBalance", "materialBalance")} />
+          </Indent>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">B. Existing production equipment</h3>
+            <Narrative text={narrative("equipmentNarrative", "equipmentNarrative")} />
             <Table
-              headers={["Type", "Quantity", "Year Acquired"]}
-              rows={form.equipmentTable.filter((r) => r.some((c) => c.trim()))}
+              className="pp-form-equipment-table"
+              headers={PP_EQUIPMENT_COLUMNS}
+              rows={form.equipmentTable}
+              footerRow={existingEquipmentFooterRow(form.equipmentTable)}
+              numericCols={[1, 2, 3, 4, 5, 6, 7, 8]}
             />
-          </div>
-        </Section>
-
-        <Section title="S&T Intervention">
-          <Row label="Problem / Constraint" value={narrative("interventionProblem", "interventionProblem")} />
-          <Row label="Proposed Intervention" value={narrative("interventionProposed", "interventionProposed")} />
-          <Row label="Equipment" value={narrative("interventionEquipment", "interventionEquipment")} />
-          <Row label="Expected Impact" value={narrative("interventionImpact", "interventionImpact")} />
-          <div className="mt-4">
+            <h3 className="pp-form-subheading">
+              C. Technical constraints on the production line and proposed S&T intervention
+            </h3>
+            <table className="pp-form-table pp-form-intervention-table">
+              <thead>
+                <tr>
+                  {PP_INTERVENTION_COLUMNS.map((col) => (
+                    <th key={col}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{val(narrative("interventionProblem", "interventionProblem")) || "\u00a0"}</td>
+                  <td>{val(narrative("interventionProposed", "interventionProposed")) || "\u00a0"}</td>
+                  <td>{val(narrative("interventionEquipment", "interventionEquipment")) || "\u00a0"}</td>
+                  <td>{val(narrative("interventionImpact", "interventionImpact")) || "\u00a0"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </Indent>
+          <Indent level={2}>
+            <p className="pp-form-field-label">Proposed Plant Lay-out</p>
             <AttachmentFigure
               attachment={findAttachment("plantLayout")}
               label={PROPOSAL_ATTACHMENT_LABELS.plantLayout}
               applicantId={applicantId}
             />
-          </div>
-        </Section>
-
-        <Section title="Intervention Equipment Cost">
-          <Table
-            headers={["Equipment", "Qty", "Unit Cost", "Total"]}
-            rows={form.interventionCostTable.filter((r) => r.some((c) => c.trim()))}
-          />
-        </Section>
-
-        <Section title="Equipment Fabricators" pageBreak>
-          <Table
-            headers={["Name", "Address", "Contact"]}
-            rows={form.fabricatorTable.filter((r) => r.some((c) => c.trim()))}
-          />
-        </Section>
-
-        <Section title="Schedule of Activities">
-          <Table
-            headers={["Activity", "Timeline"]}
-            rows={form.scheduleTable.filter((r) => r.some((c) => c.trim()))}
-          />
-        </Section>
-
-        <Section title="Expected Output & Impact">
-          <Bullets items={bulletField("expectedOutputBullets", "expectedOutputBullets")} />
-        </Section>
-
-        <Section title="Waste Management / Disposal">
-          <Narrative text={narrative("wasteManagement", "wasteManagement")} />
-        </Section>
-
-        <Section title="Financial Capacity" pageBreak>
-          <p className="text-xs font-bold text-gray-600 mb-2">Liquidity Ratio (Current Ratio)</p>
-          <Table
-            headers={["Year", "Current Assets", "Current Liabilities", "Ratio"]}
-            rows={form.liquidityRatioTable}
-          />
-          <p className="text-xs font-bold text-gray-600 mt-4 mb-2">Quick Ratio</p>
-          <Table
-            headers={["Year", "Current Assets", "Inventory", "Current Liabilities", "Ratio"]}
-            rows={form.quickRatioTable}
-          />
-          <p className="text-xs font-bold text-gray-600 mt-4 mb-2">Return on Investment</p>
-          <Table
-            headers={["Year", "Net Income", "Investment", "ROI"]}
-            rows={form.roiTable}
-          />
-          <div className="mt-3">
-            <Narrative text={narrative("financialAnalysis", "financialAnalysis")} />
-          </div>
-        </Section>
-
-        <Section title="Financial Statements & Constraints">
-          <Narrative text={form.financialConstraintsNote} />
-          {projTables && (
-            <div className="mt-3 space-y-3">
-              <p className="text-xs font-bold text-gray-600">Income statement (Years 1–5)</p>
-              <Table headers={projTables.income[0] ?? []} rows={projTables.income.slice(1)} />
-              <p className="text-xs font-bold text-gray-600">Cash flow</p>
-              <Table headers={projTables.cashFlow[0] ?? []} rows={projTables.cashFlow.slice(1)} />
-              <p className="text-xs font-bold text-gray-600">Balance sheet</p>
-              <Table headers={projTables.balance[0] ?? []} rows={projTables.balance.slice(1)} />
-            </div>
-          )}
-          <div className="mt-3">
-            <AttachmentFigure
-              attachment={findAttachment("financialReports")}
-              label={PROPOSAL_ATTACHMENT_LABELS.financialReports}
-              applicantId={applicantId}
-            />
-          </div>
-        </Section>
-
-        <Section title="Budgetary Requirement">
-          <Table
-            headers={["Item", "Qty", "Unit Cost", "SETUP Share", "Total"]}
-            rows={form.budgetItems.map((b) => [
-              b.item,
-              b.qty,
-              b.unitCost,
-              b.setupShare,
-              b.total,
-            ])}
-          />
-        </Section>
-
-        <Section title="Proposed Refund Schedule" pageBreak>
-          {form.refundSchedule.length > 0 ? (
+          </Indent>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">
+              D. Cost and specification of S&T Intervention-Related Equipment
+            </h3>
             <Table
-              headers={form.refundSchedule[0]}
-              rows={form.refundSchedule.slice(1)}
+              headers={PP_INTERVENTION_COST_COLUMNS}
+              rows={form.interventionCostTable}
+              numericCols={[1, 2, 3]}
             />
-          ) : (
-            <p className="text-sm text-gray-400">—</p>
-          )}
-        </Section>
+            <h3 className="pp-form-subheading">E. List of equipment fabricators (name and address)</h3>
+            <Table headers={PP_FABRICATOR_COLUMNS} rows={form.fabricatorTable} />
+            <h3 className="pp-form-subheading">F. Schedule of activities for the proposed project</h3>
+            <ScheduleGanttTable rows={form.scheduleTable} weeksPerMonth={1} />
+            <h3 className="pp-form-subheading">G. Expected Output/Impact (measured results)</h3>
+          </Indent>
+          {PP_EXPECTED_OUTPUT_HEADINGS.map((heading, i) => (
+            <Indent level={3} key={heading}>
+              <div className="pp-form-expected-output">
+                <p className="pp-form-expected-heading">
+                  {i + 1}. {heading}
+                </p>
+                <Narrative text={expectedBullets[i] ?? ""} />
+              </div>
+            </Indent>
+          ))}
+        </div>
 
-        <Section title="Risk Management">
+        <div className="pp-form-block pp-print-section">
+          <h2 className="pp-form-section-heading">{PP_SECTION_WASTE}</h2>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">{PP_WASTE_SUBHEADINGS.A}</h3>
+            <Narrative text={wasteVolume || (!hasSplitWaste ? wasteCombined : "")} />
+            <h3 className="pp-form-subheading">{PP_WASTE_SUBHEADINGS.B}</h3>
+            <Narrative text={wasteKindsText} />
+            <h3 className="pp-form-subheading">{PP_WASTE_SUBHEADINGS.C}</h3>
+            <Narrative text={wasteMethods} />
+          </Indent>
+        </div>
+
+        <div className="pp-form-block pp-print-section">
+          <h2 className="pp-form-section-heading">{PP_SECTION_FINANCIAL}</h2>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">A. Financial capacity</h3>
+          </Indent>
+          <Indent level={3}>
+            <p className="pp-form-dash-label">- {PP_FINANCIAL_CAPACITY_DASH_ITEMS[0]}</p>
+            <p className="pp-form-ratio-intro">
+              Liquidity ratios measure the short-term ability of the company to pay its maturing
+              obligation and to meet unexpected needs for cash.
+            </p>
+            <p className="pp-form-dash-label">- {PP_FINANCIAL_CAPACITY_DASH_ITEMS[1]}</p>
+            <Narrative text={narrative("partialBudgetAnalysis", "partialBudgetAnalysis")} />
+            <p className="pp-form-dash-label">- {PP_FINANCIAL_CAPACITY_DASH_ITEMS[2]}</p>
+            <Table
+              headers={PP_NPM_COLUMNS}
+              rows={form.netProfitMarginTable ?? []}
+              numericCols={[1, 2, 3]}
+            />
+            <p className="pp-form-dash-label">- {PP_FINANCIAL_CAPACITY_DASH_ITEMS[3]}</p>
+            <Table
+              headers={PP_LIQUIDITY_COLUMNS}
+              rows={form.liquidityRatioTable}
+              numericCols={[1, 2, 3]}
+            />
+            <p className="pp-form-field-label">Quick Ratio (Acid Test Ratio)</p>
+            <Table
+              headers={PP_QUICK_RATIO_COLUMNS}
+              rows={form.quickRatioTable}
+              numericCols={[1, 2, 3, 4]}
+            />
+            <p className="pp-form-dash-label">- {PP_FINANCIAL_CAPACITY_DASH_ITEMS[4]}</p>
+            <Table headers={PP_ROI_COLUMNS} rows={form.roiTable} numericCols={[1, 2, 3]} />
+            <Narrative text={narrative("financialAnalysis", "financialAnalysis")} />
+          </Indent>
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">B. Financial constraints</h3>
+            <p className="pp-form-field-value">
+              {form.financialConstraintsNote || PP_FINANCIAL_ATTACH_NOTE}
+            </p>
+            <h3 className="pp-form-subheading">C. Cash flow/ financial statement/ balance sheet</h3>
+            {!projTables ? (
+              <p className="pp-form-field-value">{PP_FINANCIAL_ATTACH_NOTE}</p>
+            ) : null}
+          </Indent>
+          {projTables ? (
+            <Indent level={2}>
+              <p className="pp-form-field-label">Income Statement (Years 1–5)</p>
+              <Table
+                className="pp-form-projection-table"
+                headers={projTables.income[0] ?? []}
+                rows={projTables.income.slice(1)}
+              />
+              <p className="pp-form-field-label">Cash Flow (Years 1–5)</p>
+              <Table
+                className="pp-form-projection-table"
+                headers={projTables.cashFlow[0] ?? []}
+                rows={projTables.cashFlow.slice(1)}
+              />
+              <p className="pp-form-field-label">Balance Sheet (end of year)</p>
+              <Table
+                className="pp-form-projection-table"
+                headers={projTables.balance[0] ?? []}
+                rows={projTables.balance.slice(1)}
+              />
+            </Indent>
+          ) : null}
+          <Indent level={1}>
+            <h3 className="pp-form-subheading">D. Budgetary Requirement for the proposed project</h3>
+            <Table
+              className="pp-form-budget-table"
+              headers={PP_BUDGET_COLUMNS}
+              rows={budgetRows}
+              numericCols={[1, 2, 3, 4, 5, 6, 7]}
+            />
+            <p className="pp-form-note">{PP_BUDGET_NOTE}</p>
+            <h3 className="pp-form-subheading">E. Proposed Refund Schedule</h3>
+            <Table
+              className="pp-form-refund-table"
+              headers={refundHeaders}
+              rows={refundRows.length ? refundRows : [refundHeaders.map(() => "")]}
+              numericCols={refundHeaders.map((_, i) => i).filter((i) => i > 0)}
+            />
+            <p className="pp-form-note">{PP_REFUND_NOTE}</p>
+            <h3 className="pp-form-subheading">{PP_FINANCIAL_SUBHEADINGS.F}</h3>
+            <InvestmentDecisionAnalysisTable
+              analysis={buildInvestmentDecisionAnalysis(form, projectionSnapshot)}
+            />
+          </Indent>
+        </div>
+
+        <div className="pp-form-block pp-print-section">
+          <h2 className="pp-form-section-heading">{PP_SECTION_RISK}</h2>
           <Table
-            headers={["Risks", "Assumptions", "Risk Management Plan"]}
-            rows={(doc?.riskRows?.length ? doc.riskRows : form.riskRows).map((r) => [
-              r.risk,
-              r.assumption,
+            className="pp-form-risk-table"
+            headers={PP_RISK_COLUMNS}
+            rows={(riskRows.length
+              ? riskRows
+              : [{ id: "empty", objective: "", risk: "", assumption: "", plan: "" }]
+            ).map((r) => [
+              r.objective,
+              formatRiskAndAssumptions(r),
               r.plan,
             ])}
           />
-          <p className="text-[10px] text-gray-400 mt-3 italic">
-            Risk — an uncertain event that may affect project objectives. Assumption — a condition believed true for planning purposes.
-          </p>
-        </Section>
+          <div className="pp-form-risk-footnote">
+            {PP_RISK_FOOTNOTE.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-200 pp-print-section">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-sm">
+        <div className="pp-form-preview-sign pp-print-section">
+          <div className="pp-form-preview-sign-grid">
             <div>
-              <p className="font-semibold text-gray-700">Prepared by:</p>
-              <div className="border-b border-gray-300 min-h-10 mt-6 mb-1" />
-              <p className="text-gray-600">{form.contactPerson || form.proponentName}</p>
-              <p className="text-xs text-gray-400">Proponent / Authorized Representative</p>
+              <p className="pp-form-field-label" style={{ marginTop: 0 }}>
+                Prepared by:
+              </p>
+              <div className="pp-form-preview-sign-line" />
+              <p>{form.contactPerson || form.proponentName}</p>
+              <p className="pp-form-note">Proponent / Authorized Representative</p>
             </div>
             <div>
-              <p className="font-semibold text-gray-700">Date:</p>
-              <div className="border-b border-gray-300 min-h-10 mt-6 mb-1" />
-              <p className="text-gray-400 text-xs italic">For official use — DOST Regional Office</p>
+              <p className="pp-form-field-label" style={{ marginTop: 0 }}>
+                Date:
+              </p>
+              <div className="pp-form-preview-sign-line" />
+              <p className="pp-form-note">For official use — DOST Regional Office</p>
             </div>
           </div>
         </div>

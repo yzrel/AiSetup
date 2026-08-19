@@ -2,6 +2,11 @@
  * Shared moduleData fragments for demo seed applicants.
  */
 
+import {
+  PP_EQUIPMENT_SAMPLE_ROWS,
+  PP_VOLUME_OF_ORDERS_FOOD_SAMPLE_ROWS,
+} from "../constants/projectProposalLayout";
+
 export const DEMO_PASSWORD = "Demo@1234";
 
 export function abcFoodTna2Document() {
@@ -102,6 +107,19 @@ export function techInnovationsProjectProposal() {
       amountRequested: "Php 1,500,000.00",
       projectDuration: "12 months",
       projectLocation: "General Santos City",
+      productDemandSupply:
+        "Local retailers and institutional buyers place recurring orders; current capacity limits fill rates during peak months.",
+      volumeOfOrdersTable: [
+        ["Regional retail chain", "General Santos City", "120 sites / year"],
+        ["SME distributors", "Koronadal City, South Cotabato", "45 accounts / year"],
+        ["Institutional buyers", "SOCCSKSARGEN", "18 contracts / year"],
+      ],
+      equipmentNarrative:
+        "Existing workstations and on-premise servers support current service delivery, with remaining useful life that supports SETUP upgrading of the inventory and order-management stack.",
+      equipmentTable: [
+        ["Workstation", "2021", "45000", "12", "", "5", "", "2", ""],
+        ["Network server", "2020", "180000", "2", "", "7", "", "3", ""],
+      ],
     },
     attachments: [],
     submitted: true,
@@ -217,6 +235,12 @@ export function greenValleyLateStageModuleData() {
         employeesFemale: "20",
         genderInvolvement:
           "Green Valley Foods employs 15 male and 20 female workers in its operations. Women and men participate in production and packaging, and the SETUP intervention is intended to benefit the workforce equitably through skills upgrading and improved working conditions, consistent with DOST Gender and Development (GAD) principles.",
+        productDemandSupply:
+          "Demand for frozen and vacuum-packed vegetables is steady among local markets and institutional buyers in SOCCSKSARGEN.",
+        volumeOfOrdersTable: PP_VOLUME_OF_ORDERS_FOOD_SAMPLE_ROWS,
+        equipmentNarrative:
+          "Existing production equipment includes a tray dehydrator, impulse sealers, and stainless work tables still in service, with book values reflecting straight-line depreciation.",
+        equipmentTable: PP_EQUIPMENT_SAMPLE_ROWS,
       },
       attachments: [],
       submitted: true,
