@@ -1,56 +1,70 @@
 ---
-description: TNA Form 02 official layout conventions (preview + print)
+description: TNA Form 02 official layout conventions (Annex 1-2, preview + print)
 globs: src/app/components/tnaForm02/**,src/styles/tnaForm02.css,src/app/constants/tnaForm02Layout.ts,src/app/utils/tnaForm02Print.tsx,src/app/components/TnaForm02Preview.tsx
 alwaysApply: false
 ---
 
-# TNA Form 02 layout (approved)
+# TNA Form 02 layout (Annex 1-2)
 
 ## Scope
 
 - On-screen preview and print both use `TnaForm02Document` (class `.tna2-form-doc`).
 - Preview: `TnaForm02Preview.tsx` wraps `TnaForm02Document`.
-- Print: `printTnaForm02Pdf` renders `TnaForm02Document` into `#tna-form-02-print-root.tna2-form-doc`.
+- Print: `printTnaForm02Pdf` renders `TnaForm02Document` into `#tna-form-02-print-root.tna2-form-doc` via **`createRoot`** (never clone preview).
+- Typography and structure mirror **TNA Form 01** / Project Proposal: **pt** scale, flowing `FormPage` + `FormBlock`, Word field table.
+
+## Source
+
+`TNA FORM 02.docx` — SETUP Guidelines (Revision 3.0) **Annex 1-2**.
 
 ## Document title
 
-`DOST TNA FORM 02 - TECHNOLOGY NEEDS ASSESSMENT REPORT`
+`DOST TNA FORM 02 - Technology Needs Assessment Report` (centered, outside table)
 
-Subtitle: `TECHNOLOGY NEEDS ASSESSMENT (TNA) REPORT`
+Subtitle (table row 1): `TECHNOLOGY NEEDS ASSESSMENT (TNA) REPORT`
 
-## Official page structure (regional forms pack / filled sample)
+Footer: `SETUP Guidelines (Revision 3.0) Annex 1-2: DOST TNA FORM 02 - Technology Needs Assessment Report Page X of Y`
 
-1. **Header** — COMPANY, ADDRESS, Assessment Date
-2. **SCOPE OF ASSESSMENT** — checklist groups from `TNA_FORM_02_SCOPE_GROUPS`
-3. **Signatures** — Reported by (TNA Team Leader), Attested by (ARD)
-4. **SUMMARY OF ASSESSMENT**
-   - BACKGROUND
-   - METHODOLOGY
-   - SUMMARY OF FINDINGS (by scope area, with labeled subsections from `TNA_FORM_02_FINDINGS_TEMPLATE`)
-   - OTHER OBSERVATIONS
-   - CONCLUSIONS
-5. **RECOMMENDATIONS** (numbered list)
-6. **Intervention table** — Problem | Proposed S&T | Equipment/skills | Impact
-7. **TNA TEAM** — Team Leader + Members
-8. Closing signatures (Reported by / Attested by)
+## Margins
 
-Missing summary fields are filled via `enrichTna2Summary()` / `normalizeFindingsByArea()` / TNA Form 01 prefill.
+Word `pgMar` → `TNA_FORM_02_PAGE_MARGIN_MM`: top 24.0, right 10.6, bottom 19.1, left 20.1 mm.
+
+## Borders & shading (Word tblBorders)
+
+- **Header table:** 0.75pt black grid (`sz=6`); **1pt** horizontal rules under ADDRESS, around SCOPE OF ASSESSMENT*, and above the scope list (`sz=8`).
+- **Header shading:** Word `shd fill=AEAAAA` on subtitle row and SCOPE OF ASSESSMENT* row only — not on COMPANY/ADDRESS labels.
+- **Intervention table:** `TableGrid` style — **0.5pt** grid, no gray header fill; column titles Arial bold.
+
+## Official page structure (matches Word body order)
+
+1. **Title** (centered paragraph, outside table)
+2. **Header table** (single bordered table):
+   - Row 1: subtitle (centered)
+   - Row 2: COMPANY: | value
+   - Row 3: ADDRESS: | value
+   - Row 4: SCOPE OF ASSESSMENT* (label row)
+   - Row 5: scope list cell — plain text groups/items from `TNA_FORM_02_SCOPE_GROUPS` (leading `*` on TAP items; **no portal checkboxes**)
+3. **TAP footnote** — `*Scope of TNA is based on Technology Assessment Plan (TAP)` (paragraph after table)
+4. **Template signatures** — Reported by / Attested by with Date:____ (before summary)
+5. **SUMMARY OF ASSESSMENT** — BACKGROUND:, METHODOLOGY, SUMMARY OF FINDINGS (flowing label + prose), OTHER OBSERVATIONS:, CONCLUSIONS:
+6. **RECOMMENDATIONS:** — plain paragraphs (not `<ol>`)
+7. **Intervention table** — four columns from `TNA_FORM_02_INTERVENTION_COLUMNS`
+8. **TNA Team:** — prose (Team Leader: / Members:)
+9. **Closing signatures** — name inline: `Reported by:{name}Date:` / `Attested by:{name}Date:`
+
+No Republic/DOST logo on official PDF.
 
 ## Pagination
 
-- Physical page footers via CSS `@page @bottom-center` with `counter(page)` / `counter(pages)`.
-- `FormBlock` + `break-inside: avoid` — section titles stay with content.
-
-## Print path
-
-- In-page `window.print()` via `#tna-form-02-print-root` + `body.tna-form-02-printing`.
-- `createRoot` render (do not clone preview; do not use popup `document.write`).
+- Single flowing `FormPage`; natural page breaks via CSS.
+- `@page @bottom-center` footer with `counter(page)` / `counter(pages)`.
+- `FormBlock` + `break-inside: avoid`.
 
 ## Key files
 
+- `src/app/constants/tnaForm02Layout.ts`
 - `src/app/components/tnaForm02/TnaForm02Document.tsx`
 - `src/app/components/TnaForm02Preview.tsx`
-- `src/app/utils/tnaForm02.ts` (`deriveScopeItems`, `enrichTna2Summary`, `normalizeFindingsByArea`, `prefillFindingsFromTna1`)
+- `src/app/utils/tnaForm02.ts`
 - `src/app/utils/tnaForm02Print.tsx`
 - `src/styles/tnaForm02.css`
-- `src/app/constants/tnaForm02Layout.ts`

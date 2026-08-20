@@ -403,8 +403,10 @@ const seedApplicants: Applicant[] = [
 ];
 
 // ── Store ──────────────────────────────────────────────────────────────────────
+// Live list starts empty. Staff/applicant rows come only from GET /applicants
+// after hydrateFromBackend — never from seedApplicants (demo fixtures for tests).
 
-let applicants: Applicant[] = [...seedApplicants];
+let applicants: Applicant[] = [];
 let listeners: (() => void)[] = [];
 let hydrated = false;
 
@@ -540,34 +542,24 @@ export const applicantStore = {
    * Boot / post-login hydration from the backend SoR.
    * Staff receive the full list; applicants hydrate their own record.
    * Pass {@code force} after login to re-run hydration.
+   * A failed fetch does not lock the store — retry when the API is back.
+   * On any successful staff list (including empty), replace in-memory rows —
+   * never keep demo seedApplicants after the SoR answered.
    */
   hydrateFromBackend: async (force = false) => {
     if (hydrated && !force) return;
-    hydrated = true;
     const user = authStore.getUser();
     if (!user) return;
 
     if (authStore.isStaff(user.role)) {
       const records = await fetchBackendApplicants();
-      if (!records || records.length === 0) return;
-      let changed = false;
-      let next = [...applicants];
-      for (const record of records) {
-        if (!record?.id) continue;
-        const index = next.findIndex((a) => a.id === record.id);
-        const local = index >= 0 ? next[index] : undefined;
-        if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
-          continue;
-        }
-        const merged = applicantFromRecord(record, local);
-        if (index >= 0) next[index] = merged;
-        else next = [...next, merged];
-        changed = true;
-      }
-      if (changed) {
-        applicants = next;
-        listeners.forEach((l) => l());
-      }
+      if (records == null) return;
+      hydrated = true;
+      const byId = new Map(applicants.map((a) => [a.id, a]));
+      applicants = records
+        .filter((record) => !!record?.id)
+        .map((record) => applicantFromRecord(record, byId.get(record.id)));
+      listeners.forEach((l) => l());
       return;
     }
 
@@ -581,6 +573,7 @@ export const applicantStore = {
       user.id;
     const record = await fetchBackendApplicant(linkedId);
     if (!record) return;
+    hydrated = true;
     const index = applicants.findIndex((a) => a.id === record.id);
     const local = index >= 0 ? applicants[index] : undefined;
     if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
@@ -593,6 +586,18 @@ export const applicantStore = {
       applicants = [...applicants, merged];
     }
     listeners.forEach((l) => l());
+  },
+
+  /** Test helper: clear the live list and allow hydrate to run again. */
+  resetForTests: () => {
+    applicants = [];
+    hydrated = false;
+  },
+
+  /** Test-only: load demo seedApplicants (never used on real boot). */
+  loadDemoSeedsForTests: () => {
+    applicants = [...seedApplicants];
+    hydrated = false;
   },
 
   advanceModule: (id: string, nextModule: ModuleStatus) => {

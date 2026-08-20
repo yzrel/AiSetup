@@ -444,7 +444,18 @@ function ApplicantAccountsPanel({ user }: { user: AuthUser }) {
                             equipment: [],
                           }
                         }
-                        onPrint={() => printTnaForm01(selected.applicationId)}
+                        onPrint={() =>
+                          printTnaForm01({
+                            form: selected.moduleData.tna1.form ?? {},
+                            tables: selected.moduleData.tna1.tables ?? {
+                              rawMaterials: [],
+                              production: [],
+                              equipment: [],
+                            },
+                            applicantId: selected.id,
+                            applicationId: selected.applicationId,
+                          })
+                        }
                         compact
                       />
                     </div>

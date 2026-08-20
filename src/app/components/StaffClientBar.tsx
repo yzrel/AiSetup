@@ -2,8 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { Building2, ChevronDown, X } from "lucide-react";
-import { Applicant } from "../store/applicantStore";
+import { Building2, X } from "lucide-react";
 import { AuthUser, AdminView } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import {
@@ -11,6 +10,7 @@ import {
   resolveApplicantOfficeId,
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
+import { StaffApplicantCombobox } from "./StaffApplicantCombobox";
 
 interface StaffClientBarProps {
   user: AuthUser;
@@ -26,6 +26,7 @@ export function StaffClientBar({
   const {
     applicant,
     scopedApplicants,
+    selectedApplicantId,
     setSelectedApplicantId,
     clearSelection,
     hasSelection,
@@ -60,33 +61,22 @@ export function StaffClientBar({
         </span>
       )}
 
-      <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
-        <div className="relative">
-          <select
-            value={applicant?.id ?? ""}
-            onChange={(e) => {
-              const id = e.target.value || null;
-              setSelectedApplicantId(id);
-            }}
-            className="appearance-none bg-white/10 hover:bg-white/15 border border-white/20 text-white text-xs font-medium pl-3 pr-8 py-1.5 rounded-lg focus:outline-none w-full sm:max-w-[220px]"
-          >
-            <option value="" className="text-gray-900">
-              Switch client...
-            </option>
-            {scopedApplicants.map((a: Applicant) => (
-              <option key={a.id} value={a.id} className="text-gray-900">
-                {a.enterpriseName}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/60" />
-        </div>
+      <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto min-w-0">
+        <StaffApplicantCombobox
+          applicants={scopedApplicants}
+          value={selectedApplicantId}
+          onChange={setSelectedApplicantId}
+          placeholder="Switch client…"
+          showApplicationId
+          variant="bar"
+          className="flex-1 sm:flex-none min-w-0"
+        />
 
         {onOpenClients && (
           <button
             type="button"
             onClick={onOpenClients}
-            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20"
+            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 shrink-0"
           >
             Open case file
           </button>
@@ -96,7 +86,7 @@ export function StaffClientBar({
           <button
             type="button"
             onClick={clearSelection}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white/70"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 shrink-0"
             title="Clear selection"
           >
             <X className="w-4 h-4" />

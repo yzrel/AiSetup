@@ -1,19 +1,35 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Official DOST SETUP TNA Form 02 printable layout constants
- * (regional forms pack — scope-of-assessment report).
+ * Official DOST SETUP TNA Form 02 (Annex 1-2) printable layout constants.
+ * Source: TNA FORM 02.docx — SETUP Guidelines (Revision 3.0).
  */
 
 export { displayValue, formatDisplayDate } from "./tnaForm01Layout";
 
 export const TNA_FORM_02_TITLE =
-  "DOST TNA FORM 02 - TECHNOLOGY NEEDS ASSESSMENT REPORT";
+  "DOST TNA FORM 02 - Technology Needs Assessment Report";
 
 export const TNA_FORM_02_SUBTITLE = "TECHNOLOGY NEEDS ASSESSMENT (TNA) REPORT";
 
 export const TNA_FORM_02_FOOTER_PREFIX =
-  "SETUP Guidelines – Annex B-12 - DOST TNA Form 02";
+  "SETUP Guidelines (Revision 3.0) Annex 1-2: DOST TNA FORM 02 - Technology Needs Assessment Report";
+
+/** Word pgMar (twips) → mm: top 1360, right 600, bottom 1080, left 1140. */
+export const TNA_FORM_02_PAGE_MARGIN_MM = {
+  top: 24.0,
+  right: 10.6,
+  bottom: 19.1,
+  left: 20.1,
+} as const;
+
+/** Word pack typography: Times New Roman 12pt body, 14pt title; Arial for COMPANY/ADDRESS values and intervention table headers. */
+export const TNA_FORM_02_FONT_BODY = '"Times New Roman", Times, serif';
+export const TNA_FORM_02_FONT_ARIAL = "Arial, sans-serif";
+export const TNA_FORM_02_FONT_SIZE_BODY_PT = 12;
+export const TNA_FORM_02_FONT_SIZE_TITLE_PT = 14;
+
+export const TNA_FORM_02_SCOPE_HEADING = "SCOPE OF ASSESSMENT*";
 
 export const TNA_FORM_02_SCOPE_NOTE =
   "*Scope of TNA is based on Technology Assessment Plan (TAP)";
@@ -48,15 +64,36 @@ export const TNA_FORM_02_SCOPE_GROUPS = [
     label: "Technical Aspect",
     items: [
       { id: "operational", label: "Operational and Outsourcing Practices" },
-      { id: "production-system", label: "Production System" },
-      { id: "production-planning", label: "Production and Planning Control" },
-      { id: "production-layout", label: "Production Layout" },
-      { id: "work-study", label: "Work Study/improvement" },
+      {
+        id: "production-system",
+        label: "Production System",
+        tapScoped: true,
+      },
+      {
+        id: "production-planning",
+        label: "Production and Planning Control",
+        tapScoped: true,
+      },
+      {
+        id: "production-layout",
+        label: "Production Layout",
+        tapScoped: true,
+      },
+      {
+        id: "work-study",
+        label: "Work Study/improvement",
+        tapScoped: true,
+      },
       {
         id: "equipment-mgmt",
         label: "Equipment Management and Maintenance",
+        tapScoped: true,
       },
-      { id: "qa-system", label: "Quality Assurance System" },
+      {
+        id: "qa-system",
+        label: "Quality Assurance System",
+        tapScoped: true,
+      },
     ],
   },
   {
@@ -66,26 +103,40 @@ export const TNA_FORM_02_SCOPE_GROUPS = [
       {
         id: "reengineering",
         label: "Re-engineering and Research and Development",
+        tapScoped: true,
       },
       {
         id: "pm-process",
         label: "Performance Measures and Results - Process",
+        tapScoped: true,
       },
       {
         id: "pm-product",
         label: "Performance Measures and Results - Product",
+        tapScoped: true,
       },
       {
         id: "continuous-improvement",
         label: "Procedures for Continuous Improvement",
+        tapScoped: true,
       },
-      { id: "product-quality", label: "Product Quality Standards" },
+      {
+        id: "product-quality",
+        label: "Product Quality Standards",
+        tapScoped: true,
+      },
     ],
   },
   {
     id: "environmental",
     label: "Environmental Management System",
-    items: [{ id: "waste-management", label: "Waste Management" }],
+    items: [
+      {
+        id: "waste-management",
+        label: "Waste Management",
+        tapScoped: true,
+      },
+    ],
   },
 ] as const;
 
@@ -194,9 +245,9 @@ export const TNA_FORM_02_SECTION_RECOMMENDATIONS = "RECOMMENDATIONS";
 export const TNA_FORM_02_SECTION_TEAM = "TNA TEAM";
 
 export const TNA_FORM_02_INTERVENTION_COLUMNS = [
-  "Process / Existing Practice / Problem",
+  "Process/ Existing Practice/ Problem",
   "Proposed S&T Intervention",
-  "Proposed S&T intervention-related equipment / skills upgrading",
+  "Proposed S&T intervention-related equipment/skills upgrading",
   "Impact",
 ] as const;
 
@@ -226,5 +277,14 @@ export const TNA_FORM_02_KPI_COLUMNS = [
 ] as const;
 
 export function tnaForm02Footer(page: number, total: number): string {
-  return `${TNA_FORM_02_FOOTER_PREFIX} — Page ${page} of ${total}`;
+  return `${TNA_FORM_02_FOOTER_PREFIX} Page ${page} of ${total}`;
+}
+
+/** Count scope items marked TAP-scoped in the Word pack (leading asterisk). */
+export function countTapScopedScopeItems(): number {
+  return TNA_FORM_02_SCOPE_GROUPS.reduce(
+    (sum, group) =>
+      sum + group.items.filter((item) => "tapScoped" in item && item.tapScoped).length,
+    0,
+  );
 }

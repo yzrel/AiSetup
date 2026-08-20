@@ -1,15 +1,22 @@
-/* Author: Yzrel Jade B. Eborde — DOST TNA Form 02 official layout (preview + print) */
+/* Author: Yzrel Jade B. Eborde — DOST TNA Form 02 (Annex 1-2) print layout */
 
 .tna2-form-doc {
-  font-family: Arial, "Segoe UI", sans-serif;
-  font-size: 11px;
-  line-height: 1.35;
-  color: #111827;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  line-height: 1.15;
+  color: #111;
   width: 210mm;
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   background: #fff;
+  --tna2-line-gap: 14pt;
+  /* Word tblBorders sz=6 (0.75pt) header grid; sz=8 (1pt) section rules; TableGrid sz=4 (0.5pt) */
+  --tna2-border-color: #000;
+  --tna2-border-header-grid: 0.75pt;
+  --tna2-border-header-section: 1pt;
+  --tna2-border-intervention: 0.5pt;
+  --tna2-shade-header: #aeaaaa;
 }
 
 .tna2-form-doc .tna2-form-document-root {
@@ -17,11 +24,12 @@
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding: 12mm 0 8mm;
+  padding: 0;
   background: #fff;
   box-sizing: border-box;
 }
 
+/* Word pgMar: left 20.1mm, right 10.6mm — asymmetric on screen; @page handles print */
 .tna2-form-doc .tna2-form-page {
   display: block;
   width: 210mm;
@@ -30,19 +38,28 @@
   max-width: 100%;
   border: none;
   margin: 0 auto;
-  padding: 0 12mm;
+  padding: 0 10.6mm 0 20.1mm;
   background: transparent;
   position: relative;
   box-sizing: border-box;
 }
 
-.tna2-form-doc .tna2-form-page + .tna2-form-page {
-  margin-top: 16px;
+.tna2-form-doc .tna2-form-inner-frame,
+.tna2-form-doc .tna2-form-page-body {
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.tna2-form-doc .tna2-form-block,
-.tna2-form-doc .tna-print-section {
-  margin-bottom: 12px;
+/* Flowing narrative blocks may break across pages */
+.tna2-form-doc .tna2-form-block-flow {
+  margin-bottom: 0;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* Small header / signature blocks stay together */
+.tna2-form-doc .tna2-form-block-keep {
+  margin-bottom: 0;
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -57,243 +74,345 @@
   page-break-inside: avoid;
 }
 
-.tna2-form-doc .tna2-form-section-heading {
-  font-size: 11px;
+.tna2-form-doc h1,
+.tna2-form-doc h2,
+.tna2-form-doc p {
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
+
+.tna2-form-doc .tna2-form-title {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14pt;
   font-weight: 700;
-  margin: 10px 0 8px;
-  color: #0c2461;
+  text-align: center;
+  margin: 0 0 4pt;
+  color: #111;
+  line-height: 1.15;
+}
+
+.tna2-form-doc .tna2-form-subtitle {
+  font-size: 12pt;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+
+/* SUMMARY OF ASSESSMENT — centered; ~5pt gap to first subheading (Word spBefore 94tw on BACKGROUND) */
+.tna2-form-doc .tna2-form-section-heading {
+  font-size: 12pt;
+  font-weight: 700;
+  margin: 0 0 5pt;
+  color: #111;
+  text-transform: uppercase;
+  line-height: 1.15;
   break-after: avoid;
   page-break-after: avoid;
 }
 
-.tna2-form-doc .tna2-form-inner-frame {
-  padding: 0;
-  box-sizing: border-box;
-}
-
-.tna2-form-doc .tna2-form-page-body {
-  box-sizing: border-box;
-}
-
-.tna2-form-doc .tna2-form-footer {
-  margin-top: 8px;
-  margin-bottom: 10px;
-  padding-top: 0;
-  font-size: 9px;
+.tna2-form-doc .tna2-form-section-heading-center {
   text-align: center;
-  color: #6b7280;
 }
 
-.tna2-form-doc .tna2-form-page:last-child .tna2-form-footer {
-  margin-bottom: 0;
-}
-
-.tna2-form-doc .tna2-form-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.tna2-form-doc .tna2-form-logo {
-  width: 42px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.tna2-form-doc .tna2-form-republic {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0;
-  color: #4b5563;
-}
-
-.tna2-form-doc .tna2-form-department {
-  font-size: 11.5px;
-  font-weight: 700;
-  margin: 2px 0 0;
-  color: #0c2461;
-}
-
-.tna2-form-doc .tna2-form-setup {
-  font-size: 9.5px;
-  margin: 2px 0 0;
-  color: #4b5563;
-}
-
-.tna2-form-doc .tna2-form-title {
-  font-size: 12.5px;
-  font-weight: 800;
-  text-align: center;
-  margin: 10px 0 12px;
-  color: #0c2461;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.tna2-form-doc .tna2-form-section-bar {
-  padding: 4px 0;
-  margin-bottom: 6px;
-}
-
+/* BACKGROUND / METHODOLOGY / etc. — uppercase label; tight to narrative (Word after=0) */
 .tna2-form-doc .tna2-form-subheading {
-  font-size: 10.5px;
-  font-weight: 600;
-  margin: 10px 0 6px;
+  font-size: 12pt;
+  font-weight: 700;
+  margin: 0;
+  color: #111;
+  text-transform: uppercase;
+  line-height: 1.15;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* ~1 blank line before next section label (Word empty paragraph) */
+.tna2-form-doc .tna2-form-prose + .tna2-form-subheading,
+.tna2-form-doc .tna2-form-finding-block + .tna2-form-subheading {
+  margin-top: var(--tna2-line-gap);
+}
+
+/* Narrative starts immediately under its label */
+.tna2-form-doc .tna2-form-subheading + .tna2-form-prose {
+  margin-top: 0;
 }
 
 .tna2-form-doc .tna2-form-prose {
-  font-size: 10.5px;
-  margin: 0 0 8px;
+  font-size: 12pt;
+  margin: 0;
   text-align: justify;
-  line-height: 1.4;
+  line-height: 1.15;
 }
 
 .tna2-form-doc .tna2-form-finding-block {
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+.tna2-form-doc .tna2-form-subheading + .tna2-form-finding-block > .tna2-form-finding-title {
+  margin-top: 5pt;
 }
 
 .tna2-form-doc .tna2-form-finding-title {
-  font-size: 10.5px;
+  font-size: 12pt;
   font-weight: 700;
-  margin: 0 0 3px;
-  color: #0c2461;
+  margin: var(--tna2-line-gap) 0 0;
+  color: #111;
+  line-height: 1.15;
 }
 
 .tna2-form-doc .tna2-form-finding-sub {
-  margin: 0 0 6px;
-  padding-left: 4px;
+  margin: 0;
 }
 
 .tna2-form-doc .tna2-form-finding-sub-label {
-  font-size: 10px;
+  font-size: 12pt;
   font-weight: 700;
-  margin: 0 0 2px;
-  color: #1f2937;
+  margin: 0;
+  color: #111;
+  line-height: 1.15;
+  text-transform: none;
+}
+
+/* Blank line after numbered finding title (Word empty para under "1. Strategic Direction", etc.) */
+.tna2-form-doc .tna2-form-finding-title + .tna2-form-finding-sub > .tna2-form-finding-sub-label {
+  margin-top: var(--tna2-line-gap);
+}
+
+/* Blank line before next finding sub-area */
+.tna2-form-doc .tna2-form-finding-sub + .tna2-form-finding-sub > .tna2-form-finding-sub-label {
+  margin-top: var(--tna2-line-gap);
+}
+
+.tna2-form-doc .tna2-form-finding-sub-label + .tna2-form-prose {
+  margin-top: 0;
+}
+
+.tna2-form-doc .tna2-form-prose + .tna2-form-prose {
+  margin-top: 0;
+}
+
+/* Intervention table, TNA team, closing signatures */
+.tna2-form-doc .tna2-form-prose + .tna2-form-intervention-table,
+.tna2-form-doc .tna2-form-subheading + .tna2-form-intervention-table {
+  margin-top: var(--tna2-line-gap);
+}
+
+.tna2-form-doc .tna2-form-intervention-table {
+  margin-bottom: 0;
+}
+
+.tna2-form-doc .tna2-form-intervention-table + .tna2-form-team-block,
+.tna2-form-doc .tna2-form-intervention-table + .tna2-form-block-keep {
+  margin-top: var(--tna2-line-gap);
+}
+
+.tna2-form-doc .tna2-form-team-block + .tna2-form-block-keep {
+  margin-top: var(--tna2-line-gap);
 }
 
 .tna2-form-screen-preview .tna2-form-document-root {
-  padding: 16px 20px 20px;
-}
-
-.tna2-form-screen-preview .tna2-form-page {
-  padding: 0 8px;
+  padding: 12px 0 16px;
 }
 
 .tna2-form-doc .tna2-form-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 4px 0 8px;
-  font-size: 10.5px;
+  margin: 0 0 3pt;
+  font-size: 12pt;
 }
 
 .tna2-form-doc .tna2-form-table th,
 .tna2-form-doc .tna2-form-table td {
-  border: 1px solid #374151;
-  padding: 4px 6px;
+  padding: 2pt 4pt;
   vertical-align: top;
+  line-height: 1.15;
+  border-color: var(--tna2-border-color);
+  border-style: solid;
 }
 
 .tna2-form-doc .tna2-form-field-table {
-  margin: 4px 0 8px;
+  margin: 0 0 3pt;
 }
 
-.tna2-form-doc .tna2-form-field-label {
-  border-bottom: 1px solid #374151;
+/* Header table — full 0.75pt grid (Word tblBorders sz=6) */
+.tna2-form-doc .tna2-form-field-table th,
+.tna2-form-doc .tna2-form-field-table td {
+  border-width: var(--tna2-border-header-grid);
 }
 
-.tna2-form-doc .tna2-form-field-value {
-  min-height: 22px;
+/* Subtitle row — Word shd fill AEAAAA */
+.tna2-form-doc .tna2-form-field-table tbody tr:first-child td {
+  background: var(--tna2-shade-header);
 }
 
-.tna2-form-doc .tna2-form-table th {
-  background: #f3f4f6;
-  font-weight: 600;
-  text-align: left;
+/* ADDRESS row — thicker bottom rule (Word tcBorders bottom sz=8) */
+.tna2-form-doc .tna2-form-field-table tbody tr:nth-child(3) td {
+  border-bottom-width: var(--tna2-border-header-section);
+}
+
+/* SCOPE OF ASSESSMENT* row — 1pt top and bottom */
+.tna2-form-doc .tna2-form-field-table tbody tr:nth-child(4) td {
+  border-top-width: var(--tna2-border-header-section);
+  border-bottom-width: var(--tna2-border-header-section);
+}
+
+/* Scope list cell — 1pt top only */
+.tna2-form-doc .tna2-form-field-table tbody tr:nth-child(5) td {
+  border-top-width: var(--tna2-border-header-section);
+}
+
+/* Intervention table — TableGrid style 0.5pt; no header shading in Word */
+.tna2-form-doc .tna2-form-intervention-table th,
+.tna2-form-doc .tna2-form-intervention-table td {
+  border: var(--tna2-border-intervention) solid var(--tna2-border-color);
+}
+
+.tna2-form-doc .tna2-form-intervention-table th {
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  background: transparent;
 }
 
 .tna2-form-doc .tna2-form-label {
-  background: #f9fafb;
-  font-weight: 600;
+  font-weight: 700;
+  width: 28%;
 }
 
 .tna2-form-doc .tna2-form-value {
-  min-height: 20px;
+  min-height: 0;
+}
+
+/* Word uses Arial only for filled COMPANY / ADDRESS values in the header table */
+.tna2-form-doc .tna2-form-field-table .tna2-form-value:not(.tna2-form-center) {
+  font-family: Arial, sans-serif;
 }
 
 .tna2-form-doc .tna2-form-center {
   text-align: center;
 }
 
-.tna2-form-doc .tna2-form-numbered-list {
-  margin: 0 0 8px 18px;
-  padding: 0;
-  font-size: 10.5px;
+.tna2-form-doc .tna2-form-scope-header {
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--tna2-shade-header);
+  text-align: center;
 }
 
-.tna2-form-doc .tna2-form-numbered-list li {
-  margin-bottom: 4px;
+.tna2-form-doc .tna2-form-scope-cell {
+  padding: 3pt 5pt 4pt;
+}
+
+.tna2-form-doc .tna2-form-scope-table-content {
+  font-size: 12pt;
+  line-height: 1.15;
+}
+
+.tna2-form-doc .tna2-form-scope-intro {
+  margin: 0 0 2pt;
+  padding: 0;
+}
+
+/* Level 1 — solid bullets (Word list indent ~0.25in) */
+.tna2-form-doc .tna2-form-scope-list {
+  margin: 0;
+  padding: 0 0 0 14pt;
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.tna2-form-doc .tna2-form-scope-bullet {
+  margin: 0;
+  padding: 0 0 0 2pt;
+  line-height: 1.15;
+}
+
+/* Level 2 — TAP asterisk items nested under parent bullet */
+.tna2-form-doc .tna2-form-scope-nested {
+  margin: 0;
+  padding: 0 0 0 14pt;
+  list-style: none;
+}
+
+.tna2-form-doc .tna2-form-scope-nested-item {
+  margin: 0;
+  padding: 0;
+  line-height: 1.15;
+  text-indent: 0;
+}
+
+.tna2-form-doc .tna2-form-scope-footnote {
+  font-size: 12pt;
+  margin: 3pt 0 0;
+  line-height: 1.15;
 }
 
 .tna2-form-doc .tna2-form-empty {
-  font-size: 10.5px;
-  color: #6b7280;
-  margin: 0 0 8px;
+  font-size: 12pt;
+  color: #444;
+  margin: 0 0 3pt;
 }
 
-.tna2-form-doc .tna2-form-ruled-line {
-  display: block;
-  border-bottom: 1px solid #374151;
-  min-height: 16px;
-  margin-bottom: 4px;
+.tna2-form-doc .tna2-form-signature-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12pt;
+  margin: 4pt 0 0;
 }
 
-.tna2-form-doc .tna2-form-signature-table {
-  margin-top: 16px;
-}
-
-.tna2-form-doc .tna2-form-signature-cell {
-  padding: 10px 12px;
-  vertical-align: top;
-  width: 50%;
-}
-
-.tna2-form-doc .tna2-form-signature-title {
-  font-weight: 700;
-  font-size: 10.5px;
-  margin: 0 0 10px;
-}
-
-.tna2-form-doc .tna2-form-signature-line {
-  border-bottom: 1px solid #374151;
-  min-height: 36px;
-  margin-bottom: 4px;
-}
-
-.tna2-form-doc .tna2-form-signature-label {
-  font-size: 9.5px;
-  color: #4b5563;
-  margin: 0 0 6px;
-}
-
-.tna2-form-doc .tna2-form-signature-name {
-  font-size: 11px;
-  font-weight: 600;
+.tna2-form-doc .tna2-form-signature-closing {
   margin: 0;
 }
 
-.tna2-form-doc .tna2-form-signature-meta {
-  font-size: 10px;
-  color: #4b5563;
-  margin: 2px 0 0;
+.tna2-form-doc .tna2-form-signature-closing-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12pt;
+  margin: 0;
 }
 
-.tna2-form-doc .tna2-form-signature-date {
-  font-size: 10px;
-  color: #4b5563;
-  margin: 8px 0 0;
+.tna2-form-doc .tna2-form-signature-attest {
+  text-align: left;
+}
+
+.tna2-form-doc .tna2-form-signature-date-line {
+  margin: 0;
+  font-size: 12pt;
+  line-height: 1.15;
+}
+
+.tna2-form-doc .tna2-form-signature-col {
+  font-size: 12pt;
+  line-height: 1.15;
+}
+
+.tna2-form-doc .tna2-form-signature-line-text {
+  margin: 0;
+  font-weight: 700;
+}
+
+.tna2-form-doc .tna2-form-signature-caption {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 400;
+}
+
+.tna2-form-doc .tna2-form-team-heading {
+  font-size: 12pt;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.tna2-form-doc .tna2-form-team-line,
+.tna2-form-doc .tna2-form-team-detail {
+  margin: 0;
+  font-size: 12pt;
+  line-height: 1.15;
+}
+
+.tna2-form-doc .tna2-form-team-member {
+  margin: 0;
 }
 
 @media print {
@@ -323,14 +442,14 @@
 
   @page tna-form-02-sheet {
     size: A4 portrait;
-    margin: 12mm 12mm 20mm;
+    margin: 24mm 10.6mm 19.1mm 20.1mm;
 
     @bottom-center {
-      content: "SETUP Guidelines – Annex B-12 - DOST TNA Form 02 — Page " counter(page) " of "
-        counter(pages);
-      font-family: Arial, "Segoe UI", sans-serif;
-      font-size: 9px;
-      color: #6b7280;
+      content: "SETUP Guidelines (Revision 3.0) Annex 1-2: DOST TNA FORM 02 - Technology Needs Assessment Report Page "
+        counter(page) " of " counter(pages);
+      font-family: "Times New Roman", Times, serif;
+      font-size: 9pt;
+      color: #111;
     }
   }
 
@@ -338,26 +457,41 @@
     page: tna-form-02-sheet;
   }
 
-  .tna2-form-doc .tna2-form-document-root {
-    padding: 0;
-    margin: 0 auto;
+  #tna-form-02-print-root .tna2-form-document-root {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    font-size: 12pt;
   }
 
+  #tna-form-02-print-root .tna2-form-page {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #tna-form-02-print-root .tna2-form-block-flow,
+  #tna-form-02-print-root .tna2-form-block-keep {
+    margin-bottom: 0 !important;
+  }
+
+  #tna-form-02-print-root .tna2-form-section-heading,
+  #tna-form-02-print-root .tna2-form-title,
+  #tna-form-02-print-root .tna2-form-subheading,
+  #tna-form-02-print-root .tna2-form-finding-title {
+    color: #111 !important;
+  }
+}
+
+@media (max-width: 640px) {
   .tna2-form-doc .tna2-form-page {
-    padding: 0;
-    margin: 0;
-    page-break-after: auto;
-    break-after: auto;
-    page-break-inside: auto;
-    break-inside: auto;
+    padding: 0 8mm 0 10mm;
   }
 
-  .tna2-form-doc .tna2-form-page + .tna2-form-page {
-    margin-top: 0;
-  }
-
-  .tna2-form-doc .tna2-form-block,
-  .tna2-form-doc .tna-print-section {
-    margin-bottom: 5mm;
+  .tna2-form-doc .tna2-form-signature-columns {
+    grid-template-columns: 1fr;
+    gap: 8pt;
   }
 }

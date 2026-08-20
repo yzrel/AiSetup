@@ -1,30 +1,37 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Official DOST TNA Form 01 (Annex B-11) printable document layout.
+ * Official DOST TNA Form 01 (Annex 1-1) printable document layout.
+ * Source: TNA FORM 01.docx — SETUP Guidelines (Revision 3.0).
  */
 
 import type { ReactNode } from "react";
 import {
   TNA_FORM_01_BUSINESS_ACTIVITIES,
   TNA_FORM_01_CAPITAL_CLASSES,
-  TNA_FORM_01_EMPLOYEE_ROWS,
+  TNA_FORM_01_EMPLOYEE_KEYS,
   TNA_FORM_01_EMPLOYMENT_CLASSES,
   TNA_FORM_01_EQUIPMENT_COLUMNS,
+  TNA_FORM_01_EQUIPMENT_EMPTY_ROWS,
   TNA_FORM_01_GENERAL_AGREEMENTS,
   TNA_FORM_01_ORGANIZATION_TYPES,
   TNA_FORM_01_PACKAGING_ROWS,
+  TNA_FORM_01_PREPARED_BY_LABEL,
   TNA_FORM_01_PRODUCTION_COLUMNS,
+  TNA_FORM_01_PRODUCTION_EMPTY_ROWS,
   TNA_FORM_01_PROFIT_TYPES,
   TNA_FORM_01_RAW_MATERIAL_COLUMNS,
+  TNA_FORM_01_RAW_MATERIAL_EMPTY_ROWS,
   TNA_FORM_01_TITLE,
   TNA_FORM_01_UNDERTAKING,
+  TNA_FORM_01_VALIDATED_BY_LABEL,
   deriveBusinessActivity,
   displayValue,
   formatDisplayDate,
   mapCapitalClassToOfficial,
   mapEmploymentClassToOfficial,
   mapOrganizationType,
+  sumHeadcount,
 } from "../../constants/tnaForm01Layout";
 import { isImageFile, isPdfFile } from "../../utils/storedFilePreview";
 import { StoredFileImage } from "../StoredFilePreview";
@@ -292,29 +299,8 @@ function DataRowsTable({
   );
 }
 
-function FormHeader() {
-  return (
-    <header className="tna-form-header-block">
-      <div className="tna-form-header">
-        <img
-          src="/assets/dost-logo-mark.png"
-          alt=""
-          aria-hidden
-          className="tna-form-logo"
-        />
-        <div className="tna-form-header-text">
-          <p className="tna-form-republic">Republic of the Philippines</p>
-          <p className="tna-form-department">Department of Science and Technology</p>
-          <p className="tna-form-setup">Small Enterprise Technology Upgrading Program (SETUP)</p>
-        </div>
-      </div>
-      <h1 className="tna-form-title">{TNA_FORM_01_TITLE}</h1>
-    </header>
-  );
-}
-
 function SectionHeading({ children }: { children: ReactNode }) {
-  return <h2 className="tna-form-section-heading tna-form-section-bar">{children}</h2>;
+  return <h2 className="tna-form-section-heading">{children}</h2>;
 }
 
 function BenchmarkBullet({ children }: { children: ReactNode }) {
@@ -328,31 +314,24 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
   const employmentId = mapEmploymentClassToOfficial(val(f, "employmentClass"));
   const activityId = deriveBusinessActivity(val(f, "sector"), val(f, "commodity"));
 
-  const directMale = val(f, "employeesMale");
-  const directFemale = val(f, "employeesFemale");
-  const indirectMale = val(f, "employeesIndirect");
-  const indirectFemale = val(f, "employeesContract");
-  const totalMale =
-    [directMale, indirectMale].filter(Boolean).length > 0
-      ? String(
-          (parseInt(directMale, 10) || 0) + (parseInt(indirectMale, 10) || 0) || "",
-        )
-      : "";
-  const totalFemale =
-    [directFemale, indirectFemale].filter(Boolean).length > 0
-      ? String(
-          (parseInt(directFemale, 10) || 0) + (parseInt(indirectFemale, 10) || 0) || "",
-        )
-      : "";
+  const k = TNA_FORM_01_EMPLOYEE_KEYS;
+  const directMale = val(f, k.directMale);
+  const directFemale = val(f, k.directFemale);
+  const productionMale = val(f, k.productionMale);
+  const productionFemale = val(f, k.productionFemale);
+  const indirectMale = val(f, k.indirectMale);
+  const indirectFemale = val(f, k.indirectFemale);
+  const totalMale = sumHeadcount(directMale, indirectMale);
+  const totalFemale = sumHeadcount(directFemale, indirectFemale);
 
   const processFlowIsAttachment = f.processFlowMode === "attachment";
+  const consulted = val(f, "consultedOther");
 
   return (
     <div className="tna-form-document-root">
-      {/* Page 1 — Enterprise ID + General Agreements (1–3) */}
       <FormPage>
         <FormBlock>
-          <FormHeader />
+          <h1 className="tna-form-title">{TNA_FORM_01_TITLE}</h1>
           <FormTable>
             <tbody>
               <tr>
@@ -366,12 +345,9 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
                 <FormValueCell>{val(f, "position")}</FormValueCell>
               </tr>
               <tr>
-                <FormLabelCell rowSpan={2}>Office Address:</FormLabelCell>
-                <FormValueCell colSpan={3} rowSpan={2}>
-                  {val(f, "officeAddress")}
-                </FormValueCell>
+                <FormLabelCell>Office Address:</FormLabelCell>
+                <FormValueCell colSpan={3}>{val(f, "officeAddress")}</FormValueCell>
               </tr>
-              <tr />
               <tr>
                 <FormLabelCell>Tel. No.</FormLabelCell>
                 <FormValueCell>{val(f, "officeTel")}</FormValueCell>
@@ -383,12 +359,9 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
                 <FormValueCell colSpan={3}>{val(f, "officeEmail")}</FormValueCell>
               </tr>
               <tr>
-                <FormLabelCell rowSpan={2}>Factory Address:</FormLabelCell>
-                <FormValueCell colSpan={3} rowSpan={2}>
-                  {val(f, "factoryAddress")}
-                </FormValueCell>
+                <FormLabelCell>Factory Address:</FormLabelCell>
+                <FormValueCell colSpan={3}>{val(f, "factoryAddress")}</FormValueCell>
               </tr>
-              <tr />
               <tr>
                 <FormLabelCell>Tel. No.</FormLabelCell>
                 <FormValueCell>{val(f, "factoryTel")}</FormValueCell>
@@ -419,10 +392,7 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
             </ol>
           </FormBorderedPanel>
         </FormBlock>
-      </FormPage>
 
-      {/* Page 2 — Undertaking */}
-      <FormPage>
         <FormBlock>
           <SectionHeading>UNDERTAKING</SectionHeading>
           <FormBorderedPanel>
@@ -434,7 +404,7 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
                   <FormValueCell>{val(f, "undertakingName")}</FormValueCell>
                 </tr>
                 <tr>
-                  <FormLabelCell>Position in the Enterprise</FormLabelCell>
+                  <FormLabelCell>Position in Enterprise</FormLabelCell>
                   <FormValueCell>{val(f, "undertakingPosition")}</FormValueCell>
                 </tr>
                 <tr>
@@ -445,12 +415,10 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
             </FormTable>
           </FormBorderedPanel>
         </FormBlock>
-      </FormPage>
 
-      {/* Page 3 — Attachment A (part 1) */}
-      <FormPage>
         <FormBlock>
-          <SectionHeading>Attachment A — Enterprise Profile</SectionHeading>
+          <SectionHeading>Attachment A</SectionHeading>
+          <p className="tna-form-subheading">Enterprise Profile</p>
           <FormTable>
             <tbody>
               <tr>
@@ -484,35 +452,12 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
               </tr>
               <tr>
                 <FormLabelCell>Enterprise Registration No.</FormLabelCell>
-                <FormValueCell colSpan={3}>{val(f, "registrationNo")}</FormValueCell>
+                <FormValueCell>{val(f, "registrationNo")}</FormValueCell>
+                <FormLabelCell>Year Registered</FormLabelCell>
+                <FormValueCell>{val(f, "yearRegistered")}</FormValueCell>
               </tr>
-            </tbody>
-          </FormTable>
-        </FormBlock>
-
-        <FormBorderedPanel>
-          <p className="tna-form-subheading tna-form-panel-title">Type of Organization:</p>
-          <div className="tna-form-checkbox-row">
-            {TNA_FORM_01_ORGANIZATION_TYPES.map((type) => (
-              <label key={type} className="tna-form-checkbox-label">
-                <FormCheckbox checked={org.org === type} /> {type}
-              </label>
-            ))}
-          </div>
-          <div className="tna-form-checkbox-row">
-            {TNA_FORM_01_PROFIT_TYPES.map((type) => (
-              <label key={type} className="tna-form-checkbox-label">
-                <FormCheckbox checked={org.profit === type} /> {type}
-              </label>
-            ))}
-          </div>
-        </FormBorderedPanel>
-
-        <FormBlock>
-          <FormTable>
-            <tbody>
               <tr>
-                <FormLabelCell width="30%">Present capitalization</FormLabelCell>
+                <FormLabelCell>Present capitalization</FormLabelCell>
                 <FormValueCell colSpan={3}>{val(f, "presentCapital")}</FormValueCell>
               </tr>
             </tbody>
@@ -520,7 +465,30 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
         </FormBlock>
 
         <FormBorderedPanel>
-          <p className="tna-form-subheading tna-form-panel-title">Classification according to capital (PhP)</p>
+          <p className="tna-form-subheading tna-form-panel-title">Type of Organization:</p>
+          <div className="tna-form-checkbox-col">
+            {TNA_FORM_01_ORGANIZATION_TYPES.filter((type) => type !== "LGU").map((type) => (
+              <label key={type} className="tna-form-checkbox-label">
+                <FormCheckbox checked={org.org === type} /> {type}
+              </label>
+            ))}
+            <div className="tna-form-org-nested">
+              {TNA_FORM_01_PROFIT_TYPES.map((type) => (
+                <label key={type} className="tna-form-checkbox-label">
+                  <FormCheckbox checked={org.profit === type} /> {type}
+                </label>
+              ))}
+            </div>
+            <label className="tna-form-checkbox-label">
+              <FormCheckbox checked={org.org === "LGU"} /> LGU
+            </label>
+          </div>
+        </FormBorderedPanel>
+
+        <FormBorderedPanel>
+          <p className="tna-form-subheading tna-form-panel-title">
+            Classification according to capital (PhP)
+          </p>
           <div className="tna-form-checkbox-col">
             {TNA_FORM_01_CAPITAL_CLASSES.map((c) => (
               <label key={c.id} className="tna-form-checkbox-label">
@@ -542,10 +510,7 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
             ))}
           </div>
         </FormBorderedPanel>
-      </FormPage>
 
-      {/* Page 4 — Employees + Business Activity + consultation */}
-      <FormPage>
         <FormBlock>
           <p className="tna-form-subheading">Number of Employees:</p>
           <FormTable className="tna-form-grid-table">
@@ -557,27 +522,29 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
               </tr>
             </thead>
             <tbody>
-              {TNA_FORM_01_EMPLOYEE_ROWS.map((row) => {
-                const male =
-                  row.maleKey === "employeesMale"
-                    ? directMale
-                    : row.maleKey === "employeesIndirect"
-                      ? indirectMale
-                      : "";
-                const female =
-                  row.femaleKey === "employeesFemale"
-                    ? directFemale
-                    : row.femaleKey === "employeesContract"
-                      ? indirectFemale
-                      : "";
-                return (
-                  <tr key={row.label}>
-                    <FormLabelCell>{row.label}</FormLabelCell>
-                    <FormValueCell>{male}</FormValueCell>
-                    <FormValueCell>{female}</FormValueCell>
-                  </tr>
-                );
-              })}
+              <tr>
+                <FormLabelCell>Direct Workers</FormLabelCell>
+                <FormValueCell>{directMale}</FormValueCell>
+                <FormValueCell>{directFemale}</FormValueCell>
+              </tr>
+              <tr>
+                <FormLabelCell className="tna-form-indent-label">Production</FormLabelCell>
+                <FormValueCell>{productionMale}</FormValueCell>
+                <FormValueCell>{productionFemale}</FormValueCell>
+              </tr>
+              <tr>
+                <FormLabelCell className="tna-form-indent-label">Non-production</FormLabelCell>
+                <FormValueCell colSpan={2}>
+                  Senior Citizen: {val(f, k.seniorCitizen) || "\u00a0"}
+                  {" · "}
+                  PWD: {val(f, k.pwd) || "\u00a0"}
+                </FormValueCell>
+              </tr>
+              <tr>
+                <FormLabelCell>Indirect/Contract Workers</FormLabelCell>
+                <FormValueCell>{indirectMale}</FormValueCell>
+                <FormValueCell>{indirectFemale}</FormValueCell>
+              </tr>
               <tr>
                 <FormLabelCell>
                   <strong>Total</strong>
@@ -589,14 +556,13 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           </FormTable>
         </FormBlock>
 
-        <FormTextBlock
-          label="Gender and Development (GAD) — Participation and Involvement:"
-          value={val(f, "genderInvolvement")}
-          lines={3}
-        />
-
         <FormBorderedPanel>
-          <p className="tna-form-subheading tna-form-panel-title">Business Activity:</p>
+          <p className="tna-form-subheading tna-form-panel-title">
+            Business Activity (please specify SECTOR and COMMODITY):
+          </p>
+          <p className="tna-form-activity-spec tna-form-activity-spec-inline">
+            Sector: {val(f, "sector") || "\u00a0"} · Commodity: {val(f, "commodity") || "\u00a0"}
+          </p>
           <div className="tna-form-activity-list">
             {TNA_FORM_01_BUSINESS_ACTIVITIES.map((act) => (
               <div key={act.id} className="tna-form-activity-item">
@@ -604,9 +570,9 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
                   <FormCheckbox checked={activityId === act.id} /> {act.label}
                 </label>
                 {act.hint && <span className="tna-form-activity-hint">{act.hint}</span>}
-                {(activityId === act.id || act.id === "others") && (
+                {activityId === act.id && (
                   <span className="tna-form-activity-spec">
-                    {activityId === act.id ? val(f, "commodity") || val(f, "sector") : ""}
+                    {val(f, "commodity") || val(f, "sector")}
                   </span>
                 )}
               </div>
@@ -615,87 +581,80 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
         </FormBorderedPanel>
 
         <FormTextBlock
-          label="1. Specific product or service the enterprise offers its customers:"
+          label="Specific product or service the enterprise offers its customers:"
           value={val(f, "mainProduct")}
           lines={2}
         />
         <FormTextBlock
-          label="2. Reasons why assistance is being sought:"
+          label="Reasons why assistance is being sought:"
           value={val(f, "reasonsForAssistance")}
           lines={3}
         />
 
         <FormBorderedPanel>
           <p className="tna-form-subheading tna-form-panel-title">
-            3. Have you consulted any other individual/organization for any assistance?
+            Have you consulted any other individual/organization for any assistance?
           </p>
           <div className="tna-form-checkbox-row">
             <label className="tna-form-checkbox-label">
-              <FormCheckbox checked={val(f, "consultedOther") === "Yes"} /> Yes
+              <FormCheckbox checked={consulted === "Yes"} /> Yes
             </label>
             <label className="tna-form-checkbox-label">
-              <FormCheckbox checked={val(f, "consultedOther") === "No"} /> No
+              <FormCheckbox checked={consulted === "No"} /> No
             </label>
           </div>
         </FormBorderedPanel>
-        {val(f, "consultedOther") === "Yes" && (
-          <>
-            <FormTextBlock
-              label="If Yes, which company/agency? Please specify the type of assistance sought"
-              value={`${val(f, "consultedAgency")}${val(f, "assistanceType") ? ` — ${val(f, "assistanceType")}` : ""}`}
-              lines={2}
-            />
-          </>
-        )}
-        {val(f, "consultedOther") === "No" && (
-          <FormTextBlock label="If No, why not?" value={val(f, "whyNotConsulted")} lines={2} />
-        )}
-      </FormPage>
-
-      {/* Page 5 — Org structure + plans */}
-      <FormPage>
-        <FormAttachmentBlock
-          label="Organizational Structure"
-          minHeight={140}
-        />
         <FormTextBlock
-          label="4. Enterprise's plan for the next 5 years?"
+          label="If Yes, which company/agency? Please specify the type of assistance sought"
+          value={
+            consulted === "Yes"
+              ? `${val(f, "consultedAgency")}${val(f, "assistanceType") ? ` — ${val(f, "assistanceType")}` : ""}`
+              : ""
+          }
+          lines={2}
+        />
+        <FormTextBlock label="If No, why not?" value={consulted === "No" ? val(f, "whyNotConsulted") : ""} lines={2} />
+
+        <FormAttachmentBlock label="Organizational Structure" minHeight={140} />
+        <FormTextBlock
+          label="Enterprise's plan for the next 5 years?"
           value={val(f, "plan5Years")}
           lines={3}
         />
+        <FormTextBlock label="Next 10 years?" value={val(f, "plan10Years")} lines={3} />
         <FormTextBlock
-          label="Next 10 years?"
-          value={val(f, "plan10Years")}
-          lines={3}
-        />
-        <FormTextBlock
-          label="5. Current agreements and alliances undertaken"
+          label="Current agreements and alliances undertaken"
           value={val(f, "agreements")}
           lines={3}
         />
-      </FormPage>
 
-      {/* Page 6 — Benchmark: raw materials + production */}
-      <FormPage>
         <FormBlock>
           <SectionHeading>BENCHMARK INFORMATION</SectionHeading>
           <BenchmarkBullet>Production and Supply Chain</BenchmarkBullet>
         </FormBlock>
         <FormBlock>
           <BenchmarkBullet>Raw Material</BenchmarkBullet>
-          <DataRowsTable columns={TNA_FORM_01_RAW_MATERIAL_COLUMNS} rows={tables.rawMaterials} />
+          <DataRowsTable
+            columns={TNA_FORM_01_RAW_MATERIAL_COLUMNS}
+            rows={tables.rawMaterials}
+            emptyRows={TNA_FORM_01_RAW_MATERIAL_EMPTY_ROWS}
+          />
         </FormBlock>
         <FormBlock>
           <BenchmarkBullet>Production</BenchmarkBullet>
-          <DataRowsTable columns={TNA_FORM_01_PRODUCTION_COLUMNS} rows={tables.production} />
+          <DataRowsTable
+            columns={TNA_FORM_01_PRODUCTION_COLUMNS}
+            rows={tables.production}
+            emptyRows={TNA_FORM_01_PRODUCTION_EMPTY_ROWS}
+          />
         </FormBlock>
-      </FormPage>
-
-      {/* Page 7 — Equipment + production problems */}
-      <FormPage>
         <FormBlock>
           <BenchmarkBullet>Existing Functional Production Equipment</BenchmarkBullet>
-          <DataRowsTable columns={TNA_FORM_01_EQUIPMENT_COLUMNS} rows={tables.equipment} />
+          <DataRowsTable
+            columns={TNA_FORM_01_EQUIPMENT_COLUMNS}
+            rows={tables.equipment}
+            emptyRows={TNA_FORM_01_EQUIPMENT_EMPTY_ROWS}
+          />
         </FormBlock>
         <FormTextBlock
           label="Production Problems and Concerns"
@@ -707,10 +666,6 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           value={val(f, "wasteManagement")}
           lines={3}
         />
-      </FormPage>
-
-      {/* Page 8 — Production plan + plant layout */}
-      <FormPage>
         <FormTextBlock label="Production Plan" value={val(f, "productionPlan")} lines={3} />
         {val(f, "productionPlanFileName") ? (
           <FormAttachmentBlock
@@ -734,10 +689,6 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           applicantId={applicantId}
           minHeight={160}
         />
-      </FormPage>
-
-      {/* Page 9 — Process flow + inventory/maintenance/cGMP/purchasing */}
-      <FormPage>
         {processFlowIsAttachment ? (
           <FormAttachmentBlock
             label="Process Flow"
@@ -760,28 +711,21 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           value={val(f, "purchasingSystem")}
           lines={2}
         />
-      </FormPage>
 
-      {/* Page 10 — Marketing */}
-      <FormPage>
         <FormBlock>
           <BenchmarkBullet>Marketing</BenchmarkBullet>
-          <FormTextBlock label="Marketing Plan" value={val(f, "marketingPlan")} lines={3} />
-          <FormTextBlock
-            label="Market Outlets and Number"
-            value={val(f, "marketOutlets")}
-            lines={2}
-          />
-          <FormTextBlock
-            label="Promotional Strategies"
-            value={val(f, "promotionalStrategies")}
-            lines={2}
-          />
         </FormBlock>
-      </FormPage>
-
-      {/* Page 11 — Competitors + packaging */}
-      <FormPage>
+        <FormTextBlock label="Marketing Plan" value={val(f, "marketingPlan")} lines={3} />
+        <FormTextBlock
+          label="Market Outlets and Number"
+          value={val(f, "marketOutlets")}
+          lines={2}
+        />
+        <FormTextBlock
+          label="Promotional Strategies"
+          value={val(f, "promotionalStrategies")}
+          lines={2}
+        />
         <FormTextBlock
           label="Market Competitors"
           value={val(f, "marketCompetitors")}
@@ -790,70 +734,63 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
         <FormBlock>
           <p className="tna-form-subheading">Packaging</p>
           <FormTable>
-          <thead>
-            <tr>
-              <th>Requirement</th>
-              <th style={{ width: "12%" }}>Yes</th>
-              <th style={{ width: "12%" }}>No</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TNA_FORM_01_PACKAGING_ROWS.map((row) => {
-              const on = checked(f, row.key);
-              return (
-                <tr key={row.key}>
-                  <td>{row.label}</td>
-                  <td className="tna-form-center">
-                    <FormCheckbox checked={on} />
-                  </td>
-                  <td className="tna-form-center">
-                    <FormCheckbox checked={!on} />
-                  </td>
-                  <td>{val(f, row.remarksKey)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </FormTable>
+            <thead>
+              <tr>
+                <th>Requirement</th>
+                <th style={{ width: "12%" }}>Yes</th>
+                <th style={{ width: "12%" }}>No</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TNA_FORM_01_PACKAGING_ROWS.map((row) => {
+                const on = checked(f, row.key);
+                return (
+                  <tr key={row.key}>
+                    <td>{row.label}</td>
+                    <td className="tna-form-center">
+                      <FormCheckbox checked={on} />
+                    </td>
+                    <td className="tna-form-center">
+                      <FormCheckbox checked={!on} />
+                    </td>
+                    <td>{val(f, row.remarksKey)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </FormTable>
         </FormBlock>
-      </FormPage>
 
-      {/* Page 12 — Finance + HR (part 1) */}
-      <FormPage>
         <FormBlock>
           <BenchmarkBullet>Finance</BenchmarkBullet>
-          <FormTextBlock
-            label="Cash Flow or other related documents"
-            value={val(f, "cashFlow")}
-            lines={3}
-          />
-          <FormTextBlock
-            label="Source(s) of capital/credit"
-            value={val(f, "capitalSource")}
-            lines={2}
-          />
-          <FormTextBlock label="Accounting System" value={val(f, "accountingSystem")} lines={2} />
         </FormBlock>
+        <FormTextBlock
+          label="Cash Flow or other related documents"
+          value={val(f, "cashFlow")}
+          lines={3}
+        />
+        <FormTextBlock
+          label="Source(s) of capital/credit"
+          value={val(f, "capitalSource")}
+          lines={2}
+        />
+        <FormTextBlock label="Accounting System" value={val(f, "accountingSystem")} lines={2} />
 
         <FormBlock>
           <BenchmarkBullet>Human Resources</BenchmarkBullet>
-          <FormTextBlock label="Hiring and Criteria" value={val(f, "hiringCriteria")} lines={2} />
-          <FormTextBlock
-            label="Incentives to Employees"
-            value={val(f, "employeeIncentives")}
-            lines={2}
-          />
-          <FormTextBlock
-            label="Training and Development"
-            value={val(f, "trainingDevelopment")}
-            lines={2}
-          />
         </FormBlock>
-      </FormPage>
-
-      {/* Page 13 — HR (part 2) + Other concerns */}
-      <FormPage>
+        <FormTextBlock label="Hiring and Criteria" value={val(f, "hiringCriteria")} lines={2} />
+        <FormTextBlock
+          label="Incentives to Employees"
+          value={val(f, "employeeIncentives")}
+          lines={2}
+        />
+        <FormTextBlock
+          label="Training and Development"
+          value={val(f, "trainingDevelopment")}
+          lines={2}
+        />
         <FormTextBlock
           label="Safety Measures Practiced"
           value={val(f, "safetyMeasures")}
@@ -864,39 +801,32 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           <BenchmarkBullet>Other Concerns</BenchmarkBullet>
           <FormTextBlock label="" value={val(f, "otherConcerns")} lines={5} />
         </FormBlock>
-      </FormPage>
 
-      {/* Page 14 — Signatures */}
-      <FormPage>
         <FormBlock>
           <FormTable className="tna-form-signature-table">
-          <tbody>
-            <tr>
-              <td className="tna-form-signature-cell">
-                <p className="tna-form-signature-title">Prepared by:</p>
-                <div className="tna-form-signature-line" />
-                <p className="tna-form-signature-label">
-                  Printed Name and Signature of Owner/Chair/Representative
-                </p>
-                <p className="tna-form-signature-name">{val(f, "undertakingName")}</p>
-                <p className="tna-form-signature-date">
-                  Date: {formatDisplayDate(val(f, "preparedDate"))}
-                </p>
-              </td>
-              <td className="tna-form-signature-cell">
-                <p className="tna-form-signature-title">Validated by:</p>
-                <div className="tna-form-signature-line" />
-                <p className="tna-form-signature-label">
-                  Printed Name and Signature of PSTD / Provincial Director
-                </p>
-                <p className="tna-form-signature-name">{val(f, "validatedByName")}</p>
-                <p className="tna-form-signature-date">
-                  Date: {formatDisplayDate(val(f, "validatedDate"))}
-                </p>
-              </td>
-            </tr>
-          </tbody>
-        </FormTable>
+            <tbody>
+              <tr>
+                <td className="tna-form-signature-cell">
+                  <p className="tna-form-signature-title">Prepared by:</p>
+                  <div className="tna-form-signature-line" />
+                  <p className="tna-form-signature-label">{TNA_FORM_01_PREPARED_BY_LABEL}</p>
+                  <p className="tna-form-signature-name">{val(f, "undertakingName")}</p>
+                  <p className="tna-form-signature-date">
+                    Date: {formatDisplayDate(val(f, "preparedDate"))}
+                  </p>
+                </td>
+                <td className="tna-form-signature-cell">
+                  <p className="tna-form-signature-title">Validated by:</p>
+                  <div className="tna-form-signature-line" />
+                  <p className="tna-form-signature-label">{TNA_FORM_01_VALIDATED_BY_LABEL}</p>
+                  <p className="tna-form-signature-name">{val(f, "validatedByName")}</p>
+                  <p className="tna-form-signature-date">
+                    Date: {formatDisplayDate(val(f, "validatedDate"))}
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </FormTable>
         </FormBlock>
       </FormPage>
     </div>

@@ -28,6 +28,8 @@ export function ReportsStep({ ctx }: { ctx: Tna1StepContext }) {
     handleDirectorValidate,
     setStep,
     onSubmitSuccess,
+    previewForm,
+    previewTables,
   } = ctx;
 
   return (
@@ -135,7 +137,14 @@ export function ReportsStep({ ctx }: { ctx: Tna1StepContext }) {
         )}
         <button
           type="button"
-          onClick={() => printTnaForm01(applicant?.applicationId)}
+          onClick={() =>
+            printTnaForm01({
+              form: previewForm,
+              tables: previewTables,
+              applicantId: applicant?.id,
+              applicationId: applicant?.applicationId,
+            })
+          }
           className="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 text-sm"
         >
           Print Form 01

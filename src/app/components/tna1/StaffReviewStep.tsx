@@ -85,7 +85,14 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => printTnaForm01(applicant?.applicationId)}
+                  onClick={() =>
+                    printTnaForm01({
+                      form: previewForm,
+                      tables: previewTables,
+                      applicantId: applicant?.id,
+                      applicationId: applicant?.applicationId,
+                    })
+                  }
                   className="text-xs font-bold px-3 py-1.5 rounded-lg text-white"
                   style={{ background: DOST_BLUE }}
                 >

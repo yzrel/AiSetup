@@ -20,6 +20,10 @@ alwaysApply: true
 - State: existing singleton stores + `subscribe` / `aisetup.*` storage keys. Do not introduce Redux.
 - Staff modules: `ModuleWorkflowLayout` + DOST blues from `moduleTheme.ts`.
 
+## Clients / applicants (startup)
+
+- Staff and applicant case lists come from the **backend DB** via hydrate (`GET /applicants`). Do **not** leave frontend `seedApplicants` as the live list after a successful SoR response (including empty). See `clients-from-database.mdc`.
+
 ## Data integrity / moduleData
 
 - `moduleData` stays a **JSON map** (legacy-tolerant) + per-module rows; integrity is **typed islands**, not a full relational rewrite.
@@ -44,6 +48,7 @@ alwaysApply: true
 
 ## Official documents / print / AI
 
+- **Rebuild official forms from regional Word packs** using [.cursor/rules/official-form-from-docx.mdc](official-form-from-docx.mdc) (Form 001 + TNA Form 01 method: constants → `*Document` → `createRoot` print → form-specific `*-layout.mdc`).
 - Print layout details live in existing `.cursor/rules/*-layout.mdc` files — follow those; don’t contradict them.
 - Official docs: A4, match annex layout, hide portal chrome on print. Prefer in-page `#…-print-root` + `window.print`; avoid popup `document.write` for long forms (freeze risk).
 - AI is optional: Anthropic with **template fallback**. Never overwrite user-entered or LOI-forwarded fields.

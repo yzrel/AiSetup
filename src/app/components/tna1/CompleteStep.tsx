@@ -76,7 +76,14 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
         form={previewForm}
         tables={previewTables}
         aiGenerated={tnaAiGenerated ?? undefined}
-        onPrint={() => printTnaForm01(applicant?.applicationId)}
+        onPrint={() =>
+          printTnaForm01({
+            form: previewForm,
+            tables: previewTables,
+            applicantId: applicant?.id,
+            applicationId: applicant?.applicationId,
+          })
+        }
       />
 
       <DocumentDeliveryPanel
@@ -96,7 +103,14 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
           </button>
         )}
         <button
-          onClick={() => printTnaForm01(applicant?.applicationId)}
+          onClick={() =>
+            printTnaForm01({
+              form: previewForm,
+              tables: previewTables,
+              applicantId: applicant?.id,
+              applicationId: applicant?.applicationId,
+            })
+          }
           className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
           style={{ background: DOST_BLUE }}
         >

@@ -5,7 +5,10 @@
 import { Printer } from "lucide-react";
 import { PreviewToolbar } from "./PreviewLayout";
 import { TnaForm01Document } from "./tnaForm01/TnaForm01Document";
-import { printTnaForm01Pdf } from "../utils/tnaForm01Print";
+import {
+  printTnaForm01Pdf,
+  type PrintTnaForm01Options,
+} from "../utils/tnaForm01Print";
 
 interface TnaForm01PreviewProps {
   applicant: { id?: string; applicationId?: string } | null;
@@ -28,14 +31,22 @@ export function TnaForm01Preview({
   onPrint,
   compact = false,
 }: TnaForm01PreviewProps) {
-  const handlePrint = onPrint ?? (() => printTnaForm01Pdf(applicant?.applicationId));
+  const handlePrint =
+    onPrint ??
+    (() =>
+      void printTnaForm01Pdf({
+        form,
+        tables,
+        applicantId: applicant?.id,
+        applicationId: applicant?.applicationId,
+      }));
 
   return (
     <div className={compact ? "" : "space-y-4"}>
       {!compact && (
         <PreviewToolbar className="justify-between items-start sm:items-center tna-screen-only">
           <p className="text-xs text-gray-500 max-w-md">
-            Official DOST TNA Form 01 (Annex B-11) layout. Printed PDF matches the government form
+            Official DOST TNA Form 01 (Annex 1-1) layout. Printed PDF matches the government form
             without portal metadata.
             {aiGenerated !== undefined && (
               <span className="block mt-1 text-gray-400">
@@ -68,6 +79,6 @@ export function TnaForm01Preview({
   );
 }
 
-export function printTnaForm01(applicationId?: string) {
-  printTnaForm01Pdf(applicationId);
+export function printTnaForm01(options: PrintTnaForm01Options) {
+  return printTnaForm01Pdf(options);
 }

@@ -1,46 +1,52 @@
 ---
-description: TNA Form 01 print/preview layout, pagination, and title conventions
-globs: src/app/components/tnaForm01/**,src/styles/tnaForm01.css,src/app/constants/tnaForm01Layout.ts,src/app/utils/tnaForm01Print.ts
+description: TNA Form 01 print/preview layout from TNA FORM 01.docx (Annex 1-1)
+globs: src/app/components/tnaForm01/**,src/styles/tnaForm01.css,src/app/constants/tnaForm01Layout.ts,src/app/utils/tnaForm01Print.ts,src/app/utils/tnaForm01Print.tsx
 alwaysApply: false
 ---
 
-# TNA Form 01 layout (approved)
+# TNA Form 01 layout (Annex 1-1)
+
+Source of truth: `TNA FORM 01.docx` — SETUP Guidelines (Revision 3.0) Annex 1-1.
+Do not keep Annex B-11, ₱1.5M capital bands, Republic/DOST logo header, or GAD on the official print.
 
 ## Document title
 
-Use this exact title in `TNA_FORM_01_TITLE`:
+`DOST TNA FORM 01 - Application for Technology Needs Assessment`
 
-`DOST TNA FORM 01 - APPLICATION FOR TECHNOLOGY NEEDS ASSESSMENT`
+Mixed case. Do **not** force uppercase via CSS.
 
-Rendered via `FormHeader` → `.tna-form-title` (uppercase via CSS).
+## Page
 
-## Pagination goals
+- A4 portrait. Margins: top 21.5mm, right 10.6mm, bottom 20.5mm, left 20.1mm (Word `pgMar`).
+- Body: Arial ~11.5pt. Headings black (no DOST-blue bars on print).
+- `@page tna-form-01-sheet` footer:
 
-- Section **titles stay with their content** — no orphaned headings (e.g. BENCHMARK INFORMATION split from its tables).
-- **Do not force one section per physical page** — short blocks may share a sheet.
-- **Comfortable spacing** — not full-A4 forced height, not cramped flush flow.
-- **Keep logical footers** — physical page footers via CSS `@page tna-form-01-sheet` with `counter(page)` / `counter(pages)`; no inline per-section footers.
+`SETUP Guidelines (Revision 3.0) Annex 1-1: DOST TNA FORM 01 - Application for Technology Needs Assessment Page ` + `counter(page)` / `counter(pages)`
 
-## Implementation pattern
+No inline per-section footers. Live print uses CSS counters (Word hard-codes ~12 sheets).
 
-1. **`FormBlock`** — wraps atomic units with `tna-form-block tna-print-section`.
-2. **Primitives** — `FormTextBlock`, `FormAttachmentBlock`, and `FormBorderedPanel` already carry block classes so label + value stay together.
-3. **Benchmark** — heading + first bullet in one block; each `BenchmarkBullet` + table/text in its own block.
-4. **CSS** (`tnaForm01.css`):
-   - `break-inside: avoid` on `.tna-form-block` / `.tna-print-section`
-   - `break-after: avoid` on `.tna-form-section-heading`
-   - Tables inside blocks: `break-inside: auto` (rows may split if block exceeds one page); `thead` stays `break-inside: avoid`
-   - Screen: `12px` block gap, `16px` between logical pages
-   - Print: `5mm` block gap; `@page margin: 12mm`
-   - **Never** use `break-before: always` on sections (prevents short sections sharing a page).
+## Pagination
+
+- Section titles stay with content (`break-inside: avoid` on `.tna-form-block`).
+- Do **not** force one section per physical page.
+- Never use `break-before: always` on sections.
+
+## Official print vs portal
+
+- Print is `TnaForm01Document` via `createRoot` (`printTnaForm01Pdf`). Do **not** clone the preview DOM.
+- No logo / Republic header on print or official preview document.
+- GAD stays in the wizard only — omit from `TnaForm01Document`.
+- Type of Organization includes **LGU**; capital labels are P3M / P15M / P100M (Word `image2.png`).
+- Employee grid matches Word `image4.png`: Direct M/F, Production M/F, Non-production Senior Citizen / PWD, Indirect/Contract M/F, Total M/F.
+- Validated by: `PSTD/CASTD/CSTD`.
 
 ## Print path
 
-Use in-page print via `printTnaForm01Pdf` (clone to `#tna-form-01-print-root` on `body`). Do not revert to popup `document.write` (freezes on 14 pages).
+In-page `window.print()` to `#tna-form-01-print-root`. Do not use popup `document.write`.
 
 ## Key files
 
 - `src/app/components/tnaForm01/TnaForm01Document.tsx`
 - `src/styles/tnaForm01.css`
 - `src/app/constants/tnaForm01Layout.ts`
-- `src/app/utils/tnaForm01Print.ts`
+- `src/app/utils/tnaForm01Print.tsx`

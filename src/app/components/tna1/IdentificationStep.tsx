@@ -6,6 +6,10 @@
 
 import { MODULE_BODY } from "../moduleTheme";
 import { formatFormMention } from "../../constants/setupForms";
+import {
+  TNA_FORM_01_GENERAL_AGREEMENTS,
+  TNA_FORM_01_UNDERTAKING,
+} from "../../constants/tnaForm01Layout";
 import { allowWhenDemo } from "../../utils/demoMode";
 import type { Tna1StepContext } from "./stepContext";
 import {
@@ -150,14 +154,7 @@ export function IdentificationStep({ ctx }: { ctx: Tna1StepContext }) {
       <div>
         <h2 className={sectionTitle}>📜 General Agreements</h2>
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 space-y-3 text-sm text-blue-900 leading-relaxed mb-4">
-          {[
-            "The applicant shall make available to DOST all information (manuals, procedures, etc.) required to establish the technological status of the selected core business functions and management systems.",
-            "If DOST is not satisfied that all requirements for business registration are complied with, it shall inform the applicant of the observed deficiencies before starting the assessment.",
-            "When required inputs are supplied, DOST will assess the firm through core business functions to identify technological needs and verify compliance to standards.",
-            "When assessment is complete, DOST will prepare a report with recommendations. The applicant shall not claim the report applies to locations or activities not covered.",
-            "The applicant agrees that the report will not be used until permission has been granted by DOST.",
-            "The applicant agrees that receipt of the report ends the assessment stage; any technical assistance ensuing will be viewed as a separate project.",
-          ].map((text, i) => (
+          {TNA_FORM_01_GENERAL_AGREEMENTS.map((text, i) => (
             <ClauseCheck key={i}
               checked={form[`agreeGA${i+1}`]}
               onChange={v => set(`agreeGA${i+1}`, v)}
@@ -170,7 +167,7 @@ export function IdentificationStep({ ctx }: { ctx: Tna1StepContext }) {
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
           <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Undertaking</p>
           <p className="text-sm text-gray-600 leading-relaxed">
-            I agree to undertake and observe the above General Agreements as stipulated by the Department of Science and Technology.
+            {TNA_FORM_01_UNDERTAKING}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>

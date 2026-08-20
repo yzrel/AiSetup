@@ -1,0 +1,53 @@
+---
+description: Rebuild official SETUP forms from regional Word/DOCX packs (Form 001 + TNA Form 01 method)
+globs: src/app/components/**/*Document.tsx,src/app/components/*Preview.tsx,src/app/constants/*Layout.ts,src/app/utils/*Print.tsx,src/styles/*.css,.cursor/rules/*-layout.mdc
+alwaysApply: false
+---
+
+# Official form from Word pack (DOCX reconstruction)
+
+Use this when aligning a module’s **official PDF** to a regional `.docx` (e.g. SETUP Form 001, TNA FORM 01). The **Word file is the only layout source** — do not copy another form’s sections, margins, or annex IDs.
+
+## Workflow
+
+1. **Audit the DOCX** — title, annex footer, `pgMar`/`pgSz`, section order, table columns, checkbox groups (including embedded images), signature labels. Note portal-only fields **not** on the Word form.
+2. **Layout constants** — `src/app/constants/<form>Layout.ts`: title, footer prefix, column headers, checkbox labels, computed helpers. Verbatim legal text (GA, undertaking) lives here once; wizard and print both import it.
+3. **Official document** — `src/app/components/<form>/<Form>Document.tsx`: section order matches Word; `FormBlock` + `break-inside: avoid`; no forced one-section-per-page; no portal chrome (Application ID, AI badges, Republic/DOST logo unless Word has them).
+4. **Print CSS** — `src/styles/<form>.css`: A4, Word margins in `@page`, `counter(page)` / `counter(pages)` footer, `pt` typography on print. Hide `.…-screen-only` in print.
+5. **Print path** — `src/app/utils/<form>Print.tsx`: in-page `window.print()` via `#<form>-print-root` + `body.<form>-printing`. **`createRoot(<FormDocument … />)`** — never clone preview DOM; never popup `document.write` (long forms freeze).
+6. **Wizard / editor** — collect only fields the Word form shows; extra portal policy (e.g. GAD on TNA1) stays in the wizard, **off** the official document. Map wizard values → print checkboxes in constants (`mapOrganizationType`, etc.).
+7. **Generation** — AI/template fills **blank** narratives only (`firstNonBlank` / `put`-if-blank). Never overwrite user, LOI, or staff-entered text.
+8. **Lock it** — add/update `.cursor/rules/<form>-layout.mdc` with annex ID, margins, section map, and key file paths.
+
+## File pattern (per form)
+
+| Role | Path |
+|------|------|
+| Constants | `src/app/constants/<form>Layout.ts` |
+| Official document | `src/app/components/<form>/<Form>Document.tsx` |
+| On-screen preview | `src/app/components/<Form>Preview.tsx` (or module step) |
+| Print | `src/app/utils/<form>Print.tsx` |
+| Styles | `src/styles/<form>.css` |
+| Layout rule | `.cursor/rules/<form>-layout.mdc` |
+
+## Preview vs print (two approved patterns)
+
+**Form 001 (Project Proposal)** — preview **approximates** layout in `ProjectProposalPreview.tsx` (indent, columns, order); print mounts `ProjectProposalDocument` via `printProjectProposalPdf`. See [project-proposal-layout.mdc](project-proposal-layout.mdc).
+
+**TNA Form 01 / TNA Form 02** — preview **mounts** the same `*Document` component; print still **re-renders** via `createRoot` (do not clone `#…-preview`). See [tna-form-01-layout.mdc](tna-form-01-layout.mdc), [tna-form-02-layout.mdc](tna-form-02-layout.mdc).
+
+Both patterns: official PDF = print root only, no portal toolbar.
+
+## Print implementation checklist
+
+- Pass live `form` / `tables` / `applicantId` into print helper (not `applicationId` alone).
+- Hydrate attachment `dataUrl`s before print when needed (`hydrateStoredFileDataUrls`).
+- `waitForImages` + double `requestAnimationFrame` before `window.print()`.
+- Cleanup on `afterprint`: unmount root, revoke blob URLs, restore `document.title`.
+
+## Reference implementations
+
+- **SETUP Form 001:** [project-proposal-layout.mdc](project-proposal-layout.mdc) — Annex A-1, 1in margins, indent scale, computed tables (compensation, equipment, IDA).
+- **TNA Form 01:** [tna-form-01-layout.mdc](tna-form-01-layout.mdc) — Annex 1-1, asymmetric margins, employee grid from Word checkbox images, wizard-only GAD.
+
+When adding a new official form, follow this workflow first, then document form-specific details in its own `*-layout.mdc`.

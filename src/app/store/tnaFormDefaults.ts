@@ -21,6 +21,7 @@ export function mapBusinessTypeToOrganization(businessType: string): string {
   if (t.includes("corporation") || t.includes("corp"))
     return "Corporation (SEC)";
   if (t.includes("partnership")) return "Partnership (SEC)";
+  if (t.includes("lgu") || t.includes("local government")) return "LGU";
   return "";
 }
 
@@ -103,6 +104,12 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     capitalClassification: mapMsmeToCapitalClass(applicant?.msmeSize ?? ""),
     employeesMale: "",
     employeesFemale: "",
+    employeesProductionMale: "",
+    employeesProductionFemale: "",
+    employeesSeniorCitizen: "",
+    employeesPwd: "",
+    employeesIndirectMale: "",
+    employeesIndirectFemale: "",
     employeesIndirect: "",
     employeesContract: "",
     genderInvolvement: "",

@@ -1,0 +1,24 @@
+---
+description: Staff/applicant client lists always come from the backend DB on startup — never leave demo seed clients as the live list
+alwaysApply: true
+---
+
+# Clients from the database (startup SoR)
+
+## Rule
+
+On system startup and after staff login, the **live applicant/client list must come from the backend database** (`GET /api/applicants` → `applicant_records`), not from frontend `seedApplicants`.
+
+## Required behavior (`applicantStore`)
+
+- Initialize the live store as **empty** (`applicants = []`).
+- `seedApplicants` / `demoSeedModuleData` are **fixtures for tests only** — never the default boot list.
+- Staff `hydrateFromBackend`: on any **successful** list response (including `[]`), **replace** the in-memory list with mapped records. Do **not** early-return and keep seeds when the SoR returns empty.
+- Failed fetch (`null`): leave the current list, do **not** set `hydrated`, so a later retry can load DB rows.
+- Run the backend with `SPRING_PROFILES_ACTIVE=mysql` when MySQL is the source of truth (default H2 file DB is a different store).
+
+## Do not
+
+- Prefer hardcoded demo enterprises (ABC Food, Tech Innovations, etc.) over API/DB cases in staff UI.
+- Sync demo seed ids into MySQL just to “fill” the list on boot.
+- Treat `aisetup.seed-users` (login accounts) as case/client seeding — it does not insert `applicant_records`.

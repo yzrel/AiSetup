@@ -596,6 +596,7 @@ export default function App() {
   useEffect(() => {
     const onFocus = () => {
       if (authStore.getUser() && getAuthToken()) {
+        void applicantStore.hydrateFromBackend(true);
         void notificationStore.hydrateFromBackend();
       }
     };
@@ -608,6 +609,7 @@ export default function App() {
     if (!user || !getAuthToken()) return;
     const id = window.setInterval(() => {
       if (authStore.getUser() && getAuthToken()) {
+        void applicantStore.hydrateFromBackend();
         void notificationStore.hydrateFromBackend();
       }
     }, 45_000);

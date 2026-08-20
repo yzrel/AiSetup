@@ -4,11 +4,11 @@
 
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { AuthUser } from "../store/authStore";
+import { StaffApplicantCombobox } from "./StaffApplicantCombobox";
 import {
   MODULE_HEADER_HINT,
   MODULE_HEADER_LABEL,
   MODULE_HEADER_PICKER,
-  MODULE_HEADER_SELECT,
 } from "./moduleTheme";
 
 interface StaffApplicantPickerProps {
@@ -24,8 +24,8 @@ export function StaffApplicantPicker({
 }: StaffApplicantPickerProps) {
   const {
     isStaff,
-    applicant,
     scopedApplicants,
+    selectedApplicantId,
     setSelectedApplicantId,
     hasSelection,
   } = useStaffApplicant(user);
@@ -35,18 +35,15 @@ export function StaffApplicantPicker({
   return (
     <div className={className}>
       <label className={`${MODULE_HEADER_LABEL} block`}>{label}</label>
-      <select
-        value={applicant?.id ?? ""}
-        onChange={(e) => setSelectedApplicantId(e.target.value || null)}
-        className={`${MODULE_HEADER_SELECT} truncate`}
-      >
-        <option value="">Select enterprise…</option>
-        {scopedApplicants.map((a) => (
-          <option key={a.id} value={a.id} className="truncate">
-            {a.enterpriseName} — {a.applicationId}
-          </option>
-        ))}
-      </select>
+      <StaffApplicantCombobox
+        applicants={scopedApplicants}
+        value={selectedApplicantId}
+        onChange={setSelectedApplicantId}
+        placeholder="Select enterprise…"
+        showApplicationId
+        allowClear
+        variant="module"
+      />
       {!hasSelection && (
         <p className={MODULE_HEADER_HINT}>
           Select a client from Clients or the header bar to begin assessment.

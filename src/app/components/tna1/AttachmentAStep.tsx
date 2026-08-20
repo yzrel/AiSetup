@@ -88,6 +88,7 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
                 <option>Corporation (SEC)</option>
                 <option>One Person Corporation (SEC)</option>
                 <option>Cooperative (CDA)</option>
+                <option>LGU</option>
                 <option>Other</option>
               </select>
             </div>
@@ -104,25 +105,61 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
 
           <div>
             <label className={labelCls}>Number of Employees <span className="text-red-500">*</span></label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-3">
               <div>
-                <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
-                <input type="number" min="0" value={form.employeesMale} onChange={e => set("employeesMale", e.target.value)} className={inputCls} placeholder="0" />
+                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Direct Workers</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
+                    <input type="number" min="0" value={form.employeesMale} onChange={e => set("employeesMale", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
+                    <input type="number" min="0" value={form.employeesFemale} onChange={e => set("employeesFemale", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                </div>
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
-                <input type="number" min="0" value={form.employeesFemale} onChange={e => set("employeesFemale", e.target.value)} className={inputCls} placeholder="0" />
+                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Production</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
+                    <input type="number" min="0" value={form.employeesProductionMale ?? ""} onChange={e => set("employeesProductionMale", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
+                    <input type="number" min="0" value={form.employeesProductionFemale ?? ""} onChange={e => set("employeesProductionFemale", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                </div>
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 font-semibold uppercase">Indirect Workers</span>
-                <input type="number" min="0" value={form.employeesIndirect} onChange={e => set("employeesIndirect", e.target.value)} className={inputCls} placeholder="0" />
+                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Non-production</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Senior Citizen</span>
+                    <input type="number" min="0" value={form.employeesSeniorCitizen ?? ""} onChange={e => set("employeesSeniorCitizen", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">PWD</span>
+                    <input type="number" min="0" value={form.employeesPwd ?? ""} onChange={e => set("employeesPwd", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                </div>
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 font-semibold uppercase">Contract Workers</span>
-                <input type="number" min="0" value={form.employeesContract} onChange={e => set("employeesContract", e.target.value)} className={inputCls} placeholder="0" />
+                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Indirect/Contract Workers</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
+                    <input type="number" min="0" value={form.employeesIndirectMale ?? ""} onChange={e => set("employeesIndirectMale", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
+                    <input type="number" min="0" value={form.employeesIndirectFemale ?? ""} onChange={e => set("employeesIndirectFemale", e.target.value)} className={inputCls} placeholder="0" />
+                  </div>
+                </div>
               </div>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Per TNA Form 01 — report direct employees (M/F) and indirect/contract workers separately.</p>
+            <p className="text-xs text-gray-400 mt-1.5">Per TNA Form 01 — Direct, Production, Indirect/Contract as male/female; Senior Citizen and PWD under Non-production.</p>
           </div>
 
           <AiAssistTextarea
