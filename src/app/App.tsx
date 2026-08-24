@@ -572,7 +572,11 @@ export default function App() {
   // Restore persisted auth session before rendering public pages
   useEffect(() => {
     authStore.hydrate();
-    const restored = authStore.getUser();
+    let restored = authStore.getUser();
+    if (restored && !getAuthToken()) {
+      authStore.logout();
+      restored = null;
+    }
     setUser(restored);
     if (restored) {
       setCurrentViewState(resolveViewForUser(restored));
@@ -580,11 +584,21 @@ export default function App() {
     setAuthReady(true);
     // Pull persisted applicants when a session token is present
     void applicantStore.hydrateFromBackend(!!restored).then(async () => {
-      if (restored) {
+      const active = authStore.getUser();
+      if (
+        active &&
+        authStore.isStaff(active.role) &&
+        applicantStore.getAll().length === 0 &&
+        getAuthToken()
+      ) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2500));
+        await applicantStore.hydrateFromBackend(true);
+      }
+      if (active) {
         await notificationStore.hydrateFromBackend();
       }
-      const nextView = resolveViewForUser(restored);
-      if (restored && authStore.isClientRole(restored.role) && nextView) {
+      const nextView = resolveViewForUser(active);
+      if (active && authStore.isClientRole(active.role) && nextView) {
         setCurrentViewState(nextView);
         saveCurrentView(nextView);
       }

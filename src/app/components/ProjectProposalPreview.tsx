@@ -65,6 +65,7 @@ import {
   formatCurrencyDisplay,
 } from "../constants/projectProposalLayout";
 import { printProjectProposalPdf } from "../utils/projectProposalPrint";
+import { companyProfileMsmeSizeLabelFromApplicant } from "../utils/projectProposal";
 import { snapshotStatementTables } from "../utils/financialProjection";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
 import { applicantStore } from "../store/applicantStore";
@@ -244,6 +245,13 @@ export function ProjectProposalPreview({
     ? snapshotStatementTables(projectionSnapshot)
     : null;
   const emp = companyProfileEmployeeTotals(form);
+  const applicantRecord = applicantId
+    ? applicantStore.getById(applicantId)
+    : null;
+  const msmeSizeLabel = companyProfileMsmeSizeLabelFromApplicant(
+    applicantRecord,
+    form,
+  );
 
   const narrative = (field: keyof ProjectProposalForm, docField?: keyof ProjectProposalDocumentResponse) => {
     if (doc && docField && doc[docField]) return String(doc[docField]);
@@ -373,7 +381,7 @@ export function ProjectProposalPreview({
               />
               <ProfileRow label="Type of Organization" value={form.organizationType} />
               <ProfileRow label="Profit / Non-Profit" value={form.profitType} />
-              <ProfileRow label="MSME Size" value={form.msmeSize} />
+              <ProfileRow label="MSME Size" value={msmeSizeLabel} />
               <ProfileRow label="Registration Office" value={form.registrationOffice} />
               <ProfileRow label="Registration Number" value={form.registrationNumber} />
               <ProfileRow label="Date of Registration" value={form.registrationDate} />
@@ -545,7 +553,10 @@ export function ProjectProposalPreview({
             <p className="pp-form-dash-label">- {PP_PRODUCTION_DASH_ITEMS[0]}</p>
             <Narrative text={narrative("productionProcess", "productionProcess")} />
             <p className="pp-form-dash-label">- {PP_PRODUCTION_DASH_ITEMS[1]}</p>
-            <Narrative text={narrative("materialBalance", "materialBalance")} />
+            <Table
+              headers={["Material Balance"]}
+              rows={[[narrative("materialBalance", "materialBalance")]]}
+            />
           </Indent>
           <Indent level={1}>
             <h3 className="pp-form-subheading">B. Existing production equipment</h3>

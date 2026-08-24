@@ -99,6 +99,7 @@ import {
   PP_MARKETING_A_LABELS,
   PP_WASTE_SUBHEADINGS,
 } from "../constants/projectProposalLayout";
+import { companyProfileMsmeSizeLabelFromApplicant } from "../utils/projectProposal";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -603,7 +604,20 @@ export function ProjectProposal({
                 <div><label className={labelCls}>Year Established</label><input className={inputCls} value={form.yearEstablished} onChange={(e) => patchForm({ yearEstablished: e.target.value })} /></div>
                 <div><label className={labelCls}>Organization Type</label><input className={inputCls} value={form.organizationType} onChange={(e) => patchForm({ organizationType: e.target.value })} /></div>
                 <div><label className={labelCls}>Profit / Non-profit</label><input className={inputCls} value={form.profitType} onChange={(e) => patchForm({ profitType: e.target.value })} /></div>
-                <div><label className={labelCls}>MSME Size</label><input className={inputCls} value={form.msmeSize} onChange={(e) => patchForm({ msmeSize: e.target.value })} /></div>
+                <div>
+                  <label className={labelCls}>MSME Size</label>
+                  <input
+                    className={`${inputCls} bg-gray-50 text-gray-700`}
+                    readOnly
+                    value={companyProfileMsmeSizeLabelFromApplicant(applicant, form)}
+                    title="Derived from prescreening asset size / classification range and employee headcount"
+                  />
+                  {form.msmeSize ? (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      MSME category for official checkboxes: {form.msmeSize}
+                    </p>
+                  ) : null}
+                </div>
                 <div className="sm:col-span-2">
                   <label className={labelCls}>Direct workers</label>
                   <div className="mt-2 ml-3 sm:ml-5 space-y-3 border-l border-slate-200 pl-3">
@@ -1008,6 +1022,14 @@ export function ProjectProposal({
             <div>
               <label className={labelCls}>Budgetary Requirement</label>
               <div className="space-y-2">
+                <div className="hidden md:grid grid-cols-7 gap-2 items-center text-[10px] font-bold uppercase tracking-wide text-gray-400 px-1">
+                  <div className="col-span-2">Item of Expenditure</div>
+                  <div>Qty</div>
+                  <div>Unit Cost</div>
+                  <div>SETUP</div>
+                  <div>LGIA</div>
+                  <div>Total</div>
+                </div>
                 {form.budgetItems.map((item) => (
                   <div key={item.id}>
                     <div className="md:hidden rounded-lg border border-gray-200 bg-gray-50/50 p-3 space-y-2">

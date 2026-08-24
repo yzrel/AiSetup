@@ -19,6 +19,7 @@ import {
 } from "../utils/applicantPersistence";
 import { normalizeModuleDataForHydrate } from "../utils/normalizeCriticalModuleData";
 import { api } from "../api/client";
+import { getAuthToken } from "../api/authToken";
 import { getSetupFormTitle } from "../constants/setupForms";
 import { authStore } from "./authStore";
 // Simple in-memory store using a singleton + event-based reactivity
@@ -550,6 +551,10 @@ export const applicantStore = {
     if (hydrated && !force) return;
     const user = authStore.getUser();
     if (!user) return;
+    if (!getAuthToken()) {
+      authStore.logout();
+      return;
+    }
 
     if (authStore.isStaff(user.role)) {
       const records = await fetchBackendApplicants();

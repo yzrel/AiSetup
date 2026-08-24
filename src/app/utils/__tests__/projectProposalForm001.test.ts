@@ -28,6 +28,8 @@ import {
   PP_VOLUME_OF_ORDERS_COLUMNS,
   PP_VOLUME_OF_ORDERS_SAMPLE_ROWS,
   companyProfileEmployeeTotals,
+  companyProfileMsmeSizeLabel,
+  formatCompanyProfileMsmeSize,
   isOptionChecked,
   isRegistrationOfficeChecked,
 } from "../../constants/projectProposalLayout";
@@ -37,6 +39,7 @@ import {
   buildInvestmentDecisionAnalysis,
   buildLocalProjectProposalDocument,
   buildProjectProposalDraft,
+  companyProfileMsmeSizeLabelFromApplicant,
   deriveDirectEmploymentCounts,
   emptyProjectProposalForm,
   formatRiskAndAssumptions,
@@ -128,9 +131,68 @@ describe("empty Form 001 fields", () => {
     expect(form.partialBudgetAnalysis).toBe("");
     expect(form.netProfitMarginTable).toHaveLength(3);
     expect(form.employeesProductionMale).toBe("");
+    expect(form.assetSize).toBe("");
+    expect(form.classificationRange).toBe("");
     expect(form.budgetItems[0].lgiaShare).toBe("");
     expect(form.riskRows[0].objective).toBe("");
     expect(form.volumeOfOrdersTable).toEqual([["", "", ""]]);
+  });
+});
+
+describe("company profile MSME size label", () => {
+  it("concatenates classification range, asset size, and employee total", () => {
+    const label = companyProfileMsmeSizeLabel({
+      msmeSize: "Small",
+      assetSize: "15000000",
+      classificationRange: "₱3M - ₱15M",
+      employeesProductionMale: "3",
+      employeesProductionFemale: "4",
+    });
+    expect(label).toBe(
+      "Small · ₱3M - ₱15M (Php 15,000,000.00) · 7 employees",
+    );
+  });
+
+  it("falls back to MSME category when asset and headcount are missing", () => {
+    expect(
+      formatCompanyProfileMsmeSize({ msmeSize: "Micro" }),
+    ).toBe("Micro");
+  });
+
+  it("reads prescreening asset/range from the applicant record", () => {
+    const app: Applicant = {
+      id: "ps-1",
+      applicationId: "LOI-TEST-001",
+      applicantName: "Owner",
+      designation: "Owner",
+      enterpriseName: "Three K Printshop",
+      contactNumber: "09170000000",
+      emailAddress: "test@example.com",
+      businessType: "DTI",
+      businessNature: "",
+      businessSector: "ICT",
+      yearsOfOperation: "10",
+      enterpriseType: "",
+      msmeSize: "Micro",
+      assetSize: "15000000",
+      region: "Cotabato",
+      address: "Antipas, Cotabato",
+      currentModule: "project-proposal",
+      qualified: true,
+      submittedAt: "",
+      lastUpdated: "",
+      moduleData: {
+        classificationRange: "₱3M - ₱15M",
+        tna1: { form: { employeesMale: "3", employeesFemale: "4" } },
+      },
+    };
+    const label = companyProfileMsmeSizeLabelFromApplicant(
+      app,
+      emptyProjectProposalForm(),
+    );
+    expect(label).toBe(
+      "Micro · ₱3M - ₱15M (Php 15,000,000.00) · 7 employees",
+    );
   });
 });
 

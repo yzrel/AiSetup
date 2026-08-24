@@ -24,6 +24,7 @@ import {
   PP_RAW_MATERIAL_COST_COLUMNS,
   PP_VOLUME_OF_ORDERS_COLUMNS,
 } from "../constants/projectProposalLayout";
+import { companyProfileMsmeSizeLabelFromApplicant } from "../utils/projectProposal";
 import { snapshotStatementTables } from "../utils/financialProjection";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
 import { applicantStore } from "../store/applicantStore";
@@ -260,7 +261,13 @@ export function RtecReportPreview({
           <CoverRow label="Year established" value={pp.yearEstablished} />
           <CoverRow label="Type of Organization" value={pp.organizationType} />
           <CoverRow label="Profit / Non-Profit" value={pp.profitType} />
-          <CoverRow label="MSME Size" value={pp.msmeSize} />
+          <CoverRow
+            label="MSME Size"
+            value={companyProfileMsmeSizeLabelFromApplicant(
+              applicantId ? applicantStore.getById(applicantId) : null,
+              pp,
+            )}
+          />
           <div className="mt-3">
             <p className="text-xs font-bold text-gray-500 mb-1">Number of Employees</p>
             <Table

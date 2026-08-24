@@ -9,6 +9,14 @@ const { fetchBackendApplicants, fetchBackendApplicant } = vi.hoisted(() => ({
   fetchBackendApplicant: vi.fn(),
 }));
 
+vi.mock("../../api/authToken", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../api/authToken")>();
+  return {
+    ...actual,
+    getAuthToken: vi.fn(() => "test-token"),
+  };
+});
+
 vi.mock("../../utils/applicantPersistence", () => ({
   fetchBackendApplicants,
   fetchBackendApplicant,

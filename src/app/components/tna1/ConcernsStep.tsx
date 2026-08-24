@@ -11,7 +11,6 @@ import {
   InfoBanner,
   inputCls,
   labelCls,
-  ReadonlyField,
   sectionTitle,
 } from "./tna1Ui";
 
@@ -21,38 +20,7 @@ export function ConcernsStep({ ctx }: { ctx: Tna1StepContext }) {
   return (
     <div className={MODULE_BODY}>
       <InfoBanner icon="⚠️" color="amber" title="Production Problems, Concerns & Marketing"
-        text="Review operational details from Benchmark Information and complete marketing and packaging compliance." />
-
-      <div>
-        <h2 className={sectionTitle}>🔧 Production Summary</h2>
-        <ReadonlyField label="Production Problems and Concerns (from Benchmark)" value={form.productionProblemsConcerns || "—"} />
-        <div className="mt-4 space-y-4">
-          <ReadonlyField
-            label="Production Plan"
-            value={form.productionPlan || "—"}
-          />
-          <ReadonlyField
-            label="Production Plan Attachment"
-            value={form.productionPlanFileName || "No file uploaded"}
-          />
-          <ReadonlyField label="Plant Lay-Out" value={form.plantLayoutFileName || "No file uploaded"} />
-          <ReadonlyField
-            label="Process Flow"
-            value={
-              form.processFlowMode === "attachment"
-                ? form.processFlowFileName || "No file uploaded"
-                : form.processFlow || "—"
-            }
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => goToStep("benchmark")}
-          className="text-xs text-[#0C2461] font-semibold hover:underline mt-2"
-        >
-          ← Edit in Benchmark Information
-        </button>
-      </div>
+        text="Complete marketing and packaging compliance. Production plan and process flow are captured in Benchmark Information." />
 
       <div>
         <h2 className={sectionTitle}>📣 Marketing</h2>

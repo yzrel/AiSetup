@@ -32,6 +32,8 @@ import {
   PP_IDA_PROJECT_COST_LABEL,
   PP_IDA_ROI_CAPTION,
   PP_VOLUME_OF_ORDERS_SAMPLE_ROWS,
+  companyProfileEmployeeTotals,
+  formatCompanyProfileMsmeSize,
 } from "../constants/projectProposalLayout";
 
 export const PROPOSAL_ATTACHMENT_LABELS: Record<
@@ -71,6 +73,45 @@ function emptyBudgetRow(): ProjectProposalBudgetRow {
     lgiaShare: "",
     total: "",
   };
+}
+
+function emptyWorkingCapitalRow(): ProjectProposalBudgetRow {
+  return {
+    id: rowId(),
+    item: "Working capital",
+    qty: "1",
+    unitCost: "",
+    setupShare: "",
+    lgiaShare: "",
+    total: "",
+  };
+}
+
+function isWorkingCapitalRow(row: ProjectProposalBudgetRow): boolean {
+  return String(row.item ?? "")
+    .trim()
+    .toLowerCase() === "working capital";
+}
+
+function ensureWorkingCapitalBudgetItems(
+  rows: ProjectProposalBudgetRow[],
+): ProjectProposalBudgetRow[] {
+  if (!Array.isArray(rows) || rows.length === 0) return [emptyWorkingCapitalRow()];
+
+  const wcIdxs = rows
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => isWorkingCapitalRow(r))
+    .map(({ i }) => i);
+
+  if (wcIdxs.length === 0) {
+    return [emptyWorkingCapitalRow(), ...rows];
+  }
+
+  // Keep the first “working capital” row (user-entered values) and drop duplicates.
+  const keepIdx = wcIdxs[0];
+  const keepRow = rows[keepIdx];
+  const rest = rows.filter((_, idx) => idx !== keepIdx && !wcIdxs.includes(idx));
+  return [keepRow, ...rest];
 }
 
 export function normalizeBudgetItem(
@@ -216,6 +257,8 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     organizationType: "",
     profitType: "Profit",
     msmeSize: "",
+    assetSize: "",
+    classificationRange: "",
     employeesMale: "",
     employeesFemale: "",
     employeesDirect: "",
@@ -290,7 +333,8 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     financialAnalysis: "",
     genderInvolvement: "",
     financialConstraintsNote: "Please refer to the attached financial reports.",
-    budgetItems: [emptyBudgetRow()],
+    // Hardcoded row required by the form layout — user fills in the numbers.
+    budgetItems: [emptyWorkingCapitalRow()],
     refundSchedule: buildDefaultRefundSchedule("", ""),
     riskRows: [emptyRiskRow(), emptyRiskRow(), emptyRiskRow()],
   };
@@ -516,7 +560,8 @@ export function buildProjectProposalDraft(
       total: budgetRaw,
     });
   }
-  if (budgetItems.length === 0) budgetItems.push(emptyBudgetRow());
+  // If no computed budget rows exist, working capital is still injected by
+  // ensureWorkingCapitalBudgetItems() below.
 
   const interventionProblem = String(
     form.productionProblemsConcerns ??
@@ -566,6 +611,8 @@ export function buildProjectProposalDraft(
     ),
     profitType: "Profit",
     msmeSize: applicant.msmeSize ?? "",
+    assetSize: applicant.assetSize ?? "",
+    classificationRange: String(applicant.moduleData?.classificationRange ?? ""),
     employeesMale: String(form.employeesMale ?? ""),
     employeesFemale: String(form.employeesFemale ?? ""),
     employeesDirect: String(form.employeesMale ?? ""),
@@ -678,7 +725,51 @@ export function buildProjectProposalDraft(
     ],
   };
 
-  return mergeProposalForm(draft, current);
+  const merged = mergeProposalForm(draft, current);
+  if (applicant) {
+    merged.assetSize = applicant.assetSize ?? "";
+    merged.classificationRange = String(
+      applicant.moduleData?.classificationRange ?? "",
+    );
+  }
+  return merged;
+}
+
+function parseHeadcountValue(value: unknown): number {
+  const parsed = parseInt(String(value ?? "").replace(/[^\d-]/g, ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+/** MSME Size for Form 001 — prescreening asset/range + employee headcount (form or TNA1). */
+export function companyProfileMsmeSizeLabelFromApplicant(
+  applicant: Applicant | null | undefined,
+  form: ProjectProposalForm,
+): string {
+  const assetSize = String(form.assetSize || applicant?.assetSize || "").trim();
+  const classificationRange = String(
+    form.classificationRange ||
+      applicant?.moduleData?.classificationRange ||
+      "",
+  ).trim();
+
+  let employeeTotal = companyProfileEmployeeTotals(form).total;
+  if (employeeTotal <= 0 && applicant) {
+    const tna1Form = (
+      applicant.moduleData?.tna1 as { form?: Record<string, unknown> } | undefined
+    )?.form;
+    if (tna1Form) {
+      employeeTotal =
+        parseHeadcountValue(tna1Form.employeesMale) +
+        parseHeadcountValue(tna1Form.employeesFemale);
+    }
+  }
+
+  return formatCompanyProfileMsmeSize({
+    assetSize,
+    classificationRange,
+    employeeTotal,
+    msmeSize: form.msmeSize || applicant?.msmeSize,
+  });
 }
 
 function mergeProposalForm(
@@ -713,6 +804,7 @@ function mergeProposalForm(
   merged.budgetItems = (merged.budgetItems ?? []).map((row) =>
     normalizeBudgetItem(row),
   );
+  merged.budgetItems = ensureWorkingCapitalBudgetItems(merged.budgetItems);
   merged.riskRows = (merged.riskRows ?? []).map((row) => normalizeRiskRow(row));
   merged.refundSchedule = normalizeRefundSchedule(merged.refundSchedule);
   merged.scheduleTable = normalizeScheduleTable(merged.scheduleTable);

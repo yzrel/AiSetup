@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { api, ApiError } from "../api/client";
 import type { ApiApplicantRecord, ApiTnaFormPayload } from "../api/types";
 import type { Applicant } from "../store/applicantStore";
+import { authStore } from "../store/authStore";
 import {
   stripHeavyPayloads,
   stripTna1FormForSync,
@@ -364,6 +365,10 @@ export async function fetchBackendApplicants(): Promise<
   try {
     return await api.listApplicantRecords();
   } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      authStore.logout();
+      return null;
+    }
     if (err instanceof ApiError && err.status === 403) {
       return [];
     }

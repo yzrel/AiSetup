@@ -415,6 +415,10 @@ export interface ProjectProposalForm {
   organizationType: string;
   profitType: string;
   msmeSize: string;
+  /** Prescreening asset size (PHP) — used for Company Profile MSME display. */
+  assetSize: string;
+  /** Prescreening MSME classification range — used for Company Profile MSME display. */
+  classificationRange: string;
   employeesMale: string;
   employeesFemale: string;
   employeesDirect: string;

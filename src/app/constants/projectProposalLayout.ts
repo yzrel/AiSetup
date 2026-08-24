@@ -537,3 +537,61 @@ export function formatCurrencyDisplay(value: string): string {
   if (Number.isNaN(num)) return raw;
   return `Php ${num.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+function formatAssetClassificationPart(
+  assetSize?: string,
+  classificationRange?: string,
+): string {
+  const range = String(classificationRange ?? "").trim();
+  const asset = String(assetSize ?? "").trim();
+  const formattedAsset = asset ? formatCurrencyDisplay(asset) : "";
+  if (range && formattedAsset) return `${range} (${formattedAsset})`;
+  if (range) return range;
+  if (formattedAsset) return formattedAsset;
+  return "";
+}
+
+function formatEmployeeCountPart(total: number): string {
+  if (!Number.isFinite(total) || total <= 0) return "";
+  return `${total} employee${total === 1 ? "" : "s"}`;
+}
+
+/** Company Profile MSME Size = size category + asset/classification range + employee count. */
+export function formatCompanyProfileMsmeSize(input: {
+  assetSize?: string;
+  classificationRange?: string;
+  employeeTotal?: number;
+  /** Micro / Small / Medium from prescreening. */
+  msmeSize?: string;
+}): string {
+  const sizePart = String(input.msmeSize ?? "").trim();
+  const assetPart = formatAssetClassificationPart(
+    input.assetSize,
+    input.classificationRange,
+  );
+  const employeePart = formatEmployeeCountPart(input.employeeTotal ?? 0);
+  return [sizePart, assetPart, employeePart].filter(Boolean).join(" · ");
+}
+
+export function companyProfileMsmeSizeLabel(form: {
+  assetSize?: string;
+  classificationRange?: string;
+  msmeSize?: string;
+  employeesMale?: string;
+  employeesFemale?: string;
+  employeesProductionMale?: string;
+  employeesProductionFemale?: string;
+  employeesNonProductionMale?: string;
+  employeesNonProductionFemale?: string;
+  employeesIndirect?: string;
+  employeesIndirectMale?: string;
+  employeesIndirectFemale?: string;
+}): string {
+  const { total } = companyProfileEmployeeTotals(form);
+  return formatCompanyProfileMsmeSize({
+    assetSize: form.assetSize,
+    classificationRange: form.classificationRange,
+    employeeTotal: total,
+    msmeSize: form.msmeSize,
+  });
+}
