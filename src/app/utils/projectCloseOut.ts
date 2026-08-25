@@ -3,11 +3,16 @@
  */
 
 import { applicantStore, Applicant } from "../store/applicantStore";
-import type { ProjectCloseOutForm, ProjectCloseOutStored } from "../api/types";
+import type {
+  EquipmentInventoryRow,
+  ProjectCloseOutForm,
+  ProjectCloseOutStored,
+} from "../api/types";
 import { hasRefundComplete } from "./refundDelinquent";
 import { isDemoModeActive } from "./demoMode";
 import { formatFormMention } from "../constants/setupForms";
 import { normalizeFormModuleStored } from "./normalizeCriticalModuleData";
+import { sumInventoryAmounts } from "../constants/inventoryOfEquipmentLayout";
 
 const MODULE_KEY = "projectCloseOut";
 
@@ -15,13 +20,60 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function emptyInventoryRow(): EquipmentInventoryRow {
+  return {
+    id: uid(),
+    qty: "",
+    description: "",
+    amount: "",
+    propertyNo: "",
+    dateAcquired: "",
+    remarks: "",
+  };
+}
+
+/** Map legacy close-out inventory columns onto Form 006 fields. */
+export function normalizeInventoryRow(
+  raw: Partial<EquipmentInventoryRow> | Record<string, unknown>,
+): EquipmentInventoryRow {
+  const r = raw as Record<string, unknown>;
+  const description = String(r.description ?? "").trim();
+  const amount = String(r.amount ?? r.acquisitionCost ?? "").trim();
+  const propertyNo = String(r.propertyNo ?? r.serialNumber ?? "").trim();
+  const remarks = String(r.remarks ?? r.location ?? "").trim();
+  const qtyRaw = String(r.qty ?? "").trim();
+  const qty = qtyRaw || (description ? "1" : "");
+  return {
+    id: String(r.id ?? uid()),
+    qty,
+    description: String(r.description ?? ""),
+    amount,
+    propertyNo,
+    dateAcquired: String(r.dateAcquired ?? ""),
+    remarks,
+  };
+}
+
 export function emptyCloseOutForm(): ProjectCloseOutForm {
   return {
-    equipmentInventory: [
-      { id: uid(), description: "", serialNumber: "", acquisitionCost: "", location: "" },
-    ],
+    equipmentInventory: [emptyInventoryRow()],
     certificateOfOwnershipIssued: false,
   };
+}
+
+function readModuleProjectTitle(applicant: Applicant | null): string {
+  if (!applicant?.moduleData) return "";
+  const md = applicant.moduleData;
+  const fromProposal = (md.projectProposal as { form?: { projectTitle?: string } } | undefined)
+    ?.form?.projectTitle;
+  if (fromProposal?.trim()) return fromProposal.trim();
+  const fromApproval = (md.approvalLetter as { form?: { projectTitle?: string } } | undefined)?.form
+    ?.projectTitle;
+  if (fromApproval?.trim()) return fromApproval.trim();
+  const fromPis = (md.projectInformationSheet as { prePisDraft?: { projectTitle?: string } } | undefined)
+    ?.prePisDraft?.projectTitle;
+  if (fromPis?.trim()) return fromPis.trim();
+  return "";
 }
 
 export function getCloseOutStored(applicant: Applicant | null): ProjectCloseOutStored | null {
@@ -32,13 +84,37 @@ export function getCloseOutStored(applicant: Applicant | null): ProjectCloseOutS
 
 export function getCloseOutForm(applicant: Applicant | null): ProjectCloseOutForm {
   const form = getCloseOutStored(applicant)?.form;
-  if (!form) return emptyCloseOutForm();
-  const inventory = Array.isArray(form.equipmentInventory)
+  if (!form) {
+    const empty = emptyCloseOutForm();
+    if (!applicant) return empty;
+    return {
+      ...empty,
+      inventoryProjectTitle: readModuleProjectTitle(applicant),
+      inventoryProjectCooperator: applicant.enterpriseName ?? "",
+    };
+  }
+  const rawInventory = Array.isArray(form.equipmentInventory)
     ? form.equipmentInventory
     : form.equipmentInventory
       ? [form.equipmentInventory]
+      : [];
+  const equipmentInventory =
+    rawInventory.length > 0
+      ? rawInventory.map((r) => normalizeInventoryRow(r as unknown as Record<string, unknown>))
       : emptyCloseOutForm().equipmentInventory;
-  return { ...form, equipmentInventory: inventory };
+
+  return {
+    ...form,
+    inventoryProjectTitle:
+      form.inventoryProjectTitle?.trim() || readModuleProjectTitle(applicant) || "",
+    inventoryProjectCooperator:
+      form.inventoryProjectCooperator?.trim() || applicant?.enterpriseName || "",
+    equipmentInventory,
+  };
+}
+
+export function inventoryAmountTotal(form: ProjectCloseOutForm): number {
+  return sumInventoryAmounts(form.equipmentInventory);
 }
 
 export function hasCloseOutPrerequisite(applicant: Applicant | null): boolean {
@@ -53,11 +129,16 @@ export function saveCloseOutDraft(applicantId: string, form: ProjectCloseOutForm
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
   const existing = getCloseOutStored(applicant);
+  const normalizedInventory = form.equipmentInventory.map((r) => normalizeInventoryRow(r));
+  const nextForm: ProjectCloseOutForm = {
+    ...form,
+    equipmentInventory: normalizedInventory,
+  };
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
       [MODULE_KEY]: {
-        form,
+        form: nextForm,
         submitted: existing?.submitted,
         submittedAt: existing?.submittedAt,
         submittedBy: existing?.submittedBy,

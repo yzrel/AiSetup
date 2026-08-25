@@ -3,7 +3,7 @@
  */
 
 import {
-  PP_FINANCIAL_SUBHEADINGS,
+  PP_FINANCIAL_CAPACITY_DASH_ITEMS,
   PP_IDA_COLUMNS,
   PP_IDA_ROI_CAPTION,
 } from "../../constants/projectProposalLayout";
@@ -19,7 +19,9 @@ export function InvestmentDecisionAnalysisEditor({
 }) {
   return (
     <div className="mt-4">
-      <label className={labelCls}>{PP_FINANCIAL_SUBHEADINGS.F}</label>
+      <label className={labelCls}>
+        Financial capacity — {PP_FINANCIAL_CAPACITY_DASH_ITEMS[4]}
+      </label>
       <p className="text-xs text-gray-600 mb-2">
         Year incomes are projected net income after tax. Project cost is the
         budgetary requirement total when present, otherwise the cover Project

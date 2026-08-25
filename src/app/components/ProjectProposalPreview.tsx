@@ -32,7 +32,6 @@ import {
   PP_FABRICATOR_COLUMNS,
   PP_FINANCIAL_ATTACH_NOTE,
   PP_FINANCIAL_CAPACITY_DASH_ITEMS,
-  PP_FINANCIAL_SUBHEADINGS,
   PP_FORM_INDENT_CLASS,
   PP_INTERVENTION_COLUMNS,
   PP_INTERVENTION_COST_COLUMNS,
@@ -49,7 +48,6 @@ import {
   PP_REFUND_NOTE,
   PP_RISK_COLUMNS,
   PP_RISK_FOOTNOTE,
-  PP_ROI_COLUMNS,
   PP_SECTION_FINANCIAL,
   PP_SECTION_MARKETING,
   PP_SECTION_PROJECT_BACKGROUND,
@@ -553,10 +551,7 @@ export function ProjectProposalPreview({
             <p className="pp-form-dash-label">- {PP_PRODUCTION_DASH_ITEMS[0]}</p>
             <Narrative text={narrative("productionProcess", "productionProcess")} />
             <p className="pp-form-dash-label">- {PP_PRODUCTION_DASH_ITEMS[1]}</p>
-            <Table
-              headers={["Material Balance"]}
-              rows={[[narrative("materialBalance", "materialBalance")]]}
-            />
+            <Narrative text={narrative("materialBalance", "materialBalance")} />
           </Indent>
           <Indent level={1}>
             <h3 className="pp-form-subheading">B. Existing production equipment</h3>
@@ -668,7 +663,9 @@ export function ProjectProposalPreview({
               numericCols={[1, 2, 3, 4]}
             />
             <p className="pp-form-dash-label">- {PP_FINANCIAL_CAPACITY_DASH_ITEMS[4]}</p>
-            <Table headers={PP_ROI_COLUMNS} rows={form.roiTable} numericCols={[1, 2, 3]} />
+            <InvestmentDecisionAnalysisTable
+              analysis={buildInvestmentDecisionAnalysis(form, projectionSnapshot)}
+            />
             <Narrative text={narrative("financialAnalysis", "financialAnalysis")} />
           </Indent>
           <Indent level={1}>
@@ -720,10 +717,6 @@ export function ProjectProposalPreview({
               numericCols={refundHeaders.map((_, i) => i).filter((i) => i > 0)}
             />
             <p className="pp-form-note">{PP_REFUND_NOTE}</p>
-            <h3 className="pp-form-subheading">{PP_FINANCIAL_SUBHEADINGS.F}</h3>
-            <InvestmentDecisionAnalysisTable
-              analysis={buildInvestmentDecisionAnalysis(form, projectionSnapshot)}
-            />
           </Indent>
         </div>
 

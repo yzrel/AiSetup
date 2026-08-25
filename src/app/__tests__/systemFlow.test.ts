@@ -582,10 +582,12 @@ describe("system flow: registration through project close-out", () => {
       equipmentInventory: [
         {
           id: "eq-1",
+          qty: "1",
           description: "Vacuum packaging machine",
-          serialNumber: "VPM-001",
-          acquisitionCost: "₱2,000,000",
-          location: "Koronadal plant",
+          amount: "₱2,000,000",
+          propertyNo: "VPM-001",
+          dateAcquired: "2025-01-15",
+          remarks: "Koronadal plant",
         },
       ],
       certificateOfOwnershipIssued: true,

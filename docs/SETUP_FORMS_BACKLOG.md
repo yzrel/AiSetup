@@ -18,7 +18,7 @@ Registry notes live in [`src/app/constants/setupForms.ts`](../src/app/constants/
 | Form 003 Status Report | Monitoring (post fund release) | Expected vs actual outputs, equipment, fund utilization, refund status, employment, markets |
 | Form 004 Audited Financial Report | Procurement & Liquidation (within 1 month of commissioning) | Currently upload-only at close-out |
 | Form 005 Property Transfer Receipt | Equipment transfer / pull-out | No module |
-| Form 006 Inventory of Equipment | Close-out / monitoring | Close-out has partial inventory columns only |
+| Form 006 Inventory of Equipment | Close-out | **Done** — official edit / preview / print in Project Close-Out (Annex A-6) |
 | Form 007 List of Pulled-Out Equipment | Termination / delinquent recovery | No module |
 | Form 010 Completion Report | Successful project completion | Distinct from termination and terminal |
 | Form 011 Termination/Withdrawal Report | Early exit / withdrawal | Includes final obligation fields |
@@ -38,8 +38,7 @@ Already aligned with Step 4 uploads and RTEC Form 002 compliance list. Optional 
 
 1. Resolve Form 003 / 010 numbering with DOST XII.
 2. Form 004 printable AFR at liquidation stage.
-3. Form 006 inventory columns aligned to pack (qty, description, amount, property no., date acquired, remarks).
-4. Form 003 Status Report for ongoing monitoring.
-5. Split close-out into Completion (010) / Termination (011) / Terminal (013) paths.
-6. Form 012 portfolio refund performance (staff dashboard).
-7. Letters: Payment Reminder, Final Obligation Annex B; MOA Annex C parity.
+3. Form 003 Status Report for ongoing monitoring.
+4. Split close-out into Completion (010) / Termination (011) / Terminal (013) paths.
+5. Form 012 portfolio refund performance (staff dashboard).
+6. Letters: Payment Reminder, Final Obligation Annex B; MOA Annex C parity.

@@ -337,8 +337,12 @@ describe("schedule of activities Gantt", () => {
 });
 
 describe("investment decision analysis", () => {
-  it("labels F after refund schedule", () => {
-    expect(PP_FINANCIAL_SUBHEADINGS.F).toBe("F. Investment Decision Analysis");
+  it("prints under Financial capacity ROI rather than a separate F section", () => {
+    expect(PP_FINANCIAL_SUBHEADINGS.E).toBe("E. Proposed Refund Schedule");
+    expect(
+      "F" in PP_FINANCIAL_SUBHEADINGS,
+    ).toBe(false);
+    expect(PP_FINANCIAL_CAPACITY_DASH_ITEMS[4]).toBe("ROI");
   });
 
   it("sums five years, averages by asset life 5, and prefers budget total over cover cost", () => {

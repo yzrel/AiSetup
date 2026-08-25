@@ -956,8 +956,8 @@ PatchModule $applicantId $appToken "projectCloseOut" @{
     certificateIssuedDate            = "2027-03-01"
     notes                            = "Project completed; equipment under cooperator custody."
     equipmentInventory               = @(
-      @{ description = "Vacuum sealer"; serialNumber = "VS-2026-001"; acquisitionCost = "1200000"; location = "Packaging area" }
-      @{ description = "Labeler"; serialNumber = "LB-2026-001"; acquisitionCost = "500000"; location = "Packaging area" }
+      @{ qty = "1"; description = "Vacuum sealer"; amount = "1200000"; propertyNo = "VS-2026-001"; dateAcquired = "2026-01-15"; remarks = "Packaging area" }
+      @{ qty = "1"; description = "Labeler"; amount = "500000"; propertyNo = "LB-2026-001"; dateAcquired = "2026-01-15"; remarks = "Packaging area" }
     )
   }
   submitted   = $true

@@ -1013,7 +1013,15 @@ export function ProjectProposal({
             )}
             <TableEditor label="Liquidity Ratio (Current Ratio)" headers={["Year", "Current Assets", "Current Liabilities", "Ratio"]} rows={form.liquidityRatioTable} onChange={(liquidityRatioTable) => patchForm({ liquidityRatioTable })} />
             <TableEditor label="Quick Ratio" headers={["Year", "Current Assets", "Inventory", "Current Liabilities", "Ratio"]} rows={form.quickRatioTable} onChange={(quickRatioTable) => patchForm({ quickRatioTable })} />
-            <TableEditor label="Return on Investment" headers={["Year", "Net Income", "Investment", "ROI"]} rows={form.roiTable} onChange={(roiTable) => patchForm({ roiTable })} />
+            <TableEditor label="Return on Investment (input for fallback)" headers={["Year", "Net Income", "Investment", "ROI"]} rows={form.roiTable} onChange={(roiTable) => patchForm({ roiTable })} />
+            <InvestmentDecisionAnalysisEditor
+              analysis={buildInvestmentDecisionAnalysis(
+                form,
+                applicant
+                  ? getFinancialProjectionStored(applicant)?.snapshot
+                  : undefined,
+              )}
+            />
             <TableEditor label="Net profit margin ratio" headers={[...PP_NPM_COLUMNS]} rows={form.netProfitMarginTable} onChange={(netProfitMarginTable) => patchForm({ netProfitMarginTable })} />
             <div><AiAssistTextarea label="Partial budget analysis" value={form.partialBudgetAnalysis} onChange={(partialBudgetAnalysis) => patchForm({ partialBudgetAnalysis })} {...ai("partialBudgetAnalysis")} /></div>
             <div><AiAssistTextarea label="Financial Analysis Narrative" value={form.financialAnalysis} onChange={(financialAnalysis) => patchForm({ financialAnalysis })} {...ai("financialAnalysis")} /></div>
@@ -1083,14 +1091,6 @@ export function ProjectProposal({
               </div>
             </div>
             <TableEditor label="E. Proposed Refund Schedule" headers={form.refundSchedule[0] ?? ["Months", "Y1", "Y2", "Y3", "Y4", "Y5", "Total"]} rows={form.refundSchedule.slice(1)} onChange={(body) => patchForm({ refundSchedule: [form.refundSchedule[0], ...body] })} />
-            <InvestmentDecisionAnalysisEditor
-              analysis={buildInvestmentDecisionAnalysis(
-                form,
-                applicant
-                  ? getFinancialProjectionStored(applicant)?.snapshot
-                  : undefined,
-              )}
-            />
           </div>
         );
 

@@ -1177,18 +1177,31 @@ export interface Form008Stored {
 
 // ── Module 18 — Project Close-Out ─────────────────────────────────────────────
 
+/** SETUP Form 006 — Inventory of Equipment row (Annex A-6). */
 export interface EquipmentInventoryRow {
   id: string;
+  qty: string;
   description: string;
-  serialNumber: string;
-  acquisitionCost: string;
-  location: string;
+  amount: string;
+  propertyNo: string;
+  dateAcquired: string;
+  remarks: string;
+  /** @deprecated legacy close-out fields — mapped on hydrate */
+  serialNumber?: string;
+  acquisitionCost?: string;
+  location?: string;
 }
 
 export interface ProjectCloseOutForm {
   terminalReportFileName?: string;
   auditedFinancialFileName?: string;
   equipmentAcknowledgementFileName?: string;
+  /** Form 006 header / signatures */
+  inventoryProjectTitle?: string;
+  inventoryProjectCooperator?: string;
+  inventoryConductedBy?: string;
+  inventoryConductedDate?: string;
+  inventoryWitnessedBy?: string;
   equipmentInventory: EquipmentInventoryRow[];
   certificateOfOwnershipIssued: boolean;
   certificateIssuedDate?: string;

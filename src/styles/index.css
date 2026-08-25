@@ -8,6 +8,7 @@
 @import './projectProposal.css';
 @import './financialProjection.css';
 @import './rtecReport.css';
+@import './inventoryOfEquipment.css';
 
 .scrollbar-hide {
   -ms-overflow-style: none;

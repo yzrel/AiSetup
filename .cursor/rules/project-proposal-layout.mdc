@@ -75,9 +75,9 @@ Cover → PROJECT BACKGROUND (A. Company Profile with checkbox grids, B. Managem
 
 A. Volume monthly / B. Kinds / C. Methods. If those three are empty, print legacy `wasteManagement` under A.
 
-## Financial (official A–F)
+## Financial (official A–E)
 
-`PP_FINANCIAL_SUBHEADINGS`. After **E. Proposed Refund Schedule**, print **F. Investment Decision Analysis** with caption **Return on Investment** (`PP_IDA_ROI_CAPTION`). Two columns: Year | Annual Income (`PP_IDA_COLUMNS`).
+`PP_FINANCIAL_SUBHEADINGS` A–E. Under **A. Financial capacity** dash item **ROI**, print the computed **Return on Investment** table (`PP_IDA_ROI_CAPTION` / `buildInvestmentDecisionAnalysis`) — Year | Annual Income (`PP_IDA_COLUMNS`). Do **not** print a separate **F. Investment Decision Analysis** section after the refund schedule.
 
 Computed by `buildInvestmentDecisionAnalysis` (not a stored table):
 
@@ -85,7 +85,7 @@ Computed by `buildInvestmentDecisionAnalysis` (not a stored table):
 - Total = sum of those five years. Average Asset's Life = 5 (`YEAR_COUNT`). Average Income = Total ÷ 5.
 - Divided by total project cost = budgetary requirement total (`sumBudgetItems`) when it is greater than 0, otherwise cover `projectCost`.
 - Return on Investment = Average Income ÷ project cost, rounded to a whole percent.
-- Keep the A. Financial capacity per-year ROI table (`form.roiTable`) unchanged.
+- `form.roiTable` remains an editor fallback input when no projection snapshot exists; it is not printed under `- ROI`.
 
 ## Compensation table
 

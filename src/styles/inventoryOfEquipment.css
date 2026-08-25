@@ -1,0 +1,267 @@
+/* Author: Yzrel Jade B. Eborde — SETUP Form 006 Inventory of Equipment (Annex A-6) */
+
+.ioe-form-document,
+#inventory-of-equipment-preview {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.25;
+  color: #111;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: transparent;
+}
+
+.ioe-form-document .ioe-form-document-root,
+#inventory-of-equipment-preview .ioe-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0;
+  background: #fff;
+  box-sizing: border-box;
+  /* Screen preview: show 1 in page margins inside A4 sheet */
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ioe-form-document .ioe-form-page,
+#inventory-of-equipment-preview .ioe-form-page {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 25.4mm;
+  background: #fff;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ioe-form-document .ioe-form-page-body,
+#inventory-of-equipment-preview .ioe-form-page-body {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.ioe-form-document .ioe-form-title,
+#inventory-of-equipment-preview .ioe-form-title {
+  font-family: Arial, sans-serif;
+  font-size: 14pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 16px;
+  color: #111;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ioe-form-document .ioe-form-header-fields,
+#inventory-of-equipment-preview .ioe-form-header-fields {
+  margin: 0 0 14px;
+}
+
+.ioe-form-document .ioe-form-field-line,
+#inventory-of-equipment-preview .ioe-form-field-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 11pt;
+}
+
+.ioe-form-document .ioe-form-field-label,
+#inventory-of-equipment-preview .ioe-form-field-label {
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ioe-form-document .ioe-form-field-value,
+#inventory-of-equipment-preview .ioe-form-field-value {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1px solid #111;
+  min-height: 1.2em;
+  padding-bottom: 1px;
+}
+
+.ioe-form-document .ioe-form-table,
+#inventory-of-equipment-preview .ioe-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10pt;
+  margin: 0 0 18px;
+}
+
+.ioe-form-document .ioe-form-table th,
+.ioe-form-document .ioe-form-table td,
+#inventory-of-equipment-preview .ioe-form-table th,
+#inventory-of-equipment-preview .ioe-form-table td {
+  border: 1px solid #111;
+  padding: 4px 5px;
+  vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.ioe-form-document .ioe-form-table-caption,
+#inventory-of-equipment-preview .ioe-form-table-caption {
+  font-weight: 700;
+  text-align: center;
+  font-size: 10.5pt;
+  padding: 6px 4px;
+  background: #fff;
+}
+
+.ioe-form-document .ioe-form-table thead th:not(.ioe-form-table-caption),
+#inventory-of-equipment-preview .ioe-form-table thead th:not(.ioe-form-table-caption) {
+  font-weight: 700;
+  text-align: center;
+  font-size: 9pt;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.ioe-form-document .ioe-form-table tbody td,
+#inventory-of-equipment-preview .ioe-form-table tbody td {
+  height: 28px;
+  min-height: 28px;
+}
+
+.ioe-form-document .ioe-center,
+#inventory-of-equipment-preview .ioe-center {
+  text-align: center;
+}
+
+.ioe-form-document .ioe-right,
+#inventory-of-equipment-preview .ioe-right {
+  text-align: right;
+}
+
+.ioe-form-document .ioe-total-label,
+#inventory-of-equipment-preview .ioe-total-label {
+  font-weight: 700;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.ioe-form-document .ioe-total-amount,
+#inventory-of-equipment-preview .ioe-total-amount {
+  font-weight: 700;
+}
+
+.ioe-form-document .ioe-form-signatures,
+#inventory-of-equipment-preview .ioe-form-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 32px;
+  margin-top: 8px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ioe-form-document .ioe-sig-block,
+#inventory-of-equipment-preview .ioe-sig-block {
+  font-size: 10.5pt;
+}
+
+.ioe-form-document .ioe-sig-label,
+#inventory-of-equipment-preview .ioe-sig-label {
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.ioe-form-document .ioe-sig-line,
+#inventory-of-equipment-preview .ioe-sig-line {
+  margin: 0 0 4px;
+  min-height: 1.4em;
+  border-bottom: 1px solid #111;
+  padding-bottom: 2px;
+}
+
+.ioe-form-document .ioe-sig-role,
+#inventory-of-equipment-preview .ioe-sig-role {
+  margin: 0 0 10px;
+  font-size: 9.5pt;
+  text-align: center;
+}
+
+.ioe-form-document .ioe-sig-date,
+#inventory-of-equipment-preview .ioe-sig-date {
+  margin: 8px 0 0;
+  font-size: 10.5pt;
+}
+
+@media print {
+  body.inventory-of-equipment-printing,
+  body.inventory-of-equipment-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.inventory-of-equipment-printing > *:not(#inventory-of-equipment-print-root) {
+    display: none !important;
+  }
+
+  body.inventory-of-equipment-printing #inventory-of-equipment-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .ioe-screen-only {
+    display: none !important;
+  }
+
+  @page inventory-of-equipment-sheet {
+    size: A4 portrait;
+    margin: 25.4mm;
+
+    @bottom-center {
+      content: "SETUP Guidelines (Revision 3.0) Annex A-6: SETUP Form 006 - Inventory of Equipment Page "
+        counter(page) " of " counter(pages);
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #111;
+    }
+  }
+
+  body.inventory-of-equipment-printing #inventory-of-equipment-print-root {
+    page: inventory-of-equipment-sheet;
+  }
+
+  #inventory-of-equipment-print-root .ioe-form-document,
+  #inventory-of-equipment-print-root .ioe-form-document-root {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 11pt;
+  }
+
+  #inventory-of-equipment-print-root .ioe-form-page {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  #inventory-of-equipment-print-root .ioe-form-title {
+    color: #111 !important;
+  }
+}

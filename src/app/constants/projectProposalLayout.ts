@@ -127,7 +127,6 @@ export const PP_FINANCIAL_SUBHEADINGS = {
   C: "C. Cash flow/ financial statement/ balance sheet",
   D: "D. Budgetary Requirement for the proposed project",
   E: "E. Proposed Refund Schedule",
-  F: "F. Investment Decision Analysis",
 } as const;
 
 export const PP_IDA_ROI_CAPTION = "Return on Investment";

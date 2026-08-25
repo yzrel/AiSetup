@@ -1,0 +1,55 @@
+---
+description: SETUP Form 006 Inventory of Equipment print/preview (Annex A-6)
+globs: src/app/components/inventoryOfEquipment/**,src/styles/inventoryOfEquipment.css,src/app/constants/inventoryOfEquipmentLayout.ts,src/app/utils/inventoryOfEquipmentPrint.tsx,src/app/components/InventoryOfEquipmentPreview.tsx,src/app/components/ProjectCloseOut.tsx
+alwaysApply: false
+---
+
+# Form 006 Inventory of Equipment layout (Annex A-6)
+
+Source of truth: `Form 006 - Inventory of Equipment.docx` — SETUP Guidelines (Revision 3.0) Annex A-6.
+Do not invent columns (serial/location) or portal chrome on the official document.
+
+## Document title
+
+`SETUP Form 006 - Inventory of Equipment`
+
+Mixed case. Do **not** force uppercase via CSS.
+
+## Page
+
+- A4 portrait. Margins: **1 in (25.4 mm)** all sides (Word `pgMar` 1440).
+- Body: Arial ~11pt. Black text only (no DOST-blue bars on print/preview document).
+- `@page inventory-of-equipment-sheet` footer:
+
+`SETUP Guidelines (Revision 3.0) Annex A-6: SETUP Form 006 - Inventory of Equipment Page ` + `counter(page)` / `counter(pages)`
+
+## Structure (exact Word order)
+
+1. Title
+2. Project Title / Project Cooperator (underlined value lines)
+3. Table: caption row `INVENTORY OF ACQUIRED EQUIPMENT (SETUP FUNDED)`
+4. Column headers: QTY | Name of Equipment/ Description/ Specification | AMOUNT | PROPERTY No. (stacked) | DATE ACQUIRED | REMARKS
+5. At least 5 data rows (pad blank); grow if more inventory rows
+6. TOTAL row (label in description column; sum in AMOUNT)
+7. Signatures: Inventory Conducted by (Regional Office Representative) + Date; Witnessed by (Cooperator/Authorized Representative)
+
+Column width ratios from Word `gridCol` twips: `923 | 2154 | 1269 | 1596 | 1904 | 1390`.
+
+## Preview vs print (100% fidelity)
+
+- Preview **mounts** `InventoryOfEquipmentDocument` — same markup as print. Not an approximate portal table.
+- Print re-renders via `createRoot` (`printInventoryOfEquipmentPdf`). Do **not** clone `#inventory-of-equipment-preview`.
+- No logo / Republic header / Application ID on the official document.
+
+## Print path
+
+In-page `window.print()` to `#inventory-of-equipment-print-root` + `body.inventory-of-equipment-printing`. Do not use popup `document.write`.
+
+## Key files
+
+- `src/app/components/inventoryOfEquipment/InventoryOfEquipmentDocument.tsx`
+- `src/app/components/InventoryOfEquipmentPreview.tsx`
+- `src/styles/inventoryOfEquipment.css`
+- `src/app/constants/inventoryOfEquipmentLayout.ts`
+- `src/app/utils/inventoryOfEquipmentPrint.tsx`
+- Host UI: `src/app/components/ProjectCloseOut.tsx`

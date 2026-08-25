@@ -77,6 +77,13 @@ export const SETUP_FORMS = {
     packTitle: "Project Information Sheet for Ongoing Projects",
     confirmed: true,
   },
+  "006": {
+    key: "006",
+    title: "Inventory of Equipment",
+    number: "006",
+    annex: "Annex A-6",
+    confirmed: true,
+  },
   "010": {
     key: "010",
     title: "Terminal Report",
@@ -104,14 +111,14 @@ export const SETUP_FORMS = {
 /**
  * Present in regional forms pack but not yet wired in module UI.
  * Official titles: 004 Audited Financial Report, 005 Property Transfer Receipt,
- * 006 Inventory of Equipment, 007 List of Pulled-Out Equipment,
+ * 007 List of Pulled-Out Equipment,
  * 011 Termination/Withdrawal Report, 012 Refund Performance Report,
  * 013 Terminal Report.
+ * Form 006 Inventory of Equipment is wired in Project Close-Out.
  */
 export const SETUP_FORMS_TBD = [
   "004",
   "005",
-  "006",
   "007",
   "011",
   "012",

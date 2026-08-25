@@ -27,7 +27,6 @@ import {
   PP_FORM_INDENT_CLASS,
   PP_FABRICATOR_COLUMNS,
   PP_FINANCIAL_ATTACH_NOTE,
-  PP_FINANCIAL_SUBHEADINGS,
   PP_INTERVENTION_COLUMNS,
   PP_INTERVENTION_COST_COLUMNS,
   PP_LIQUIDITY_COLUMNS,
@@ -49,7 +48,6 @@ import {
   PP_REGISTRATION_OFFICES,
   PP_RISK_COLUMNS,
   PP_RISK_FOOTNOTE,
-  PP_ROI_COLUMNS,
   PP_QUICK_RATIO_COLUMNS,
   PP_SECTION_FINANCIAL,
   PP_SECTION_MARKETING,
@@ -903,7 +901,9 @@ export function ProjectProposalDocument({
           <FieldLabel>Quick Ratio (Acid Test Ratio)</FieldLabel>
           <DataTable columns={PP_QUICK_RATIO_COLUMNS} rows={form.quickRatioTable} numericCols={[1, 2, 3, 4]} />
           <DashLabel>{PP_FINANCIAL_CAPACITY_DASH_ITEMS[4]}</DashLabel>
-          <DataTable columns={PP_ROI_COLUMNS} rows={form.roiTable} numericCols={[1, 2, 3]} />
+          <InvestmentDecisionAnalysisTable
+            analysis={buildInvestmentDecisionAnalysis(form, projectionSnapshot)}
+          />
           <NarrativeBlock text={narrative("financialAnalysis", "financialAnalysis")} />
         </Indent>
         <Indent level={1}>
@@ -969,10 +969,6 @@ export function ProjectProposalDocument({
             </tbody>
           </FormTable>
           <p className="pp-form-note">{PP_REFUND_NOTE}</p>
-          <SubHeading>{PP_FINANCIAL_SUBHEADINGS.F}</SubHeading>
-          <InvestmentDecisionAnalysisTable
-            analysis={buildInvestmentDecisionAnalysis(form, projectionSnapshot)}
-          />
         </Indent>
       </FormBlock>
 
