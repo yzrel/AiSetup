@@ -11,6 +11,7 @@ import {
   buildMoaAnnexCForm,
   computeMoaPdcCount,
   emptyMoaAnnexCForm,
+  getMoaAnnexCForm,
   syncMoaAnnexCFromPrior,
 } from "../moaAnnexC";
 
@@ -121,6 +122,111 @@ describe("buildMoaAnnexCForm", () => {
     );
     expect(form.signboardProposedEquipment).toContain("Vacuum packaging machine");
     expect(form.signboardProposedEquipment).toContain("Dehydrator");
+  });
+
+  it("prefills proposed equipment from Form 001 budget items", () => {
+    const form = buildMoaAnnexCForm(
+      minimalApplicant({
+        moduleData: {
+          projectProposal: {
+            form: {
+              budgetItems: [
+                {
+                  id: "b1",
+                  item: "10.5 ft Large Format Printer",
+                  qty: "1",
+                  unitCost: "1570000",
+                  setupShare: "1570000",
+                  lgiaShare: "",
+                  total: "1570000",
+                },
+                {
+                  id: "b2",
+                  item: "Working capital",
+                  qty: "1",
+                  unitCost: "",
+                  setupShare: "",
+                  lgiaShare: "",
+                  total: "",
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+    expect(form.signboardProposedEquipment).toBe("10.5 ft Large Format Printer");
+  });
+
+  it("prefills proposed equipment from Form 001 published document", () => {
+    const form = buildMoaAnnexCForm(
+      minimalApplicant({
+        moduleData: {
+          projectProposal: {
+            form: {
+              budgetItems: [
+                {
+                  id: "wc",
+                  item: "Working capital",
+                  qty: "1",
+                  unitCost: "",
+                  setupShare: "",
+                  lgiaShare: "",
+                  total: "",
+                },
+              ],
+            },
+            document: {
+              interventionEquipment: "Large format printer; laminator",
+            },
+          },
+        },
+      }),
+    );
+    expect(form.signboardProposedEquipment).toContain("Large format printer");
+    expect(form.signboardProposedEquipment).toContain("laminator");
+  });
+
+  it("backfills blank stored signboard equipment on read", () => {
+    const applicant = minimalApplicant({
+      moduleData: {
+        approvalLetter: {
+          form: {
+            seriesYear: "2026",
+            approvalDate: "2026-06-15",
+            referenceNumber: "SETUPiFund/DOSTXII/26/099",
+            recipientName: "JUAN DELA CRUZ",
+            recipientDesignation: "Proprietor",
+            enterpriseName: "Acme Foods Corp",
+            enterpriseAddress: "Brgy. Zone, Koronadal City",
+            projectTitle: "Modernization of Food Processing Line",
+            approvedAmount: "500000",
+            refundTermYears: "five (5)",
+            insuranceRatePercent: "0.50",
+            pstoDirectorTitle: "Provincial Director",
+            pstoOfficeName: "PSTO - South Cotabato",
+            signatoryName: "SAMMY P. MALAWAN",
+            signatoryTitle: "Regional Director",
+            conformeDeadlineDays: "15",
+            published: true,
+          },
+          published: true,
+          acknowledged: false,
+          moaForm: {
+            ...emptyMoaAnnexCForm(),
+            enterpriseName: "Acme Foods Corp",
+            projectTitle: "Modernization of Food Processing Line",
+            signboardProposedEquipment: "",
+          },
+        },
+        tna2Document: {
+          published: true,
+          recommendedEquipment: [{ name: "Vacuum packaging machine", specifications: "" }],
+        },
+      },
+    });
+    const form = getMoaAnnexCForm(applicant);
+    expect(form.signboardProposedEquipment).toContain("Vacuum packaging machine");
   });
 });
 

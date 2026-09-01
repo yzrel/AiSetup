@@ -33,6 +33,7 @@ import {
   downloadRtecReportPdf,
   getRtecReportForm,
   getRtecReportStored,
+  getRtecReviewComments,
   hasProjectProposalPrerequisite,
   hasRtecPrerequisites,
   hasRequirementsApprovedPrerequisite,
@@ -101,6 +102,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
   const requirementsReady = hasRequirementsApprovedPrerequisite(applicant);
   const stored = applicant ? getRtecReportStored(applicant) : null;
   const isComplete = !!stored?.submitted;
+  const reviewComments = getRtecReviewComments(applicant);
 
   const handleFormChange = (next: RtecReportForm) => {
     setForm(next);
@@ -264,6 +266,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   form={form}
                   onChange={handleFormChange}
                   step="compliance"
+                  reviewComments={reviewComments}
                 />
               )}
 
@@ -272,6 +275,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   form={form}
                   onChange={handleFormChange}
                   step="evaluation"
+                  reviewComments={reviewComments}
                 />
               )}
 
@@ -280,6 +284,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   form={form}
                   onChange={handleFormChange}
                   step="recommendation"
+                  reviewComments={reviewComments}
                 />
               )}
 
@@ -313,6 +318,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                       onChange={handleFormChange}
                       step="all"
                       onSave={handleSave}
+                      reviewComments={reviewComments}
                     />
                   ) : (
                     <>

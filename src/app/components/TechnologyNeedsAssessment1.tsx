@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { AuthUser } from "../store/authStore";
+import { AuthUser, isRtecStaff } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import {
   mergeTnaSavedData,
@@ -47,6 +47,7 @@ import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import type { Tna1Doc, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
 import { DOST_BLUE, DOST_MID, STEPS } from "./tna1/tna1Ui";
 import { ModuleStepHeader } from "./ModuleWorkflowLayout";
+import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { IdentificationStep } from "./tna1/IdentificationStep";
 import { AttachmentAStep } from "./tna1/AttachmentAStep";
 import { BenchmarkStep } from "./tna1/BenchmarkStep";
@@ -103,6 +104,7 @@ export function TechnologyNeedsAssessment1({
   const [step, setStep] = useState("identification");
   const [maxReached, setMaxReached] = useState(0);
   const { applicant, isStaff } = useStaffApplicant(user);
+  const reviewOnly = isRtecStaff(user?.role);
   const [staffMode, setStaffMode] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
 
@@ -521,7 +523,7 @@ export function TechnologyNeedsAssessment1({
 
   const saveTnaDraft = useCallback(
     (submitted = false, opts?: { notice?: boolean }) => {
-      if (!applicant) return;
+      if (!applicant || reviewOnly) return;
       const currentForm = formRef.current;
       const currentTables = tablesRef.current;
       const nextModuleData = {
@@ -564,7 +566,7 @@ export function TechnologyNeedsAssessment1({
         setTimeout(() => setSaveNotice(""), 3000);
       }
     },
-    [applicant],
+    [applicant, reviewOnly],
   );
 
   const scheduleTnaDraft = useDebouncedCallback(() => {
@@ -572,7 +574,7 @@ export function TechnologyNeedsAssessment1({
   }, 400);
 
   const persistStaffReviewDraft = useDebouncedCallback(() => {
-    if (!applicant || !isStaff) return;
+    if (!applicant || !isStaff || reviewOnly) return;
     applicantStore.update(applicant.id, {
       moduleData: {
         ...applicant.moduleData,
@@ -789,7 +791,7 @@ export function TechnologyNeedsAssessment1({
                 subtitle="DOST SETUP Program · Module 5"
               />
             </div>
-            {isStaff && (
+            {isStaff && !reviewOnly && (
             <button
               onClick={() => setStaffMode(s => !s)}
               className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all ${
@@ -811,7 +813,7 @@ export function TechnologyNeedsAssessment1({
           {saveNotice && (
             <p className="text-xs text-emerald-200 mt-2 font-medium">{saveNotice}</p>
           )}
-          {applicant && (
+          {applicant && !reviewOnly && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -831,7 +833,6 @@ export function TechnologyNeedsAssessment1({
         <div className="px-6 pt-4">
           <AiAssistNotice message={tnaAiNotice} />
         </div>
-
         {step === "identification" && <IdentificationStep ctx={ctx} />}
         {step === "attachment-a" && <AttachmentAStep ctx={ctx} />}
         {step === "benchmark" && <BenchmarkStep ctx={ctx} />}
@@ -841,6 +842,15 @@ export function TechnologyNeedsAssessment1({
         {step === "complete" && <CompleteStep ctx={ctx} />}
         {step === "staff-review" && isStaff && <StaffReviewStep ctx={ctx} />}
         {step === "reports" && <ReportsStep ctx={ctx} />}
+        {reviewOnly && user && step === STEPS[STEPS.length - 1].id && (
+          <div className="px-4 sm:px-6 pb-6">
+            <RtecReviewCommentPanel
+              user={user}
+              applicantId={applicant?.id}
+              sourceView="tna1"
+            />
+          </div>
+        )}
 
       </div>
     </div>

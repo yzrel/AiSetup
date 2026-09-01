@@ -381,7 +381,8 @@ export function normalizeRtecReportStored(
     }
     base.form = next;
   }
-  return base;
+  const withComments = coerceArrayKeys(base, ["reviewComments"]);
+  return withComments;
 }
 
 export function normalizeConductRtecStored(

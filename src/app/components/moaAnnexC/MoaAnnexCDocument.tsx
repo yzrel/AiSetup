@@ -256,7 +256,13 @@ export function MoaAnnexCDocument({ form, packet }: MoaAnnexCDocumentProps) {
                       </p>
                       <p>
                         Proposed Equipment:{" "}
-                        <Blank value={form.signboardProposedEquipment} width={36} />
+                        <Blank
+                          value={
+                            form.signboardProposedEquipment ||
+                            packet?.proposedEquipment
+                          }
+                          width={36}
+                        />
                       </p>
                       <p className="moa-form-phase">
                         Phase I (Equipment Acquisition and Installation)

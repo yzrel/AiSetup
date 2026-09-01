@@ -9,9 +9,10 @@ import {
   Applicant,
   MODULE_LABELS,
 } from "../store/applicantStore";
-import { AuthUser, AdminView } from "../store/authStore";
+import { AuthUser, AdminView, isRtecStaff } from "../store/authStore";
 import { staffContextStore } from "../store/staffContextStore";
 import { ClientSubmittedFilesPanel } from "./ClientSubmittedFilesPanel";
+import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import {
   getApplicantsForStaff,
   getOfficeName,
@@ -27,6 +28,7 @@ interface ClientFilesAdminProps {
 }
 
 export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
+  const reviewOnly = isRtecStaff(user.role);
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -198,6 +200,13 @@ export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
                 scope="loi-onward"
                 title="Cooperator attachments & generated documents"
               />
+              {reviewOnly && (
+                <RtecReviewCommentPanel
+                  user={user}
+                  applicantId={selected.id}
+                  sourceView="client-files"
+                />
+              )}
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">

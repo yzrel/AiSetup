@@ -48,6 +48,17 @@ public final class ModuleOrder {
         return idx < 0 ? 0 : idx;
     }
 
+    /** Module keys RTEC committee members may PATCH (Form 002 only). */
+    public static boolean isRtecStaffWritableModuleKey(String moduleKey) {
+        if (moduleKey == null || moduleKey.isBlank()) {
+            return false;
+        }
+        return switch (moduleKey) {
+            case "rtecReport", "conduct-rtec", "conductRtec", "rtec" -> true;
+            default -> false;
+        };
+    }
+
     public static boolean isKnown(String module) {
         String normalized = normalize(module);
         return normalized != null && ORDER.contains(normalized);

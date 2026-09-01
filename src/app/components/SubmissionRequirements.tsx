@@ -10,9 +10,10 @@ import {
   AlertTriangle, Pencil, Send, Clock,   Printer, FileSpreadsheet,
 } from "lucide-react";
 import { applicantStore, Applicant } from "../store/applicantStore";
-import { AuthUser, authStore } from "../store/authStore";
+import { AuthUser, authStore, isRtecStaff } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
@@ -143,6 +144,7 @@ function StepHeader({
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequirementsProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
+  const reviewOnly = isRtecStaff(user?.role);
   const showStaffSteps = isStaff || isDemoModeActive();
   const [step, setStep]         = useState<StepId>("documents");
   const [maxReached, setMaxReached] = useState(0);
@@ -339,7 +341,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   );
 
   const handleSaveApplicantDraft = () => {
-    if (!applicant) return;
+    if (!applicant || reviewOnly) return;
     persistRequirementUploads(applicant.id, documents, applicantStore);
     persistRequirementNotes(
       applicant.id,
@@ -492,7 +494,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
 
   // Final submit — persist routing and advance applicant to the next module
   const handleFinalSubmit = () => {
-    if (!applicant) return;
+    if (!applicant || reviewOnly) return;
     const decision = routeToMpex ? "mpex" : "conduct-rtec";
     const nextModule =
       decision === "mpex"
@@ -1131,6 +1133,14 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 {staffDecision === "approved" ? "Approve & Proceed to Routing →" : staffDecision === "needs-revision" ? "Send for Revision →" : "Submit Decision →"}
               </button>
             </div>
+
+            {reviewOnly && user && (
+              <RtecReviewCommentPanel
+                user={user}
+                applicantId={applicant?.id}
+                sourceView="requirements"
+              />
+            )}
           </div>
         )}
 

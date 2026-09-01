@@ -12,8 +12,10 @@ import type {
   RtecFabricatorRow,
   RtecReportForm,
   RtecReportStored,
+  RtecReviewComment,
   RtecSignatures,
 } from "../api/types";
+import type { AdminView, AuthUser } from "../store/authStore";
 import {
   getProjectProposalAttachments,
   getProjectProposalForm,
@@ -681,6 +683,7 @@ export function syncRtecFromProjectProposal(
 export function saveRtecReportDraft(
   applicantId: string,
   form: RtecReportForm,
+  reviewComments?: RtecReviewComment[],
 ): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
@@ -693,6 +696,8 @@ export function saveRtecReportDraft(
         submitted: existing?.submitted ?? false,
         submittedAt: existing?.submittedAt,
         updatedAt: new Date().toISOString(),
+        reviewComments:
+          reviewComments ?? existing?.reviewComments ?? [],
       } satisfies RtecReportStored,
     },
   });
@@ -701,6 +706,7 @@ export function saveRtecReportDraft(
 export function submitRtecReport(applicantId: string, form: RtecReportForm): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
+  const existing = getRtecReportStored(applicant);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
@@ -709,9 +715,79 @@ export function submitRtecReport(applicantId: string, form: RtecReportForm): voi
         submitted: true,
         submittedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        reviewComments: existing?.reviewComments ?? [],
       } satisfies RtecReportStored,
     },
   });
+}
+
+export const RTEC_REVIEW_SOURCE_LABELS: Partial<Record<AdminView, string>> = {
+  tna1: "TNA Form 01",
+  tna2: "TNA Form 02",
+  "project-proposal": "Project Proposal (Form 001)",
+  requirements: "Documentary Requirements",
+  "client-files": "Cooperator Files",
+};
+
+export function formatRtecReviewCommentBlock(
+  comment: RtecReviewComment,
+): string {
+  const when = new Date(comment.at).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  return `[${comment.sourceLabel} — ${comment.authorName}, ${when}] ${comment.text.trim()}`;
+}
+
+export function getRtecReviewComments(
+  applicant: Applicant | null,
+): RtecReviewComment[] {
+  const stored = getRtecReportStored(applicant);
+  return Array.isArray(stored?.reviewComments) ? stored!.reviewComments! : [];
+}
+
+/**
+ * Persist a structured review note and append a labeled block to Section IV
+ * without wiping the existing recommendation narrative.
+ */
+export function appendRtecReviewComment(
+  applicantId: string,
+  user: AuthUser,
+  sourceView: AdminView,
+  text: string,
+): RtecReviewComment | null {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const sourceLabel =
+    RTEC_REVIEW_SOURCE_LABELS[sourceView] ?? String(sourceView);
+  const authorName = `${user.firstName} ${user.lastName}`.trim() || user.email;
+  const comment: RtecReviewComment = {
+    id: `rtec-cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sourceView,
+    sourceLabel,
+    text: trimmed,
+    authorEmail: user.email,
+    authorName,
+    at: new Date().toISOString(),
+  };
+
+  const form = getRtecReportForm(applicant);
+  const existingComments = getRtecReviewComments(applicant);
+  const block = formatRtecReviewCommentBlock(comment);
+  const recommendation = form.recommendation?.trim()
+    ? `${form.recommendation.trim()}\n\n${block}`
+    : block;
+
+  saveRtecReportDraft(
+    applicantId,
+    { ...form, recommendation },
+    [...existingComments, comment],
+  );
+  return comment;
 }
 
 export function validateRtecReportSubmit(form: RtecReportForm): string[] {

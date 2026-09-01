@@ -117,6 +117,16 @@ public class UserSeedRunner implements ApplicationRunner {
                 "PSTO - General Santos / Sarangani",
                 "gensan-sarangani",
                 List.of("Sarangani", "General Santos City"));
+        seedStaff(
+                "rtec-001",
+                "rtec@dost.gov.ph",
+                "RTEC",
+                "",
+                "Evaluator",
+                "rtec-staff",
+                "DOST SOCCSKSARGEN — RTEC",
+                "regional",
+                List.of());
 
         seedApplicant(
                 "1",

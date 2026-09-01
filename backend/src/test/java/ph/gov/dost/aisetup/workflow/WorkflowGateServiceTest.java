@@ -212,4 +212,44 @@ class WorkflowGateServiceTest {
                 Map.of("qualified", true));
         assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
     }
+
+    private void authenticateRole(String role, String applicantId) {
+        UserAccount account = new UserAccount();
+        account.setId("user-" + role);
+        account.setEmail(role + "@dost.gov.ph");
+        account.setPasswordHash("x");
+        account.setFirstName("T");
+        account.setLastName("User");
+        account.setRole(role);
+        account.setApplicantId(applicantId);
+        account.setEnabled(true);
+        UserPrincipal principal = new UserPrincipal(account);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities()));
+    }
+
+    @Test
+    void rtecStaffMayAdvanceOnlyFromRtecToApprovalLetter() {
+        authenticateRole("rtec-staff", null);
+        ApplicantRecordDto existing = dto("app-1", "conduct-rtec", Map.of(), Map.of());
+        ApplicantRecordDto incoming = dto("app-1", "approval-letter", Map.of(), Map.of());
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+
+        ApplicantRecordDto bad = dto("app-1", "landbank-withdrawal", Map.of(), Map.of());
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(bad, existing));
+    }
+
+    @Test
+    void rtecStaffCannotPatchApprovalLetterModule() {
+        authenticateRole("rtec-staff", null);
+        ApplicantRecordDto existing = dto("app-1", "conduct-rtec", Map.of(), Map.of());
+        assertThrows(
+                AccessDeniedException.class,
+                () -> service.assertRtecStaffModuleWrite(
+                        "approvalLetter", Map.of("body", "x"), existing));
+        assertDoesNotThrow(
+                () -> service.assertRtecStaffModuleWrite(
+                        "rtecReport", Map.of("recommendation", "ok"), existing));
+    }
 }

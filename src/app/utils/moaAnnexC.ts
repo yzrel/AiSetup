@@ -16,7 +16,7 @@ import { mapBusinessTypeToOrganization } from "../store/tnaFormDefaults";
 import { getApprovalLetterForm, getApprovalLetterStored } from "./approvalLetter";
 import { resolveProvincialOffice } from "./loiLetter";
 import { getProjectProposalForm } from "./projectProposal";
-import { getRequirementEquipmentList } from "./requirementEquipment";
+import { resolveProposedEquipmentText } from "./requirementEquipment";
 import { getRtecReportForm } from "./rtecReport";
 import { isDemoModeActive } from "./demoMode";
 
@@ -205,19 +205,25 @@ function resolveDurationMonths(applicant: Applicant | null): string {
   return "12";
 }
 
-function resolveProposedEquipment(applicant: Applicant | null): string {
-  if (!applicant) return "";
-  const items = getRequirementEquipmentList(applicant);
-  if (items.length > 0) {
-    return items
-      .map((item) =>
-        item.specifications
-          ? `${item.name} (${item.specifications})`
-          : item.name,
-      )
-      .join("; ");
+function hydrateMoaSignboardFields(
+  form: MoaAnnexCForm,
+  applicant: Applicant | null,
+): MoaAnnexCForm {
+  if (!applicant) return form;
+  let next = form;
+  if (!form.signboardProposedEquipment.trim()) {
+    const equipment = resolveProposedEquipmentText(applicant);
+    if (equipment) {
+      next = { ...next, signboardProposedEquipment: equipment };
+    }
   }
-  return String(getProjectProposalForm(applicant)?.interventionEquipment ?? "").trim();
+  if (!form.signboardProjectTitle.trim() && form.projectTitle.trim()) {
+    next = { ...next, signboardProjectTitle: form.projectTitle };
+  }
+  if (!form.signboardCooperator.trim() && form.enterpriseName.trim()) {
+    next = { ...next, signboardCooperator: form.enterpriseName };
+  }
+  return next;
 }
 
 export function emptyMoaAnnexCForm(): MoaAnnexCForm {
@@ -339,7 +345,7 @@ export function buildMoaAnnexCForm(applicant: Applicant | null): MoaAnnexCForm {
     pstoOfficeName: approval.pstoOfficeName || psto.officeName,
     signboardProjectTitle: approval.projectTitle || pp.projectTitle,
     signboardCooperator: enterprise,
-    signboardProposedEquipment: resolveProposedEquipment(applicant),
+    signboardProposedEquipment: resolveProposedEquipmentText(applicant),
     phase1Start: formatDisplayDate(phase1Start),
     phase1End: formatDisplayDate(phase1End),
     phase2Start: formatDisplayDate(phase2Start),
@@ -381,10 +387,11 @@ export function buildMoaAnnexCForm(applicant: Applicant | null): MoaAnnexCForm {
 
 export function getMoaAnnexCForm(applicant: Applicant | null): MoaAnnexCForm {
   const stored = getApprovalLetterStored(applicant)?.moaForm;
-  if (stored && Object.values(stored).some((v) => String(v ?? "").trim())) {
-    return { ...emptyMoaAnnexCForm(), ...stored };
-  }
-  return buildMoaAnnexCForm(applicant);
+  const base =
+    stored && Object.values(stored).some((v) => String(v ?? "").trim())
+      ? { ...emptyMoaAnnexCForm(), ...stored }
+      : buildMoaAnnexCForm(applicant);
+  return hydrateMoaSignboardFields(base, applicant);
 }
 
 export function syncMoaAnnexCFromPrior(

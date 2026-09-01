@@ -70,6 +70,18 @@ const emptyCreateForm = (): ApiCreateStaffRequest => ({
   enterpriseName: "",
 });
 
+/** RTEC is a regional committee (SETUP Guidelines 3.0) — not a PSTO login. */
+function applyRtecStaffAccountDefaults<
+  T extends { role?: ApiStaffRole; officeId?: string; assignedProvinces?: string[] },
+>(patch: T): T {
+  if (patch.role !== "rtec-staff") return patch;
+  return {
+    ...patch,
+    officeId: "regional",
+    assignedProvinces: [],
+  };
+}
+
 export function AccountManagement({ user }: AccountManagementProps) {
   const isAdmin =
     user.role === "admin" || user.role === "regional-director";
@@ -654,17 +666,18 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
     setSaving(true);
     setMessage(null);
     try {
-      const office = DOST_REGION_12_CONTACTS.find((o) => o.id === createForm.officeId);
+      const payload = applyRtecStaffAccountDefaults(createForm);
+      const office = DOST_REGION_12_CONTACTS.find((o) => o.id === payload.officeId);
       const created = await api.createStaffUser({
-        ...createForm,
-        email: createForm.email.trim(),
-        firstName: createForm.firstName.trim(),
-        middleName: createForm.middleName?.trim() || "",
-        lastName: createForm.lastName.trim(),
+        ...payload,
+        email: payload.email.trim(),
+        firstName: payload.firstName.trim(),
+        middleName: payload.middleName?.trim() || "",
+        lastName: payload.lastName.trim(),
         enterpriseName:
-          createForm.enterpriseName?.trim() || office?.name || undefined,
-        officeId: createForm.officeId || undefined,
-        assignedProvinces: createForm.assignedProvinces ?? [],
+          payload.enterpriseName?.trim() || office?.name || undefined,
+        officeId: payload.officeId || undefined,
+        assignedProvinces: payload.assignedProvinces ?? [],
       });
       setMessage({ type: "success", text: "Staff account created. They can sign in on the Staff portal." });
       setCreating(false);
@@ -692,14 +705,15 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
     setSaving(true);
     setMessage(null);
     try {
+      const scoped = applyRtecStaffAccountDefaults(editForm);
       const payload: ApiUpdateStaffRequest = {
-        firstName: editForm.firstName.trim(),
-        middleName: editForm.middleName.trim(),
-        lastName: editForm.lastName.trim(),
-        role: editForm.role,
-        officeId: editForm.officeId || undefined,
-        assignedProvinces: editForm.assignedProvinces,
-        enterpriseName: editForm.enterpriseName.trim() || undefined,
+        firstName: scoped.firstName.trim(),
+        middleName: scoped.middleName.trim(),
+        lastName: scoped.lastName.trim(),
+        role: scoped.role,
+        officeId: scoped.officeId || undefined,
+        assignedProvinces: scoped.assignedProvinces,
+        enterpriseName: scoped.enterpriseName.trim() || undefined,
       };
       const updated = await api.updateStaffUser(selected.id, payload);
       setMessage({ type: "success", text: "Staff profile updated." });
@@ -960,7 +974,11 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
                 email={createForm.email}
                 password={createForm.password}
                 showEmailPassword
-                onChange={(patch) => setCreateForm((f) => ({ ...f, ...patch }))}
+                onChange={(patch) =>
+                  setCreateForm((f) =>
+                    applyRtecStaffAccountDefaults({ ...f, ...patch }),
+                  )
+                }
                 onToggleProvince={(province) =>
                   toggleProvince(
                     createForm.assignedProvinces ?? [],
@@ -1003,7 +1021,11 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
 
               <StaffFormFields
                 values={editForm}
-                onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))}
+                onChange={(patch) =>
+                  setEditForm((f) =>
+                    applyRtecStaffAccountDefaults({ ...f, ...patch }),
+                  )
+                }
                 onToggleProvince={(province) =>
                   toggleProvince(editForm.assignedProvinces, province, (next) =>
                     setEditForm((f) => ({ ...f, assignedProvinces: next })),
@@ -1255,6 +1277,11 @@ function StaffFormFields({
       />
       <div>
         <p className="text-xs font-semibold text-gray-500 mb-2">Assigned provinces</p>
+        {values.role === "rtec-staff" ? (
+          <p className="text-xs text-gray-500">
+            RTEC Staff use the Regional Office and see all provinces.
+          </p>
+        ) : (
         <div className="flex flex-wrap gap-2">
           {REGION_12_PROVINCES.map((province) => {
             const on = values.assignedProvinces.includes(province);
@@ -1274,6 +1301,7 @@ function StaffFormFields({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

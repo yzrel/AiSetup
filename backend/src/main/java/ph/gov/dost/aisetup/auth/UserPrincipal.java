@@ -42,6 +42,10 @@ public class UserPrincipal implements UserDetails {
                 || "rtec-staff".equals(role);
     }
 
+    public boolean isRtecStaff() {
+        return "rtec-staff".equals(account.getRole());
+    }
+
     public boolean isAdmin() {
         return "admin".equals(account.getRole());
     }

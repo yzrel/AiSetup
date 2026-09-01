@@ -160,6 +160,8 @@ public class ApplicantController {
         SecurityUtils.requireCanAccessApplicant(id);
         workflowGateService.assertStaffOnlyModuleWrite(moduleKey);
         workflowGateService.assertCanPublish(body.getPublished());
+        ApplicantRecordDto existing = persistenceService.findById(id).orElse(null);
+        workflowGateService.assertRtecStaffModuleWrite(moduleKey, body.getData(), existing);
         Map<String, Object> data = sanitizeModulePatchData(moduleKey, body.getData());
         moduleDataIntegrityService.assertModulePatchShape(moduleKey, data);
         moduleContentValidationService.assertHardTransition(moduleKey, data, body.getPublished());
@@ -199,6 +201,7 @@ public class ApplicantController {
             @Valid @RequestBody Tna1FormSaveRequest body) {
         try {
             SecurityUtils.requireCanAccessApplicant(id);
+            workflowGateService.assertRtecStaffNotTna1Write();
             if (body.getApplicantId() == null || body.getApplicantId().isBlank()) {
                 body.setApplicantId(id);
             }

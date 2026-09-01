@@ -253,8 +253,13 @@ public class AuthService {
         account.setMiddleName(request.getMiddleName() != null ? request.getMiddleName().trim() : "");
         account.setLastName(request.getLastName().trim());
         account.setRole(role);
-        account.setOfficeId(blankToNull(request.getOfficeId()));
-        account.setAssignedProvincesJson(writeProvinces(request.getAssignedProvinces()));
+        if ("rtec-staff".equals(role)) {
+            account.setOfficeId("regional");
+            account.setAssignedProvincesJson(writeProvinces(List.of()));
+        } else {
+            account.setOfficeId(blankToNull(request.getOfficeId()));
+            account.setAssignedProvincesJson(writeProvinces(request.getAssignedProvinces()));
+        }
         account.setEnterpriseName(blankToNull(request.getEnterpriseName()));
         account.setEnabled(true);
         account.setCreatedAt(now);
@@ -322,6 +327,11 @@ public class AuthService {
                 throw new IllegalArgumentException("Cannot disable the last enabled admin account");
             }
             account.setEnabled(enabled);
+        }
+
+        if ("rtec-staff".equals(account.getRole())) {
+            account.setOfficeId("regional");
+            account.setAssignedProvincesJson(writeProvinces(List.of()));
         }
 
         account.setUpdatedAt(Instant.now());

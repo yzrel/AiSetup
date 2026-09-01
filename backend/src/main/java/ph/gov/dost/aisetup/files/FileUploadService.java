@@ -48,6 +48,11 @@ public class FileUploadService {
     public Map<String, Object> upload(String applicantId, String moduleKey, MultipartFile file)
             throws IOException {
         SecurityUtils.requireCanAccessApplicant(applicantId);
+        UserPrincipal principal = SecurityUtils.requirePrincipal();
+        if (principal.isRtecStaff()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "RTEC staff cannot upload files");
+        }
         String resolvedKey = moduleKey != null && !moduleKey.isBlank() ? moduleKey : "general";
         if (WorkflowGateService.SIGNED_MOA_MODULE_KEY.equals(resolvedKey)
                 || ModuleOrder.isStaffOnlyModule(resolvedKey)) {
@@ -69,7 +74,6 @@ public class FileUploadService {
         Path target = dir.resolve(id + "_" + safeName);
         file.transferTo(target);
 
-        UserPrincipal principal = SecurityUtils.requirePrincipal();
         FileUpload entity = new FileUpload();
         entity.setId(id);
         entity.setApplicantId(applicantId);

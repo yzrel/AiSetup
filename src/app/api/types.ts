@@ -788,6 +788,17 @@ export interface RtecReportStored {
   submitted?: boolean;
   submittedAt?: string;
   updatedAt?: string;
+  reviewComments?: RtecReviewComment[];
+}
+
+export interface RtecReviewComment {
+  id: string;
+  sourceView: string;
+  sourceLabel: string;
+  text: string;
+  authorEmail: string;
+  authorName: string;
+  at: string;
 }
 
 // ── SETUP Form 003 — Notice of Approval (Annex A-3) ───────────────────────────

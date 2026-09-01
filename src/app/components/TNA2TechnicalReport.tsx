@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FileText, CheckCircle, Clock } from "lucide-react";
-import { AuthUser } from "../store/authStore";
+import { AuthUser, isRtecStaff } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
@@ -31,6 +31,7 @@ import {
 } from "./DocumentActionButtons";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { TnaForm02Editor } from "./TnaForm02Editor";
+import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { applicantAiContext } from "../utils/aiAssist";
@@ -46,6 +47,7 @@ export function TNA2TechnicalReport({
   onSubmitSuccess,
 }: TNA2TechnicalReportProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
+  const reviewOnly = isRtecStaff(user?.role);
   const [draft, setDraft] = useState<Tna2DocumentResponse | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -193,7 +195,7 @@ export function TNA2TechnicalReport({
     >
       {(isStaff || published) && (
         <div className="space-y-4">
-          {isStaff && (
+          {isStaff && !reviewOnly && (
             <div className="space-y-3">
               <div className={`${ACTION_ROW} flex-wrap`}>
               <button
@@ -289,6 +291,14 @@ export function TNA2TechnicalReport({
             />
           )}
 
+          {isStaff && reviewOnly && displayDoc && (
+            <div className={`${ACTION_ROW} flex-wrap`}>
+              <DocumentPrintButton
+                onClick={() => printTnaForm02(displayDoc, applicant?.applicationId)}
+              />
+            </div>
+          )}
+
           {displayDoc && !editMode && (
             <>
               <TnaForm02Preview
@@ -305,6 +315,14 @@ export function TNA2TechnicalReport({
                 documentTitle={formatFormMention("tna02")}
               />
             </>
+          )}
+
+          {reviewOnly && user && (
+            <RtecReviewCommentPanel
+              user={user}
+              applicantId={applicant?.id}
+              sourceView="tna2"
+            />
           )}
 
           {!isStaff && published && onSubmitSuccess && (

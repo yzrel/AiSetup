@@ -37,7 +37,7 @@ export default defineConfig({
       },
     },
     watch: {
-      ignored: ['**/backend/**', '**/debug-*.log'],
+      ignored: ['**/backend/**', '**/debug-*.log', '**/.tmp-*/**', '**/.tmp-*'],
     },
   },
 })

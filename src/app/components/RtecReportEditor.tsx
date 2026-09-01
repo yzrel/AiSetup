@@ -14,6 +14,7 @@ import type {
   RtecComplianceItem,
   RtecComplianceStatus,
   RtecReportForm,
+  RtecReviewComment,
 } from "../api/types";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import {
@@ -48,6 +49,7 @@ interface RtecReportEditorProps {
   onChange: (form: RtecReportForm) => void;
   step: "compliance" | "evaluation" | "recommendation" | "all";
   onSave?: () => void;
+  reviewComments?: RtecReviewComment[];
 }
 
 function uid() {
@@ -278,6 +280,7 @@ export function RtecReportEditor({
   onChange,
   step,
   onSave,
+  reviewComments = [],
 }: RtecReportEditorProps) {
   const formSafe: RtecReportForm = {
     ...form,
@@ -1033,6 +1036,23 @@ export function RtecReportEditor({
               rows={8}
               placeholder="RTEC recommendation narrative…"
             />
+            {reviewComments.length > 0 && (
+              <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#0C2461]">
+                  Forwarded review comments ({reviewComments.length})
+                </p>
+                <ul className="space-y-1.5">
+                  {reviewComments.map((c) => (
+                    <li key={c.id} className="text-xs text-gray-700">
+                      <span className="font-semibold">
+                        [{c.sourceLabel} — {c.authorName}]
+                      </span>{" "}
+                      {c.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="border border-gray-200 rounded-xl p-4 bg-white space-y-4">

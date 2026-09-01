@@ -22,7 +22,7 @@ import {
   Info,
 } from "lucide-react";
 import { EditableTableResponsive } from "./ui/editable-table-responsive";
-import { AuthUser } from "../store/authStore";
+import { AuthUser, isRtecStaff } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
@@ -30,6 +30,7 @@ import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
 import { MODULE_HEADER, MODULE_BODY, ACTION_ROW } from "./moduleTheme";
 import { ModuleStepHeader } from "./ModuleWorkflowLayout";
+import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { api, ApiError } from "../api/client";
 import type {
@@ -335,6 +336,7 @@ export function ProjectProposal({
   onSubmitSuccess,
 }: ProjectProposalProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
+  const reviewOnly = isRtecStaff(user?.role);
 
   const [form, setForm] = useState<ProjectProposalForm>(() =>
     getProjectProposalForm(applicant),
@@ -400,7 +402,7 @@ export function ProjectProposal({
   documentRef.current = document;
 
   const persistProposalDraft = (showNotice: boolean) => {
-    if (!applicant) return;
+    if (!applicant || reviewOnly) return;
     saveProjectProposalDraft(
       applicant.id,
       formRef.current,
@@ -1219,6 +1221,7 @@ export function ProjectProposal({
               user={user}
               moduleKey="project-proposal"
               documentTitle="Project Proposal (Form 001)"
+              readOnly={reviewOnly}
             />
           </div>
         );
@@ -1307,6 +1310,14 @@ export function ProjectProposal({
 
           {renderStep()}
 
+          {reviewOnly && user && isLastStep && (
+            <RtecReviewCommentPanel
+              user={user}
+              applicantId={applicant?.id}
+              sourceView="project-proposal"
+            />
+          )}
+
           <div className={`${ACTION_ROW} pt-4 border-t border-gray-100`}>
             {!isFirstStep && (
               <button
@@ -1317,6 +1328,7 @@ export function ProjectProposal({
                 ← Back
               </button>
             )}
+            {!reviewOnly && (
             <button
               type="button"
               onClick={handleSaveDraft}
@@ -1325,11 +1337,12 @@ export function ProjectProposal({
             >
               <Save className="w-4 h-4" /> Save draft
             </button>
+            )}
             {!isLastStep ? (
               <button
                 type="button"
                 onClick={() => {
-                  handleSaveDraft();
+                  if (!reviewOnly) handleSaveDraft();
                   goNext();
                 }}
                 disabled={!applicant}
@@ -1340,7 +1353,7 @@ export function ProjectProposal({
               </button>
             ) : (
               <>
-                {!submitted && (
+                {!submitted && !reviewOnly && (
                   <button
                     type="button"
                     onClick={handleSubmit}

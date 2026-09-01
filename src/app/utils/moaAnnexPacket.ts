@@ -8,6 +8,7 @@
 import type { Applicant } from "../store/applicantStore";
 import type { MoaAnnexCForm, ProjectProposalBudgetRow } from "../api/types";
 import { getProjectProposalForm } from "./projectProposal";
+import { resolveProposedEquipmentText } from "./requirementEquipment";
 import { computeRefundSchedule, parseTermYears } from "./refundSchedule";
 
 const MONTH_ABBR = [
@@ -107,6 +108,8 @@ export interface MoaAnnexPacketContext {
   annexB: MoaAnnexBData | null;
   scheduleTable: string[][] | null;
   annexD: MoaAnnexDGrid | null;
+  /** Live equipment list for clause 2.25 when moaForm.signboardProposedEquipment is blank. */
+  proposedEquipment: string;
 }
 
 function resolveSigningIso(form: MoaAnnexCForm): string {
@@ -262,5 +265,6 @@ export function buildMoaAnnexPacketContext(
     annexB: buildMoaAnnexBData(applicant, form),
     scheduleTable: schedule,
     annexD: buildMoaAnnexDCalendarGrid(form),
+    proposedEquipment: resolveProposedEquipmentText(applicant),
   };
 }

@@ -4,7 +4,10 @@
 package ph.gov.dost.aisetup.workflow;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.auth.SecurityUtils;
@@ -42,6 +45,10 @@ public class WorkflowGateService {
         UserPrincipal principal = SecurityUtils.requirePrincipal();
         SecurityUtils.requireCanAccessApplicant(incoming.id());
 
+        if (principal.isRtecStaff()) {
+            assertRtecStaffSave(incoming, existing);
+            return;
+        }
         if (principal.isStaff()) {
             return;
         }
@@ -176,6 +183,100 @@ public class WorkflowGateService {
     public void assertStaffOnlyModuleWrite(String moduleKey) {
         if (ModuleOrder.isStaffOnlyModule(moduleKey)) {
             SecurityUtils.requireStaff();
+        }
+    }
+
+    /**
+     * RTEC staff may only write Form 002 keys, assessments (Mark Complete),
+     * or caseMeta when only {@code assessments} changed.
+     */
+    public void assertRtecStaffModuleWrite(
+            String moduleKey, Map<String, Object> data, ApplicantRecordDto existing) {
+        UserPrincipal principal = SecurityUtils.requirePrincipal();
+        if (!principal.isRtecStaff()) {
+            return;
+        }
+        if (ModuleOrder.isRtecStaffWritableModuleKey(moduleKey)) {
+            return;
+        }
+        if ("assessments".equals(moduleKey)) {
+            return;
+        }
+        if (ph.gov.dost.aisetup.persistence.ApplicantPersistenceService.CASE_META_KEY.equals(
+                moduleKey)) {
+            assertRtecStaffCaseMetaOnlyAssessments(data, existing);
+            return;
+        }
+        throw new AccessDeniedException(
+                "RTEC staff can only update the RTEC report (SETUP Form 002)");
+    }
+
+    public void assertRtecStaffNotTna1Write() {
+        UserPrincipal principal = SecurityUtils.requirePrincipal();
+        if (principal.isRtecStaff()) {
+            throw new AccessDeniedException("RTEC staff cannot edit TNA Form 01");
+        }
+    }
+
+    public void assertRtecStaffNotFileUpload() {
+        UserPrincipal principal = SecurityUtils.requirePrincipal();
+        if (principal.isRtecStaff()) {
+            throw new AccessDeniedException("RTEC staff cannot upload files");
+        }
+    }
+
+    private void assertRtecStaffSave(ApplicantRecordDto incoming, ApplicantRecordDto existing) {
+        if (existing == null) {
+            throw new AccessDeniedException("RTEC staff cannot create applicant cases");
+        }
+        if (incoming.enterpriseName() != null
+                && !incoming.enterpriseName().equals(existing.enterpriseName())) {
+            throw new AccessDeniedException("RTEC staff cannot change enterprise profile");
+        }
+        String from = ModuleOrder.normalize(existing.currentModule());
+        String to = ModuleOrder.normalize(incoming.currentModule());
+        if (to != null && !to.equals(from)) {
+            boolean allowedJump =
+                    "conduct-rtec".equals(from) && "approval-letter".equals(to);
+            if (!allowedJump) {
+                throw new AccessDeniedException(
+                        "RTEC staff can only advance cases from Conduct of RTEC to Approval Letter");
+            }
+        }
+        Map<String, Object> incomingMd =
+                incoming.moduleData() != null ? incoming.moduleData() : Map.of();
+        Map<String, Object> existingMd =
+                existing.moduleData() != null ? existing.moduleData() : Map.of();
+        Set<String> keys = new HashSet<>();
+        keys.addAll(incomingMd.keySet());
+        keys.addAll(existingMd.keySet());
+        for (String key : keys) {
+            if (ModuleOrder.isRtecStaffWritableModuleKey(key) || "assessments".equals(key)) {
+                continue;
+            }
+            if (!Objects.equals(incomingMd.get(key), existingMd.get(key))) {
+                throw new AccessDeniedException("RTEC staff cannot modify module: " + key);
+            }
+        }
+    }
+
+    private void assertRtecStaffCaseMetaOnlyAssessments(
+            Map<String, Object> data, ApplicantRecordDto existing) {
+        if (data == null || data.isEmpty()) {
+            return;
+        }
+        Map<String, Object> existingMd =
+                existing != null && existing.moduleData() != null
+                        ? existing.moduleData()
+                        : Map.of();
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            if ("assessments".equals(entry.getKey())) {
+                continue;
+            }
+            if (!Objects.equals(entry.getValue(), existingMd.get(entry.getKey()))) {
+                throw new AccessDeniedException(
+                        "RTEC staff cannot modify case metadata except assessments");
+            }
         }
     }
 

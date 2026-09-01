@@ -137,5 +137,7 @@ describe("buildMoaAnnexPacketContext", () => {
     expect(ctx.annexB?.rows.length).toBeGreaterThan(0);
     expect(ctx.scheduleTable?.length).toBeGreaterThan(1);
     expect(ctx.annexD?.years.length).toBeGreaterThan(0);
+    expect(ctx.proposedEquipment).toContain("10.5 ft Large Format Printer");
+    expect(ctx.proposedEquipment).toContain("6 ft Large Format Printer");
   });
 });

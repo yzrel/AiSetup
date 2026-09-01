@@ -5,9 +5,9 @@
  */
 
 import type { Applicant } from "../store/applicantStore";
-import type { Tna2EquipmentRow } from "../api/types";
-import { getPublishedTna2 } from "./tnaForm02";
-import { getProjectProposalForm } from "./projectProposal";
+import type { ProjectProposalBudgetRow, Tna2EquipmentRow, Tna2StoredDocument } from "../api/types";
+import { getProjectProposalForm, getProjectProposalStored } from "./projectProposal";
+import { getPublishedTna2, getTna2Draft } from "./tnaForm02";
 
 export interface RequirementEquipmentItem {
   id: string;
@@ -34,38 +34,113 @@ function fromTna2Rows(rows: Tna2EquipmentRow[]): RequirementEquipmentItem[] {
     .filter((row) => row.name.length > 0);
 }
 
-/** Equipment to acquire — published TNA Form 02 first, then Form 001 budget / intervention text. */
+function fromNameList(names: string[]): RequirementEquipmentItem[] {
+  return names
+    .map((name, index) => ({
+      id: slugify(name, index),
+      name: name.trim(),
+    }))
+    .filter((row) => row.name.length > 0);
+}
+
+function splitEquipmentNames(text: string): string[] {
+  return text
+    .split(/[,;]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function isLibEquipmentRow(row: ProjectProposalBudgetRow): boolean {
+  const item = String(row.item ?? "").trim();
+  if (!item) return false;
+  if (/^working capital$/i.test(item)) return false;
+  if (/^technology upgrading package$/i.test(item)) return false;
+  return true;
+}
+
+function equipmentFromTna2(doc: Tna2StoredDocument | null): RequirementEquipmentItem[] {
+  if (!doc) return [];
+  const fromRecommended = fromTna2Rows(
+    Array.isArray(doc.recommendedEquipment) ? doc.recommendedEquipment : [],
+  );
+  if (fromRecommended.length > 0) return fromRecommended;
+
+  const fromInterventionRows = (doc.interventionRows ?? [])
+    .map((row, index) => ({
+      id: slugify(row.equipment || "equipment", index),
+      name: String(row.equipment ?? "").trim(),
+      specifications: undefined,
+    }))
+    .filter((row) => row.name.length > 0);
+  if (fromInterventionRows.length > 0) return fromInterventionRows;
+
+  return [];
+}
+
+function equipmentFromInterventionText(text: string): RequirementEquipmentItem[] {
+  return fromNameList(splitEquipmentNames(text));
+}
+
+function equipmentFromInterventionTable(table: string[][] | undefined): RequirementEquipmentItem[] {
+  if (!Array.isArray(table)) return [];
+  return fromNameList(
+    table
+      .map((row) => String(row?.[0] ?? "").trim())
+      .filter(Boolean),
+  );
+}
+
+/** Equipment to acquire — TNA Form 02, Form 001 LIB, intervention narrative, or published document. */
 export function getRequirementEquipmentList(
   applicant: Applicant | null,
 ): RequirementEquipmentItem[] {
-  const tna2 = getPublishedTna2(applicant);
-  const fromTna2 = fromTna2Rows(
-    Array.isArray(tna2?.recommendedEquipment) ? tna2.recommendedEquipment : [],
-  );
+  if (!applicant) return [];
+
+  const tna2 = getPublishedTna2(applicant) ?? getTna2Draft(applicant);
+  const fromTna2 = equipmentFromTna2(tna2);
   if (fromTna2.length > 0) return fromTna2;
 
   const pp = getProjectProposalForm(applicant);
-  if (!pp) return [];
-
   const fromBudget = (pp.budgetItems ?? [])
+    .filter(isLibEquipmentRow)
     .map((row, index) => ({
       id: slugify(row.item || "equipment", index),
       name: String(row.item ?? "").trim(),
-    }))
-    .filter((row) => row.name.length > 0 && !/working capital/i.test(row.name));
-
+    }));
   if (fromBudget.length > 0) return fromBudget;
 
-  const intervention = String(pp.interventionEquipment ?? "").trim();
-  if (!intervention) return [];
+  const fromFormIntervention = equipmentFromInterventionText(
+    String(pp.interventionEquipment ?? ""),
+  );
+  if (fromFormIntervention.length > 0) return fromFormIntervention;
 
-  return intervention
-    .split(/[,;]+/)
-    .map((part, index) => ({
-      id: slugify(part, index),
-      name: part.trim(),
-    }))
-    .filter((row) => row.name.length > 0);
+  const fromCostTable = equipmentFromInterventionTable(pp.interventionCostTable);
+  if (fromCostTable.length > 0) return fromCostTable;
+
+  const storedDoc = getProjectProposalStored(applicant)?.document;
+  const fromDocIntervention = equipmentFromInterventionText(
+    String(storedDoc?.interventionEquipment ?? ""),
+  );
+  if (fromDocIntervention.length > 0) return fromDocIntervention;
+
+  return equipmentFromInterventionTable(storedDoc?.interventionCostTable);
+}
+
+/** Sign-board / MOA clause 2.25 — semicolon-separated equipment list with specs when known. */
+export function formatProposedEquipmentText(
+  items: RequirementEquipmentItem[],
+): string {
+  return items
+    .map((item) =>
+      item.specifications
+        ? `${item.name} (${item.specifications})`
+        : item.name,
+    )
+    .join("; ");
+}
+
+export function resolveProposedEquipmentText(applicant: Applicant | null): string {
+  return formatProposedEquipmentText(getRequirementEquipmentList(applicant));
 }
 
 export const QUOTATIONS_PO_GUIDANCE =
