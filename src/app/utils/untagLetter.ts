@@ -112,10 +112,13 @@ export function syncUntagLetterFromUpstream(
 
   const draft: UntagLetterForm = {
     ...base,
+    branchId: intro?.branchId || branch.branchId || undefined,
     branchManagerName:
       intro?.branchManagerName || branch.branchManagerName,
-    branchManagerTitle: intro?.branchManagerTitle || "Branch Manager",
+    branchManagerTitle:
+      intro?.branchManagerTitle || branch.branchManagerTitle || "Branch Manager",
     landbankBranch: intro?.landbankBranch || branch.landbankBranch,
+    branchAddress: intro?.branchAddress || branch.branchAddress || undefined,
     branchCityProvince:
       intro?.branchCityProvince || branch.branchCityProvince,
     proponentName:

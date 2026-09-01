@@ -448,7 +448,7 @@ export function notifyMoaUploaded(applicant: Applicant) {
     audience: "applicant",
     applicantId: applicant.id,
     kind: "info",
-    title: "Signed MOA on file",
+    title: "Memorandum of Agreement on file",
     message:
       "Your signed Memorandum of Agreement has been recorded. DOST staff will continue LandBank account setup once PDCs are recorded. You can view progress under LandBank & Withdrawal.",
     view: "landbank-withdrawal",
@@ -463,7 +463,7 @@ export function notifySigningDayComplete(applicant: Applicant) {
     kind: "success",
     title: "MOA and PDCs ready",
     message:
-      "Signed MOA and PDCs are on file. DOST staff will prepare your LandBank documents. You can view published letters under LandBank & Withdrawal.",
+      "Memorandum of Agreement and PDCs are on file. DOST staff will prepare your LandBank documents. You can view published letters under LandBank & Withdrawal.",
     urgent: true,
     view: "landbank-withdrawal",
   });

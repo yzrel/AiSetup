@@ -10,7 +10,7 @@ export const REGION_12_NAME = "SOCCSKSARGEN";
 
 export const DOST_REGION_12_OFFICE = "DOST Regional Office No. XII";
 export const DOST_REGION_12_ADDRESS =
-  "PNHLSG BLDG., Brgy. Paraiso, Koronadal City, South Cotabato";
+  "PNHLSC Bldg., Brgy. Paraiso, Koronadal City, South Cotabato";
 export const DOST_REGION_12_PHONE = "(083) 826-0114";
 export const DOST_REGION_12_EMAIL = "records@region12.dost.gov.ph";
 export const DOST_REGION_12_WEBSITE = "https://www.region12.dost.gov.ph";

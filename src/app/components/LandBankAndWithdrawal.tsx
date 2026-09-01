@@ -32,7 +32,7 @@ import { SignedDocumentUpload } from "./SignedDocumentUpload";
 import { LbpIntroductionLetterEditor } from "./LbpIntroductionLetterEditor";
 import { LbpIntroductionLetterPreview } from "./LbpIntroductionLetterPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
-import type { LbpIntroductionLetterForm, ModuleDocument, WithdrawalTrancheNum } from "../api/types";
+import type { LbpIntroductionLetterForm, ModuleDocument } from "../api/types";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import {
   notifyLandBankComplete,
@@ -55,18 +55,20 @@ import {
   validateLbpIntroductionPublish,
 } from "../utils/lbpIntroductionLetter";
 import {
+  ACTIVE_WITHDRAWAL_TRANCHES,
   downloadAuthorityLetterPdf,
   getLandBankForm,
   getLandBankOverview,
   getLandBankStored,
   hasLandBankPrerequisite,
-  isTranche1Complete,
-  isTranche2Complete,
-  isTranche3Complete,
+  isAuthorityLetterReady,
   isWithdrawalRequestReady,
+  overviewTrancheAmount,
   saveLandBankDraft,
   submitLandBank,
+  trancheDisplayLabel,
   validateLandBankSubmit,
+  type ActiveWithdrawalTranche,
 } from "../utils/landBankWithdrawal";
 import { allowWhenDemo, gateOpen } from "../utils/demoMode";
 import { WithdrawalTranchePanel } from "./WithdrawalTranchePanel";
@@ -78,7 +80,7 @@ type StepId =
   | "account"
   | "withdrawal"
   | "authority";
-type WithdrawalTrancheTab = WithdrawalTrancheNum;
+type WithdrawalTrancheTab = ActiveWithdrawalTranche;
 
 const STEP_IDS: StepId[] = [
   "prerequisites",
@@ -131,7 +133,7 @@ export function LandBankAndWithdrawal({
   const [withdrawalTrancheTab, setWithdrawalTrancheTab] = useState<WithdrawalTrancheTab>(1);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [uploadDate, setUploadDate] = useState("");
-  const [authorityTranche, setAuthorityTranche] = useState<WithdrawalTrancheNum>(1);
+  const [authorityTranche, setAuthorityTranche] = useState<ActiveWithdrawalTranche>(1);
   const [lbpForm, setLbpForm] = useState<LbpIntroductionLetterForm | null>(null);
   const [lbpSaveNotice, setLbpSaveNotice] = useState("");
   const [lbpPublishNotice, setLbpPublishNotice] = useState("");
@@ -171,9 +173,8 @@ export function LandBankAndWithdrawal({
   const accountReady = !!form?.accountSnapshot;
   const withdrawalUnlocked = gateOpen(accountReady);
   const withdrawalReady = form ? isWithdrawalRequestReady(form) : false;
-  const tranche1Ready = form ? isTranche1Complete(form.tranches.first) : false;
-  const tranche2Ready = form ? isTranche2Complete(form.tranches.second) : false;
-  const tranche3Ready = form ? isTranche3Complete(form.tranches.third) : false;
+  const trancheReady = (n: ActiveWithdrawalTranche) =>
+    form ? isAuthorityLetterReady(form, n) : false;
   const authorityReady = !!(stored?.submitted || form?.authorityLetterGenerated);
   const uploadedBy = user?.email ?? "applicant";
   const showStaffWorkflow = isStaff;
@@ -309,19 +310,11 @@ export function LandBankAndWithdrawal({
 
   const handleAuthorityDownload = () => {
     if (!applicant || !form) return;
-    const ready =
-      authorityTranche === 1
-        ? isTranche1Complete(form.tranches.first)
-        : authorityTranche === 2
-          ? isTranche2Complete(form.tranches.second)
-          : isTranche3Complete(form.tranches.third);
-    if (!allowWhenDemo(ready)) {
+    if (!allowWhenDemo(isAuthorityLetterReady(form, authorityTranche))) {
       setSubmitErrors([
         authorityTranche === 1
           ? "Complete the 1st tranche letter request (signed letter, quotations, photos) before downloading authority."
-          : authorityTranche === 2
-            ? "Upload the signed 2nd tranche letter request before downloading authority."
-            : "Upload the signed 3rd tranche letter request before downloading authority.",
+          : "Upload the signed 2nd tranche letter request before downloading authority.",
       ]);
       setStep("withdrawal");
       return;
@@ -375,8 +368,8 @@ export function LandBankAndWithdrawal({
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <p>
             {showStaffWorkflow
-              ? "Signed MOA must be uploaded in Approval Letter, and staff must record post-dated checks (PDCs) on the MOA & PDCs step before LandBank enrollment."
-              : "DOST staff are completing your signed MOA and PDC prerequisites. You can view LandBank documents here once they are ready."}{" "}
+              ? "Memorandum of Agreement signed scan must be uploaded in Approval Letter, and staff must record post-dated checks (PDCs) on the MOA & PDCs step before LandBank enrollment."
+              : "DOST staff are completing your Memorandum of Agreement and PDC prerequisites. You can view LandBank documents here once they are ready."}{" "}
             {!hasApprovalLetterAcknowledged(applicant) &&
               showStaffWorkflow &&
               "Approval letter conforme is also required."}
@@ -451,17 +444,17 @@ export function LandBankAndWithdrawal({
         <div className={`${MODULE_SHELL} border border-gray-200`}>
           {moduleCardHeader(
             <Upload className="w-4 h-4" />,
-            "Prerequisites — Signed MOA & PDCs",
+            "Prerequisites — Memorandum of Agreement & PDCs",
           )}
           <div className="p-5 space-y-6">
             <div className="space-y-3">
               <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                <FileText className="w-4 h-4" /> Signed Memorandum of Agreement
+                <FileText className="w-4 h-4" /> Memorandum of Agreement
               </p>
               {signedMoa ? (
                 <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 shrink-0" />
-                  Signed MOA on file
+                  Signed scan on file
                   {signedMoa.moaSignedDate
                     ? ` — ${new Date(signedMoa.moaSignedDate).toLocaleDateString("en-PH", {
                         dateStyle: "long",
@@ -472,13 +465,13 @@ export function LandBankAndWithdrawal({
                 </p>
               ) : showStaffWorkflow ? (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  Upload the signed MOA in the Approval Letter module (Signed MOA
-                  step). LandBank does not accept MOA uploads here.
+                  Upload the signed scan in the Approval Letter module (Memorandum of
+                  Agreement step). LandBank does not accept MOA uploads here.
                 </p>
               ) : (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  Awaiting DOST staff to upload the signed MOA in Approval Letter after
-                  on-site signing.
+                  Awaiting DOST staff to upload the signed Memorandum of Agreement scan
+                  in Approval Letter after on-site signing.
                 </p>
               )}
             </div>
@@ -724,8 +717,8 @@ export function LandBankAndWithdrawal({
           <div className="p-5 space-y-5">
             <p className="text-sm text-gray-500">
               {showStaffWorkflow
-                ? "Generate and process Letter Requests for Withdrawal for the 1st, 2nd, and 3rd tranches using equipment from the project proposal budgetary requirement."
-                : "Review withdrawal letter packages prepared by DOST staff for each tranche."}
+                ? "Generate and process Letter Requests for Withdrawal for the 1st tranche (required). A 2nd tranche is optional when remaining equipment will be withdrawn later."
+                : "Review withdrawal letter packages prepared by DOST staff. The 1st tranche may be withdrawn on its own; a 2nd tranche is optional."}
             </p>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
@@ -759,24 +752,17 @@ export function LandBankAndWithdrawal({
                     <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span className="text-gray-700">
                       1st Tranche: {overview.tranche1Amount}
-                      {tranche1Ready ? " ✓" : ""}
+                      {trancheReady(1) ? " ✓" : ""}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span className="text-gray-700">
-                      2nd Tranche: {overview.tranche2Amount}
-                      {tranche2Ready ? " ✓" : ""}
+                      2nd Tranche (optional): {overview.tranche2Amount}
+                      {trancheReady(2) ? " ✓" : ""}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span className="text-gray-700">
-                      3rd Tranche: {overview.tranche3Amount}
-                      {tranche3Ready ? " ✓" : ""}
-                    </span>
-                  </div>
-                  <div className="col-span-2 flex items-center gap-2">
+                  <div className="sm:col-span-2 flex items-center gap-2">
                     <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span className="text-gray-700">
                       Remaining Balance: {overview.remainingBalance}
@@ -803,32 +789,31 @@ export function LandBankAndWithdrawal({
             {applicant && form && (
               <>
                 <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
-                  {(
-                    [
-                      { n: 1 as const, label: "1st Tranche", ready: tranche1Ready },
-                      { n: 2 as const, label: "2nd Tranche", ready: tranche2Ready },
-                      { n: 3 as const, label: "3rd Tranche", ready: tranche3Ready },
-                    ] as const
-                  ).map((tab) => (
+                  {ACTIVE_WITHDRAWAL_TRANCHES.map((n) => {
+                    const ready = trancheReady(n);
+                    const optional = n === 2;
+                    return (
                     <button
-                      key={tab.n}
+                      key={n}
                       type="button"
-                      onClick={() => setWithdrawalTrancheTab(tab.n)}
+                      onClick={() => setWithdrawalTrancheTab(n)}
                       className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        withdrawalTrancheTab === tab.n
+                        withdrawalTrancheTab === n
                           ? "text-white"
                           : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
                       style={
-                        withdrawalTrancheTab === tab.n
+                        withdrawalTrancheTab === n
                           ? { background: DOST_BLUE }
                           : undefined
                       }
                     >
-                      {tab.label}
-                      {tab.ready && <CheckCircle className="w-3.5 h-3.5" />}
+                      {trancheDisplayLabel(n)} Tranche
+                      {optional ? " (optional)" : ""}
+                      {ready && <CheckCircle className="w-3.5 h-3.5" />}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <WithdrawalTranchePanel
@@ -884,50 +869,34 @@ export function LandBankAndWithdrawal({
           <div className="p-5 space-y-4">
             <p className="text-sm text-gray-600">
               {showStaffWorkflow
-                ? "After the withdrawal request is complete, generate the authority letter for the selected tranche."
-                : "When DOST staff complete your withdrawal documents, download the authority letter and present it at your LandBank branch with valid government-issued IDs."}
+                ? "After the 1st tranche withdrawal request is complete, generate the authority letter. A 2nd tranche letter is optional and not required to proceed."
+                : "When DOST staff complete your withdrawal documents, download the authority letter and present it at your LandBank branch with valid government-issued IDs. The 1st tranche may be withdrawn on its own."}
             </p>
 
             <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  {
-                    n: 1 as const,
-                    label: "1st Tranche",
-                    ready: tranche1Ready,
-                    amount: overview.tranche1Amount,
-                  },
-                  {
-                    n: 2 as const,
-                    label: "2nd Tranche",
-                    ready: tranche2Ready,
-                    amount: overview.tranche2Amount,
-                  },
-                  {
-                    n: 3 as const,
-                    label: "3rd Tranche",
-                    ready: tranche3Ready,
-                    amount: overview.tranche3Amount,
-                  },
-                ] as const
-              ).map((tab) => (
+              {ACTIVE_WITHDRAWAL_TRANCHES.map((n) => {
+                const ready = trancheReady(n);
+                const amount = overviewTrancheAmount(overview, n);
+                return (
                 <button
-                  key={tab.n}
+                  key={n}
                   type="button"
-                  onClick={() => setAuthorityTranche(tab.n)}
+                  onClick={() => setAuthorityTranche(n)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    authorityTranche === tab.n
+                    authorityTranche === n
                       ? "text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                   style={
-                    authorityTranche === tab.n ? { background: DOST_BLUE } : undefined
+                    authorityTranche === n ? { background: DOST_BLUE } : undefined
                   }
                 >
-                  {tab.label} ({tab.amount})
-                  {tab.ready && <CheckCircle className="w-3 h-3" />}
+                  {trancheDisplayLabel(n)} Tranche
+                  {n === 2 ? " (optional)" : ""} ({amount})
+                  {ready && <CheckCircle className="w-3 h-3" />}
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -953,12 +922,7 @@ export function LandBankAndWithdrawal({
                     {
                       icon: <Banknote className="w-3.5 h-3.5" />,
                       label: `Amount to Withdraw (T${authorityTranche})`,
-                      value:
-                        authorityTranche === 1
-                          ? overview.tranche1Amount
-                          : authorityTranche === 2
-                            ? overview.tranche2Amount
-                            : overview.tranche3Amount,
+                      value: overviewTrancheAmount(overview, authorityTranche),
                     },
                   ].map((row) => (
                     <div
@@ -988,13 +952,7 @@ export function LandBankAndWithdrawal({
                     type="button"
                     onClick={handleAuthorityDownload}
                     disabled={
-                      !allowWhenDemo(
-                        authorityTranche === 1
-                          ? tranche1Ready
-                          : authorityTranche === 2
-                            ? tranche2Ready
-                            : tranche3Ready,
-                      )
+                      !allowWhenDemo(trancheReady(authorityTranche))
                     }
                     className="w-full flex items-center justify-center gap-2 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
                     style={{ background: DOST_BLUE }}
@@ -1006,13 +964,7 @@ export function LandBankAndWithdrawal({
                     type="button"
                     onClick={handleAuthorityDownload}
                     disabled={
-                      !allowWhenDemo(
-                        authorityTranche === 1
-                          ? tranche1Ready
-                          : authorityTranche === 2
-                            ? tranche2Ready
-                            : tranche3Ready,
-                      )
+                      !allowWhenDemo(trancheReady(authorityTranche))
                     }
                     className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 text-sm font-medium py-2.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >

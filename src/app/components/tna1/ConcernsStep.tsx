@@ -4,6 +4,8 @@
  * TNA Form 01 — Step 4: Production Problems, Concerns & Marketing.
  */
 
+import { FIELD_GUIDANCE } from "../../constants/fieldGuidance";
+import { AiAssistTextarea } from "../AiAssistField";
 import { MODULE_BODY } from "../moduleTheme";
 import type { Tna1StepContext } from "./stepContext";
 import {
@@ -15,7 +17,7 @@ import {
 } from "./tna1Ui";
 
 export function ConcernsStep({ ctx }: { ctx: Tna1StepContext }) {
-  const { form, set, setStep, goToStep } = ctx;
+  const { form, set, tnaAi, setStep, goToStep } = ctx;
 
   return (
     <div className={MODULE_BODY}>
@@ -26,15 +28,22 @@ export function ConcernsStep({ ctx }: { ctx: Tna1StepContext }) {
         <h2 className={sectionTitle}>📣 Marketing</h2>
         <div className="space-y-3">
           {[
-            { label: "Marketing Plan",          key: "marketingPlan" },
-            { label: "Market Outlets and Number", key: "marketOutlets" },
-            { label: "Promotional Strategies",  key: "promotionalStrategies" },
-            { label: "Market Competitors",      key: "marketCompetitors" },
+            { label: "Marketing Plan",          key: "marketingPlan", hint: FIELD_GUIDANCE.marketingPlan },
+            { label: "Market Outlets and Number", key: "marketOutlets", hint: FIELD_GUIDANCE.marketOutlets },
+            { label: "Promotional Strategies",  key: "promotionalStrategies", hint: FIELD_GUIDANCE.promotionalStrategies },
+            { label: "Market Competitors",      key: "marketCompetitors", hint: FIELD_GUIDANCE.marketCompetitors },
           ].map(item => (
-            <div key={item.key}>
-              <label className={labelCls}>{item.label}</label>
-              <textarea rows={2} value={form[item.key]} onChange={e => set(item.key, e.target.value)} className={inputCls} />
-            </div>
+            <AiAssistTextarea
+              key={item.key}
+              label={item.label}
+              value={form[item.key]}
+              onChange={(value) => set(item.key, value)}
+              inputClassName={inputCls}
+              labelClassName={labelCls}
+              minHeight="min-h-[80px]"
+              hint={item.hint}
+              {...tnaAi(item.key, (v) => set(item.key, v))}
+            />
           ))}
         </div>
         <div className="mt-4">

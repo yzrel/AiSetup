@@ -54,6 +54,8 @@ export async function printRtecReportPdf(
 
   const printRoot = window.document.createElement("div");
   printRoot.id = PRINT_ROOT_ID;
+  // Same stylesheet scope as on-screen preview (`.rtec-form-document …`).
+  printRoot.className = "rtec-form-document";
   window.document.body.appendChild(printRoot);
 
   let reactRoot: Root | null = createRoot(printRoot);

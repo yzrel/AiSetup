@@ -3,8 +3,8 @@
  */
 
 import { useRef } from "react";
-import { Printer } from "lucide-react";
 import type { LoiDocumentResponse } from "../api/types";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import { coerceLoiDocument } from "../utils/loiLetter";
 import { PreviewToolbar } from "./PreviewLayout";
 
@@ -62,13 +62,7 @@ export function LoiDocumentPreview({
                 PSTO defaulted to regional
               </span>
             )}
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5" /> Print / Download
-            </button>
+            <DocumentPrintButton onClick={handlePrint} />
           </div>
         </PreviewToolbar>
       )}

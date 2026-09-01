@@ -6,6 +6,7 @@
 
 import { MODULE_BODY } from "../moduleTheme";
 import { AiAssistTextarea } from "../AiAssistField";
+import { FIELD_GUIDANCE } from "../../constants/fieldGuidance";
 import type { Tna1StepContext } from "./stepContext";
 import { DOST_BLUE, InfoBanner, inputCls, labelCls, sectionTitle } from "./tna1Ui";
 
@@ -21,12 +22,13 @@ export function FinanceHrStep({ ctx }: { ctx: Tna1StepContext }) {
         <h2 className={sectionTitle}>💰 Finance</h2>
         <div className="space-y-3">
           {[
-            { label: "Cash Flow or Other Related Documents", key: "cashFlow" },
-            { label: "Source(s) of Capital / Credit",        key: "capitalSource" },
-            { label: "Accounting System",                     key: "accountingSystem" },
+            { label: "Cash Flow or Other Related Documents", key: "cashFlow", hint: FIELD_GUIDANCE.cashFlow },
+            { label: "Source(s) of Capital / Credit",        key: "capitalSource", hint: FIELD_GUIDANCE.capitalSource },
+            { label: "Accounting System",                     key: "accountingSystem", hint: FIELD_GUIDANCE.accountingSystem },
           ].map(item => (
             <div key={item.key}>
               <label className={labelCls}>{item.label}</label>
+              {item.hint && <p className="text-xs text-gray-400 mb-2">{item.hint}</p>}
               <textarea rows={2} value={form[item.key]} onChange={e => set(item.key, e.target.value)} className={inputCls} />
             </div>
           ))}
@@ -67,7 +69,7 @@ export function FinanceHrStep({ ctx }: { ctx: Tna1StepContext }) {
 
       {/* Signatures */}
       <div className="p-5 bg-gray-50 border border-gray-200 rounded-xl">
-        <div className="hidden sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-2">
+        <div className="hidden sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-2 min-w-0">
           <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Prepared by:</p>
           <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Validated by:</p>
 

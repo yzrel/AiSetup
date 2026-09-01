@@ -38,6 +38,7 @@ export type AdminView =
   | "clients"
   | "client-files"
   | "account-management"
+  | "landbank-branches"
   | "my-account"
   | "sent-emails";
 
@@ -61,6 +62,7 @@ export const KNOWN_ADMIN_VIEWS: readonly AdminView[] = [
   "clients",
   "client-files",
   "account-management",
+  "landbank-branches",
   "my-account",
   "sent-emails",
 ] as const;
@@ -136,6 +138,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   clients: STAFF_ALL,
   "client-files": STAFF_ALL,
   "account-management": STAFF_ALL,
+  "landbank-branches": STAFF_ALL,
   "my-account": ["client", "applicant"],
   "sent-emails": STAFF_ALL,
 };

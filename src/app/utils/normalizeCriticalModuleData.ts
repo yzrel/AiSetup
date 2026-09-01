@@ -8,6 +8,7 @@
 import type {
   ApprovalLetterForm,
   ApprovalLetterStored,
+  MoaAnnexCForm,
   SignedMoaDocument,
 } from "../api/types";
 
@@ -177,8 +178,22 @@ export function normalizeApprovalLetterStored(
       typeof obj.rdDecidedAt === "string" ? obj.rdDecidedAt : undefined,
     rdRemarks: typeof obj.rdRemarks === "string" ? obj.rdRemarks : undefined,
     signedMoa: normalizeSignedMoaDocument(obj.signedMoa),
+    moaForm: normalizeMoaAnnexCForm(obj.moaForm),
     updatedAt: typeof obj.updatedAt === "string" ? obj.updatedAt : undefined,
   };
+}
+
+function normalizeMoaAnnexCForm(raw: unknown): MoaAnnexCForm | undefined {
+  const obj = asRecord(raw);
+  if (!obj) return undefined;
+  const out: Record<string, string> = {};
+  let any = false;
+  for (const [key, value] of Object.entries(obj)) {
+    const s = typeof value === "string" ? value : value == null ? "" : String(value);
+    out[key] = s;
+    if (s.trim()) any = true;
+  }
+  return any ? (out as unknown as MoaAnnexCForm) : undefined;
 }
 
 export function normalizeSignedDocumentsMap(
@@ -586,6 +601,7 @@ export function mergeApprovalLetterPreservePublished(
     published: true,
     publishedAt: existing.publishedAt ?? incoming.publishedAt,
     signedMoa: incoming.signedMoa ?? existing.signedMoa,
+    moaForm: incoming.moaForm ?? existing.moaForm,
     acknowledged: incoming.acknowledged || existing.acknowledged,
     acknowledgedAt: incoming.acknowledgedAt ?? existing.acknowledgedAt,
     rdDecision: incoming.rdDecision ?? existing.rdDecision,

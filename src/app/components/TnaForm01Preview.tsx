@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { Printer } from "lucide-react";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import { PreviewToolbar } from "./PreviewLayout";
 import { TnaForm01Document } from "./tnaForm01/TnaForm01Document";
 import {
@@ -54,20 +54,13 @@ export function TnaForm01Preview({
               </span>
             )}
           </p>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
-          >
-            <Printer className="w-4 h-4" />
-            Print / Save as PDF
-          </button>
+          <DocumentPrintButton onClick={handlePrint} />
         </PreviewToolbar>
       )}
 
       <div
         id="tna-form-01-preview"
-        className="tna-form-document overflow-x-auto flex justify-center py-4 px-2 sm:px-4 bg-gray-100 print:bg-white print:py-0 print:px-0"
+        className="tna-form-document official-doc-preview-shell overflow-x-auto flex justify-start sm:justify-center py-4 px-2 sm:px-4 bg-gray-100 print:bg-white print:py-0 print:px-0"
       >
         <TnaForm01Document
           form={form}

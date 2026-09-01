@@ -2,8 +2,8 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { Printer } from "lucide-react";
 import type { PrePisDraftForm } from "../api/types";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import {
   FORM_008_ASSISTANCE_OPTIONS,
   FORM_008_FOOTER,
@@ -38,14 +38,7 @@ export function PrePisPreview({
     <div>
       {showToolbar && onPrint && (
         <PreviewToolbar className="justify-end mb-3">
-          <button
-            type="button"
-            onClick={onPrint}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white"
-          >
-            <Printer className="w-4 h-4" />
-            Print for MOA signing day
-          </button>
+          <DocumentPrintButton onClick={onPrint} label="Print for MOA signing day" />
         </PreviewToolbar>
       )}
 

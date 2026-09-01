@@ -28,7 +28,9 @@ import {
   persistRequirementNotes,
   persistRequirementStaffReview,
   persistRequirementUploads,
+  resolveProjectedFsYears,
   shouldNotifyRequirementRemark,
+  QUOTATIONS_PO_GUIDANCE,
   type RequirementStaffRemark,
   type StoredRequirementUpload,
 } from "../utils/submissionRequirements";
@@ -416,7 +418,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const handleGenerateProjected = () => {
     if (!applicant) return;
     if (!hasFrozenFinancialProjection(applicant)) {
-      alert("Freeze the 5-year projection on Project Proposal → Financial first.");
+      alert(`Freeze the ${resolveProjectedFsYears(applicant)}-year projection on Project Proposal → Financial first.`);
       return;
     }
     markProjectedRequirementGenerated(applicant.id, applicant.applicationId);
@@ -655,11 +657,19 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                           {doc.uploaded && !doc.file && doc.fileName && (
                             <p className="text-xs text-gray-400 truncate">{doc.fileName}</p>
                           )}
+                          {doc.hint && (
+                            <p className="text-xs text-gray-500 mt-1">{doc.hint}</p>
+                          )}
+                          {doc.complianceId === "quotations" && !doc.hint && (
+                            <p className="text-xs text-gray-500 mt-1">{QUOTATIONS_PO_GUIDANCE}</p>
+                          )}
                           {doc.id === "projected" && doc.generatedFrom === "financialProjection" && (
                             <p className="text-xs text-green-700">Generated from project proposal financial projection</p>
                           )}
                           {doc.id === "projected" && !doc.uploaded && (
-                            <p className="text-xs text-gray-500">Freeze the projection on Project Proposal → Financial, then Generate — or upload a signed PDF.</p>
+                            <p className="text-xs text-gray-500">
+                              Freeze the {applicant ? resolveProjectedFsYears(applicant) : 5}-year projection on Project Proposal → Financial (per project duration), then Generate — or upload a signed PDF.
+                            </p>
                           )}
                         </div>
                       </div>
@@ -720,6 +730,9 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                           : <Upload className="w-5 h-5 text-gray-300 flex-shrink-0" />}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-gray-700">{doc.name}</p>
+                          {doc.hint && (
+                            <p className="text-xs text-gray-500 mt-1">{doc.hint}</p>
+                          )}
                           {doc.uploaded && doc.file && (
                             <p className="text-xs text-gray-400 truncate">{doc.file.name} · {(doc.file.size / 1024).toFixed(1)} KB</p>
                           )}

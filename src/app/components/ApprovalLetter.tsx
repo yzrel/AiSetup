@@ -17,14 +17,18 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
+import {
+  DocumentPrintButton,
+  EditPreviewToggleButton,
+} from "./DocumentActionButtons";
 import { AuthUser, authStore } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
-import { ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
+import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import { notifyApprovalLetterPublished, notifyApprovalLetterRdDecision, notifyApprovalLetterConforme } from "../utils/notificationHelpers";
-import type { ApprovalLetterForm } from "../api/types";
+import type { ApprovalLetterForm, MoaAnnexCForm } from "../api/types";
 import {
   acknowledgeApprovalLetter,
   canPublishApprovalLetter,
@@ -41,9 +45,17 @@ import {
   validateApprovalLetterAcknowledge,
   validateApprovalLetterPublish,
 } from "../utils/approvalLetter";
+import {
+  getMoaAnnexCForm,
+  saveMoaAnnexCDraft,
+  syncMoaAnnexCFromPrior,
+} from "../utils/moaAnnexC";
+import { printMoaAnnexCPdf } from "../utils/moaAnnexCPrint";
 import { allowWhenDemo, gateOpen, isDemoModeActive } from "../utils/demoMode";
 import { ApprovalLetterEditor } from "./ApprovalLetterEditor";
 import { ApprovalLetterPreview } from "./ApprovalLetterPreview";
+import { MoaAnnexCEditor } from "./MoaAnnexCEditor";
+import { MoaAnnexCPreview } from "./MoaAnnexCPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import {
   SignedMoaUploadPanel,
@@ -56,7 +68,7 @@ const STEPS: ModuleStep[] = [
   { id: "overview", label: "Overview", icon: <FileText className="w-4 h-4" /> },
   { id: "details", label: "Notice of Approval details", icon: <FileText className="w-4 h-4" /> },
   { id: "publish", label: "Publish", icon: <Send className="w-4 h-4" /> },
-  { id: "moa", label: "Signed MOA", icon: <Upload className="w-4 h-4" /> },
+  { id: "moa", label: "Memorandum of Agreement", icon: <FileText className="w-4 h-4" /> },
 ];
 
 const STEP_IDS = ["overview", "details", "publish", "moa"] as const;
@@ -72,6 +84,8 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   const { applicant, isStaff } = useStaffApplicant(user);
   const [step, setStep] = useState<StepId>("overview");
   const [form, setForm] = useState<ApprovalLetterForm | null>(null);
+  const [moaForm, setMoaForm] = useState<MoaAnnexCForm | null>(null);
+  const [moaEditMode, setMoaEditMode] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [publishNotice, setPublishNotice] = useState("");
@@ -89,15 +103,23 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   const loadForm = useCallback((app: Applicant | null) => {
     if (!app) {
       setForm(null);
+      setMoaForm(null);
       return;
     }
     const loaded = getApprovalLetterForm(app);
     setForm(loaded);
     if (loaded.conformeSignedName) setConformeName(loaded.conformeSignedName);
+    const moa = getMoaAnnexCForm(app);
+    setMoaForm(moa);
+    const stored = getApprovalLetterStored(app);
+    if (!stored?.moaForm) {
+      saveMoaAnnexCDraft(app.id, moa);
+    }
   }, []);
 
   useEffect(() => {
     loadForm(applicant);
+    setMoaEditMode(false);
   }, [applicant?.id, loadForm]);
 
   useApplicantSubscription(applicant?.id, loadForm);
@@ -130,6 +152,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     if (!applicant || !form) return;
     if (step === "moa") {
       moaPanelRef.current?.saveDraft();
+      if (moaForm) saveMoaAnnexCDraft(applicant.id, moaForm);
     }
     // Staff re-endorsement clears a prior RD disapproval so RD can decide again.
     saveApprovalLetterDraft(applicant.id, form, {
@@ -141,6 +164,26 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
         : "Draft saved.",
     );
     setTimeout(() => setSaveNotice(""), 3000);
+  };
+
+  const handleMoaFormChange = (next: MoaAnnexCForm) => {
+    setMoaForm(next);
+    if (!applicant) return;
+    saveMoaAnnexCDraft(applicant.id, next);
+  };
+
+  const handleMoaSync = () => {
+    if (!applicant || !moaForm) return;
+    const synced = syncMoaAnnexCFromPrior(moaForm, applicant);
+    setMoaForm(synced);
+    saveMoaAnnexCDraft(applicant.id, synced);
+    setSaveNotice("Synced MOA fields from Notice of Approval / prior modules.");
+    setTimeout(() => setSaveNotice(""), 3000);
+  };
+
+  const handleMoaPrint = () => {
+    if (!moaForm) return;
+    void printMoaAnnexCPdf(moaForm, applicant?.applicationId, applicant);
   };
 
   const handleFormChange = (next: ApprovalLetterForm) => {
@@ -261,7 +304,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
   return (
     <ModuleWorkflowLayout
       formKey="003"
-      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare; the Regional Director Approves or Disapproves; staff publish. The applicant acknowledges conforme, then proceeds to LandBank & Withdrawal (signed MOA and PDCs required before fund release)."
+      subtitle="Official DOST approval letter issued after RTEC evaluation. Staff prepare; the Regional Director Approves or Disapproves; staff publish. The applicant acknowledges conforme, then proceeds to LandBank & Withdrawal (Memorandum of Agreement and PDCs required before fund release)."
       user={user}
       steps={demoStaffSteps ? STEPS : undefined}
       currentStep={demoStaffSteps ? step : undefined}
@@ -353,58 +396,134 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     >
       {applicant && form && (showStaffWorkflow || gateOpen(isPublished)) && (
         <div className="space-y-4">
-              {showStaffWorkflow && step === "moa" && (
+              {showStaffWorkflow && step === "moa" && moaForm && (
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <FileText className="w-5 h-5 text-[#0C2461] mt-0.5" />
                     <div>
                       <p className="font-semibold text-gray-800">
-                        Signed Memorandum of Agreement
+                        Memorandum of Agreement
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
-                        Staff upload only — attach the scanned signed MOA (PDF or image)
-                        from on-site MOA signing day.
+                        Generate the official Proforma MOA (Annex C) from case data,
+                        preview and print for signing, then attach the signed scan
+                        after the signing day.
                       </p>
                     </div>
                   </div>
 
-                  {!gateOpen(isPublished) ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 space-y-3">
-                      <p>
-                        Publish the Notice of Approval (Publish step) before uploading the signed
-                        MOA.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setStep("publish")}
-                        className="text-sm font-semibold text-[#0C2461] hover:underline"
-                      >
-                        Go to Publish step →
-                      </button>
-                    </div>
+                  <div className={`${ACTION_ROW} flex-wrap`}>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 text-sm font-bold hover:bg-gray-50"
+                    >
+                      Save Draft
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleMoaSync}
+                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Sync fields
+                    </button>
+                    <EditPreviewToggleButton
+                      isPreview={!moaEditMode}
+                      onToggle={() => setMoaEditMode((m) => !m)}
+                      editLabel="Edit MOA"
+                      previewLabel="Preview MOA"
+                    />
+                    {!moaEditMode && (
+                      <DocumentPrintButton onClick={handleMoaPrint} />
+                    )}
+                  </div>
+
+                  {moaEditMode ? (
+                    <MoaAnnexCEditor
+                      form={moaForm}
+                      onChange={handleMoaFormChange}
+                      onSave={handleSave}
+                    />
                   ) : (
-                    applicant && (
-                      <SignedMoaUploadPanel
-                        ref={moaPanelRef}
+                    <>
+                      <p className="text-xs text-gray-500">
+                        Official Proforma MOA (Annex C) layout. Preview matches the
+                        printed government form.
+                      </p>
+                      <MoaAnnexCPreview
+                        form={moaForm}
                         applicant={applicant}
-                        uploadedBy={uploadedBy}
-                        user={user}
-                        isAcknowledged={isAcknowledged}
-                        requireAcknowledged={false}
-                        onSaved={() => setMoaRefresh((n) => n + 1)}
+                        applicationId={applicant.applicationId}
+                        onPrint={handleMoaPrint}
+                        showToolbar={false}
                       />
-                    )
+                    </>
                   )}
 
-                  {signedMoa?.fileName && signedMoa.moaSignedDate && (
-                    <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Signed MOA on file —{" "}
-                      {new Date(signedMoa.moaSignedDate).toLocaleDateString("en-PH", {
-                        dateStyle: "long",
-                      })}
-                    </p>
-                  )}
+                  <div className="border-t border-gray-100 pt-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Upload className="w-5 h-5 text-[#0C2461] mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          Attach signed scan
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          After on-site signing, upload the signed MOA (PDF or image).
+                          Required before LandBank enrollment.
+                        </p>
+                      </div>
+                    </div>
+
+                    {!gateOpen(isPublished) ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 space-y-3">
+                        <p>
+                          Publish the Notice of Approval (Publish step) before uploading
+                          the signed scan.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setStep("publish")}
+                          className="text-sm font-semibold text-[#0C2461] hover:underline"
+                        >
+                          Go to Publish step →
+                        </button>
+                      </div>
+                    ) : (
+                      applicant && (
+                        <SignedMoaUploadPanel
+                          ref={moaPanelRef}
+                          applicant={applicant}
+                          uploadedBy={uploadedBy}
+                          user={user}
+                          isAcknowledged={isAcknowledged}
+                          requireAcknowledged={false}
+                          onSaved={() => setMoaRefresh((n) => n + 1)}
+                        />
+                      )
+                    )}
+
+                    {signedMoa?.fileName && signedMoa.moaSignedDate && (
+                      <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Signed scan on file —{" "}
+                        {new Date(signedMoa.moaSignedDate).toLocaleDateString("en-PH", {
+                          dateStyle: "long",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!showStaffWorkflow && applicant && moaForm && gateOpen(isPublished) && (
+                <div className="space-y-4">
+                  <MoaAnnexCPreview
+                    form={moaForm}
+                    applicant={applicant}
+                    applicationId={applicant.applicationId}
+                    compact={false}
+                  />
                 </div>
               )}
 
@@ -504,16 +623,17 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               {!showStaffWorkflow && isAcknowledged && !signedMoa && (
                 <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   Conforme acknowledged. Proceed to LandBank &amp; Withdrawal. DOST will
-                  schedule MOA signing with your PSTO — staff upload the signed MOA there
-                  (you do not upload it yourself).
+                  schedule Memorandum of Agreement signing with your PSTO — staff generate
+                  and upload the signed scan there (you do not upload it yourself).
                 </p>
               )}
 
               {!showStaffWorkflow && isAcknowledged && signedMoa && (
                 <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  Conforme acknowledged. Signed MOA is on file. Continue to LandBank &amp;
-                  Withdrawal for account setup once PDCs are recorded.
+                  Conforme acknowledged. Memorandum of Agreement signed scan is on file.
+                  Continue to LandBank &amp; Withdrawal for account setup once PDCs are
+                  recorded.
                 </p>
               )}
 

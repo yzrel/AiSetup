@@ -231,6 +231,42 @@ describe("company profile MSME size label", () => {
       "Micro · ₱3M - ₱15M (Php 15,000,000.00) · 7 employees",
     );
   });
+
+  it("uses prescreening numberOfEmployees when PP employee fields are empty", () => {
+    const app: Applicant = {
+      id: "ps-2",
+      applicationId: "LOI-TEST-002",
+      applicantName: "Owner",
+      designation: "Owner",
+      enterpriseName: "Sample Co",
+      contactNumber: "09170000000",
+      emailAddress: "test@example.com",
+      businessType: "DTI",
+      businessNature: "",
+      businessSector: "ICT",
+      yearsOfOperation: "5",
+      enterpriseType: "",
+      msmeSize: "Small",
+      assetSize: "5000000",
+      region: "Cotabato",
+      address: "Antipas, Cotabato",
+      currentModule: "project-proposal",
+      qualified: true,
+      submittedAt: "",
+      lastUpdated: "",
+      moduleData: {
+        classificationRange: "₱3M - ₱15M",
+        numberOfEmployees: "12",
+      },
+    };
+    const label = companyProfileMsmeSizeLabelFromApplicant(
+      app,
+      emptyProjectProposalForm(),
+    );
+    expect(label).toBe(
+      "Small · ₱3M - ₱15M (Php 5,000,000.00) · 12 employees",
+    );
+  });
 });
 
 describe("derived Direct Workers counts", () => {

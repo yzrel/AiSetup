@@ -799,6 +799,15 @@ export function companyProfileMsmeSizeLabelFromApplicant(
 
   let employeeTotal = companyProfileEmployeeTotals(form).total;
   if (employeeTotal <= 0 && applicant) {
+    const prescreeningCount = parseInt(
+      String(applicant.moduleData?.numberOfEmployees ?? "").trim(),
+      10,
+    );
+    if (Number.isFinite(prescreeningCount) && prescreeningCount > 0) {
+      employeeTotal = prescreeningCount;
+    }
+  }
+  if (employeeTotal <= 0 && applicant) {
     const tna1Form = (
       applicant.moduleData?.tna1 as { form?: Record<string, unknown> } | undefined
     )?.form;

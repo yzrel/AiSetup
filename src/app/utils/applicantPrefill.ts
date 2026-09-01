@@ -37,7 +37,9 @@ export function buildLoiAdditionalFromApplicant(
     normalizeRegistrationType(applicant?.businessType ?? "");
 
   return {
-    dateEstablished: current.dateEstablished || String(md.dateEstablished ?? ""),
+    dateEstablished:
+      current.dateEstablished ||
+      String(md.dateEstablished ?? md.companyStartDate ?? ""),
     tinNumber: current.tinNumber || String(md.tinNumber ?? ""),
     province:
       current.province ||

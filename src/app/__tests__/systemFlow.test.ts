@@ -578,7 +578,14 @@ describe("system flow: registration through project close-out", () => {
       ...getCloseOutForm(getApplicant(id)),
       terminalReportFileName: "terminal-report.pdf",
       auditedFinancialFileName: "audited-financials.pdf",
-      equipmentAcknowledgementFileName: "equipment-ack.pdf",
+      propertyTransferSignedFileName: "form-005-signed.pdf",
+      ptrFromAccountableOfficer: "DOST Regional Office No. XII",
+      ptrToAccountableOfficer: "ABC Food Processing",
+      ptrDate: "2026-06-30",
+      ptrTransferType: "reassignment",
+      ptrReasonForTransfer: "Physical Transfer Only",
+      ptrApprovedByName: "SAMMY P. MALAWAN",
+      ptrReceivedBy: "ABC Food Processing",
       equipmentInventory: [
         {
           id: "eq-1",
@@ -588,6 +595,7 @@ describe("system flow: registration through project close-out", () => {
           propertyNo: "VPM-001",
           dateAcquired: "2025-01-15",
           remarks: "Koronadal plant",
+          conditionOfPpe: "Good",
         },
       ],
       certificateOfOwnershipIssued: true,

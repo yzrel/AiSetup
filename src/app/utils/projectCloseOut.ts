@@ -51,6 +51,7 @@ export function normalizeInventoryRow(
     propertyNo,
     dateAcquired: String(r.dateAcquired ?? ""),
     remarks,
+    conditionOfPpe: String(r.conditionOfPpe ?? "").trim() || undefined,
   };
 }
 
@@ -58,6 +59,28 @@ export function emptyCloseOutForm(): ProjectCloseOutForm {
   return {
     equipmentInventory: [emptyInventoryRow()],
     certificateOfOwnershipIssued: false,
+  };
+}
+
+function normalizeCloseOutForm(
+  form: ProjectCloseOutForm,
+  applicant: Applicant | null,
+): ProjectCloseOutForm {
+  const signed =
+    form.propertyTransferSignedFileName?.trim() ||
+    form.equipmentAcknowledgementFileName?.trim() ||
+    "";
+  const reason =
+    form.ptrReasonForTransfer?.trim() ||
+    (form.ptrPhysicalTransferOnly ? "Physical Transfer Only" : "");
+  return {
+    ...form,
+    propertyTransferSignedFileName: signed || undefined,
+    ptrReasonForTransfer: reason || undefined,
+    inventoryProjectTitle:
+      form.inventoryProjectTitle?.trim() || readModuleProjectTitle(applicant) || "",
+    inventoryProjectCooperator:
+      form.inventoryProjectCooperator?.trim() || applicant?.enterpriseName || "",
   };
 }
 
@@ -87,11 +110,14 @@ export function getCloseOutForm(applicant: Applicant | null): ProjectCloseOutFor
   if (!form) {
     const empty = emptyCloseOutForm();
     if (!applicant) return empty;
-    return {
-      ...empty,
-      inventoryProjectTitle: readModuleProjectTitle(applicant),
-      inventoryProjectCooperator: applicant.enterpriseName ?? "",
-    };
+    return normalizeCloseOutForm(
+      {
+        ...empty,
+        inventoryProjectTitle: readModuleProjectTitle(applicant),
+        inventoryProjectCooperator: applicant.enterpriseName ?? "",
+      },
+      applicant,
+    );
   }
   const rawInventory = Array.isArray(form.equipmentInventory)
     ? form.equipmentInventory
@@ -103,14 +129,13 @@ export function getCloseOutForm(applicant: Applicant | null): ProjectCloseOutFor
       ? rawInventory.map((r) => normalizeInventoryRow(r as unknown as Record<string, unknown>))
       : emptyCloseOutForm().equipmentInventory;
 
-  return {
-    ...form,
-    inventoryProjectTitle:
-      form.inventoryProjectTitle?.trim() || readModuleProjectTitle(applicant) || "",
-    inventoryProjectCooperator:
-      form.inventoryProjectCooperator?.trim() || applicant?.enterpriseName || "",
-    equipmentInventory,
-  };
+  return normalizeCloseOutForm(
+    {
+      ...form,
+      equipmentInventory,
+    },
+    applicant,
+  );
 }
 
 export function inventoryAmountTotal(form: ProjectCloseOutForm): number {
@@ -161,8 +186,36 @@ export function validateCloseOutSubmit(applicant: Applicant | null): string[] {
   if (!form.auditedFinancialFileName?.trim()) {
     errors.push("Upload audited financial report.");
   }
-  if (!form.equipmentAcknowledgementFileName?.trim()) {
-    errors.push("Upload equipment acknowledgement receipt.");
+  if (!form.ptrFromAccountableOfficer?.trim()) {
+    errors.push(`Complete ${formatFormMention("005")} — From accountable officer.`);
+  }
+  if (!form.ptrToAccountableOfficer?.trim()) {
+    errors.push(`Complete ${formatFormMention("005")} — To accountable officer.`);
+  }
+  if (!form.ptrDate?.trim()) {
+    errors.push(`Complete ${formatFormMention("005")} — PTR date.`);
+  }
+  if (!form.ptrTransferType?.trim()) {
+    errors.push(`Select ${formatFormMention("005")} transfer type.`);
+  }
+  if (!form.ptrReasonForTransfer?.trim()) {
+    errors.push(`Complete ${formatFormMention("005")} — Reason for Transfer.`);
+  }
+  if (!form.ptrApprovedByName?.trim()) {
+    errors.push(`Complete ${formatFormMention("005")} — Approved by name.`);
+  }
+  if (!form.ptrReceivedBy?.trim()) {
+    errors.push(`Complete ${formatFormMention("005")} — Received by.`);
+  }
+  if (
+    !form.equipmentInventory.some(
+      (r) => r.description.trim() && r.propertyNo.trim(),
+    )
+  ) {
+    errors.push("Complete at least one property row with description and property number.");
+  }
+  if (!form.propertyTransferSignedFileName?.trim()) {
+    errors.push(`Upload signed ${formatFormMention("005")} scan.`);
   }
   if (form.equipmentInventory.every((r) => !r.description.trim())) {
     errors.push("Complete at least one equipment inventory row.");

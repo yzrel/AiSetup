@@ -20,8 +20,8 @@ export const TNA_FORM_01_PAGE_NAME = "tna-form-01";
 /** Pre-Implementation PIS */
 export const A4_MARGIN_PRE_PIS = "12mm 12mm 18mm 12mm";
 
-/** RTEC evaluation report */
-export const A4_MARGIN_RTEC = "15mm 15mm 22mm 15mm";
+/** RTEC Form 002 — 1 in (25.4 mm) all sides (Annex A-2 / Inventory convention) */
+export const A4_MARGIN_RTEC = "25.4mm";
 
 /** CSS @page rule — use at the start of every print stylesheet */
 export function a4PageRule(margin: string = A4_MARGIN_DEFAULT): string {

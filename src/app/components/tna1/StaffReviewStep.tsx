@@ -101,7 +101,7 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
                 </button>
               </div>
             </div>
-            <div className="max-h-[28rem] overflow-y-auto p-3 bg-white">
+            <div className="max-h-[28rem] overflow-y-auto overflow-x-auto p-3 bg-white min-w-0">
               <TnaForm01Preview
                 applicant={applicant}
                 form={previewForm}

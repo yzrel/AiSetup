@@ -273,6 +273,7 @@ export function saveApprovalLetterDraft(
     rdDecidedAt: clearDisapproval ? undefined : existing?.rdDecidedAt,
     rdRemarks: clearDisapproval ? undefined : existing?.rdRemarks,
     signedMoa: existing?.signedMoa,
+    moaForm: existing?.moaForm,
     updatedAt: new Date().toISOString(),
   } satisfies ApprovalLetterStored);
   applicantStore.update(applicantId, {
@@ -330,6 +331,7 @@ export function recordRdDecision(
     rdDecidedAt: now,
     rdRemarks: remarks?.trim() || undefined,
     signedMoa: existing?.signedMoa,
+    moaForm: existing?.moaForm,
     updatedAt: now,
   };
   applicantStore.update(applicantId, {
@@ -382,6 +384,7 @@ export function publishApprovalLetter(
     rdDecidedAt: existing?.rdDecidedAt,
     rdRemarks: existing?.rdRemarks,
     signedMoa: existing?.signedMoa,
+    moaForm: existing?.moaForm,
     updatedAt: now,
   };
   applicantStore.update(applicantId, {
@@ -426,6 +429,7 @@ export function ensureApprovalLetterPublished(
         rdDecidedAt: existing?.rdDecidedAt,
         rdRemarks: existing?.rdRemarks,
         signedMoa: existing?.signedMoa,
+        moaForm: existing?.moaForm,
         updatedAt: now,
       } satisfies ApprovalLetterStored,
       approvedAmount:

@@ -21,6 +21,8 @@ import {
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_OFFICE, REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
+import { DATE_ESTABLISHED_LABEL } from "../constants/enterpriseProfileFields";
+import { DateEstablishedField } from "./DateEstablishedField";
 import { AuthUser, authStore } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
@@ -384,7 +386,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     { label: "Business Type", value: applicant?.businessType ?? "", passed: !!(applicant?.businessType) },
     { label: "MSME Size", value: applicant?.msmeSize ?? "", passed: !!(applicant?.msmeSize) },
     { label: "TIN Number", value: additional.tinNumber, passed: !!(additional.tinNumber) },
-    { label: "Date Established", value: additional.dateEstablished, passed: !!(additional.dateEstablished) },
+    { label: DATE_ESTABLISHED_LABEL, value: additional.dateEstablished, passed: !!(additional.dateEstablished) },
     { label: "Registration Type", value: additional.registrationType, passed: !!(additional.registrationType) },
     { label: "Registration Number", value: additional.registrationNumber, passed: !!(additional.registrationNumber) },
     { label: "Products / Services", value: additional.productServices, passed: !!(additional.productServices) },
@@ -702,10 +704,14 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                     </div>
                     <ReadonlyField label="Contact Number" value={applicant.contactNumber} />
                     <ReadonlyField label="Email Address" value={applicant.emailAddress} />
-                    <div>
-                      <label className={labelCls}>Date Established *</label>
-                      <input type="date" className={inputCls} value={additional.dateEstablished} onChange={(e) => setAdd("dateEstablished", e.target.value)} />
-                    </div>
+                    <DateEstablishedField
+                      required
+                      labelClassName={labelCls}
+                      inputClassName={inputCls}
+                      hintClassName="text-xs text-gray-500 mt-1 leading-snug"
+                      value={additional.dateEstablished}
+                      onChange={(value) => setAdd("dateEstablished", value)}
+                    />
                     <div>
                       <label className={labelCls}>TIN Number *</label>
                       <input type="text" className={inputCls} placeholder="XXX-XXX-XXX" value={additional.tinNumber} onChange={(e) => setAdd("tinNumber", e.target.value)} />

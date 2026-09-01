@@ -25,6 +25,10 @@ import {
   saveTna2Draft,
 } from "../utils/tnaForm02";
 import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
+import {
+  DocumentPrintButton,
+  EditPreviewToggleButton,
+} from "./DocumentActionButtons";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { TnaForm02Editor } from "./TnaForm02Editor";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
@@ -211,13 +215,17 @@ export function TNA2TechnicalReport({
                 </button>
               )}
               {draft && (
-                <button
-                  type="button"
-                  onClick={() => setEditMode((m) => !m)}
-                  className="px-4 py-2.5 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50"
-                >
-                  {editMode ? "Preview report" : "Edit report"}
-                </button>
+                <EditPreviewToggleButton
+                  isPreview={!editMode}
+                  onToggle={() => setEditMode((m) => !m)}
+                  editLabel="Edit report"
+                  previewLabel="Preview report"
+                />
+              )}
+              {draft && !editMode && displayDoc && (
+                <DocumentPrintButton
+                  onClick={() => printTnaForm02(displayDoc, applicant?.applicationId)}
+                />
               )}
               {draft && (
                 <button

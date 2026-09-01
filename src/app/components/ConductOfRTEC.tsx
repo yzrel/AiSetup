@@ -17,6 +17,10 @@ import {
   ShieldCheck,
   ThumbsUp,
 } from "lucide-react";
+import {
+  DocumentPrintButton,
+  EditPreviewToggleButton,
+} from "./DocumentActionButtons";
 import { AuthUser } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
@@ -64,6 +68,7 @@ interface ConductOfRTECProps {
 export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}) {
   const { applicant } = useStaffApplicant(user);
   const [step, setStep] = useState<StepId>("overview");
+  const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState<RtecReportForm | null>(null);
   const [saveNotice, setSaveNotice] = useState("");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
@@ -72,6 +77,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
   const loadForm = useCallback((app: Applicant | null) => {
     if (!app) {
       setForm(null);
+      setEditMode(false);
       return;
     }
     const stored = getRtecReportStored(app);
@@ -85,6 +91,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
 
   useEffect(() => {
     loadForm(applicant);
+    setEditMode(false);
   }, [applicant?.id, loadForm]);
 
   useApplicantSubscription(applicant?.id, loadForm);
@@ -106,6 +113,11 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
     saveRtecReportDraft(applicant.id, form);
     setSaveNotice("Draft saved.");
     setTimeout(() => setSaveNotice(""), 3000);
+  };
+
+  const goToStep = (id: StepId) => {
+    setStep(id);
+    if (id !== "preview") setEditMode(false);
   };
 
   const handleSync = () => {
@@ -166,11 +178,11 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
   return (
     <ModuleWorkflowLayout
       formKey="002"
-      subtitle="Staff prepare the RTEC Report from the Project Proposal snapshot. Section I and most of Section III render from the proposal; compliance, recommendation, and signatures are completed here before PDF download."
+      subtitle="Staff prepare SETUP Form 002 (Annex A-2) from the Project Proposal snapshot. Edit report fields follow the Word form order; Sync only fills blank fields so staff edits are kept."
       user={user}
       steps={STEPS}
       currentStep={step}
-      onStepClick={(id) => setStep(id as StepId)}
+      onStepClick={(id) => goToStep(id as StepId)}
       staffPickerLabel="Review applicant RTEC report"
       alerts={
         <>
@@ -212,7 +224,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                       </p>
                     </div>
                   </div>
-                  <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-xs text-gray-500">Proponent cost</p>
                       <p className="font-semibold">{form.projectCostProponent || "—"}</p>
@@ -220,6 +232,10 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-xs text-gray-500">DOST-SETUP</p>
                       <p className="font-semibold">{form.projectCostSetup || "—"}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">DOST-LGIA</p>
+                      <p className="font-semibold">{form.projectCostLgia || "—"}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-xs text-gray-500">Total</p>
@@ -268,27 +284,63 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               )}
 
               {step === "preview" && (
-                <>
-                  <RtecReportPreview
-                    form={form}
-                    applicationId={applicant.applicationId}
-                    applicantId={applicant.id}
-                    onPrint={handleDownload}
-                  />
-                  <DocumentDeliveryPanel
-                    applicant={applicant}
-                    user={user}
-                    moduleKey="conduct-rtec"
-                    documentTitle="RTEC Report (Form 002)"
-                  />
-                </>
+                <div className="space-y-4">
+                  <div className={`${ACTION_ROW} flex-wrap`}>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 text-sm font-bold hover:bg-gray-50"
+                    >
+                      Save Draft
+                    </button>
+                    <EditPreviewToggleButton
+                      isPreview={!editMode}
+                      onToggle={() => setEditMode((m) => !m)}
+                      editLabel="Edit report"
+                      previewLabel="Preview report"
+                    />
+                    {!editMode && (
+                      <DocumentPrintButton
+                        onClick={handleDownload}
+                        disabled={!allowWhenDemo(rtecReady)}
+                      />
+                    )}
+                  </div>
+
+                  {editMode ? (
+                    <RtecReportEditor
+                      form={form}
+                      onChange={handleFormChange}
+                      step="all"
+                      onSave={handleSave}
+                    />
+                  ) : (
+                    <>
+                      <RtecReportPreview
+                        form={form}
+                        applicationId={applicant.applicationId}
+                        applicantId={applicant.id}
+                        onPrint={handleDownload}
+                        onEdit={() => setEditMode(true)}
+                      />
+                      <DocumentDeliveryPanel
+                        applicant={applicant}
+                        user={user}
+                        moduleKey="conduct-rtec"
+                        documentTitle="RTEC Report (Form 002)"
+                      />
+                    </>
+                  )}
+                </div>
               )}
 
               <div className="pt-2 border-t border-gray-100 space-y-2">
                 <div className={`${ACTION_ROW}`}>
                   <button
                     type="button"
-                    onClick={() => setStep(STEP_IDS[Math.max(0, stepIndex - 1)])}
+                    onClick={() =>
+                      goToStep(STEP_IDS[Math.max(0, stepIndex - 1)])
+                    }
                     disabled={stepIndex === 0}
                     className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"
                   >
@@ -298,7 +350,9 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   <button
                     type="button"
                     onClick={() =>
-                      setStep(STEP_IDS[Math.min(STEP_IDS.length - 1, stepIndex + 1)])
+                      goToStep(
+                        STEP_IDS[Math.min(STEP_IDS.length - 1, stepIndex + 1)],
+                      )
                     }
                     disabled={stepIndex === STEPS.length - 1}
                     className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40"

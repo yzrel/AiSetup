@@ -18,6 +18,7 @@ import { ProcurementAndLiquidation } from "./components/ProcurementAndLiquidatio
 import { RefundAndDelinquent } from "./components/RefundAndDelinquent";
 import { ProjectCloseOut } from "./components/ProjectCloseOut";
 import { AccountManagement } from "./components/AccountManagement";
+import { LandBankBranchesAdmin } from "./components/LandBankBranchesAdmin";
 import { ClientManagement } from "./components/ClientManagement";
 import { ClientFilesAdmin } from "./components/ClientFilesAdmin";
 import { StaffClientBar } from "./components/StaffClientBar";
@@ -29,12 +30,14 @@ import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
 import { DOSTMark } from "./components/DOSTLogos";
-import { authStore, AuthUser, AdminView, ROLE_LABELS, normalizeAdminView } from "./store/authStore";
+import { DostLogoLoader } from "./components/DostLogoLoader";
+import { authStore, AuthUser, AdminView, ROLE_LABELS, normalizeAdminView, isAdminView } from "./store/authStore";
 import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage } from "./store/navigationStore";
 import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applicantStore";
 import { staffContextStore } from "./store/staffContextStore";
 import { demoModeStore } from "./store/demoModeStore";
 import { notificationStore } from "./store/notificationStore";
+import { landbankBranchStore } from "./store/landbankBranchStore";
 import { getAuthToken } from "./api/authToken";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
@@ -63,9 +66,18 @@ import {
   X,
   Shield,
   Mail,
+  Landmark,
 } from "lucide-react";
 
 type ViewType = AdminView;
+
+const MODULE_TRANSITION_MIN_MS = 450;
+const MODULE_HYDRATE_MAX_MS = 8_000;
+const AUTH_TRANSITION_MIN_MS = 450;
+
+function shouldShowViewTransitionLoader(view: string): boolean {
+  return isAdminView(view);
+}
 
 function resolveViewForUser(user: AuthUser | null): ViewType {
   if (!user) return "dashboard";
@@ -285,6 +297,11 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         icon: Mail,
       },
       {
+        id: "landbank-branches" as ViewType,
+        label: "LandBank Branches",
+        icon: Landmark,
+      },
+      {
         id: "account-management" as ViewType,
         label: "Account Management",
         icon: Settings,
@@ -368,6 +385,10 @@ const viewTitles: Record<
   "account-management": {
     title: "Account Management",
     subtitle: "Monitor & manage registered MSME accounts",
+  },
+  "landbank-branches": {
+    title: "LandBank Branches",
+    subtitle: "Branch directory for LBP introduction & untag letters",
   },
   "my-account": {
     title: "My Account",
@@ -527,6 +548,20 @@ export default function App() {
   const [, setApplicantStoreEpoch] = useState(0);
   /** Bumps when email outbox changes so Sent Emails unlocks after signed upload. */
   const [, setEmailOutboxEpoch] = useState(0);
+  /** After this, stop blocking the shell on a failed/slow first hydrate. */
+  const [hydrateWaitExpired, setHydrateWaitExpired] = useState(false);
+  /** Brief branded overlay when opening a SETUP module view. */
+  const [moduleLoading, setModuleLoading] = useState(false);
+  /** Fullscreen loader during sign-out (persists across shell → landing). */
+  const [authTransition, setAuthTransition] = useState<{
+    active: boolean;
+    label: string;
+  } | null>(null);
+
+  const authTransitionOverlay =
+    authTransition?.active ? (
+      <DostLogoLoader variant="overlay" label={authTransition.label} />
+    ) : null;
 
   const setAuthPage = (page: "landing" | "login" | "register") => {
     setAuthPageState(page);
@@ -537,9 +572,14 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    setAuthTransition({ active: true, label: "Signing out…" });
     setFromRegistration(false);
     setAuthPage("landing");
     authStore.logout();
+    window.setTimeout(
+      () => setAuthTransition(null),
+      AUTH_TRANSITION_MIN_MS,
+    );
   };
 
   // Restore persisted auth session before rendering public pages
@@ -569,6 +609,9 @@ export default function App() {
       }
       if (active) {
         await notificationStore.hydrateFromBackend();
+        if (authStore.isStaff(active.role)) {
+          await landbankBranchStore.hydrateFromBackend();
+        }
       }
       const nextView = resolveViewForUser(active);
       if (active && authStore.isClientRole(active.role) && nextView) {
@@ -585,6 +628,10 @@ export default function App() {
       if (authStore.getUser() && getAuthToken()) {
         void applicantStore.hydrateFromBackend(true);
         void notificationStore.hydrateFromBackend();
+        const u = authStore.getUser();
+        if (u && authStore.isStaff(u.role)) {
+          void landbankBranchStore.hydrateFromBackend(true);
+        }
       }
     };
     window.addEventListener("focus", onFocus);
@@ -598,6 +645,10 @@ export default function App() {
       if (authStore.getUser() && getAuthToken()) {
         void applicantStore.hydrateFromBackend();
         void notificationStore.hydrateFromBackend();
+        const u = authStore.getUser();
+        if (u && authStore.isStaff(u.role)) {
+          void landbankBranchStore.hydrateFromBackend();
+        }
       }
     }, 45_000);
     return () => window.clearInterval(id);
@@ -700,11 +751,63 @@ export default function App() {
     saveCurrentView(resolved);
   };
 
+  const applicantsHydrated = applicantStore.isHydrated();
+  const showHydrateGate =
+    !!user && !applicantsHydrated && !hydrateWaitExpired;
+
+  // Cap how long we block the shell waiting for the first SoR hydrate.
+  useEffect(() => {
+    if (!user || applicantsHydrated) {
+      setHydrateWaitExpired(false);
+      return;
+    }
+    const id = window.setTimeout(
+      () => setHydrateWaitExpired(true),
+      MODULE_HYDRATE_MAX_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [user, applicantsHydrated]);
+
+  // Branded overlay when opening any app view (SETUP + Administration + dashboard).
+  const pendingModuleView = normalizeAdminView(currentView) ?? "dashboard";
+  useEffect(() => {
+    if (!user || !shouldShowViewTransitionLoader(pendingModuleView)) {
+      setModuleLoading(false);
+      return;
+    }
+
+    setModuleLoading(true);
+    let cancelled = false;
+    const started = Date.now();
+
+    const tryClear = () => {
+      if (cancelled) return;
+      const elapsed = Date.now() - started;
+      const minOk = elapsed >= MODULE_TRANSITION_MIN_MS;
+      const dataOk =
+        applicantStore.isHydrated() || elapsed >= MODULE_HYDRATE_MAX_MS;
+      if (minOk && dataOk) {
+        setModuleLoading(false);
+      }
+    };
+
+    tryClear();
+    const tick = window.setInterval(tryClear, 50);
+    const unsub = applicantStore.subscribe(tryClear);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(tick);
+      unsub();
+    };
+  }, [user, pendingModuleView]);
+
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
-        <p className="text-sm text-gray-500">Loading session…</p>
-      </div>
+      <>
+        <DostLogoLoader variant="fullscreen" label="Loading session…" />
+        {authTransitionOverlay}
+      </>
     );
   }
 
@@ -712,39 +815,48 @@ export default function App() {
   if (!user) {
     if (authPage === "landing") {
       return (
-        <LandingPage
-          onLogin={() => setAuthPage("login")}
-          onRegister={(type) => {
-            setRegistrationPrefill(
-              type === "non-single-proprietor" ? "SEC" : "DTI",
-            );
-            setAuthPage("register");
-          }}
-        />
+        <>
+          <LandingPage
+            onLogin={() => setAuthPage("login")}
+            onRegister={(type) => {
+              setRegistrationPrefill(
+                type === "non-single-proprietor" ? "SEC" : "DTI",
+              );
+              setAuthPage("register");
+            }}
+          />
+          {authTransitionOverlay}
+        </>
       );
     }
     if (authPage === "register") {
       return (
-        <RegisterPage
-          initialRegistrationType={registrationPrefill}
-          onLogin={() => {
-            setFromRegistration(false);
-            setAuthPage("login");
-          }}
-          onSuccess={() => {
-            setFromRegistration(true);
-            setAuthPage("login");
-          }}
-          onHome={() => setAuthPage("landing")}
-        />
+        <>
+          <RegisterPage
+            initialRegistrationType={registrationPrefill}
+            onLogin={() => {
+              setFromRegistration(false);
+              setAuthPage("login");
+            }}
+            onSuccess={() => {
+              setFromRegistration(true);
+              setAuthPage("login");
+            }}
+            onHome={() => setAuthPage("landing")}
+          />
+          {authTransitionOverlay}
+        </>
       );
     }
     return (
-      <LoginPage
-        fromRegistration={fromRegistration}
-        onRegister={() => setAuthPage("register")}
-        onHome={() => setAuthPage("landing")}
-      />
+      <>
+        <LoginPage
+          fromRegistration={fromRegistration}
+          onRegister={() => setAuthPage("register")}
+          onHome={() => setAuthPage("landing")}
+        />
+        {authTransitionOverlay}
+      </>
     );
   }
 
@@ -805,14 +917,14 @@ export default function App() {
 
   return (
     <div
-      className="flex min-h-screen bg-[#EEF2F7]"
+      className="flex h-screen w-full max-w-full overflow-hidden bg-[#EEF2F7]"
       style={{
         fontFamily: "'Segoe UI', system-ui, sans-serif",
       }}
     >
       {/* ══ DESKTOP SIDEBAR (hidden on mobile/tablet) ══ */}
       <aside
-        className="hidden lg:flex bg-[#0C2461] flex-col shrink-0 shadow-2xl z-20"
+        className="hidden lg:flex bg-[#0C2461] flex-col shrink-0 h-full min-h-0 overflow-hidden shadow-2xl z-20"
         style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
       >
         <div className="px-5 pt-5 pb-4 border-b border-white/10">
@@ -870,9 +982,9 @@ export default function App() {
       </aside>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* ── Topbar ── */}
-        <header className="h-14 bg-white border-b border-gray-200 flex items-center px-3 sm:px-6 shrink-0 shadow-sm z-10 gap-3">
+        <header className="h-14 w-full min-w-0 bg-white border-b border-gray-200 flex items-center px-3 sm:px-6 shrink-0 shadow-sm z-10 gap-2 sm:gap-3">
           {/* Hamburger — mobile/tablet only */}
           <button
             onClick={() => setDrawerOpen(true)}
@@ -898,7 +1010,7 @@ export default function App() {
           </div>
 
           {/* Right controls */}
-          <div className="flex items-center gap-2 ml-auto shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0 min-w-0">
             {/* Search — hidden on small mobile */}
             <div className="hidden md:flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200">
               <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -1021,9 +1133,16 @@ export default function App() {
         )}
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 pb-20 sm:pb-6">
+        <main className="relative flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 pb-20 sm:pb-6">
+          {(showHydrateGate || moduleLoading) && (
+            <DostLogoLoader
+              variant="overlay"
+              label={showHydrateGate ? "Loading data…" : "Loading…"}
+            />
+          )}
           <AppErrorBoundary key={safeView} label={safeView}>
-          {authStore.canAccessView(user.role, safeView) ? (
+          {!showHydrateGate &&
+          authStore.canAccessView(user.role, safeView) ? (
             <>
               {safeView === "dashboard" && (
                 <Dashboard user={user} onNavigate={navigate} />
@@ -1141,10 +1260,13 @@ export default function App() {
               {safeView === "account-management" && (
                 <AccountManagement user={user} />
               )}
+              {safeView === "landbank-branches" && (
+                <LandBankBranchesAdmin user={user} />
+              )}
               {safeView === "my-account" && <MyAccount user={user} />}
               {safeView === "sent-emails" && <EmailOutbox user={user} />}
             </>
-          ) : (
+          ) : !showHydrateGate ? (
             <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">
               <Shield className="w-12 h-12 text-gray-300 mb-4" />
               <h2 className="text-lg font-bold text-gray-800 mb-2">
@@ -1156,7 +1278,7 @@ export default function App() {
                 available to your account.
               </p>
             </div>
-          )}
+          ) : null}
           </AppErrorBoundary>
         </main>
 
@@ -1180,6 +1302,7 @@ export default function App() {
 
       {/* ── Floating AI Chatbot (voice-enabled) ── */}
       <DOSTChatbot />
+      {authTransitionOverlay}
     </div>
   );
 }

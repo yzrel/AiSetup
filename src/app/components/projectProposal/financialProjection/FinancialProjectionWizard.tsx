@@ -37,6 +37,7 @@ import {
   saveFinancialProjectionDraft,
 } from "../../../utils/financialProjectionStore";
 import { printFinancialProjection } from "../../../utils/financialProjectionPrint";
+import { resolveProjectedFsYears } from "../../../utils/projectedFsDuration";
 import { aiGenerateErrorMessage } from "../../../utils/apiErrors";
 import { ApiError } from "../../../api/client";
 
@@ -184,6 +185,10 @@ export function FinancialProjectionWizard({
   const [notice, setNotice] = useState<string | null>(null);
 
   const stored = getFinancialProjectionStored(applicant);
+  const projectedYears = useMemo(
+    () => resolveProjectedFsYears(applicant),
+    [applicant.id, applicant.moduleData?.timeline, applicant.msmeSize],
+  );
 
   const persistDraft = useDebouncedCallback(() => {
     saveFinancialProjectionDraft(applicant.id, inputsRef.current);
@@ -263,10 +268,12 @@ export function FinancialProjectionWizard({
   return (
     <div className="space-y-4 rounded-xl border border-[#0C2461]/15 bg-blue-50/30 p-4">
       <div>
-        <h2 className="text-base font-bold text-gray-800">Projected financial statements (5 years)</h2>
+        <h2 className="text-base font-bold text-gray-800">
+          Projected financial statements ({projectedYears} {projectedYears === 1 ? "year" : "years"})
+        </h2>
         <p className="text-xs text-gray-600 mt-1">
-          Build Year 0 assets through Year 5 statements. Freeze saves to the server
-          and marks Requirements “Projected financial statements (next 5 years)”.
+          Build Year 0 assets through Year {projectedYears} statements (per project duration). Freeze saves to the server
+          and marks Requirements projected financial statements.
         </p>
         {stored?.frozenAt && (
           <p className="text-xs text-green-700 mt-1">

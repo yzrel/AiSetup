@@ -1,0 +1,468 @@
+/* Author: Yzrel Jade B. Eborde — Proforma MOA Annex C */
+
+/*
+ * Page inset: 1 in (25.4 mm) all sides — same as Form 001 / 005 / 006.
+ * Preview uses padding on .moa-form-page; print uses @page margin and zeros padding.
+ * Keep in sync with moaAnnexCLayout.ts MOA_PAGE_MARGIN_MM.
+ */
+:root {
+  --moa-page-pad: 25.4mm;
+}
+
+.moa-form-document,
+#moa-annex-c-preview {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #111;
+  background: transparent;
+}
+
+/* Preview shell fills the staff column; A4 width lives on .moa-form-document-root */
+#moa-annex-c-preview {
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.moa-form-document .moa-form-document-root,
+#moa-annex-c-preview .moa-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0;
+  background: #fff;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.moa-form-document .moa-form-page,
+#moa-annex-c-preview .moa-form-page {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--moa-page-pad);
+  background: #fff;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.moa-form-document .moa-form-page-body,
+#moa-annex-c-preview .moa-form-page-body {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.moa-form-document .moa-form-block,
+#moa-annex-c-preview .moa-form-block {
+  margin-bottom: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.moa-form-document .moa-form-title,
+#moa-annex-c-preview .moa-form-title {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 16px;
+  color: #111;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.moa-form-document .moa-form-section-title,
+#moa-annex-c-preview .moa-form-section-title {
+  font-size: 11pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 14px 0 8px;
+  text-transform: uppercase;
+}
+
+.moa-form-document .moa-form-para,
+#moa-annex-c-preview .moa-form-para {
+  margin: 0 0 10px;
+  text-align: justify;
+}
+
+.moa-form-document .moa-form-center,
+#moa-annex-c-preview .moa-form-center {
+  text-align: center;
+}
+
+.moa-form-document .moa-form-know,
+#moa-annex-c-preview .moa-form-know {
+  font-weight: 700;
+  margin: 12px 0;
+}
+
+.moa-form-document .moa-form-shall,
+#moa-annex-c-preview .moa-form-shall {
+  font-weight: 700;
+  margin: 12px 0 8px;
+}
+
+.moa-form-document .moa-form-filled,
+#moa-annex-c-preview .moa-form-filled {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.moa-form-document .moa-form-blank,
+#moa-annex-c-preview .moa-form-blank {
+  letter-spacing: 0.05em;
+}
+
+.moa-form-document .moa-form-interventions,
+#moa-annex-c-preview .moa-form-interventions {
+  margin: 0 0 10px 1.2em;
+  padding: 0;
+  list-style: disc;
+}
+
+.moa-form-document .moa-form-interventions li,
+#moa-annex-c-preview .moa-form-interventions li {
+  margin: 0 0 6px;
+  text-align: justify;
+}
+
+.moa-form-document .moa-form-obligation-list,
+#moa-annex-c-preview .moa-form-obligation-list {
+  margin: 0 0 10px;
+}
+
+.moa-form-document .moa-form-num-section,
+#moa-annex-c-preview .moa-form-num-section {
+  margin-bottom: 8px;
+}
+
+.moa-form-document .moa-form-num-item,
+#moa-annex-c-preview .moa-form-num-item {
+  display: flex;
+  gap: 0.4em;
+  margin: 0 0 8px;
+  text-align: justify;
+}
+
+.moa-form-document .moa-form-num-label,
+#moa-annex-c-preview .moa-form-num-label {
+  flex: 0 0 auto;
+  font-weight: 700;
+  min-width: 2.2em;
+}
+
+.moa-form-document .moa-form-num-body,
+#moa-annex-c-preview .moa-form-num-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.moa-form-document .moa-form-section-body,
+#moa-annex-c-preview .moa-form-section-body {
+  margin: 0 0 12px 2.2em;
+  text-align: justify;
+}
+
+.moa-form-document .moa-form-pis-sub,
+#moa-annex-c-preview .moa-form-pis-sub {
+  margin: 8px 0 0;
+}
+
+.moa-form-document .moa-form-signboard,
+#moa-annex-c-preview .moa-form-signboard {
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.moa-form-document .moa-form-signboard p,
+#moa-annex-c-preview .moa-form-signboard p {
+  margin: 0 0 6px;
+}
+
+.moa-form-document .moa-form-phase,
+#moa-annex-c-preview .moa-form-phase {
+  margin-top: 8px !important;
+}
+
+.moa-form-document .moa-form-signatures,
+#moa-annex-c-preview .moa-form-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 40px;
+  margin-top: 16px;
+}
+
+.moa-form-document .moa-form-sig-col,
+#moa-annex-c-preview .moa-form-sig-col {
+  text-align: center;
+}
+
+.moa-form-document .moa-form-sig-org,
+#moa-annex-c-preview .moa-form-sig-org {
+  font-weight: 700;
+  font-size: 10pt;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.moa-form-document .moa-form-sig-space,
+#moa-annex-c-preview .moa-form-sig-space {
+  min-height: 48px;
+}
+
+.moa-form-document .moa-form-sig-name,
+#moa-annex-c-preview .moa-form-sig-name {
+  margin: 0 0 2px;
+  font-weight: 700;
+  border-bottom: 1px solid #111;
+  min-height: 1.4em;
+}
+
+.moa-form-document .moa-form-sig-role,
+#moa-annex-c-preview .moa-form-sig-role {
+  margin: 0;
+  font-size: 10pt;
+}
+
+.moa-form-document .moa-form-funds,
+#moa-annex-c-preview .moa-form-funds {
+  margin-top: 24px;
+  max-width: 55%;
+}
+
+.moa-form-document .moa-form-id-table,
+#moa-annex-c-preview .moa-form-id-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0 12px;
+  font-size: 10.5pt;
+}
+
+.moa-form-document .moa-form-id-table th,
+.moa-form-document .moa-form-id-table td,
+#moa-annex-c-preview .moa-form-id-table th,
+#moa-annex-c-preview .moa-form-id-table td {
+  border: 1px solid #111;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.moa-form-document .moa-form-notary,
+#moa-annex-c-preview .moa-form-notary {
+  margin-top: 16px;
+  max-width: 50%;
+}
+
+.moa-form-document .moa-form-notary p,
+#moa-annex-c-preview .moa-form-notary p {
+  margin: 0 0 4px;
+}
+
+.moa-form-document .moa-form-annex-note,
+#moa-annex-c-preview .moa-form-annex-note {
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.moa-form-document .moa-form-annex-sheet,
+#moa-annex-c-preview .moa-form-annex-sheet {
+  margin-top: 8px;
+}
+
+.moa-form-document .moa-form-annex-cover,
+#moa-annex-c-preview .moa-form-annex-cover {
+  margin: 0 0 6px;
+  font-size: 10.5pt;
+}
+
+.moa-form-document .moa-form-annex-table,
+#moa-annex-c-preview .moa-form-annex-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+  font-size: 8pt;
+  table-layout: fixed;
+}
+
+.moa-form-document .moa-form-annex-table th,
+.moa-form-document .moa-form-annex-table td,
+#moa-annex-c-preview .moa-form-annex-table th,
+#moa-annex-c-preview .moa-form-annex-table td {
+  border: 1px solid #111;
+  padding: 3px 4px;
+  text-align: left;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+.moa-form-document .moa-form-annex-num,
+#moa-annex-c-preview .moa-form-annex-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.moa-form-document .moa-form-annex-total td,
+#moa-annex-c-preview .moa-form-annex-total td {
+  font-weight: 700;
+}
+
+.moa-form-document .moa-form-annex-conforme,
+#moa-annex-c-preview .moa-form-annex-conforme {
+  margin-top: 16px;
+}
+
+.moa-form-document .moa-form-annex-conforme-sigs,
+#moa-annex-c-preview .moa-form-annex-conforme-sigs {
+  margin-top: 8px;
+}
+
+.moa-form-document .moa-form-annex-gantt,
+#moa-annex-c-preview .moa-form-annex-gantt {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+/* Annex C schedule — same bordered Gantt as Form 001 section F */
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4pt 0 8pt;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 8pt;
+}
+
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt th,
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt td,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt th,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt td {
+  border: 0.5pt solid #111;
+  padding: 2pt 3pt;
+  vertical-align: middle;
+  line-height: 1.12;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt th,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt th {
+  font-weight: 700;
+  text-align: center;
+  background: #fff;
+}
+
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt .pp-form-gantt-activity,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt .pp-form-gantt-activity {
+  width: 28%;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt-month,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt-month {
+  width: 9%;
+  padding: 1.5pt 2pt;
+  min-height: 12pt;
+  text-align: center;
+}
+
+.moa-form-document .moa-form-annex-gantt .pp-form-gantt-bar,
+#moa-annex-c-preview .moa-form-annex-gantt .pp-form-gantt-bar {
+  background: #000;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+  padding: 0;
+  min-height: 12pt;
+}
+
+@media (max-width: 640px) {
+  .moa-form-document .moa-form-signatures,
+  #moa-annex-c-preview .moa-form-signatures {
+    grid-template-columns: 1fr;
+  }
+
+  .moa-form-document .moa-form-funds,
+  #moa-annex-c-preview .moa-form-funds {
+    max-width: 100%;
+  }
+}
+
+@media print {
+  body.moa-annex-c-printing,
+  body.moa-annex-c-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.moa-annex-c-printing > *:not(#moa-annex-c-print-root) {
+    display: none !important;
+  }
+
+  body.moa-annex-c-printing #moa-annex-c-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .moa-screen-only {
+    display: none !important;
+  }
+
+  @page moa-annex-c-sheet {
+    size: A4 portrait;
+    margin: 25.4mm;
+
+    @bottom-center {
+      content: "SETUP Guidelines (Revision 3.0) Annex C: Proforma MOA Page "
+        counter(page) " of " counter(pages);
+      font-family: "Times New Roman", Times, serif;
+      font-size: 9pt;
+    }
+  }
+
+  body.moa-annex-c-printing #moa-annex-c-print-root {
+    page: moa-annex-c-sheet;
+  }
+
+  body.moa-annex-c-printing #moa-annex-c-print-root,
+  body.moa-annex-c-printing #moa-annex-c-print-root .moa-form-document-root {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+  }
+
+  body.moa-annex-c-printing #moa-annex-c-print-root .moa-form-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+  }
+
+  body.moa-annex-c-printing #moa-annex-c-print-root .moa-form-annex-gantt .pp-form-gantt-bar {
+    background: #000 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

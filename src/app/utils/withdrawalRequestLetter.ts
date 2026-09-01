@@ -1,7 +1,7 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Letter Request for Withdrawal (1st / 2nd / 3rd tranche) — printable HTML matching
+ * Letter Request for Withdrawal (1st / optional 2nd tranche) — printable HTML matching
  * the DOST SETUP letter-request template (equipment list + supplier + total).
  */
 

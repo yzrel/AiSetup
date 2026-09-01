@@ -75,6 +75,39 @@ export interface ApiUpdateStaffRequest {
   enabled?: boolean;
 }
 
+export interface ApiLandBankBranch {
+  id: string;
+  name: string;
+  address: string;
+  cityProvince: string;
+  managerName: string;
+  managerTitle: string;
+  officeId?: string;
+  active: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiCreateLandBankBranchRequest {
+  name: string;
+  address: string;
+  cityProvince: string;
+  managerName: string;
+  managerTitle?: string;
+  officeId?: string;
+}
+
+export interface ApiUpdateLandBankBranchRequest {
+  name?: string;
+  address?: string;
+  cityProvince?: string;
+  managerName?: string;
+  managerTitle?: string;
+  officeId?: string;
+  active?: boolean;
+}
+
 export interface ApiRegisterRequest {
   email: string;
   password: string;
@@ -794,7 +827,62 @@ export interface ApprovalLetterStored {
   rdDecidedAt?: string;
   rdRemarks?: string;
   signedMoa?: SignedMoaDocument;
+  /** Generated Proforma MOA (Annex C) draft fields. */
+  moaForm?: MoaAnnexCForm;
   updatedAt?: string;
+}
+
+/** SETUP Guidelines (Revision 3.0) Annex C — Proforma MOA editable fields. */
+export interface MoaAnnexCForm {
+  regionLabel: string;
+  dostOfficeAddress: string;
+  regionalDirector: string;
+  enterpriseName: string;
+  enterpriseAddress: string;
+  representativeName: string;
+  representativeDesignation: string;
+  projectTitle: string;
+  approvedAmount: string;
+  approvedAmountWords: string;
+  pdcCount: string;
+  pstoOfficeName: string;
+  signboardProjectTitle: string;
+  signboardCooperator: string;
+  signboardProposedEquipment: string;
+  phase1Start: string;
+  phase1End: string;
+  phase2Start: string;
+  phase2End: string;
+  refundTermYears: string;
+  refundTermYearsDigit: string;
+  projectDurationMonths: string;
+  venueCity: string;
+  signingDay: string;
+  signingMonth: string;
+  signingYear: string;
+  signingVenue: string;
+  dostSignatoryName: string;
+  cooperatorSignatoryName: string;
+  witness1Name: string;
+  witness1Title: string;
+  witness2Name: string;
+  witness2Title: string;
+  fundsAvailableCertifier: string;
+  acknowledgmentPlace: string;
+  acknowledgmentDay: string;
+  acknowledgmentMonth: string;
+  acknowledgmentYear: string;
+  party1Name: string;
+  party1IdNo: string;
+  party1IdIssued: string;
+  party2Name: string;
+  party2IdNo: string;
+  party2IdIssued: string;
+  pageCount: string;
+  notaryDocNo: string;
+  notaryPageNo: string;
+  notaryBookNo: string;
+  notarySeriesYear: string;
 }
 
 export interface SignedMoaDocument {
@@ -939,9 +1027,13 @@ export interface ProjectInformationSheetStored {
 
 export interface LbpIntroductionLetterForm {
   letterDate: string;
+  /** Directory row id when selected from staff-maintained list */
+  branchId?: string;
   branchManagerName: string;
   branchManagerTitle: string;
   landbankBranch: string;
+  /** Street address snapshot for letter addressee */
+  branchAddress?: string;
   branchCityProvince: string;
   proponentName: string;
   enterpriseName: string;
@@ -1108,9 +1200,11 @@ export interface ProcurementForm {
 /** DOST → LandBank Letter to Untag (Module 16) */
 export interface UntagLetterForm {
   letterDate: string;
+  branchId?: string;
   branchManagerName: string;
   branchManagerTitle: string;
   landbankBranch: string;
+  branchAddress?: string;
   branchCityProvince: string;
   proponentName: string;
   enterpriseName: string;
@@ -1232,16 +1326,42 @@ export interface EquipmentInventoryRow {
   propertyNo: string;
   dateAcquired: string;
   remarks: string;
+  /** Form 005 — Condition of PPE column (ignored by Form 006 document). */
+  conditionOfPpe?: string;
   /** @deprecated legacy close-out fields — mapped on hydrate */
   serialNumber?: string;
   acquisitionCost?: string;
   location?: string;
 }
 
+/** SETUP Form 005 transfer type (Annex A-5). */
+export type PtrTransferType = "donation" | "relocate" | "reassignment" | "other" | "";
+
 export interface ProjectCloseOutForm {
   terminalReportFileName?: string;
   auditedFinancialFileName?: string;
+  /** @deprecated — mapped to propertyTransferSignedFileName on hydrate */
   equipmentAcknowledgementFileName?: string;
+  /** Signed Form 005 scan after RD signing */
+  propertyTransferSignedFileName?: string;
+  /** Form 005 — Property Transfer Receipt */
+  ptrEntityName?: string;
+  ptrFundCluster?: string;
+  ptrFromAccountableOfficer?: string;
+  ptrToAccountableOfficer?: string;
+  ptrNo?: string;
+  ptrDate?: string;
+  ptrTransferType?: PtrTransferType;
+  ptrTransferTypeOther?: string;
+  /** Narrative reason for transfer (Form 005). */
+  ptrReasonForTransfer?: string;
+  /** @deprecated — mapped to ptrReasonForTransfer on hydrate */
+  ptrPhysicalTransferOnly?: boolean;
+  ptrApprovedByName?: string;
+  ptrApprovedByDesignation?: string;
+  ptrApprovedByDate?: string;
+  ptrReleasedIssuedBy?: string;
+  ptrReceivedBy?: string;
   /** Form 006 header / signatures */
   inventoryProjectTitle?: string;
   inventoryProjectCooperator?: string;

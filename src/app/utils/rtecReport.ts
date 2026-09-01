@@ -20,6 +20,7 @@ import {
   getProjectProposalStored,
 } from "./projectProposal";
 import { getPublishedTna2 } from "./tnaForm02";
+import { buildRequirementUploadList } from "./submissionRequirements";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import { isDemoModeActive } from "./demoMode";
 import { printRtecReportPdf } from "./rtecReportPrint";
@@ -27,6 +28,7 @@ import { normalizeRtecReportStored } from "./normalizeCriticalModuleData";
 
 const DOST_BLUE = "#0C2461";
 
+/** Portal editor checklist (17 rows + N/A). Official PDF uses RTEC_OFFICIAL_COMPLIANCE_ITEMS only. */
 export const RTEC_COMPLIANCE_ITEMS: { id: string; label: string }[] = [
   {
     id: "loi",
@@ -93,7 +95,21 @@ export const RTEC_COMPLIANCE_ITEMS: { id: string; label: string }[] = [
   {
     id: "drawings",
     label:
-      "Complete technical design/drawing of all equipment to be purchased/fabricated",
+      "Complete technical specifications, design/drawing/picture of equipment to be acquired, as determined in the TNA Report (DOST TNA Form 02)",
+  },
+  {
+    id: "supplier-unavailability-affidavit",
+    label:
+      "Affidavit stating unavailability of suppliers for needed equipment (emergency or calamity situation)",
+  },
+  {
+    id: "ecc",
+    label:
+      "ECC or Certificate of Non-Coverage (CNC) — if in environmentally critical area",
+  },
+  {
+    id: "fda-certificate",
+    label: "FDA License to Operate / Certificate (food sector enterprises)",
   },
 ];
 
@@ -142,6 +158,15 @@ function docUploaded(
   return legacy?.some((d) => d.id === id && d.uploaded) ?? false;
 }
 
+/** Per-equipment rows use ids like quotations-{slug} — comply when all required rows upload. */
+function uploadsCompliedByPrefix(applicant: Applicant, complianceId: string): boolean {
+  const list = buildRequirementUploadList(applicant).filter(
+    (row) => row.complianceId === complianceId && row.required,
+  );
+  if (list.length === 0) return docUploaded(applicant, complianceId);
+  return list.every((row) => row.uploaded);
+}
+
 function suggestComplianceStatus(
   applicant: Applicant,
   itemId: string,
@@ -178,9 +203,17 @@ function suggestComplianceStatus(
     case "resolution":
       return docUploaded(applicant, "resolution") ? "complied" : "na";
     case "quotations":
-      return docUploaded(applicant, "quotations") ? "complied" : "";
+      return uploadsCompliedByPrefix(applicant, "quotations") ? "complied" : "";
     case "drawings":
-      return docUploaded(applicant, "drawings") ? "complied" : "";
+      return uploadsCompliedByPrefix(applicant, "drawings") ? "complied" : "";
+    case "supplier-unavailability-affidavit":
+      return docUploaded(applicant, "supplier-unavailability-affidavit")
+        ? "complied"
+        : "na";
+    case "ecc":
+      return docUploaded(applicant, "ecc") ? "complied" : "na";
+    case "fda-certificate":
+      return docUploaded(applicant, "fda-certificate") ? "complied" : "na";
     default:
       return "";
   }
@@ -240,23 +273,41 @@ function buildFabricatorRows(pp: ProjectProposalForm): RtecFabricatorRow[] {
   }));
 }
 
+function sumBudgetLgia(pp: ProjectProposalForm): number {
+  return (pp.budgetItems ?? []).reduce(
+    (sum, row) => sum + parseMoney(String(row.lgiaShare ?? "")),
+    0,
+  );
+}
+
 function buildCostHeader(pp: ProjectProposalForm): {
   proponent: string;
   setup: string;
+  lgia: string;
   total: string;
 } {
   const setup = parseMoney(pp.amountRequested);
+  const lgia = sumBudgetLgia(pp);
   const total = parseMoney(pp.projectCost);
-  const proponent = total > setup ? total - setup : parseMoney(pp.projectCost);
+  const counterpart = total > setup + lgia ? total - setup - lgia : 0;
   return {
     setup: pp.amountRequested || formatMoney(setup),
+    lgia: lgia > 0 ? formatMoney(lgia) : "",
     proponent:
-      total > setup
-        ? formatMoney(proponent)
-        : pp.projectCost || "",
-    total: pp.projectCost || formatMoney(setup + proponent),
+      counterpart > 0
+        ? formatMoney(counterpart)
+        : total > setup
+          ? formatMoney(total - setup)
+          : pp.projectCost || "",
+    total: pp.projectCost || formatMoney(setup + lgia + counterpart),
   };
 }
+
+/**
+ * Map stored/editor compliance (17 rows) to the official Word 14-row table.
+ * Uses Word labels; `na` status leaves both tick cells empty on print.
+ */
+export { toOfficialComplianceItems } from "../constants/rtecReportLayout";
 
 function seedRecommendation(applicant: Applicant): string {
   const tna2 = getPublishedTna2(applicant);
@@ -277,7 +328,7 @@ export function emptyRtecReportForm(
   return {
     projectCostProponent: costs.proponent,
     projectCostSetup: costs.setup,
-    projectCostLgia: "",
+    projectCostLgia: costs.lgia,
     projectCostTotal: costs.total,
     complianceItems: emptyComplianceItems(),
     recommendation: "",
@@ -315,15 +366,127 @@ export function hasRtecPrerequisites(applicant: Applicant | null): boolean {
   );
 }
 
+function trimText(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function joinNonBlank(parts: unknown[], sep = "\n\n"): string {
+  return parts.map(trimText).filter(Boolean).join(sep);
+}
+
+/**
+ * Fill blank Form 002 snapshot narratives from related Form 001 / TNA1 fields.
+ * Never overwrites non-blank RTEC values. Does not write back to Form 001.
+ */
+export function enrichRtecSnapshotFromPriorModules(
+  pp: ProjectProposalForm,
+  applicant: Applicant | null,
+): ProjectProposalForm {
+  const tna1Form = (applicant?.moduleData?.tna1?.form ?? {}) as Record<
+    string,
+    unknown
+  >;
+
+  let wasteManagement = trimText(pp.wasteManagement);
+  if (!wasteManagement) {
+    wasteManagement = joinNonBlank([
+      pp.wasteKinds,
+      pp.wasteDisposalMethods,
+      tna1Form.wasteManagement,
+    ]);
+  }
+
+  let equipmentNarrative = trimText(pp.equipmentNarrative);
+  if (!equipmentNarrative) {
+    equipmentNarrative = (pp.equipmentTable ?? [])
+      .filter((r) => r.some((c) => trimText(c)))
+      .map((r) =>
+        [r[0], r[1] ? `Qty: ${r[1]}` : "", r[2] ? `Spec: ${r[2]}` : ""]
+          .filter(Boolean)
+          .join(" — "),
+      )
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  let marketSituation = trimText(pp.marketSituation);
+  if (!marketSituation) {
+    const firm =
+      trimText(pp.firmName) ||
+      trimText(applicant?.enterpriseName) ||
+      "The enterprise";
+    const channel = trimText(pp.distributionChannel);
+    if (channel) {
+      marketSituation = `${firm} distributes primarily through ${channel}.`;
+    }
+  }
+
+  let existingMarketingProblems = trimText(pp.existingMarketingProblems);
+  if (!existingMarketingProblems) {
+    const competitors = trimText(pp.competitors);
+    if (competitors) {
+      existingMarketingProblems = `Competitors: ${competitors}`;
+    }
+  }
+
+  let skillsExpertise = trimText(pp.skillsExpertise);
+  if (!skillsExpertise) {
+    const lead =
+      trimText(pp.contactPerson) ||
+      trimText(pp.proponentName) ||
+      trimText(applicant?.applicantName) ||
+      "The proponent";
+    const ent =
+      trimText(pp.firmName) ||
+      trimText(applicant?.enterpriseName) ||
+      "the enterprise";
+    skillsExpertise = `${lead} leads operations at ${ent}.`;
+  }
+
+  let compensation = trimText(pp.compensation);
+  if (!compensation) {
+    compensation = (pp.compensationTable ?? [])
+      .map((r) => {
+        const position = trimText(r[0]);
+        const workers = trimText(r[1]);
+        const rate = trimText(r[2]);
+        if (!position && !workers && !rate) return "";
+        return [
+          position,
+          workers ? `${workers} worker(s)` : "",
+          rate ? `rate ${rate}` : "",
+        ]
+          .filter(Boolean)
+          .join(" — ");
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return {
+    ...pp,
+    wasteManagement: wasteManagement || pp.wasteManagement,
+    equipmentNarrative: equipmentNarrative || pp.equipmentNarrative,
+    marketSituation: marketSituation || pp.marketSituation,
+    existingMarketingProblems:
+      existingMarketingProblems || pp.existingMarketingProblems,
+    skillsExpertise: skillsExpertise || pp.skillsExpertise,
+    compensation: compensation || pp.compensation,
+  };
+}
+
 export function buildRtecReportDraft(applicant: Applicant | null): RtecReportForm {
   if (!applicant) {
     return emptyRtecReportForm(
-      getProjectProposalForm(null),
+      enrichRtecSnapshotFromPriorModules(getProjectProposalForm(null), null),
       [],
     );
   }
 
-  const proposalSnapshot = getProjectProposalForm(applicant);
+  const proposalSnapshot = enrichRtecSnapshotFromPriorModules(
+    getProjectProposalForm(applicant),
+    applicant,
+  );
   const attachmentRefs = getProjectProposalAttachments(applicant);
   const costs = buildCostHeader(proposalSnapshot);
 
@@ -335,7 +498,7 @@ export function buildRtecReportDraft(applicant: Applicant | null): RtecReportFor
   return {
     projectCostProponent: costs.proponent,
     projectCostSetup: costs.setup,
-    projectCostLgia: "",
+    projectCostLgia: costs.lgia,
     projectCostTotal: costs.total,
     complianceItems,
     recommendation: seedRecommendation(applicant),
@@ -412,11 +575,73 @@ export function syncRtecFromProjectProposal(
   existing: RtecReportForm,
   applicant: Applicant,
 ): RtecReportForm {
-  const proposalSnapshot = getProjectProposalForm(applicant);
+  const upstream = getProjectProposalForm(applicant);
   const attachmentRefs = getProjectProposalAttachments(applicant);
-  const costs = buildCostHeader(proposalSnapshot);
-  const pick = (local: string, upstream: string) =>
-    local.trim() ? local : upstream;
+  const costs = buildCostHeader(upstream);
+  const pick = (local: string, upstreamValue: string) =>
+    local.trim() ? local : upstreamValue;
+  const pickList = (local: string[], upstreamList: string[]) =>
+    local.some((s) => String(s).trim()) ? local : upstreamList;
+
+  const localPp = existing.proposalSnapshot;
+  const proposalSnapshot = enrichRtecSnapshotFromPriorModules(
+    {
+      ...upstream,
+      projectTitle: pick(localPp.projectTitle, upstream.projectTitle),
+      proponentName: pick(localPp.proponentName, upstream.proponentName),
+      contactPerson: pick(localPp.contactPerson, upstream.contactPerson),
+      firmName: pick(localPp.firmName, upstream.firmName),
+      firmAddress: pick(localPp.firmAddress, upstream.firmAddress),
+      contactNumber: pick(localPp.contactNumber, upstream.contactNumber),
+      generalObjective: pick(localPp.generalObjective, upstream.generalObjective),
+      specificObjectives: pickList(
+        localPp.specificObjectives ?? [],
+        upstream.specificObjectives ?? [],
+      ),
+      expectedOutputBullets: pickList(
+        localPp.expectedOutputBullets ?? [],
+        upstream.expectedOutputBullets ?? [],
+      ),
+      skillsExpertise: pick(localPp.skillsExpertise, upstream.skillsExpertise),
+      compensation: pick(localPp.compensation, upstream.compensation),
+      productionProcess: pick(
+        localPp.productionProcess,
+        upstream.productionProcess,
+      ),
+      materialBalance: pick(localPp.materialBalance, upstream.materialBalance),
+      equipmentNarrative: pick(
+        localPp.equipmentNarrative,
+        upstream.equipmentNarrative,
+      ),
+      interventionCostTable: (localPp.interventionCostTable ?? []).some((r) =>
+        r.some((c) => String(c).trim()),
+      )
+        ? localPp.interventionCostTable
+        : upstream.interventionCostTable,
+      marketSituation: pick(localPp.marketSituation, upstream.marketSituation),
+      productDemandSupply: pick(
+        localPp.productDemandSupply,
+        upstream.productDemandSupply,
+      ),
+      existingMarketingProblems: pick(
+        localPp.existingMarketingProblems,
+        upstream.existingMarketingProblems,
+      ),
+      marketStrategies: pickList(
+        localPp.marketStrategies ?? [],
+        upstream.marketStrategies ?? [],
+      ),
+      wasteManagement: pick(localPp.wasteManagement, upstream.wasteManagement),
+      riskRows: (localPp.riskRows ?? []).some((r) =>
+        [r.objective, r.risk, r.assumption, r.plan].some((v) =>
+          String(v).trim(),
+        ),
+      )
+        ? localPp.riskRows
+        : upstream.riskRows,
+    },
+    applicant,
+  );
 
   const constraintRows = Array.isArray(existing.constraintRows)
     ? existing.constraintRows
@@ -432,6 +657,7 @@ export function syncRtecFromProjectProposal(
     ...existing,
     projectCostProponent: pick(existing.projectCostProponent, costs.proponent),
     projectCostSetup: pick(existing.projectCostSetup, costs.setup),
+    projectCostLgia: pick(existing.projectCostLgia, costs.lgia),
     projectCostTotal: pick(existing.projectCostTotal, costs.total),
     proposalSnapshot,
     attachmentRefs,

@@ -6,10 +6,13 @@ import { describe, expect, it } from "vitest";
 import type { ModuleDocument, WithdrawalTranchePackage } from "../../api/types";
 import {
   availableProposalBudgetItems,
+  ACTIVE_WITHDRAWAL_TRANCHES,
   emptyLandBankForm,
   emptyTranchePackage,
   getSelectedSupplierBlock,
   getTrancheEquipment,
+  isActiveWithdrawalTranche,
+  isAuthorityLetterReady,
   isTranche1Complete,
   isTranche2Complete,
   isTranche3Complete,
@@ -103,7 +106,7 @@ describe("tranche completion rules", () => {
     ).toBe(true);
   });
 
-  it("T3 requires only the signed letter (same as T2)", () => {
+  it("T3 requires only the signed letter (legacy records; not offered in UI)", () => {
     expect(isTranche3Complete(emptyTranchePackage(3))).toBe(false);
     expect(
       isTranche3Complete({ ...emptyTranchePackage(3), signedLetter: doc("t3.pdf") }),
@@ -119,6 +122,31 @@ describe("tranche completion rules", () => {
       equipmentPhotos: [doc("photo.jpg")],
     });
     expect(isWithdrawalRequestReady(ready)).toBe(true);
+  });
+
+  it("authority letter is offered for T1 and T2 only; T1 may be withdrawn alone", () => {
+    expect(ACTIVE_WITHDRAWAL_TRANCHES).toEqual([1, 2]);
+    expect(isActiveWithdrawalTranche(1)).toBe(true);
+    expect(isActiveWithdrawalTranche(2)).toBe(true);
+    expect(isActiveWithdrawalTranche(3)).toBe(false);
+
+    const form = emptyLandBankForm();
+    expect(isAuthorityLetterReady(form, 1)).toBe(false);
+    expect(isAuthorityLetterReady(form, 2)).toBe(false);
+    expect(isAuthorityLetterReady(form, 3)).toBe(false);
+
+    const t1Only = updateTranchePackage(form, 1, {
+      signedLetter: doc("t1.pdf"),
+      quotations: [doc("quote.pdf")],
+      equipmentPhotos: [doc("photo.jpg")],
+    });
+    expect(isAuthorityLetterReady(t1Only, 1)).toBe(true);
+    expect(isAuthorityLetterReady(t1Only, 2)).toBe(false);
+    expect(isWithdrawalRequestReady(t1Only)).toBe(true);
+
+    const t1AndT2 = updateTranchePackage(t1Only, 2, { signedLetter: doc("t2.pdf") });
+    expect(isAuthorityLetterReady(t1AndT2, 1)).toBe(true);
+    expect(isAuthorityLetterReady(t1AndT2, 2)).toBe(true);
   });
 });
 

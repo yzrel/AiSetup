@@ -139,6 +139,34 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  listLandBankBranches: (activeOnly = false) =>
+    apiFetch<import("./types").ApiLandBankBranch[]>(
+      `/landbank-branches?activeOnly=${activeOnly ? "true" : "false"}`,
+    ),
+
+  createLandBankBranch: (
+    payload: import("./types").ApiCreateLandBankBranchRequest,
+  ) =>
+    apiFetch<import("./types").ApiLandBankBranch>("/landbank-branches", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateLandBankBranch: (
+    id: string,
+    payload: import("./types").ApiUpdateLandBankBranchRequest,
+  ) =>
+    apiFetch<import("./types").ApiLandBankBranch>(`/landbank-branches/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  deactivateLandBankBranch: (id: string) =>
+    apiFetch<import("./types").ApiLandBankBranch>(
+      `/landbank-branches/${id}/deactivate`,
+      { method: "POST" },
+    ),
+
   getApplicant: (id: string) =>
     apiFetch<import("./types").ApiApplicantRecord>(`/applicants/${id}`),
 

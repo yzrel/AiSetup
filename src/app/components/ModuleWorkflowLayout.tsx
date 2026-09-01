@@ -8,6 +8,7 @@ import { isDemoModeActive } from "../utils/demoMode";
 import { StaffApplicantBanner, StaffApplicantPicker } from "./StaffApplicantPicker";
 import type { SetupFormKey } from "../constants/setupForms";
 import { ModuleFormHeader } from "./ModuleFormHeader";
+import { DostLogoLoader } from "./DostLogoLoader";
 import {
   DOST_BLUE,
   DOST_MID,
@@ -143,6 +144,9 @@ interface ModuleWorkflowLayoutProps {
   insetBody?: boolean;
   contentClassName?: string;
   children?: React.ReactNode;
+  /** When true, shows a branded DOST mark overlay over the module shell. */
+  loading?: boolean;
+  loadingLabel?: string;
 }
 
 export function ModuleWorkflowBody({
@@ -177,13 +181,18 @@ export function ModuleWorkflowLayout({
   insetBody = false,
   contentClassName = MODULE_BODY,
   children,
+  loading = false,
+  loadingLabel = "Loading…",
 }: ModuleWorkflowLayoutProps) {
   const widthClass = maxWidth === "5xl" ? "max-w-5xl" : "max-w-4xl";
   const hasBody = children != null && children !== false;
 
   return (
-    <div className={`${widthClass} mx-auto space-y-5`}>
-      <div className={MODULE_SHELL}>
+    <div className={`${widthClass} w-full min-w-0 mx-auto space-y-5`}>
+      <div className={`relative ${MODULE_SHELL}`}>
+        {loading && (
+          <DostLogoLoader variant="overlay" label={loadingLabel} />
+        )}
         <div
           className={`${MODULE_HEADER} text-white`}
           style={{ background: `linear-gradient(135deg,${DOST_BLUE},${DOST_MID})` }}

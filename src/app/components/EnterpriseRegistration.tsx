@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
+import { DateEstablishedField } from "./DateEstablishedField";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
@@ -499,7 +500,7 @@ export function EnterpriseRegistration({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Province
@@ -540,33 +541,24 @@ export function EnterpriseRegistration({
                 onChange={(e) => setField("postalCode", e.target.value)}
               />
             </div>
-            <div>
+            <DateEstablishedField
+              required
+              value={formData.companyStartDate}
+              onChange={(value) => setField("companyStartDate", value)}
+            />
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Company Start Date
+                Company Description
               </label>
-              <input
-                type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.companyStartDate}
+              <textarea
+                rows={4}
+                className="w-full min-h-[6.5rem] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                value={formData.companyDescription}
                 onChange={(e) =>
-                  setField("companyStartDate", e.target.value)
+                  setField("companyDescription", e.target.value)
                 }
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Company Description
-            </label>
-            <textarea
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              value={formData.companyDescription}
-              onChange={(e) =>
-                setField("companyDescription", e.target.value)
-              }
-            />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">

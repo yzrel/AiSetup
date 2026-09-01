@@ -28,6 +28,17 @@ const MODULE_KEY = "landBank";
 
 export type TrancheMapKey = "first" | "second" | "third";
 
+/** Staff-facing withdrawal / authority letter tranches. T3 is legacy-only. */
+export type ActiveWithdrawalTranche = 1 | 2;
+
+export const ACTIVE_WITHDRAWAL_TRANCHES: readonly ActiveWithdrawalTranche[] = [1, 2];
+
+export function isActiveWithdrawalTranche(
+  tranche: WithdrawalTrancheNum,
+): tranche is ActiveWithdrawalTranche {
+  return tranche === 1 || tranche === 2;
+}
+
 /** Signed-document map keys used by DocumentDeliveryPanel */
 export const WITHDRAWAL_SIGNED_KEY = {
   first: "withdrawal-request-t1",
@@ -308,6 +319,16 @@ export function isWithdrawalRequestReady(form: LandBankForm): boolean {
   return isTranche1Complete(form.tranches.first);
 }
 
+/** Authority letter may be issued for T1 alone; T2 is optional. T3 is not offered. */
+export function isAuthorityLetterReady(
+  form: LandBankForm,
+  tranche: WithdrawalTrancheNum,
+): boolean {
+  if (tranche === 1) return isTranche1Complete(form.tranches.first);
+  if (tranche === 2) return isTranche2Complete(form.tranches.second);
+  return false;
+}
+
 export interface LandBankOverview {
   projectTitle: string;
   enterpriseName: string;
@@ -326,6 +347,15 @@ function formatPeso(num: number): string {
 
 function parseAmount(amount: string): number {
   return parseFloat(String(amount).replace(/[^\d.]/g, "")) || 0;
+}
+
+export function overviewTrancheAmount(
+  overview: LandBankOverview,
+  tranche: WithdrawalTrancheNum,
+): string {
+  if (tranche === 1) return overview.tranche1Amount;
+  if (tranche === 2) return overview.tranche2Amount;
+  return overview.tranche3Amount;
 }
 
 export function getLandBankOverview(applicant: Applicant | null): LandBankOverview {
@@ -502,19 +532,8 @@ export function markAuthorityLetterGenerated(applicantId: string): void {
   saveLandBankDraft(applicantId, { ...form, authorityLetterGenerated: true });
 }
 
-function authorityTrancheAmount(
-  overview: LandBankOverview,
-  tranche: WithdrawalTrancheNum,
-): string {
-  if (tranche === 1) return overview.tranche1Amount;
-  if (tranche === 2) return overview.tranche2Amount;
-  return overview.tranche3Amount;
-}
-
-function authorityTrancheWord(tranche: WithdrawalTrancheNum): string {
-  if (tranche === 1) return "first";
-  if (tranche === 2) return "second";
-  return "third";
+function authorityTrancheWord(tranche: ActiveWithdrawalTranche): string {
+  return tranche === 1 ? "first" : "second";
 }
 
 export function downloadAuthorityLetterPdf(
@@ -522,7 +541,7 @@ export function downloadAuthorityLetterPdf(
   applicationId?: string,
   tranche: WithdrawalTrancheNum = 1,
 ): void {
-  if (!applicant) return;
+  if (!applicant || !isActiveWithdrawalTranche(tranche)) return;
   const overview = getLandBankOverview(applicant);
   const form = getLandBankForm(applicant);
   const pkg = getTranchePackage(form, tranche);
@@ -532,7 +551,7 @@ export function downloadAuthorityLetterPdf(
   const title = applicationId
     ? `Authority-Letter-T${tranche}-${applicationId}`
     : `Authority-Letter-Withdraw-T${tranche}`;
-  const withdrawAmount = authorityTrancheAmount(overview, tranche);
+  const withdrawAmount = overviewTrancheAmount(overview, tranche);
   const trancheWord = authorityTrancheWord(tranche);
 
   markAuthorityLetterGenerated(applicant.id);

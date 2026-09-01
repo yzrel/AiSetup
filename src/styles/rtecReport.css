@@ -1,378 +1,464 @@
-/* Author: Yzrel Jade B. Eborde — SETUP Form 002 RTEC Report official print layout (print-only) */
+/* Author: Yzrel Jade B. Eborde — SETUP Form 002 RTEC Report (Annex A-2) */
 
-#rtec-report-print-root {
-  font-family: Arial, "Segoe UI", sans-serif;
-  font-size: 11px;
-  line-height: 1.35;
-  color: #111827;
+.rtec-form-document,
+#rtec-report-preview {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.3;
+  color: #111;
   width: 210mm;
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
-  background: #fff;
+  background: transparent;
 }
 
-#rtec-report-print-root .rtec-form-document-root {
+.rtec-form-document .rtec-form-document-root,
+#rtec-report-preview .rtec-form-document-root {
   width: 210mm;
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding: 10mm 0 8mm;
+  padding: 0;
   background: #fff;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.rtec-form-document .rtec-form-page,
+#rtec-report-preview .rtec-form-page {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 25.4mm;
+  background: #fff;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.rtec-form-document .rtec-form-page-body,
+#rtec-report-preview .rtec-form-page-body {
+  padding: 0;
   box-sizing: border-box;
 }
 
-#rtec-report-print-root .rtec-form-block,
-#rtec-report-print-root .rtec-print-section {
-  margin-bottom: 12px;
+.rtec-form-document .rtec-form-block,
+#rtec-report-preview .rtec-form-block {
+  margin-bottom: 16px;
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-#rtec-report-print-root .rtec-form-block .rtec-form-table {
+.rtec-form-document .rtec-form-block .rtec-form-table,
+#rtec-report-preview .rtec-form-block .rtec-form-table {
   break-inside: auto;
   page-break-inside: auto;
 }
 
-#rtec-report-print-root .rtec-form-table thead {
+.rtec-form-document .rtec-form-indent-1,
+#rtec-report-preview .rtec-form-indent-1 {
+  padding-left: 0.35in;
+}
+
+.rtec-form-document .rtec-form-indent-2,
+#rtec-report-preview .rtec-form-indent-2 {
+  padding-left: 0.3in;
+}
+
+.rtec-form-document .rtec-form-title,
+#rtec-report-preview .rtec-form-title {
+  font-family: Arial, sans-serif;
+  font-size: 14pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 18px;
+  color: #111;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.rtec-form-document .rtec-form-section-heading,
+#rtec-report-preview .rtec-form-section-heading {
+  font-size: 11pt;
+  font-weight: 700;
+  margin: 18px 0 8px;
+  color: #111;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.rtec-form-document .rtec-form-subheading,
+#rtec-report-preview .rtec-form-subheading {
+  font-size: 11pt;
+  font-weight: 700;
+  margin: 12px 0 6px;
+  color: #111;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.rtec-form-document .rtec-form-nested-heading,
+#rtec-report-preview .rtec-form-nested-heading {
+  font-size: 10.5pt;
+  font-weight: 700;
+  margin: 12px 0 5px;
+  color: #111;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.rtec-form-document .rtec-form-header-fields,
+#rtec-report-preview .rtec-form-header-fields {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  column-gap: 0.5em;
+  row-gap: 5px;
+  align-items: baseline;
+  margin: 0 0 16px;
+}
+
+.rtec-form-document .rtec-form-header-fields .rtec-form-field-line,
+#rtec-report-preview .rtec-form-header-fields .rtec-form-field-line {
+  display: contents;
+}
+
+.rtec-form-document .rtec-form-profile-lines,
+#rtec-report-preview .rtec-form-profile-lines {
+  margin: 0 0 10px;
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  column-gap: 0.5em;
+  row-gap: 4px;
+  align-items: baseline;
+}
+
+.rtec-form-document .rtec-form-profile-lines .rtec-form-field-line,
+#rtec-report-preview .rtec-form-profile-lines .rtec-form-field-line {
+  display: contents;
+}
+
+.rtec-form-document .rtec-form-field-line,
+#rtec-report-preview .rtec-form-field-line {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  column-gap: 0.5em;
+  align-items: baseline;
+  margin: 0 0 5px;
+  font-size: 11pt;
+  line-height: 1.35;
+}
+
+.rtec-form-document .rtec-form-field-label,
+#rtec-report-preview .rtec-form-field-label {
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.rtec-form-document .rtec-form-field-value,
+#rtec-report-preview .rtec-form-field-value {
+  min-width: 0;
+  font-weight: 400;
+  border-bottom: none;
+  padding-bottom: 0;
+  min-height: 0;
+  text-align: left;
+}
+
+.rtec-form-document .rtec-form-field-caption,
+#rtec-report-preview .rtec-form-field-caption {
+  font-size: 10.5pt;
+  font-weight: 700;
+  margin: 8px 0 3px;
+  color: #111;
+}
+
+.rtec-form-document .rtec-form-cost-block,
+#rtec-report-preview .rtec-form-cost-block {
+  margin: 4px 0 2px;
+}
+
+.rtec-form-document .rtec-form-cost-heading,
+#rtec-report-preview .rtec-form-cost-heading {
+  margin: 0 0 6px;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.rtec-form-document .rtec-form-cost-grid,
+#rtec-report-preview .rtec-form-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 12px;
+  align-items: start;
+}
+
+.rtec-form-document .rtec-form-cost-cell,
+#rtec-report-preview .rtec-form-cost-cell {
+  min-width: 0;
+}
+
+.rtec-form-document .rtec-form-cost-label,
+#rtec-report-preview .rtec-form-cost-label {
+  display: block;
+  font-size: 10pt;
+  font-weight: 700;
+  margin: 0 0 4px;
+  line-height: 1.25;
+}
+
+.rtec-form-document .rtec-form-cost-value,
+#rtec-report-preview .rtec-form-cost-value {
+  margin: 0;
+  font-size: 11pt;
+  font-weight: 400;
+  line-height: 1.3;
+  border-bottom: none;
+  min-height: 1.3em;
+  padding-bottom: 0;
+  word-break: break-word;
+}
+
+.rtec-form-document .rtec-form-narrative,
+#rtec-report-preview .rtec-form-narrative {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+  font-size: 11pt;
+  line-height: 1.4;
+}
+
+.rtec-form-document .rtec-form-empty,
+#rtec-report-preview .rtec-form-empty {
+  margin: 0 0 8px;
+  min-height: 0.9em;
+}
+
+.rtec-form-document .rtec-form-bullet-list,
+#rtec-report-preview .rtec-form-bullet-list {
+  margin: 0 0 8px;
+  padding-left: 1.25rem;
+}
+
+.rtec-form-document .rtec-form-bullet-list li,
+#rtec-report-preview .rtec-form-bullet-list li {
+  margin-bottom: 2px;
+}
+
+.rtec-form-document .rtec-form-table,
+#rtec-report-preview .rtec-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 9.5pt;
+  margin: 0 0 12px;
+}
+
+.rtec-form-document .rtec-form-table th,
+.rtec-form-document .rtec-form-table td,
+#rtec-report-preview .rtec-form-table th,
+#rtec-report-preview .rtec-form-table td {
+  border: 1px solid #111;
+  padding: 4px 5px;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.rtec-form-document .rtec-form-table thead th,
+#rtec-report-preview .rtec-form-table thead th {
+  font-weight: 700;
+  text-align: center;
+  font-size: 9pt;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.rtec-form-document .rtec-form-check-cell,
+#rtec-report-preview .rtec-form-check-cell {
+  text-align: center;
+  vertical-align: middle;
+  width: 12%;
+}
+
+.rtec-form-document .rtec-form-center,
+#rtec-report-preview .rtec-form-center {
+  text-align: center;
+}
+
+.rtec-form-document .rtec-form-right,
+#rtec-report-preview .rtec-form-right {
+  text-align: right;
+}
+
+.rtec-form-document .rtec-form-total-label,
+#rtec-report-preview .rtec-form-total-label {
+  font-weight: 700;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.rtec-form-document .rtec-form-total-amount,
+#rtec-report-preview .rtec-form-total-amount {
+  font-weight: 700;
+}
+
+.rtec-form-document .rtec-form-particulars,
+#rtec-report-preview .rtec-form-particulars {
+  word-break: break-word;
+}
+
+.rtec-form-document .rtec-form-rm-cost-table,
+#rtec-report-preview .rtec-form-rm-cost-table {
+  font-size: 8pt;
+}
+
+.rtec-form-document .rtec-form-rm-cost-table th,
+#rtec-report-preview .rtec-form-rm-cost-table th {
+  font-size: 7.5pt;
+  line-height: 1.15;
+  padding: 2px 3px;
+}
+
+.rtec-form-document .rtec-form-rm-cost-table td,
+#rtec-report-preview .rtec-form-rm-cost-table td {
+  padding: 2px 3px;
+}
+
+.rtec-form-document .rtec-form-rm-alloc-table,
+#rtec-report-preview .rtec-form-rm-alloc-table {
+  font-size: 9.5pt;
+}
+
+.rtec-form-document .rtec-form-table tfoot td,
+#rtec-report-preview .rtec-form-table tfoot td {
+  font-weight: 700;
+}
+
+.rtec-form-document .rtec-form-attachment,
+.rtec-form-document .rtec-form-attachment-placeholder,
+#rtec-report-preview .rtec-form-attachment,
+#rtec-report-preview .rtec-form-attachment-placeholder {
+  margin: 4px 0 12px;
+  border: 1px solid #d1d5db;
+  padding: 10px;
+  min-height: 96px;
+  background: #fafafa;
+}
+
+.rtec-form-document .rtec-form-attachment img,
+#rtec-report-preview .rtec-form-attachment img {
+  max-width: 100%;
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  display: block;
+  margin: 8px auto 0;
+  object-fit: contain;
+}
+
+.rtec-form-document .rtec-form-attachment-label,
+#rtec-report-preview .rtec-form-attachment-label {
+  display: none;
+}
+
+.rtec-form-document .rtec-form-attachment-file,
+#rtec-report-preview .rtec-form-attachment-file {
+  margin: 6px 0 0;
+  font-size: 10pt;
+}
+
+.rtec-form-document .rtec-form-signatures,
+#rtec-report-preview .rtec-form-signatures {
+  margin-top: 16px;
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-#rtec-report-print-root .rtec-form-title {
-  font-size: 13px;
-  font-weight: 800;
+.rtec-form-document .rtec-form-sig-title,
+#rtec-report-preview .rtec-form-sig-title {
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+.rtec-form-document .rtec-form-sig-chair,
+#rtec-report-preview .rtec-form-sig-chair {
+  max-width: 280px;
+  margin: 0 auto 20px;
   text-align: center;
-  margin: 0 0 14px;
-  color: #0c2461;
 }
 
-#rtec-report-print-root .rtec-form-section-heading {
-  font-size: 11px;
-  font-weight: 700;
-  margin: 12px 0 8px;
-  color: #111827;
-  break-after: avoid;
-  page-break-after: avoid;
-}
-
-#rtec-report-print-root .rtec-form-subheading {
-  font-size: 11px;
-  font-weight: 700;
-  margin: 10px 0 6px;
-  color: #111827;
-  break-after: avoid;
-  page-break-after: avoid;
-}
-
-#rtec-report-print-root .rtec-form-field-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  margin: 8px 0 4px;
-  color: #111827;
-}
-
-#rtec-report-print-root .rtec-form-cover-field {
-  margin-bottom: 6px;
-}
-
-#rtec-report-print-root .rtec-form-cover-label {
-  font-weight: 700;
-  font-size: 10.5px;
-  color: #374151;
-}
-
-#rtec-report-print-root .rtec-form-cover-value {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-}
-
-#rtec-report-print-root .rtec-form-cost-grid {
+.rtec-form-document .rtec-form-sig-members,
+#rtec-report-preview .rtec-form-sig-members {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 10px 0 14px;
+  gap: 16px 20px;
+  margin: 0 0 24px;
 }
 
-#rtec-report-print-root .rtec-form-cost-value {
-  margin: 4px 0 0;
-  font-size: 11px;
-}
-
-#rtec-report-print-root .rtec-form-instruction {
-  font-size: 10px;
-  font-style: italic;
-  margin: 10px 0 6px;
-  color: #374151;
-}
-
-#rtec-report-print-root .rtec-form-narrative {
-  font-size: 11px;
-  margin: 4px 0 8px;
-  text-align: justify;
-  white-space: pre-wrap;
-}
-
-#rtec-report-print-root .rtec-form-narrative-cell {
-  white-space: pre-wrap;
-  vertical-align: top;
-}
-
-#rtec-report-print-root .rtec-form-empty {
-  margin: 4px 0;
-  color: #9ca3af;
-}
-
-#rtec-report-print-root .rtec-form-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 6px 0 10px;
-  font-size: 10px;
-}
-
-#rtec-report-print-root .rtec-form-table th,
-#rtec-report-print-root .rtec-form-table td {
-  border: 1px solid #374151;
-  padding: 4px 6px;
-  vertical-align: top;
-}
-
-#rtec-report-print-root .rtec-form-table th {
-  font-weight: 700;
-  background: #f3f4f6;
+.rtec-form-document .rtec-form-sig-member,
+#rtec-report-preview .rtec-form-sig-member {
   text-align: center;
 }
 
-#rtec-report-print-root .rtec-form-table tfoot td {
-  font-weight: 700;
-  background: #f3f4f6;
-}
-
-#rtec-report-print-root .rtec-form-compensation-table {
-  table-layout: fixed;
-}
-
-#rtec-report-print-root .rtec-form-compensation-table th:first-child,
-#rtec-report-print-root .rtec-form-compensation-table td.rtec-form-particulars {
-  width: 28%;
-  min-width: 28%;
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-#rtec-report-print-root .rtec-form-rm-cost-table,
-#rtec-report-print-root .rtec-form-equipment-table,
-#rtec-report-print-root .rtec-form-rm-alloc-table {
-  table-layout: fixed;
-  font-size: 8pt;
-}
-
-#rtec-report-print-root .rtec-form-rm-cost-table th:first-child,
-#rtec-report-print-root .rtec-form-rm-cost-table td.rtec-form-particulars,
-#rtec-report-print-root .rtec-form-equipment-table th:first-child,
-#rtec-report-print-root .rtec-form-equipment-table td.rtec-form-particulars,
-#rtec-report-print-root .rtec-form-rm-alloc-table th:first-child,
-#rtec-report-print-root .rtec-form-rm-alloc-table td.rtec-form-particulars {
-  width: 18%;
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-#rtec-report-print-root .rtec-form-label {
-  font-weight: 600;
-  width: 32%;
-  background: #f9fafb;
-}
-
-#rtec-report-print-root .rtec-form-value {
-  width: 68%;
-}
-
-#rtec-report-print-root .rtec-form-center {
-  text-align: center;
-}
-
-#rtec-report-print-root .rtec-form-checkbox-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 6px 0 10px;
-}
-
-#rtec-report-print-root .rtec-form-checkbox-option {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 4px;
-  font-size: 10px;
-  max-width: 100%;
-}
-
-#rtec-report-print-root .rtec-form-checkbox {
-  flex-shrink: 0;
-  font-size: 11px;
-  line-height: 1.2;
-}
-
-#rtec-report-print-root .rtec-form-activity-grid {
-  margin: 6px 0 10px;
-}
-
-#rtec-report-print-root .rtec-form-activity-row {
+.rtec-form-document .rtec-form-sig-endorse,
+#rtec-report-preview .rtec-form-sig-endorse {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px 12px;
-  margin-bottom: 4px;
+  gap: 24px 40px;
+  margin-top: 8px;
 }
 
-#rtec-report-print-root .rtec-form-activity-row .rtec-form-checkbox-option {
-  font-size: 9.5px;
-}
-
-#rtec-report-print-root .rtec-form-priority-specify {
-  font-size: 10px;
-  font-weight: 600;
-  margin: 4px 0 10px;
-  padding-left: 16px;
-}
-
-#rtec-report-print-root .rtec-form-bullet-list,
-#rtec-report-print-root .rtec-form-check-bullet-list {
-  margin: 4px 0 10px;
-  padding-left: 18px;
-}
-
-#rtec-report-print-root .rtec-form-bullet-list li,
-#rtec-report-print-root .rtec-form-check-bullet-list li {
-  margin-bottom: 4px;
-  font-size: 11px;
-  text-align: justify;
-}
-
-#rtec-report-print-root .rtec-form-check-bullet {
-  margin-right: 6px;
-  font-weight: 700;
-}
-
-#rtec-report-print-root .rtec-form-compliance-table .rtec-form-check-cell {
-  text-align: center;
-  width: 72px;
-}
-
-#rtec-report-print-root .rtec-form-intervention-table td {
-  font-size: 9.5px;
-}
-
-#rtec-report-print-root .rtec-form-attachment,
-#rtec-report-print-root .rtec-form-attachment-placeholder {
-  margin: 8px 0 12px;
+.rtec-form-document .rtec-form-sig-endorse-cell,
+#rtec-report-preview .rtec-form-sig-endorse-cell {
   text-align: center;
 }
 
-#rtec-report-print-root .rtec-form-attachment img {
-  max-width: 100%;
-  max-height: 220px;
-  object-fit: contain;
-  border: 1px solid #d1d5db;
-}
-
-#rtec-report-print-root .rtec-form-attachment-label {
-  font-size: 10px;
-  font-weight: 600;
-  margin: 0 0 6px;
-  color: #374151;
-}
-
-#rtec-report-print-root .rtec-form-attachment-placeholder {
-  border: 1px dashed #9ca3af;
-  min-height: 80px;
-  padding: 12px;
-}
-
-#rtec-report-print-root .rtec-form-expected-output {
-  margin-bottom: 10px;
-}
-
-#rtec-report-print-root .rtec-form-expected-heading {
+.rtec-form-document .rtec-form-sig-endorse-label,
+#rtec-report-preview .rtec-form-sig-endorse-label {
   font-weight: 700;
-  font-size: 10.5px;
-  margin: 0 0 4px;
-}
-
-#rtec-report-print-root .rtec-form-ratio-intro {
-  font-size: 10px;
-  font-style: italic;
-  margin: 4px 0 8px;
-}
-
-#rtec-report-print-root .rtec-form-note {
-  font-size: 9.5px;
-  font-style: italic;
-  margin: 6px 0 10px;
-}
-
-#rtec-report-print-root .rtec-form-risk-footnote {
-  margin-top: 10px;
-  font-size: 9px;
-  font-style: italic;
-  color: #4b5563;
-}
-
-#rtec-report-print-root .rtec-form-risk-footnote p {
-  margin: 2px 0;
-}
-
-#rtec-report-print-root .rtec-form-signatures {
-  margin-top: 16px;
-}
-
-#rtec-report-print-root .rtec-form-sig-title {
-  font-weight: 700;
-  font-size: 11px;
+  text-align: left;
   margin: 0 0 12px;
+  font-size: 10.5pt;
 }
 
-#rtec-report-print-root .rtec-form-sig-grid {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-#rtec-report-print-root .rtec-form-sig-grid-secondary {
-  grid-template-columns: 1fr 1fr;
-}
-
-#rtec-report-print-root .rtec-form-sig-members {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-#rtec-report-print-root .rtec-form-sig-label {
-  font-size: 9.5px;
-  color: #4b5563;
+.rtec-form-document .rtec-form-sig-line,
+#rtec-report-preview .rtec-form-sig-line {
+  border-bottom: 1px solid #111;
+  min-height: 1.6em;
   margin: 0 0 4px;
 }
 
-#rtec-report-print-root .rtec-form-sig-line {
-  border-bottom: 1px solid #374151;
-  min-height: 36px;
-  margin-bottom: 4px;
+.rtec-form-document .rtec-form-sig-name,
+#rtec-report-preview .rtec-form-sig-name {
+  margin: 0 0 2px;
+  font-size: 10.5pt;
+  min-height: 1.2em;
 }
 
-#rtec-report-print-root .rtec-form-sig-name {
-  font-size: 10px;
-  font-weight: 600;
+.rtec-form-document .rtec-form-sig-role,
+#rtec-report-preview .rtec-form-sig-role {
   margin: 0;
+  font-size: 9.5pt;
+  text-align: center;
 }
 
-#rtec-report-print-root .rtec-form-sig-date {
-  font-size: 10px;
-  color: #4b5563;
-  margin: 12px 0 0;
+@media (max-width: 640px) {
+  .rtec-form-document .rtec-form-cost-grid,
+  #rtec-report-preview .rtec-form-cost-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rtec-form-document .rtec-form-sig-members,
+  #rtec-report-preview .rtec-form-sig-members {
+    grid-template-columns: 1fr;
+  }
+
+  .rtec-form-document .rtec-form-sig-endorse,
+  #rtec-report-preview .rtec-form-sig-endorse {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media print {
@@ -400,16 +486,20 @@
     background: #fff !important;
   }
 
+  .rtec-screen-only {
+    display: none !important;
+  }
+
   @page rtec-report-sheet {
     size: A4 portrait;
-    margin: 12mm 12mm 20mm;
+    margin: 25.4mm;
 
     @bottom-center {
       content: "SETUP Guidelines (Revision 3.0) Annex A-2: SETUP Form 002 - RTEC Report Page "
         counter(page) " of " counter(pages);
-      font-family: Arial, "Segoe UI", sans-serif;
-      font-size: 8.5px;
-      color: #6b7280;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #111;
     }
   }
 
@@ -417,8 +507,29 @@
     page: rtec-report-sheet;
   }
 
+  #rtec-report-print-root.rtec-form-document,
   #rtec-report-print-root .rtec-form-document-root {
-    padding: 0;
-    margin: 0 auto;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 11pt;
+    background: #fff !important;
+  }
+
+  #rtec-report-print-root .rtec-form-page {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  #rtec-report-print-root .rtec-form-title {
+    color: #111 !important;
+    text-align: center !important;
   }
 }

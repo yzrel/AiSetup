@@ -25,6 +25,7 @@ import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveResponse;
 import ph.gov.dost.aisetup.workflow.ClientVisibilityService;
 import ph.gov.dost.aisetup.workflow.ModuleContentValidationService;
 import ph.gov.dost.aisetup.workflow.ModuleDataIntegrityService;
+import ph.gov.dost.aisetup.workflow.ModuleOrder;
 import ph.gov.dost.aisetup.workflow.WorkflowGateService;
 
 @RestController
@@ -89,6 +90,9 @@ public class ApplicantController {
                 body.getProfile(),
                 body.getUpdatedAt());
         workflowGateService.assertSaveAllowed(dto, existing);
+        if (shouldValidateRequirements(dto, existing)) {
+            moduleContentValidationService.assertRequirementsComplete(dto.moduleData());
+        }
         if ("landbank-withdrawal".equals(dto.currentModule())) {
             workflowGateService.assertLandBankWithdrawalAllowed(id);
         }
@@ -224,6 +228,23 @@ public class ApplicantController {
         cleaned.remove("signedMoaSnapshot");
         cleaned.remove("introductionLetter");
         return cleaned;
+    }
+
+    private boolean shouldValidateRequirements(ApplicantRecordDto incoming, ApplicantRecordDto existing) {
+        if (incoming.moduleData() == null) {
+            return false;
+        }
+        Object submitted = incoming.moduleData().get("documentsSubmitted");
+        if (submitted instanceof Boolean b && b) {
+            return true;
+        }
+        if (existing == null || existing.currentModule() == null || incoming.currentModule() == null) {
+            return false;
+        }
+        String from = ModuleOrder.normalize(existing.currentModule());
+        String to = ModuleOrder.normalize(incoming.currentModule());
+        return "requirements".equals(from)
+                && ModuleOrder.indexOf(to) > ModuleOrder.indexOf("requirements");
     }
 
 }

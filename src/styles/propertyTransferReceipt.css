@@ -1,0 +1,323 @@
+/* Author: Yzrel Jade B. Eborde — SETUP Form 005 Property Transfer Receipt (Annex A-5) */
+
+.ptr-form-document,
+#property-transfer-receipt-preview {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.25;
+  color: #111;
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background: transparent;
+}
+
+.ptr-form-document .ptr-form-document-root,
+#property-transfer-receipt-preview .ptr-form-document-root {
+  width: 210mm;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0;
+  background: #fff;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ptr-form-document .ptr-form-page,
+#property-transfer-receipt-preview .ptr-form-page {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 25.4mm;
+  background: #fff;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ptr-form-document .ptr-form-page-body,
+#property-transfer-receipt-preview .ptr-form-page-body {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.ptr-form-document .ptr-form-title,
+#property-transfer-receipt-preview .ptr-form-title {
+  font-family: Arial, sans-serif;
+  font-size: 14pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 16px;
+  color: #111;
+  text-transform: none;
+}
+
+.ptr-form-document .ptr-form-entity-line,
+#property-transfer-receipt-preview .ptr-form-entity-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0 0 12px;
+}
+
+.ptr-form-document .ptr-form-inline-field,
+#property-transfer-receipt-preview .ptr-form-inline-field {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.ptr-form-document .ptr-form-field-line,
+#property-transfer-receipt-preview .ptr-form-field-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 11pt;
+}
+
+.ptr-form-document .ptr-form-header-grid,
+#property-transfer-receipt-preview .ptr-form-header-grid {
+  margin: 0 0 12px;
+}
+
+.ptr-form-document .ptr-form-field-label,
+#property-transfer-receipt-preview .ptr-form-field-label {
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ptr-form-document .ptr-form-field-value,
+#property-transfer-receipt-preview .ptr-form-field-value {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1px solid #111;
+  min-height: 1.2em;
+  padding-bottom: 1px;
+}
+
+.ptr-form-document .ptr-form-transfer-type,
+#property-transfer-receipt-preview .ptr-form-transfer-type {
+  margin: 0 0 12px;
+}
+
+.ptr-form-document .ptr-form-transfer-type-label,
+#property-transfer-receipt-preview .ptr-form-transfer-type-label {
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.ptr-form-document .ptr-form-transfer-options,
+#property-transfer-receipt-preview .ptr-form-transfer-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.ptr-form-document .ptr-form-transfer-option,
+#property-transfer-receipt-preview .ptr-form-transfer-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5pt;
+}
+
+.ptr-form-document .ptr-form-checkbox,
+#property-transfer-receipt-preview .ptr-form-checkbox {
+  font-size: 12pt;
+  line-height: 1;
+}
+
+.ptr-form-document .ptr-form-other-specify,
+#property-transfer-receipt-preview .ptr-form-other-specify {
+  border-bottom: 1px solid #111;
+  min-width: 6rem;
+  padding: 0 4px;
+}
+
+.ptr-form-document .ptr-form-table,
+#property-transfer-receipt-preview .ptr-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10pt;
+  margin: 0 0 14px;
+}
+
+.ptr-form-document .ptr-form-table th,
+.ptr-form-document .ptr-form-table td,
+#property-transfer-receipt-preview .ptr-form-table th,
+#property-transfer-receipt-preview .ptr-form-table td {
+  border: 1px solid #111;
+  padding: 4px 5px;
+  vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.ptr-form-document .ptr-form-table thead th,
+#property-transfer-receipt-preview .ptr-form-table thead th {
+  font-weight: 700;
+  text-align: center;
+  font-size: 9pt;
+  line-height: 1.2;
+}
+
+.ptr-form-document .ptr-form-table tbody td,
+#property-transfer-receipt-preview .ptr-form-table tbody td {
+  height: 26px;
+  min-height: 26px;
+}
+
+.ptr-form-document .ptr-center,
+#property-transfer-receipt-preview .ptr-center {
+  text-align: center;
+}
+
+.ptr-form-document .ptr-right,
+#property-transfer-receipt-preview .ptr-right {
+  text-align: right;
+}
+
+.ptr-form-document .ptr-form-reason,
+#property-transfer-receipt-preview .ptr-form-reason {
+  margin: 0 0 16px;
+  font-size: 10.5pt;
+}
+
+.ptr-form-document .ptr-form-reason .ptr-form-field-label,
+#property-transfer-receipt-preview .ptr-form-reason .ptr-form-field-label {
+  margin: 0 0 6px;
+}
+
+.ptr-form-document .ptr-form-reason-narrative,
+#property-transfer-receipt-preview .ptr-form-reason-narrative {
+  margin: 0;
+  min-height: 2.4em;
+  border-bottom: 1px solid #111;
+  padding: 2px 0 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.ptr-form-document .ptr-form-approved-block,
+#property-transfer-receipt-preview .ptr-form-approved-block {
+  margin: 0 0 16px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ptr-form-document .ptr-form-approved-grid,
+#property-transfer-receipt-preview .ptr-form-approved-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  font-size: 10.5pt;
+  margin-top: 6px;
+}
+
+@media (min-width: 480px) {
+  .ptr-form-document .ptr-form-approved-grid,
+  #property-transfer-receipt-preview .ptr-form-approved-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ptr-form-document .ptr-form-release-grid,
+#property-transfer-receipt-preview .ptr-form-release-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px 32px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media (min-width: 640px) {
+  .ptr-form-document .ptr-form-release-grid,
+  #property-transfer-receipt-preview .ptr-form-release-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ptr-form-document .ptr-form-sig-line,
+#property-transfer-receipt-preview .ptr-form-sig-line {
+  margin: 8px 0 0;
+  min-height: 1.4em;
+  border-bottom: 1px solid #111;
+  padding-bottom: 2px;
+}
+
+@media print {
+  body.property-transfer-receipt-printing,
+  body.property-transfer-receipt-printing html {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.property-transfer-receipt-printing > *:not(#property-transfer-receipt-print-root) {
+    display: none !important;
+  }
+
+  body.property-transfer-receipt-printing #property-transfer-receipt-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .ptr-screen-only {
+    display: none !important;
+  }
+
+  @page property-transfer-receipt-sheet {
+    size: A4 portrait;
+    margin: 25.4mm;
+
+    @bottom-center {
+      content: "SETUP Guidelines (Revision 3.0) Annex A-5: SETUP Form 005 - Property Transfer Receipt Page "
+        counter(page) " of " counter(pages);
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #111;
+    }
+  }
+
+  body.property-transfer-receipt-printing #property-transfer-receipt-print-root {
+    page: property-transfer-receipt-sheet;
+  }
+
+  #property-transfer-receipt-print-root .ptr-form-document,
+  #property-transfer-receipt-print-root .ptr-form-document-root {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 11pt;
+  }
+
+  #property-transfer-receipt-print-root .ptr-form-page {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #property-transfer-receipt-print-root .ptr-form-title {
+    color: #111 !important;
+  }
+}

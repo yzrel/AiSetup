@@ -1,0 +1,87 @@
+---
+description: Proforma MOA Annex C print/preview layout
+globs: src/app/components/moaAnnexC/**,src/styles/moaAnnexC.css,src/app/constants/moaAnnexCLayout.ts,src/app/utils/moaAnnexCPrint.tsx,src/app/utils/moaAnnexPacket.ts,src/app/components/MoaAnnexCPreview.tsx,src/app/utils/moaAnnexC.ts,src/app/components/MoaAnnexCEditor.tsx,src/app/components/ApprovalLetter.tsx
+alwaysApply: false
+---
+
+# Proforma MOA layout (Annex C)
+
+Source of truth: `Proforma MOA - Annex C.docx` — SETUP Guidelines (Revision 3.0) Annex C.
+Do not use the retired Annex D paragraph stub for print.
+
+## Document title
+
+`MEMORANDUM OF AGREEMENT`
+
+## Page
+
+- A4 portrait. Margins: **1 in (25.4 mm)** all sides — same as Form 001 / Form 005 / Form 006. Do **not** add Word body `w:ind` on top of page margin (that doubles the printable border).
+- Body: Times New Roman ~11pt. Black text only.
+- Preview inset is `.moa-form-page` padding. Print uses `@page moa-annex-c-sheet` margin and **zeros** page padding so the two do not stack.
+- `@page moa-annex-c-sheet` footer:
+
+`SETUP Guidelines (Revision 3.0) Annex C: Proforma MOA Page ` + `counter(page)` / `counter(pages)`
+
+## Structure (Word MOA body)
+
+1. Title + KNOW ALL MEN BY THESE PRESENTS
+2. Parties: FIRST PARTY (DOST Region) + SECOND PARTY (enterprise)
+3. WITNESSETH / WHEREAS clauses + S&T interventions list
+4. NOW THEREFORE
+5. FIRST PARTY shall (1.) with 1.1–1.9 obligations
+6. SECOND PARTY shall (2.) with 2.1–2.25; PIS sub-items 2.18.1–2.18.2; sign-board details nested under 2.25 (project title, cooperator, proposed equipment, phases, fund source — no border)
+7. REFUND (3.) with 3.1–3.2 clauses
+8. PUBLICATION (4.) / AMENDMENTS (5.) / EFFECTIVITY (6.) / VENUE OF ACTION (7.) — section number + body
+9. IN WITNESS WHEREOF signing date/venue
+10. Signature blocks (RD + Cooperator) + witnesses + Certified Funds Available
+11. ACKNOWLEDGMENT (notary + ID table)
+12. **Annex A** — Form 001 reference note only (do not embed full proposal)
+13. **Annex B** — Line-Item Budget table (Form 001 `budgetItems`; SETUP + Cooperator; LGIA column only when any row has LGIA) + Conforme
+14. **Annex C** — Schedule of Activities Gantt (Form 001 `scheduleTable`, M1–M8) — bordered table with black month bars (same visual as Form 001 section F)
+15. **Annex D** — Schedule of Refund calendar-year grid (computed from MOA amount + refund term + signing date + 12-month grace via `computeRefundSchedule`) + Conforme
+16. **Annex E** — reference note only (Form 004 AFR is a liquidation artifact)
+
+When Form 001 data is missing, Annex B/C/D fall back to label-only notes (same as legacy behavior).
+
+## Bound packet data (`moaAnnexPacket.ts`)
+
+Preview/print pass `applicant` into [`buildMoaAnnexPacketContext`](src/app/utils/moaAnnexPacket.ts):
+
+| Annex | Source | Notes |
+|---|---|---|
+| B | Form 001 `budgetItems` | `toBudgetPrintRow` logic; SETUP total prefers MOA `approvedAmount` |
+| C | Form 001 `scheduleTable` | Reuses `ScheduleGanttTable` (1 cell/month) |
+| D | MOA form + `computeRefundSchedule` | Calendar-year pivot; **not** Form 001 Y1–Y5 grid |
+
+MOA clause **2.8 PDC count** default = refund term years × 12 (no TTF +1 on the MOA; TTF PDC stays in Refund/LandBank).
+
+Prefill extras: `party2IdNo` ← registration `tinNumber`; `witness2Title` ← Notice `pstoDirectorTitle`; amount words append `& 00/100`.
+
+## Staff editor (Word field map)
+
+[`MoaAnnexCEditor`](src/app/components/MoaAnnexCEditor.tsx) edits placeholders only. Prefill from Notice of Approval / Form 001 / RTEC / TNA1 / registration via [`buildMoaAnnexCForm`](src/app/utils/moaAnnexC.ts). Sync is pick-if-blank. Edits stay on `approvalLetter.moaForm`.
+
+## Preview vs print
+
+- Preview mounts `MoaAnnexCDocument` with `packet` from `buildMoaAnnexPacketContext(applicant, form)`.
+- Print re-renders via `createRoot` (`printMoaAnnexCPdf`). Do **not** clone `#moa-annex-c-preview`.
+- No logo / Republic header / Application ID on the official document.
+
+## Host UI
+
+Approval Letter step **Memorandum of Agreement**: Edit/Preview/Print + signed scan upload (LandBank gate still uses module key `signedMoa`).
+
+## Key files
+
+- `src/app/constants/moaAnnexCLayout.ts`
+- `src/app/components/moaAnnexC/MoaAnnexCDocument.tsx`
+- `src/app/components/MoaAnnexCEditor.tsx`
+- `src/app/components/MoaAnnexCPreview.tsx`
+- `src/styles/moaAnnexC.css`
+- `src/app/utils/moaAnnexC.ts`
+- `src/app/utils/moaAnnexPacket.ts`
+- `src/app/components/moaAnnexC/MoaAnnexBLibTable.tsx`
+- `src/app/components/moaAnnexC/MoaAnnexCScheduleTable.tsx`
+- `src/app/components/moaAnnexC/MoaAnnexDRefundTable.tsx`
+- `src/app/utils/moaAnnexCPrint.tsx`
+- Host: `src/app/components/ApprovalLetter.tsx`

@@ -542,6 +542,7 @@ export function companyProfileMsmeSizeLabel(form: {
   assetSize?: string;
   classificationRange?: string;
   msmeSize?: string;
+  numberOfEmployees?: string;
   employeesMale?: string;
   employeesFemale?: string;
   employeesProductionMale?: string;
@@ -553,10 +554,17 @@ export function companyProfileMsmeSizeLabel(form: {
   employeesIndirectFemale?: string;
 }): string {
   const { total } = companyProfileEmployeeTotals(form);
+  const prescreeningTotal = parseInt(String(form.numberOfEmployees ?? "").trim(), 10);
+  const employeeTotal =
+    total > 0
+      ? total
+      : Number.isFinite(prescreeningTotal) && prescreeningTotal > 0
+        ? prescreeningTotal
+        : 0;
   return formatCompanyProfileMsmeSize({
     assetSize: form.assetSize,
     classificationRange: form.classificationRange,
-    employeeTotal: total,
+    employeeTotal,
     msmeSize: form.msmeSize,
   });
 }

@@ -2,8 +2,8 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { Printer } from "lucide-react";
 import type { Tna2DocumentResponse } from "../api/types";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import { PreviewToolbar } from "./PreviewLayout";
 import { TnaForm02Document } from "./tnaForm02/TnaForm02Document";
 import { printTnaForm02Pdf } from "../utils/tnaForm02Print";
@@ -32,21 +32,15 @@ export function TnaForm02Preview({
     <div className={compact ? "" : "space-y-4"}>
       {!compact && onPrint && (
         <PreviewToolbar className="justify-end">
-          <button
-            type="button"
-            onClick={onPrint}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
-          >
-            <Printer className="w-4 h-4" />
-            Print / Save as PDF
-          </button>
+          <DocumentPrintButton onClick={onPrint} />
         </PreviewToolbar>
       )}
 
       <div
         id="tna-form-02-preview"
-        className="tna2-form-doc tna2-form-screen-preview bg-white border border-gray-200 rounded-xl overflow-hidden"
+        className="tna2-form-doc tna2-form-screen-preview official-doc-preview-shell overflow-x-auto flex justify-start sm:justify-center bg-gray-100 py-4 px-2 sm:px-4 border border-gray-200 rounded-xl"
       >
+        <div className="flex-shrink-0 bg-white rounded-lg overflow-hidden border border-gray-100">
         {(aiGenerated !== undefined || published !== undefined) && (
           <div className="px-4 sm:px-6 py-2 border-b border-gray-100 text-xs text-gray-500 print:hidden">
             Document Ref:{" "}
@@ -64,6 +58,7 @@ export function TnaForm02Preview({
           </div>
         )}
         <TnaForm02Document document={doc} />
+        </div>
       </div>
     </div>
   );

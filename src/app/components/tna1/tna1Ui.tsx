@@ -15,7 +15,7 @@ export const DOST_BLUE = "#0C2461";
 export const DOST_MID = "#1a3a7a";
 
 export const inputCls =
-  "w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all bg-white disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed";
+  "w-full min-w-0 max-w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all bg-white disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed";
 export const labelCls =
   "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5";
 export const sectionTitle =

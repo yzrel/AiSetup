@@ -7,8 +7,8 @@ import type { LbpIntroductionLetterForm } from "../api/types";
 import {
   amountToWordsPeso,
   formatPesoDisplay,
-  resolveLbpBranchByBranchName,
 } from "../utils/lbpIntroductionLetter";
+import { LandBankBranchPicker } from "./LandBankBranchPicker";
 
 interface LbpIntroductionLetterEditorProps {
   form: LbpIntroductionLetterForm;
@@ -55,22 +55,6 @@ export function LbpIntroductionLetterEditor({
   const patch = (partial: Partial<LbpIntroductionLetterForm>) =>
     onChange({ ...form, ...partial });
 
-  const handleBranchChange = (landbankBranch: string) => {
-    const branchDefaults = resolveLbpBranchByBranchName(landbankBranch);
-    const next: Partial<LbpIntroductionLetterForm> = { landbankBranch };
-    if (branchDefaults) {
-      const managerEmpty = !form.branchManagerName.trim();
-      const cityEmpty = !form.branchCityProvince.trim();
-      if (managerEmpty || form.branchManagerName === branchDefaults.branchManagerName) {
-        next.branchManagerName = branchDefaults.branchManagerName;
-      }
-      if (cityEmpty || form.branchCityProvince === branchDefaults.branchCityProvince) {
-        next.branchCityProvince = branchDefaults.branchCityProvince;
-      }
-    }
-    patch(next);
-  };
-
   const handleAmountChange = (approvedAmount: string) => {
     const num = parseFloat(approvedAmount.replace(/[^\d.]/g, "")) || 0;
     patch({
@@ -82,53 +66,23 @@ export function LbpIntroductionLetterEditor({
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-600">
-        Letter of Introduction to Land Bank of the Philippines. Branch manager names are
-        fictional placeholders for demo purposes. Sync from applicant data to refresh project
-        and amount details.
+        Letter of Introduction to Land Bank of the Philippines. Select a branch from
+        the staff directory or enter details manually. Sync from applicant data to
+        refresh project and amount details.
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>Letter date</FieldLabel>
-          <input
-            type="date"
-            value={form.letterDate}
-            onChange={(e) => patch({ letterDate: e.target.value })}
-            readOnly={readOnly}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 read-only:bg-gray-50"
-          />
-        </div>
-        <div>
-          <FieldLabel>LandBank branch</FieldLabel>
-          <TextInput
-            value={form.landbankBranch}
-            onChange={handleBranchChange}
-            placeholder="Kidapawan Branch"
-            readOnly={readOnly}
-          />
-        </div>
+      <div>
+        <FieldLabel>Letter date</FieldLabel>
+        <input
+          type="date"
+          value={form.letterDate}
+          onChange={(e) => patch({ letterDate: e.target.value })}
+          readOnly={readOnly}
+          className="w-full sm:max-w-xs text-sm border border-gray-200 rounded-lg px-3 py-2 read-only:bg-gray-50"
+        />
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>Branch manager (fictional)</FieldLabel>
-          <TextInput
-            value={form.branchManagerName}
-            onChange={(branchManagerName) => patch({ branchManagerName })}
-            placeholder="Ms. Elena R. Vasquez"
-            readOnly={readOnly}
-          />
-        </div>
-        <div>
-          <FieldLabel>Branch city / province</FieldLabel>
-          <TextInput
-            value={form.branchCityProvince}
-            onChange={(branchCityProvince) => patch({ branchCityProvince })}
-            placeholder="Kidapawan City, North Cotabato"
-            readOnly={readOnly}
-          />
-        </div>
-      </div>
+      <LandBankBranchPicker form={form} onChange={onChange} readOnly={readOnly} />
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -164,7 +118,7 @@ export function LbpIntroductionLetterEditor({
           <TextInput
             value={form.approvedAmount}
             onChange={handleAmountChange}
-            placeholder="₱1,570,000.00"
+            placeholder="₱1,000,000.00"
             readOnly={readOnly}
           />
         </div>
@@ -180,7 +134,7 @@ export function LbpIntroductionLetterEditor({
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <FieldLabel>Signatory</FieldLabel>
+          <FieldLabel>Signatory name</FieldLabel>
           <TextInput
             value={form.signatoryName}
             onChange={(signatoryName) => patch({ signatoryName })}

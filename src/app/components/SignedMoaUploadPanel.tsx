@@ -120,7 +120,7 @@ export const SignedMoaUploadPanel = forwardRef<
     if (!signedMoa) return null;
     return (
       <SignedDocumentUpload
-        label="Signed MOA"
+        label="Signed scan (MOA)"
         document={signedMoa.fileName ? signedMoa : null}
         signedDate={signedMoa.moaSignedDate}
         onSignedDateChange={() => {}}
@@ -144,7 +144,7 @@ export const SignedMoaUploadPanel = forwardRef<
     return (
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
         The applicant must acknowledge {formatFormMention("003")} conforme before staff can upload the
-        signed MOA.
+        signed Memorandum of Agreement scan.
       </div>
     );
   }
@@ -177,7 +177,7 @@ export const SignedMoaUploadPanel = forwardRef<
       },
     });
     notifyMoaUploaded(applicant);
-    setNotice("Signed MOA saved and emailed to DOST.");
+    setNotice("Signed Memorandum of Agreement scan saved and emailed to DOST.");
     setTimeout(() => setNotice(""), 4000);
     onSaved?.();
   };
@@ -187,11 +187,11 @@ export const SignedMoaUploadPanel = forwardRef<
       {ackBlocked && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
           The applicant must acknowledge {formatFormMention("003")} conforme before staff can upload the
-          signed MOA. Demo mode allows upload for presentation purposes.
+          signed Memorandum of Agreement scan. Demo mode allows upload for presentation purposes.
         </div>
       )}
       <SignedDocumentUpload
-        label="Signed MOA"
+        label="Signed scan (MOA)"
         document={pendingFile ?? (signedMoa?.fileName ? signedMoa : null)}
         signedDate={moaSignedDate}
         onSignedDateChange={setMoaSignedDate}
@@ -220,7 +220,7 @@ export const SignedMoaUploadPanel = forwardRef<
           onClick={handleSave}
           className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#0C2461] text-white text-sm font-semibold"
         >
-          Save signed MOA &amp; email DOST
+          Save signed scan &amp; email DOST
         </button>
       </div>
       {notice && (

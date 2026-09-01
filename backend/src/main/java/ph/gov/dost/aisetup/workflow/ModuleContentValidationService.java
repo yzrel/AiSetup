@@ -56,6 +56,7 @@ public class ModuleContentValidationService {
             case "projectCloseOut" -> errors.addAll(validateCloseOut(data));
             case "refund" -> errors.addAll(validateRefund(data));
             case "financialProjection" -> errors.addAll(validateFinancialProjection(data));
+            case "requirements" -> errors.addAll(validateRequirements(data));
             default -> {
                 // No content rules for this key yet.
             }
@@ -206,6 +207,53 @@ public class ModuleContentValidationService {
         if (inputs == null) {
             throw new IllegalArgumentException("Financial projection inputs are required.");
         }
+    }
+
+    /**
+     * Validates Step 4 requirement uploads on applicant submit or staff routing to RTEC.
+     * Trusts each row's {@code required} flag (set by the portal from SETUP Guidelines rules).
+     */
+    public void assertRequirementsComplete(Map<String, Object> moduleData) {
+        if (workflowGateService.isDemoBypassAllowed()) {
+            return;
+        }
+        throwIfAny(validateRequirements(moduleData));
+    }
+
+    private List<String> validateRequirements(Map<String, Object> data) {
+        List<String> errors = new ArrayList<>();
+        if (data == null) {
+            errors.add("Requirement uploads are required.");
+            return errors;
+        }
+        Object raw = data.get("requirementUploads");
+        if (!(raw instanceof Collection<?> col) || col.isEmpty()) {
+            errors.add("Complete all required document uploads before submitting requirements.");
+            return errors;
+        }
+        int missing = 0;
+        for (Object item : col) {
+            if (!(item instanceof Map<?, ?> m)) {
+                continue;
+            }
+            Map<String, Object> row = castMap(m);
+            if (!Boolean.TRUE.equals(asBoolean(row.get("required")))) {
+                continue;
+            }
+            boolean uploaded = Boolean.TRUE.equals(asBoolean(row.get("uploaded")));
+            String fileId = stringField(row, "fileId");
+            String generatedFrom = stringField(row, "generatedFrom");
+            if (!uploaded && TextUtils.isBlank(fileId) && TextUtils.isBlank(generatedFrom)) {
+                missing++;
+            }
+        }
+        if (missing > 0) {
+            errors.add(
+                    "Complete all required document uploads ("
+                            + missing
+                            + " required item(s) missing).");
+        }
+        return errors;
     }
 
     private List<String> validateFinancialProjection(Map<String, Object> data) {

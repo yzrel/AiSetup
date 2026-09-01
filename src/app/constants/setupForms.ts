@@ -84,6 +84,13 @@ export const SETUP_FORMS = {
     annex: "Annex A-6",
     confirmed: true,
   },
+  "005": {
+    key: "005",
+    title: "Property Transfer Receipt",
+    number: "005",
+    annex: "Annex A-5",
+    confirmed: true,
+  },
   "010": {
     key: "010",
     title: "Terminal Report",
@@ -115,10 +122,10 @@ export const SETUP_FORMS = {
  * 011 Termination/Withdrawal Report, 012 Refund Performance Report,
  * 013 Terminal Report.
  * Form 006 Inventory of Equipment is wired in Project Close-Out.
+ * Form 005 Property Transfer Receipt is wired in Project Close-Out.
  */
 export const SETUP_FORMS_TBD = [
   "004",
-  "005",
   "007",
   "011",
   "012",

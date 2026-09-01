@@ -1,52 +1,106 @@
 ---
-description: SETUP Form 002 RTEC Report print-only official layout conventions
-globs: src/app/components/rtecReport/**,src/styles/rtecReport.css,src/app/constants/rtecReportLayout.ts,src/app/utils/rtecReportPrint.tsx
+description: SETUP Form 002 RTEC Report print/preview (Annex A-2)
+globs: src/app/components/rtecReport/**,src/styles/rtecReport.css,src/app/constants/rtecReportLayout.ts,src/app/utils/rtecReportPrint.tsx,src/app/components/RtecReportPreview.tsx,src/app/utils/rtecReport.ts,src/app/components/RtecReportEditor.tsx,src/app/components/ConductOfRTEC.tsx
 alwaysApply: false
 ---
 
 # RTEC Report layout (SETUP Form 002)
 
-## Scope
-
-- **Print only** — on-screen preview in `RtecReportPreview.tsx` stays modern/summary layout.
-- Official output via `RtecReportDocument` rendered at print time (`printRtecReportPdf`).
+Source of truth: `Form 002 - RTEC Report.docx` — SETUP Guidelines (Revision 3.0) Annex A-2.
+Do not import Form 001 checkbox grids onto the official document.
 
 ## Document title
 
-`SETUP Form 002 · RTEC Report`
+`SETUP Form 002 - RTEC Report`
 
-## Pagination
+Mixed case. Do **not** force uppercase via CSS. Black text only (no DOST-blue bars on print/preview document).
 
-- Physical page footers via named `@page rtec-report-sheet` with `counter(page)` / `counter(pages)` in `@bottom-center`.
-- No per-section inline footers (avoid cross-bleed with TNA / Project Proposal forms).
-- `FormBlock` + `break-inside: avoid` — section titles stay with content; long tables may break across pages.
+## Page
+
+- A4 portrait. Margins: **1 in (25.4 mm)** all sides.
+- Body: Arial ~11pt.
+- `@page rtec-report-sheet` footer:
+
+`SETUP Guidelines (Revision 3.0) Annex A-2: SETUP Form 002 - RTEC Report Page ` + `counter(page)` / `counter(pages)`
+
+## Structure (exact Word order)
+
+1. Title
+2. Cover: Project Title / Proponent / Contact Person
+3. Project Cost: Proponent | DOST-SETUP | DOST-LGIA | Total
+4. **I.** Brief description → a. Company profile (identity lines only) → b. Objectives → c. Expected Outputs / Impact/s
+5. **II.** Compliance table — **14 Word rows** × Requirements | Complied | Not Complied (**no N/A column** on print)
+6. **III.** Highlights → a Management; b Technical (process flow, material balance, existing equipment, constraint table, Proposed Plant Lay-out, cost table + Total, fabricators); c–f Marketing / Financial ratio narrative / Waste / Risk
+7. **IV.** Recommendation + signatures: Evaluated by → Chairperson → Member ×3 → Reviewed and endorsed by / Noted by → RPMO | Regional Director
+
+Evaluation date stays in the staff editor only (not on Word).
+
+## Staff editor (Word field map)
+
+[`RtecReportEditor`](src/app/components/RtecReportEditor.tsx) follows the same Word section order. Prefill from `proposalSnapshot` + RTEC-native fields. Edits stay on the **RTEC draft** (do not write back to Form 001).
+
+| Editor block | Fields |
+|---|---|
+| Cover | `projectTitle`, `proponentName`, `contactPerson`; `projectCostProponent` / `Setup` / `Lgia` / `Total` |
+| I.a | `firmName`, `firmAddress`, `contactPerson`, `contactNumber` |
+| I.b–c | `generalObjective`, `specificObjectives`, `expectedOutputBullets` |
+| II | Official 14 rows (`RTEC_OFFICIAL_COMPLIANCE_ITEMS`) + portal extras (ECC/FDA/supplier) off-print |
+| III.a | `skillsExpertise`, `compensation` |
+| III.b | `productionProcess`, `materialBalance`, `equipmentNarrative`, `constraintRows`, plant layout (read-only attachment), `interventionCostTable`, `fabricatorRows` |
+| III.c–f | marketing fields, `ratioNarrative`, `wasteManagement`, `riskRows` |
+| IV | `recommendation`, signatures (+ editor-only evaluation date) |
+
+Wizard steps: `compliance` → II; `evaluation` → III; `recommendation` → IV; Edit report (`all`) → Cover + I–IV.
+
+`syncRtecFromProjectProposal` uses pick-if-blank for Form 002 editable snapshot fields so staff edits are not wiped.
+
+## Prefill sources (module → editor field)
+
+Primary path: Form 001 (`getProjectProposalForm`) → `proposalSnapshot` / RTEC-native fields. Form 001 is already fed by TNA1, published TNA2, applicant header, and LOI commitment amounts. `enrichRtecSnapshotFromPriorModules` fills **blank** Form 002 narrative gaps from related Form 001 / TNA1 fields after draft build and after Sync pick-if-blank. Edits stay on the RTEC draft (no write-back to Form 001).
+
+| Editor block | Prefill source |
+|---|---|
+| Cover identity | Form 001 `projectTitle` / `proponentName` / `contactPerson` (← TNA1 / applicant) |
+| Cover costs | Form 001 `projectCost`, `amountRequested`, Σ `budgetItems.lgiaShare` → RTEC `projectCost*` |
+| I.a Company profile | Form 001 `firmName`, `firmAddress`, `contactPerson`, `contactNumber` |
+| I.b–c Objectives / outputs | Form 001 objectives + `expectedOutputBullets` (← TNA2 outcomes / `expectedOutcome`) |
+| II Compliance | Suggest from LOI, TNA1/2 submitted/published, Form 001, requirement uploads; Sync pick-if-blank |
+| III.a Management | Form 001 `skillsExpertise` / `compensation`; if blank → light seed from proponent + `compensationTable` |
+| III.b Process / material / cost table | Form 001 (process ← TNA2 summary or TNA1 `processFlow`); cost table ← TNA2 recommended equipment |
+| III.b Existing equipment | Form 001 `equipmentNarrative`; if blank → line list from `equipmentTable` (TNA1) |
+| III.b Constraints / fabricators / plant | RTEC `constraintRows` (Form 001 intervention\* or TNA2 gaps); `fabricatorRows`; `attachmentRefs` (+ TNA plant layout) |
+| III.c Marketing | Form 001 marketing fields; if blank → `marketSituation` from `distributionChannel`, problems from `competitors`; strategies ← TNA1 plans |
+| III.d Financial | RTEC `ratioNarrative` ← Form 001 `financialAnalysis` when present (no invented ratio text) |
+| III.e Waste | Form 001 `wasteManagement`; if blank → `wasteKinds` + `wasteDisposalMethods` or TNA1 `wasteManagement` |
+| III.f Risk | Form 001 `riskRows` (template defaults on Form 001 draft) |
+| IV Recommendation | Draft seed from published TNA2 findings + interventions (Sync preserves staff text) |
+| IV Signatures | Regional Director default; others staff-entered |
+
+## Compliance split
+
+- Staff editor: official 14 Word labels + Additional portal checks (3 extras) with N/A allowed.
+- Official document: `toOfficialComplianceItems()` → 14 Word rows. Status `na` leaves both tick cells empty.
+- Financial row Micro 1yr / SME 3yr wording is Word SoT and the only portal surface for that rule.
+
+## Preview vs print (100% fidelity)
+
+- Preview **mounts** `RtecReportDocument` — same markup as print.
+- Print re-renders via `createRoot` (`printRtecReportPdf`). Do **not** clone `#rtec-report-preview`.
+- Print root uses class `rtec-form-document` so preview CSS applies.
+- No logo / Republic header / Application ID on the official document.
+- Staff **Edit report ↔ Preview report** toggle on Preview & PDF (`ConductOfRTEC` `editMode`).
 
 ## Print path
 
-- In-page `window.print()` via `#rtec-report-print-root` + `body.rtec-report-printing`.
-- `createRoot` render (do not clone preview; do not use popup `document.write`).
-- Hide portal metadata in print: no Application ID from preview.
-
-## Official sections (order)
-
-Cover + cost split → I. Brief description (company profile with checkbox grids, objectives, expected outputs) → II. Compliance → III. Highlights (management, technical, marketing, financial, waste, risk) → IV. Recommendation + signatures.
-
-## Section II — Compliance (financial row)
-
-The **financial** compliance row (`RTEC_COMPLIANCE_ITEMS` id `financial` in `rtecReport.ts`) is the **only** portal surface that states the SETUP Guidelines Micro vs SME year rule (1 year for micro, 3 years for small/medium). Do not duplicate that Micro exception on applicant upload labels or brochure copy — see **Financial statements (historical)** in [aisetup-project.mdc](aisetup-project.mdc).
-
-## Shared checkbox grids
-
-Company profile reuses `PP_ORGANIZATION_TYPES`, `PP_PROFIT_TYPES`, `PP_MSME_SIZES`, `PP_BUSINESS_ACTIVITY_PAIRS` from project proposal layout via `isOptionChecked()`. Registration offices include **LGU** (`RTEC_REGISTRATION_OFFICES`).
-
-## Attachments (print slots)
-
-- `orgChart` — III.a Management
-- `plantLayout` — III.b Technical constraints section
+In-page `window.print()` to `#rtec-report-print-root` + `body.rtec-report-printing`. Do not use popup `document.write`.
 
 ## Key files
 
 - `src/app/components/rtecReport/RtecReportDocument.tsx`
-- `src/app/utils/rtecReportPrint.tsx`
+- `src/app/components/RtecReportEditor.tsx`
+- `src/app/components/RtecReportPreview.tsx`
 - `src/styles/rtecReport.css`
 - `src/app/constants/rtecReportLayout.ts`
+- `src/app/utils/rtecReportPrint.tsx`
+- `src/app/utils/rtecReport.ts`
+- Host UI: `src/app/components/ConductOfRTEC.tsx`

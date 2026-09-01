@@ -83,6 +83,11 @@ import { notifyProjectProposalSubmitted } from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { getPublishedTna2 } from "../utils/tnaForm02";
+import {
+  REGISTRATION_DATE_HINT,
+  REGISTRATION_DATE_LABEL,
+  YEAR_ESTABLISHED_HINT,
+} from "../constants/enterpriseProfileFields";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
@@ -626,7 +631,11 @@ export function ProjectProposal({
                 <div><label className={labelCls}>Contact Person</label><input className={inputCls} value={form.contactPerson} onChange={(e) => patchForm({ contactPerson: e.target.value })} /></div>
                 <div><label className={labelCls}>Contact Number</label><input className={inputCls} value={form.contactNumber} onChange={(e) => patchForm({ contactNumber: e.target.value })} /></div>
                 <div><label className={labelCls}>Email</label><input className={inputCls} value={form.email} onChange={(e) => patchForm({ email: e.target.value })} /></div>
-                <div><label className={labelCls}>Year Established</label><input className={inputCls} value={form.yearEstablished} onChange={(e) => patchForm({ yearEstablished: e.target.value })} /></div>
+                <div>
+                  <label className={labelCls}>Year Established</label>
+                  <p className="text-xs text-gray-500 mb-1">{YEAR_ESTABLISHED_HINT}</p>
+                  <input className={inputCls} value={form.yearEstablished} onChange={(e) => patchForm({ yearEstablished: e.target.value })} />
+                </div>
                 <div><label className={labelCls}>Organization Type</label><input className={inputCls} value={form.organizationType} onChange={(e) => patchForm({ organizationType: e.target.value })} /></div>
                 <div><label className={labelCls}>Profit / Non-profit</label><input className={inputCls} value={form.profitType} onChange={(e) => patchForm({ profitType: e.target.value })} /></div>
                 <div>
@@ -670,7 +679,11 @@ export function ProjectProposal({
                 </div>
                 <div><label className={labelCls}>Registration Office</label><input className={inputCls} value={form.registrationOffice} onChange={(e) => patchForm({ registrationOffice: e.target.value })} /></div>
                 <div><label className={labelCls}>Registration Number</label><input className={inputCls} value={form.registrationNumber} onChange={(e) => patchForm({ registrationNumber: e.target.value })} /></div>
-                <div><label className={labelCls}>Registration Date</label><input className={inputCls} value={form.registrationDate} onChange={(e) => patchForm({ registrationDate: e.target.value })} /></div>
+                <div>
+                  <label className={labelCls}>{REGISTRATION_DATE_LABEL}</label>
+                  <p className="text-xs text-gray-500 mb-1">{REGISTRATION_DATE_HINT}</p>
+                  <input className={inputCls} value={form.registrationDate} onChange={(e) => patchForm({ registrationDate: e.target.value })} />
+                </div>
                 <div><label className={labelCls}>Business Permit No.</label><input className={inputCls} value={form.businessPermitNumber} onChange={(e) => patchForm({ businessPermitNumber: e.target.value })} /></div>
                 <div><label className={labelCls}>Business Permit Date</label><input className={inputCls} value={form.businessPermitDate} onChange={(e) => patchForm({ businessPermitDate: e.target.value })} /></div>
                 <div><label className={labelCls}>Business Activity</label><input className={inputCls} value={form.businessActivity} onChange={(e) => patchForm({ businessActivity: e.target.value })} /></div>

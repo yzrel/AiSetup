@@ -1,0 +1,129 @@
+/* Author: Yzrel Jade B. Eborde — on-screen preview responsiveness for official forms */
+
+/* Horizontal scroll shell — parent is viewport width; child sheet stays A4 */
+.official-doc-preview-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ID rules in form CSS set 210mm — keep that on the inner sheet, not the shell */
+@media screen {
+  #tna-form-01-preview.tna-form-document,
+  #moa-annex-c-preview.moa-form-document,
+  #rtec-report-preview.rtec-form-document,
+  #inventory-of-equipment-preview.ioe-form-document,
+  #property-transfer-receipt-preview.ptr-form-document,
+  #tna-form-02-preview.tna2-form-doc {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media screen and (max-width: 639px) {
+  .official-doc-preview-shell {
+    justify-content: flex-start;
+  }
+
+  /* Preview shells fill the viewport; inner sheets keep printable width */
+  #tna-form-01-preview.tna-form-document,
+  #moa-annex-c-preview.moa-form-document,
+  #rtec-report-preview.rtec-form-document,
+  #inventory-of-equipment-preview.ioe-form-document,
+  #property-transfer-receipt-preview.ptr-form-document {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #tna-form-01-preview .tna-form-document-root,
+  #tna-form-01-preview .tna-form-page,
+  #moa-annex-c-preview .moa-form-document-root,
+  #moa-annex-c-preview .moa-form-page,
+  #rtec-report-preview .rtec-form-document-root,
+  #rtec-report-preview .rtec-form-page,
+  #inventory-of-equipment-preview .ioe-form-document-root,
+  #inventory-of-equipment-preview .ioe-form-page,
+  #property-transfer-receipt-preview .ptr-form-document-root,
+  #property-transfer-receipt-preview .ptr-form-page,
+  #project-proposal-preview,
+  #tna-form-02-preview .tna2-form-document-root,
+  #tna-form-02-preview .tna2-form-page {
+    width: 210mm;
+    min-width: 210mm;
+    max-width: none;
+    flex-shrink: 0;
+  }
+
+  #project-proposal-preview {
+    padding: 10mm 8mm;
+  }
+
+  /* Wide tables: preserve column layout; scroll with the sheet */
+  #project-proposal-preview table,
+  #tna-form-01-preview table,
+  #tna-form-02-preview table,
+  #rtec-report-preview table,
+  #inventory-of-equipment-preview table,
+  #property-transfer-receipt-preview table,
+  #moa-annex-c-preview table {
+    min-width: 34rem;
+  }
+
+  #project-proposal-preview .pp-form-compensation-table,
+  #project-proposal-preview .pp-form-company-profile,
+  #project-proposal-preview .pp-form-rm-cost-table,
+  #project-proposal-preview .pp-form-equipment-table,
+  #project-proposal-preview .pp-form-budget-table {
+    min-width: 38rem;
+  }
+
+  /* Readability: avoid ragged justified text on narrow screens */
+  #project-proposal-preview
+    :is(.pp-form-narrative, .pp-form-indented-body, p):not(
+      :is(.pp-form-title, .pp-form-section-heading, .pp-form-center)
+    ),
+  .moa-form-document .moa-form-para,
+  .moa-form-document .moa-form-num-body,
+  .moa-form-document .moa-form-section-body,
+  .tna2-form-doc .tna2-form-prose,
+  .rtec-form-document .rtec-form-narrative,
+  .tna-form-document .tna-form-undertaking-text {
+    text-align: left !important;
+  }
+
+  .official-doc-preview-shell img,
+  #project-proposal-preview img,
+  #tna-form-01-preview img,
+  #tna-form-02-preview img,
+  #rtec-report-preview img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .tna-form-document .tna-form-signature-table,
+  #tna-form-01-preview .tna-form-signature-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tna-form-document .tna-form-signature-table tbody,
+  #tna-form-01-preview .tna-form-signature-table tbody {
+    display: block;
+  }
+
+  .tna-form-document .tna-form-signature-table tr,
+  #tna-form-01-preview .tna-form-signature-table tr {
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .tna-form-document .tna-form-signature-table td,
+  #tna-form-01-preview .tna-form-signature-table td {
+    display: block;
+    width: 100%;
+    border: none;
+    padding: 0;
+  }
+}

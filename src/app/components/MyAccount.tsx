@@ -8,6 +8,7 @@ import { api, ApiError } from "../api/client";
 import { applicantStore } from "../store/applicantStore";
 import { AuthUser, authStore } from "../store/authStore";
 import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
+import { DateEstablishedField } from "./DateEstablishedField";
 import { resolveApplicantForUser } from "../utils/resolveApplicant";
 import { normalizeRegistrationType } from "../utils/applicantPrefill";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
@@ -591,20 +592,18 @@ export function MyAccount({ user }: { user: AuthUser }) {
                     }
                   />
                 </div>
-                <div>
-                  <label className={labelCls}>Company Start Date</label>
-                  <input
-                    type="date"
-                    className={inputCls}
-                    value={registration.companyStartDate}
-                    onChange={(e) =>
-                      setRegistration((p) => ({
-                        ...p,
-                        companyStartDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
+                <DateEstablishedField
+                  labelClassName={labelCls}
+                  inputClassName={inputCls}
+                  hintClassName="text-xs text-gray-500 mt-1 leading-snug"
+                  value={registration.companyStartDate}
+                  onChange={(value) =>
+                    setRegistration((p) => ({
+                      ...p,
+                      companyStartDate: value,
+                    }))
+                  }
+                />
                 <div className="sm:col-span-2">
                   <label className={labelCls}>Company Description</label>
                   <textarea

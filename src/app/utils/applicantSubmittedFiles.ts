@@ -832,9 +832,9 @@ export function collectApplicantSubmittedFiles(
     [closeOut.terminalReportFileName, "Terminal report", "closeout-terminal"],
     [closeOut.auditedFinancialFileName, "Audited financial statement", "closeout-financial"],
     [
-      closeOut.equipmentAcknowledgementFileName,
-      "Equipment acknowledgement",
-      "closeout-equipment-ack",
+      closeOut.propertyTransferSignedFileName ?? closeOut.equipmentAcknowledgementFileName,
+      "Property Transfer Receipt (signed)",
+      "closeout-ptr-signed",
     ],
   ];
   for (const [name, label, id] of closeOutMeta) {

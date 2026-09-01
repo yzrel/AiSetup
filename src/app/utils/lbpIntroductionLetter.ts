@@ -17,53 +17,35 @@ import { getProjectProposalForm } from "./projectProposal";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { printHtmlDocument } from "./printHtml";
 import { getDostOfficialLetterheadPrintStyles } from "../components/DostOfficialLetterhead";
-import { resolveApplicantOfficeId } from "./provincialOffice";
 import { emptyLandBankForm, getLandBankStored } from "./landBankWithdrawal";
+import {
+  resolveLandBankBranchById,
+  resolveLandBankBranchByName,
+  resolveLandBankBranchForApplicant,
+  type LandBankBranchLetterDefaults,
+} from "./landbankBranchResolvers";
 
 const MODULE_KEY = "landBank";
 
-/** Fictional LBP branch managers — demo placeholders only */
-const LBP_BRANCH_BY_OFFICE: Record<
-  string,
-  {
-    landbankBranch: string;
-    branchCityProvince: string;
-    branchManagerName: string;
-  }
-> = {
-  cotabato: {
-    landbankBranch: "Kidapawan Branch",
-    branchCityProvince: "Kidapawan City, North Cotabato",
-    branchManagerName: "Ms. Elena R. Vasquez",
-  },
-  "south-cotabato": {
-    landbankBranch: "Koronadal Branch",
-    branchCityProvince: "Koronadal City, South Cotabato",
-    branchManagerName: "Mr. Rafael M. Delos Santos",
-  },
-  "sultan-kudarat": {
-    landbankBranch: "Tacurong Branch",
-    branchCityProvince: "Tacurong City, Sultan Kudarat",
-    branchManagerName: "Ms. Patricia L. Mendoza",
-  },
-  "gensan-sarangani": {
-    landbankBranch: "General Santos Branch",
-    branchCityProvince: "General Santos City",
-    branchManagerName: "Mr. Jonas K. Villanueva",
-  },
-  default: {
-    landbankBranch: "Kidapawan Branch",
-    branchCityProvince: "Kidapawan City, North Cotabato",
-    branchManagerName: "Ms. Elena R. Vasquez",
-  },
-};
+export type { LandBankBranchLetterDefaults };
 
-const BRANCH_LOOKUP_BY_NAME: Record<string, keyof typeof LBP_BRANCH_BY_OFFICE> = {
-  kidapawan: "cotabato",
-  koronadal: "south-cotabato",
-  tacurong: "sultan-kudarat",
-  "general santos": "gensan-sarangani",
-};
+export function resolveLbpBranchForApplicant(
+  applicant: Applicant | null,
+): LandBankBranchLetterDefaults {
+  return resolveLandBankBranchForApplicant(applicant);
+}
+
+export function resolveLbpBranchByBranchName(
+  branchName: string,
+): LandBankBranchLetterDefaults | null {
+  return resolveLandBankBranchByName(branchName);
+}
+
+export function resolveLbpBranchById(
+  branchId: string | undefined,
+): LandBankBranchLetterDefaults | null {
+  return resolveLandBankBranchById(branchId);
+}
 
 const ONES = [
   "",
@@ -153,22 +135,6 @@ export function managerSalutation(managerName: string): string {
   return `Dear Manager ${surname}:`;
 }
 
-export function resolveLbpBranchForApplicant(applicant: Applicant | null) {
-  if (!applicant) return LBP_BRANCH_BY_OFFICE.default;
-  const officeId = resolveApplicantOfficeId(applicant);
-  return LBP_BRANCH_BY_OFFICE[officeId] ?? LBP_BRANCH_BY_OFFICE.default;
-}
-
-export function resolveLbpBranchByBranchName(branchName: string) {
-  const key = branchName.trim().toLowerCase();
-  for (const [needle, officeKey] of Object.entries(BRANCH_LOOKUP_BY_NAME)) {
-    if (key.includes(needle)) {
-      return LBP_BRANCH_BY_OFFICE[officeKey];
-    }
-  }
-  return null;
-}
-
 export function emptyLbpIntroductionForm(): LbpIntroductionLetterForm {
   const now = new Date();
   return {
@@ -219,9 +185,11 @@ export function syncLbpIntroductionFromUpstream(
 
   const draft: LbpIntroductionLetterForm = {
     ...base,
+    branchId: branch.branchId || undefined,
     branchManagerName: branch.branchManagerName,
-    branchManagerTitle: "Branch Manager",
+    branchManagerTitle: branch.branchManagerTitle || "Branch Manager",
     landbankBranch: branch.landbankBranch,
+    branchAddress: branch.branchAddress || undefined,
     branchCityProvince: branch.branchCityProvince,
     proponentName: approval.recipientName || pp.proponentName || applicant.applicantName,
     enterpriseName: pp.firmName || approval.enterpriseName || applicant.enterpriseName,
@@ -241,6 +209,9 @@ export function syncLbpIntroductionFromUpstream(
     branchManagerName: pick(existing.branchManagerName, draft.branchManagerName),
     branchManagerTitle: pick(existing.branchManagerTitle, draft.branchManagerTitle),
     landbankBranch: pick(existing.landbankBranch, draft.landbankBranch),
+    branchAddress: existing.branchAddress?.trim()
+      ? existing.branchAddress
+      : draft.branchAddress,
     branchCityProvince: pick(existing.branchCityProvince, draft.branchCityProvince),
     proponentName: pick(existing.proponentName, draft.proponentName),
     enterpriseName: pick(existing.enterpriseName, draft.enterpriseName),

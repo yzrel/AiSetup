@@ -4,7 +4,7 @@
 
 import type { ReactNode } from "react";
 import type { UntagLetterForm } from "../api/types";
-import { resolveLbpBranchByBranchName } from "../utils/untagLetter";
+import { LandBankBranchPicker } from "./LandBankBranchPicker";
 
 interface UntagLetterEditorProps {
   form: UntagLetterForm;
@@ -51,22 +51,6 @@ export function UntagLetterEditor({
   const patch = (partial: Partial<UntagLetterForm>) =>
     onChange({ ...form, ...partial });
 
-  const handleBranchChange = (landbankBranch: string) => {
-    const branchDefaults = resolveLbpBranchByBranchName(landbankBranch);
-    const next: Partial<UntagLetterForm> = { landbankBranch };
-    if (branchDefaults) {
-      const managerEmpty = !form.branchManagerName.trim();
-      const cityEmpty = !form.branchCityProvince.trim();
-      if (managerEmpty || form.branchManagerName === branchDefaults.branchManagerName) {
-        next.branchManagerName = branchDefaults.branchManagerName;
-      }
-      if (cityEmpty || form.branchCityProvince === branchDefaults.branchCityProvince) {
-        next.branchCityProvince = branchDefaults.branchCityProvince;
-      }
-    }
-    patch(next);
-  };
-
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-600">
@@ -75,48 +59,18 @@ export function UntagLetterEditor({
         project, and branch details.
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>Letter date</FieldLabel>
-          <input
-            type="date"
-            value={form.letterDate}
-            onChange={(e) => patch({ letterDate: e.target.value })}
-            readOnly={readOnly}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 read-only:bg-gray-50"
-          />
-        </div>
-        <div>
-          <FieldLabel>LandBank branch</FieldLabel>
-          <TextInput
-            value={form.landbankBranch}
-            onChange={handleBranchChange}
-            placeholder="Kidapawan Branch"
-            readOnly={readOnly}
-          />
-        </div>
+      <div>
+        <FieldLabel>Letter date</FieldLabel>
+        <input
+          type="date"
+          value={form.letterDate}
+          onChange={(e) => patch({ letterDate: e.target.value })}
+          readOnly={readOnly}
+          className="w-full sm:max-w-xs text-sm border border-gray-200 rounded-lg px-3 py-2 read-only:bg-gray-50"
+        />
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>Branch manager</FieldLabel>
-          <TextInput
-            value={form.branchManagerName}
-            onChange={(branchManagerName) => patch({ branchManagerName })}
-            placeholder="Ms. Elena R. Vasquez"
-            readOnly={readOnly}
-          />
-        </div>
-        <div>
-          <FieldLabel>Branch city / province</FieldLabel>
-          <TextInput
-            value={form.branchCityProvince}
-            onChange={(branchCityProvince) => patch({ branchCityProvince })}
-            placeholder="Kidapawan City, North Cotabato"
-            readOnly={readOnly}
-          />
-        </div>
-      </div>
+      <LandBankBranchPicker form={form} onChange={onChange} readOnly={readOnly} />
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>

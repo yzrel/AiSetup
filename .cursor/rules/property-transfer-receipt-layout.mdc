@@ -1,0 +1,62 @@
+---
+description: SETUP Form 005 Property Transfer Receipt print/preview (Annex A-5)
+globs: src/app/components/propertyTransferReceipt/**,src/styles/propertyTransferReceipt.css,src/app/constants/propertyTransferReceiptLayout.ts,src/app/utils/propertyTransferReceiptPrint.tsx,src/app/components/PropertyTransferReceiptPreview.tsx,src/app/components/PropertyTransferReceiptEditor.tsx,src/app/components/ProjectCloseOut.tsx
+alwaysApply: false
+---
+
+# Form 005 Property Transfer Receipt layout (Annex A-5)
+
+Source of truth: `Form 005 - Property Transfer Receipt.docx` — SETUP Guidelines (Revision 3.0) Annex A-5.
+Do not invent columns or portal chrome on the official document.
+
+## Document title
+
+`SETUP Form 005 - Property Transfer Receipt`
+
+Mixed case. Do **not** force uppercase via CSS.
+
+## Page
+
+- A4 portrait. Margins: **1 in (25.4 mm)** all sides (Word `pgMar` 1440).
+- Body: Arial ~11pt. Black text only.
+- `@page property-transfer-receipt-sheet` footer:
+
+`SETUP Guidelines (Revision 3.0) Annex A-5: SETUP Form 005 - Property Transfer Receipt Page ` + `counter(page)` / `counter(pages)`
+
+## Structure (exact Word order)
+
+1. Title
+2. Entity Name + Fund Cluster (same line)
+3. From / To Accountable Officer; PTR No.; Date
+4. Transfer Type (check only one): Donation | Relocate | Reassignment | Other (Specify)
+5. Property table: Date Acquired | Property No. | Description | Amount | Condition of PPE
+6. At least 10 blank data rows (pad); grow if more filled rows
+7. Reason for Transfer: narrative text (underlined value line; default for completion: "Physical Transfer Only")
+8. Approved by (Signature / Printed Name / Designation / Date)
+9. Released/Issued by; Received by
+
+## Preview vs print (100% fidelity)
+
+- Preview **mounts** `PropertyTransferReceiptDocument` — same markup as print.
+- Print re-renders via `createRoot` (`printPropertyTransferReceiptPdf`). Do **not** clone preview DOM.
+- No logo / Republic header / Application ID on the official document.
+
+## Responsive (portal UI only)
+
+- Editor: `FORM_GRID_2` / `FORM_GRID_3`, stacked property-row cards on mobile, `ACTION_ROW` flex-wrap for Sync / Edit / Print.
+- Preview: `official-doc-preview-shell` + horizontal scroll on narrow viewports (`officialFormScreen.css` `#property-transfer-receipt-preview`).
+
+## Print path
+
+In-page `window.print()` to `#property-transfer-receipt-print-root` + `body.property-transfer-receipt-printing`.
+
+## Key files
+
+- `src/app/components/propertyTransferReceipt/PropertyTransferReceiptDocument.tsx`
+- `src/app/components/PropertyTransferReceiptEditor.tsx`
+- `src/app/components/PropertyTransferReceiptPreview.tsx`
+- `src/styles/propertyTransferReceipt.css`
+- `src/app/constants/propertyTransferReceiptLayout.ts`
+- `src/app/utils/propertyTransferReceiptPrint.tsx`
+- `src/app/utils/propertyTransferReceipt.ts`
+- Host UI: `src/app/components/ProjectCloseOut.tsx`

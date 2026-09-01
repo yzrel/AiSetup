@@ -7,11 +7,13 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2 
 import { authStore, type AuthUser, type UserRole } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
 import { notificationStore } from '../store/notificationStore';
+import { landbankBranchStore } from '../store/landbankBranchStore';
 import { getApplicantsForStaff } from '../utils/provincialOffice';
 import { staffContextStore } from '../store/staffContextStore';
 import { DemoModeBanner } from './DemoModeBanner';
 import { DemoModeLogoTrigger } from './DemoModeLogoTrigger';
 import { DOSTMark } from './DOSTLogos';
+import { DostLogoLoader } from './DostLogoLoader';
 import { api, ApiError } from '../api/client';
 import { setAuthToken } from '../api/authToken';
 import { demoModeStore } from '../store/demoModeStore';
@@ -79,6 +81,9 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
       await applicantStore.hydrateFromBackend(true);
       await notificationStore.hydrateFromBackend();
       if (authStore.isStaff(user.role)) {
+        await landbankBranchStore.hydrateFromBackend(true);
+      }
+      if (authStore.isStaff(user.role)) {
         autoSelectStaffApplicant();
       }
     } catch (err) {
@@ -94,6 +99,9 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a] flex items-center justify-center px-4 sm:px-6 py-4">
+      {loading && (
+        <DostLogoLoader variant="overlay" label="Signing in…" />
+      )}
       <div className="w-full max-w-md relative z-10">
         {onHome && (
           <button onClick={onHome} className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4 transition-colors">

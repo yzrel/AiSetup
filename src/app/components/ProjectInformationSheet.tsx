@@ -44,7 +44,8 @@ import {
   sortPisOngoingFilings,
   normalizePisOngoingFiling,
 } from "../utils/projectInformationSheet";
-import { MoaAnnexDEditor } from "./MoaAnnexDEditor";
+import { getMoaAnnexCForm } from "../utils/moaAnnexC";
+import { MoaAnnexCPreview } from "./MoaAnnexCPreview";
 import { PrePisEditor } from "./PrePisEditor";
 import { PrePisPreview } from "./PrePisPreview";
 import { PisOngoingEditor } from "./PisOngoingEditor";
@@ -349,8 +350,8 @@ export function ProjectInformationSheet({
                         }`}
                       >
                         {moa
-                          ? `Signed MOA on file — ${new Date(moa.moaSignedDate).toLocaleDateString()}`
-                          : "Signed MOA pending — required to unlock LandBank"}
+                          ? `Memorandum of Agreement signed scan on file — ${new Date(moa.moaSignedDate).toLocaleDateString()}`
+                          : "Memorandum of Agreement pending — required to unlock LandBank"}
                       </div>
                       <div
                         className={`rounded-lg px-3 py-2 border ${
@@ -376,7 +377,7 @@ export function ProjectInformationSheet({
                     {isStaff && !moa && (
                       <div className="border border-[#0C2461]/20 rounded-xl p-4 space-y-3 bg-blue-50/40">
                         <p className="text-sm font-semibold text-gray-800">
-                          Step 1 — Upload signed MOA
+                          Step 1 — Upload signed Memorandum of Agreement scan
                         </p>
                         <SignedMoaUploadPanel
                           applicant={applicant}
@@ -492,7 +493,21 @@ export function ProjectInformationSheet({
 
                 {demoStaffSteps && step === "complete" && (
                   <div className="space-y-4">
-                    <MoaAnnexDEditor applicantId={applicant.id} />
+                    <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                      <p className="text-sm font-semibold text-gray-800">
+                        Memorandum of Agreement (Annex C)
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Edit and print the official MOA in the Approval Letter module.
+                        A read-only preview is shown here for signing-day reference.
+                      </p>
+                      <MoaAnnexCPreview
+                        form={getMoaAnnexCForm(applicant)}
+                        applicant={applicant}
+                        applicationId={applicant.applicationId}
+                        compact
+                      />
+                    </div>
                     <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
                       <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                         <Banknote className="w-4 h-4" /> Pre-disbursement PDCs
@@ -522,12 +537,12 @@ export function ProjectInformationSheet({
                       )}
                     </div>
                     <p className="text-sm text-gray-600">
-                      Confirm signed MOA and {formatFormMention("008")} are on file, then
+                      Confirm Memorandum of Agreement signed scan and {formatFormMention("008")} are on file, then
                       complete MOA signing to unlock LandBank.
                     </p>
                     {!moa && (
                       <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        Upload the signed MOA in the Overview step or Approval Letter module
+                        Upload the signed MOA scan in the Overview step or Approval Letter module
                         before completing MOA signing.
                       </p>
                     )}

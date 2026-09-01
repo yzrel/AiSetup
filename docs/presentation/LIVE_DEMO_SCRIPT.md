@@ -253,7 +253,7 @@ Complete monitoring / PDC schedule as required; submit → Close-Out.
 
 **Window A — Project Close-Out**
 
-Upload terminal report (Form 010), audited FS, equipment acknowledgement; at least one inventory row; confirm Certificate of Ownership / IRP. Submit.
+Upload terminal report (Form 010), audited FS; complete Form 006 inventory and Form 005 Property Transfer Receipt (sync, preview/print, signed scan); confirm Certificate of Ownership / IRP. Submit.
 
 **Show:** Dashboard → **Completed**; application ID unchanged from Act 1.
 

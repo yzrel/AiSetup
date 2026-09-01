@@ -24,8 +24,18 @@ import {
 import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
 import { getOfficeContact, resolveApplicantOfficeId } from "../utils/provincialOffice";
 import { allowWhenDemo } from "../utils/demoMode";
-import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { MODULE_HEADER, MODULE_BODY, FORM_GRID_2 } from "./moduleTheme";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
+import { MSME_CLASSIFICATION_RANGES, MSME_EMPLOYEE_CLASSIFICATION_RANGES } from "../constants/msmeClassification";
+import { FIELD_GUIDANCE } from "../constants/fieldGuidance";
+import {
+  classificationRangeForAssetAmount,
+  derivePrescreeningMsmeSize,
+  isAboveMsmeAssetLimit,
+  parseAssetAmount,
+  parseEmployeeCount,
+  employeeClassificationRangeForCount,
+} from "../utils/msmeClassification";
 
 const DOST_BLUE = "#0C2461";
 const DOST_MID = "#1a3a7a";
@@ -67,6 +77,7 @@ export function PrescreeningForm({
     msmeSize: "",
     assetSize: "",
     classificationRange: "",
+    employeeClassificationRange: "",
     essentialPeriod: "",
     turnover: "",
   });
@@ -74,6 +85,7 @@ export function PrescreeningForm({
 
   const formDataRef = useRef(formData);
   formDataRef.current = formData;
+  const msmeSizeManuallySet = useRef(false);
 
   const persistPrescreeningDraft = (
     data: typeof formData,
@@ -102,6 +114,7 @@ export function PrescreeningForm({
         coreProducts: data.coreProducts,
         exportClassification: data.exportClassification,
         classificationRange: data.classificationRange,
+        employeeClassificationRange: data.employeeClassificationRange,
         essentialPeriod: data.essentialPeriod,
         turnover: data.turnover,
         prescreeningDraftSavedAt: new Date().toISOString(),
@@ -157,6 +170,39 @@ export function PrescreeningForm({
     scheduleDraftPersist();
   };
 
+  const applyMsmeInputs = (
+    key: "assetSize" | "classificationRange" | "employeeClassificationRange",
+    value: string,
+  ) => {
+    msmeSizeManuallySet.current = false;
+    setFormData((prev) => {
+      let next = { ...prev, [key]: value };
+      if (key === "assetSize") {
+        const amount = parseAssetAmount(value);
+        if (amount !== null) {
+          const range = classificationRangeForAssetAmount(amount);
+          if (range) next = { ...next, classificationRange: range };
+        } else if (!value.trim()) {
+          next = { ...next, classificationRange: "" };
+        }
+      }
+      const derived = derivePrescreeningMsmeSize(next, key);
+      if (derived) {
+        next = { ...next, msmeSize: derived };
+      } else if (!msmeSizeManuallySet.current) {
+        next = { ...next, msmeSize: "" };
+      }
+      formDataRef.current = next;
+      return next;
+    });
+    scheduleDraftPersist();
+  };
+
+  const setMsmeSizeManual = (value: string) => {
+    msmeSizeManuallySet.current = true;
+    setField("msmeSize", value);
+  };
+
   const prescreeningInputFromForm = () => ({
     businessSector: formData.businessSector,
     businessNature: formData.businessNature,
@@ -205,7 +251,28 @@ export function PrescreeningForm({
       setEvaluation(null);
       return;
     }
-    setFormData({
+    const classificationRange = String(app.moduleData?.classificationRange ?? "");
+    let employeeClassificationRange = String(
+      app.moduleData?.employeeClassificationRange ?? "",
+    );
+    if (!employeeClassificationRange && app.moduleData?.numberOfEmployees) {
+      const legacyCount = parseEmployeeCount(
+        String(app.moduleData.numberOfEmployees),
+      );
+      if (legacyCount !== null) {
+        employeeClassificationRange =
+          employeeClassificationRangeForCount(legacyCount) || "";
+      }
+    }
+    const prescreeningInput = {
+      assetSize: app.assetSize,
+      classificationRange,
+      employeeClassificationRange,
+    };
+    const derivedMsmeSize = derivePrescreeningMsmeSize(prescreeningInput);
+    const storedMsmeSize = app.msmeSize?.trim() ?? "";
+
+    const loaded = {
       applicantName: app.applicantName,
       designation: app.designation,
       enterpriseName: app.enterpriseName,
@@ -219,12 +286,16 @@ export function PrescreeningForm({
       enterpriseType: app.enterpriseType,
       coreProducts: String(app.moduleData?.coreProducts ?? ""),
       exportClassification: String(app.moduleData?.exportClassification ?? ""),
-      msmeSize: app.msmeSize,
+      msmeSize: derivedMsmeSize || storedMsmeSize,
       assetSize: app.assetSize,
-      classificationRange: String(app.moduleData?.classificationRange ?? ""),
+      classificationRange,
+      employeeClassificationRange,
       essentialPeriod: String(app.moduleData?.essentialPeriod ?? ""),
       turnover: String(app.moduleData?.turnover ?? ""),
-    });
+    };
+    setFormData(loaded);
+    formDataRef.current = loaded;
+    msmeSizeManuallySet.current = Boolean(storedMsmeSize && !derivedMsmeSize);
 
     const hasEvaluation = Boolean(app.moduleData?.prescreening?.evaluatedAt);
     if (!hasEvaluation && !app.qualified) {
@@ -273,6 +344,7 @@ export function PrescreeningForm({
         coreProducts: formData.coreProducts,
         exportClassification: formData.exportClassification,
         classificationRange: formData.classificationRange,
+        employeeClassificationRange: formData.employeeClassificationRange,
         essentialPeriod: formData.essentialPeriod,
         turnover: formData.turnover,
         // A qualified client proceeds with the standard SETUP LOI, so drop any
@@ -360,7 +432,7 @@ export function PrescreeningForm({
           </div>
           <StaffApplicantBanner user={user} />
 
-          <form onSubmit={handleSubmit} className={`${MODULE_BODY} space-y-8`}>
+          <form onSubmit={handleSubmit} className={MODULE_BODY}>
               {qualified !== null && (
                 <div
                   className={`p-4 sm:p-6 rounded-lg ${qualified ? "bg-green-50 border-2 border-green-500" : "bg-red-50 border-2 border-red-500"}`}
@@ -535,13 +607,13 @@ export function PrescreeningForm({
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Brief Description of Company
                     </label>
-                    <p className="text-xs text-gray-500 mb-1">
+                    <p className="text-xs text-gray-500 mb-1 leading-snug">
                       Describe your enterprise&apos;s products, services, and
                       operations (max 500 characters)
                     </p>
                     <textarea
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      rows={5}
+                      className="w-full min-h-[7rem] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y leading-relaxed"
                       value={formData.companyDescription}
                       onChange={(e) =>
                         setField(
@@ -551,7 +623,7 @@ export function PrescreeningForm({
                       }
                       placeholder="We are a food processing enterprise specializing in..."
                     />
-                    <p className="text-[10px] text-gray-400 text-right mt-1">
+                    <p className="text-[10px] text-gray-400 text-right mt-0.5">
                       {formData.companyDescription.length}/500
                     </p>
                   </div>
@@ -590,6 +662,9 @@ export function PrescreeningForm({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       B. Essential Period Question (0–10 years of operation)
                     </label>
+                    <p className="text-xs text-gray-500 mb-1 leading-snug">
+                      {FIELD_GUIDANCE.essentialPeriod}
+                    </p>
                     <div className="space-y-2">
                       {["Yes", "No"].map((option) => (
                         <label key={option} className="flex items-center gap-2">
@@ -626,9 +701,12 @@ export function PrescreeningForm({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       C. Business Record Turnover
                     </label>
+                    <p className="text-xs text-gray-500 mb-1 leading-snug">
+                      {FIELD_GUIDANCE.businessRecordTurnover}
+                    </p>
                     <input
                       type="text"
-                      placeholder="Enter turnover amount"
+                      placeholder="e.g. 200000 (annual PHP)"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={formData.turnover}
                       onChange={(e) => setField("turnover", e.target.value)}
@@ -677,6 +755,9 @@ export function PrescreeningForm({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       F. EXPORT Classification
                     </label>
+                    <p className="text-xs text-gray-500 mb-1 leading-snug">
+                      {FIELD_GUIDANCE.exportClassification}
+                    </p>
                     <div className="space-y-2">
                       {["Yes", "No", "Potential Export"].map((option) => (
                         <label key={option} className="flex items-center gap-2">
@@ -716,33 +797,23 @@ export function PrescreeningForm({
                   G. MSME Classification
                 </h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Size *
-                    </label>
-                    <select
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.msmeSize}
-                      onChange={(e) => setField("msmeSize", e.target.value)}
-                    >
-                      <option value="">Select size</option>
-                      <option>Micro</option>
-                      <option>Small</option>
-                      <option>Medium</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className={FORM_GRID_2}>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Asset Size (PHP)
                       </label>
+                      <p className="text-xs text-gray-500 mb-1 leading-snug">
+                        {FIELD_GUIDANCE.assetSize}
+                      </p>
                       <input
                         type="number"
+                        min="0"
                         placeholder="Enter amount"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.assetSize}
-                        onChange={(e) => setField("assetSize", e.target.value)}
+                        onChange={(e) =>
+                          applyMsmeInputs("assetSize", e.target.value)
+                        }
                       />
                     </div>
                     <div>
@@ -753,16 +824,71 @@ export function PrescreeningForm({
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.classificationRange}
                         onChange={(e) =>
-                          setField("classificationRange", e.target.value)
+                          applyMsmeInputs("classificationRange", e.target.value)
                         }
                       >
                         <option value="">Select range</option>
-                        <option>₱0 - ₱3M</option>
-                        <option>₱3M - ₱15M</option>
-                        <option>₱15M - ₱100M</option>
+                        {MSME_CLASSIFICATION_RANGES.map((range) => (
+                          <option key={range}>{range}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
+                  <div className={FORM_GRID_2}>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Employee Classification Range
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.employeeClassificationRange}
+                        onChange={(e) =>
+                          applyMsmeInputs(
+                            "employeeClassificationRange",
+                            e.target.value,
+                          )
+                        }
+                      >
+                        <option value="">Select range</option>
+                        {MSME_EMPLOYEE_CLASSIFICATION_RANGES.map((range) => (
+                          <option key={range}>{range}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Size *
+                      </label>
+                      <select
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                        value={formData.msmeSize}
+                        onChange={(e) => setMsmeSizeManual(e.target.value)}
+                      >
+                        <option value="">Select size</option>
+                        <option>Micro</option>
+                        <option>Small</option>
+                        <option>Medium</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Auto-set from asset and employee classification ranges
+                    (DTI/RA 9501: higher category applies). You may override if
+                    needed.
+                  </p>
+                  {(() => {
+                    const assetAmount = parseAssetAmount(formData.assetSize);
+                    const aboveAssets =
+                      assetAmount !== null && isAboveMsmeAssetLimit(assetAmount);
+                    if (!aboveAssets) return null;
+                    return (
+                      <p className="text-xs text-amber-700">
+                        Asset size exceeds MSME Medium limit (₱100M). SETUP
+                        requires Micro, Small, or Medium classification.
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
 

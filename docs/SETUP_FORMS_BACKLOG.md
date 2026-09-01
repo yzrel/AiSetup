@@ -17,7 +17,7 @@ Registry notes live in [`src/app/constants/setupForms.ts`](../src/app/constants/
 |---------------|--------------------------|-------|
 | Form 003 Status Report | Monitoring (post fund release) | Expected vs actual outputs, equipment, fund utilization, refund status, employment, markets |
 | Form 004 Audited Financial Report | Procurement & Liquidation (within 1 month of commissioning) | Currently upload-only at close-out |
-| Form 005 Property Transfer Receipt | Equipment transfer / pull-out | No module |
+| Form 005 Property Transfer Receipt | Project Close-Out | **Done** — edit / preview / print + signed scan (Annex A-5) |
 | Form 006 Inventory of Equipment | Close-out | **Done** — official edit / preview / print in Project Close-Out (Annex A-6) |
 | Form 007 List of Pulled-Out Equipment | Termination / delinquent recovery | No module |
 | Form 010 Completion Report | Successful project completion | Distinct from termination and terminal |
@@ -26,7 +26,7 @@ Registry notes live in [`src/app/constants/setupForms.ts`](../src/app/constants/
 | Form 013 Terminal Report | End-of-project terminal reporting | Pack number; app currently labels Form 010 as Terminal |
 | Payment Reminder Letter | Refund & Delinquent | Letter template |
 | Computation of Final Obligation (Annex B) | Termination settlement | Formula for pulled-out vs not |
-| Proforma MOA – Annex C | MOA signing day | App uses Annex D naming — content parity TBD |
+| Proforma MOA – Annex C | Approval Letter → Memorandum of Agreement | **Done** — edit / preview / print + signed scan upload |
 | Sworn Affidavit of No Relatives | Requirements | Upload only; no fillable template |
 | Letter Request for Equipment | — | **Corrupt/empty** in pack; cannot use as template |
 

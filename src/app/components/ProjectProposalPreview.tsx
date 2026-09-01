@@ -5,13 +5,13 @@
  * table columns). Official PDF still prints via ProjectProposalDocument.
  */
 
-import { Printer } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ProjectProposalAttachment,
   ProjectProposalForm,
   ProjectProposalDocumentResponse,
 } from "../api/types";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import {
   buildInvestmentDecisionAnalysis,
   compensationTableFooterRow,
@@ -296,18 +296,12 @@ export function ProjectProposalPreview({
     <div className={compact ? "" : "space-y-4"}>
       {!compact && onPrint && (
         <PreviewToolbar className="justify-end print:hidden">
-          <button
-            type="button"
-            onClick={onPrint}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
-          >
-            <Printer className="w-4 h-4" />
-            Print / Save as PDF
-          </button>
+          <DocumentPrintButton onClick={onPrint} />
         </PreviewToolbar>
       )}
 
-      <div id="project-proposal-preview" className="pp-form-document">
+      <div className="official-doc-preview-shell overflow-x-auto flex justify-start sm:justify-center py-4 px-2 sm:px-4 bg-gray-100 print:bg-white print:py-0 print:px-0">
+        <div id="project-proposal-preview" className="pp-form-document flex-shrink-0">
         <div className="pp-form-block pp-print-section">
           <h1 className="pp-form-title">{PROJECT_PROPOSAL_TITLE}</h1>
           {(applicationId || doc?.generatedAt || aiGenerated !== undefined) && (
@@ -765,6 +759,7 @@ export function ProjectProposalPreview({
               <p className="pp-form-note">For official use — DOST Regional Office</p>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

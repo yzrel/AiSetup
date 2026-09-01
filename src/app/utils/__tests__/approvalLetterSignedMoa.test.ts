@@ -10,6 +10,7 @@ import { applicantStore } from "../../store/applicantStore";
 import { emailOutboxStore } from "../../store/emailOutboxStore";
 import {
   buildApprovalLetterDraft,
+  getApprovalLetterStored,
   getSignedMoa,
   publishApprovalLetter,
   recordRdDecision,
@@ -17,6 +18,7 @@ import {
   saveSignedMoa,
   saveSignedMoaDraft,
 } from "../approvalLetter";
+import { saveMoaAnnexCDraft, getMoaAnnexCForm } from "../moaAnnexC";
 import { sendSignedMoaReceiptsToDost } from "../documentDelivery";
 
 beforeAll(() => {
@@ -195,5 +197,36 @@ describe("signed MOA persistence", () => {
         e.subject.includes("Signed Memorandum of Agreement (MOA)"),
       ),
     ).toBe(true);
+  });
+
+  it("preserves approvalLetter.moaForm when Save Draft and publish rewrite the letter", () => {
+    const app = applicantStore.getById(applicantId)!;
+    const moa = {
+      ...getMoaAnnexCForm(app),
+      enterpriseName: "Staff MOA Enterprise",
+      projectTitle: "Staff MOA Project",
+      witness1Name: "Witness One",
+    };
+    saveMoaAnnexCDraft(applicantId, moa);
+
+    const form = buildApprovalLetterDraft(applicantStore.getById(applicantId)!);
+    saveApprovalLetterDraft(applicantId, { ...form, projectTitle: "Notice title" });
+
+    expect(
+      getApprovalLetterStored(applicantStore.getById(applicantId)!)?.moaForm
+        ?.enterpriseName,
+    ).toBe("Staff MOA Enterprise");
+    expect(
+      getApprovalLetterStored(applicantStore.getById(applicantId)!)?.moaForm
+        ?.witness1Name,
+    ).toBe("Witness One");
+
+    recordRdDecision(applicantId, "approved", "rd@dost.gov.ph", form);
+    expect(publishApprovalLetter(applicantId, form).ok).toBe(true);
+
+    const after = getApprovalLetterStored(applicantStore.getById(applicantId)!)
+      ?.moaForm;
+    expect(after?.enterpriseName).toBe("Staff MOA Enterprise");
+    expect(after?.projectTitle).toBe("Staff MOA Project");
   });
 });

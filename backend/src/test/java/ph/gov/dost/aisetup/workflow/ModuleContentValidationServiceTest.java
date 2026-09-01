@@ -32,6 +32,50 @@ class ModuleContentValidationServiceTest {
     }
 
     @Test
+    void rejectsIncompleteRequirementsSubmit() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        service.assertRequirementsComplete(
+                                Map.of(
+                                        "requirementUploads",
+                                        List.of(
+                                                Map.of(
+                                                        "id",
+                                                        "permits",
+                                                        "required",
+                                                        true,
+                                                        "uploaded",
+                                                        false)))));
+    }
+
+    @Test
+    void acceptsCompleteRequirementsSubmit() {
+        assertDoesNotThrow(
+                () ->
+                        service.assertRequirementsComplete(
+                                Map.of(
+                                        "requirementUploads",
+                                        List.of(
+                                                Map.of(
+                                                        "id",
+                                                        "permits",
+                                                        "required",
+                                                        true,
+                                                        "uploaded",
+                                                        true),
+                                                Map.of(
+                                                        "id",
+                                                        "projected",
+                                                        "required",
+                                                        true,
+                                                        "uploaded",
+                                                        true,
+                                                        "generatedFrom",
+                                                        "financialProjection")))));
+    }
+
+    @Test
     void draftPatchIsLenient() {
         assertDoesNotThrow(
                 () -> service.assertHardTransition(

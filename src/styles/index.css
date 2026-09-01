@@ -9,6 +9,9 @@
 @import './financialProjection.css';
 @import './rtecReport.css';
 @import './inventoryOfEquipment.css';
+@import './propertyTransferReceipt.css';
+@import './moaAnnexC.css';
+@import './officialFormScreen.css';
 
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -134,7 +137,16 @@
     visibility: visible !important;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) * {
+  body.moa-annex-c-printing * {
+    visibility: hidden !important;
+  }
+
+  body.moa-annex-c-printing #moa-annex-c-print-root,
+  body.moa-annex-c-printing #moa-annex-c-print-root * {
+    visibility: visible !important;
+  }
+
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) * {
     visibility: hidden;
   }
 
@@ -157,12 +169,17 @@
     visibility: visible;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) #tna-form-01-preview,
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) #tna-form-01-preview * {
+  #moa-annex-c-print-root,
+  #moa-annex-c-print-root * {
     visibility: visible;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing) #tna-form-01-preview {
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) #tna-form-01-preview,
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) #tna-form-01-preview * {
+    visibility: visible;
+  }
+
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) #tna-form-01-preview {
     position: absolute;
     left: 0;
     right: 0;
@@ -186,7 +203,8 @@
   #rtec-report-preview,
   #pre-pis-preview,
   #lbp-introduction-preview,
-  #aisetup-html-print-root {
+  #aisetup-html-print-root,
+  #moa-annex-c-print-root {
     position: absolute;
     left: 0;
     top: 0;

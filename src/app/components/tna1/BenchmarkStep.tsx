@@ -4,6 +4,7 @@
  * TNA Form 01 — Step 3: Benchmark Information (production and supply chain).
  */
 
+import { FIELD_GUIDANCE } from "../../constants/fieldGuidance";
 import { MODULE_BODY } from "../moduleTheme";
 import { AiAssistTextarea } from "../AiAssistField";
 import { EditableTableResponsive } from "../ui/editable-table-responsive";
@@ -67,14 +68,15 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
         />
         <div className="space-y-3 mt-4">
           {[
-            { label: "Production Waste Management System", key: "wasteManagement" },
-            { label: "Inventory System", key: "inventorySystem" },
-            { label: "Maintenance Program", key: "maintenanceProgram" },
-            { label: "cGMP / HACCP Activities", key: "cgmpHaccp" },
-            { label: "Supplies / Purchasing System", key: "purchasingSystem" },
+            { label: "Production Waste Management System", key: "wasteManagement", hint: FIELD_GUIDANCE.wasteManagement },
+            { label: "Inventory System", key: "inventorySystem", hint: FIELD_GUIDANCE.inventorySystem },
+            { label: "Maintenance Program", key: "maintenanceProgram", hint: FIELD_GUIDANCE.maintenanceProgram },
+            { label: "cGMP / HACCP Activities", key: "cgmpHaccp", hint: FIELD_GUIDANCE.cgmpHaccp },
+            { label: "Supplies / Purchasing System", key: "purchasingSystem", hint: FIELD_GUIDANCE.purchasingSystem },
           ].map(item => (
             <div key={item.key}>
               <label className={labelCls}>{item.label}</label>
+              {item.hint && <p className="text-xs text-gray-400 mb-2">{item.hint}</p>}
               <textarea rows={2} value={form[item.key]} onChange={e => set(item.key, e.target.value)}
                 className={inputCls} placeholder={`Describe your ${item.label.toLowerCase()}…`} />
             </div>
@@ -88,7 +90,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
             inputClassName={inputCls}
             labelClassName={labelCls}
             minHeight="min-h-[80px]"
-            hint="Narrative from Letter of Intent notes (editable). Provide text and/or attach the production plan document."
+            hint={FIELD_GUIDANCE.productionPlan}
             {...tnaAi("productionPlan", (v) => set("productionPlan", v))}
           />
           <FileAttachmentField
@@ -127,7 +129,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
             set("plantLayoutFileId", meta?.fileId ?? "");
             set("plantLayoutFileMime", meta?.mimeType ?? "");
           }}
-          hint="Upload floor plan or plant layout diagram (required attachment per TNA Form 01)."
+          hint={FIELD_GUIDANCE.plantLayout}
         />
       </div>
 
@@ -141,7 +143,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
             inputClassName={inputCls}
             labelClassName={labelCls}
             minHeight="min-h-[100px]"
-            hint="Provide a text description and/or upload a diagram."
+            hint={FIELD_GUIDANCE.processFlow}
             {...tnaAi("processFlow", (v) => set("processFlow", v))}
           />
           <FileAttachmentField

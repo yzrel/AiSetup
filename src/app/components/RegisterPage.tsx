@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { DataPrivacyModal } from "./DataPrivacyModal";
+import { DostLogoLoader } from "./DostLogoLoader";
 import { applicantStore } from "../store/applicantStore";
 import { demoModeStore } from "../store/demoModeStore";
 import type { RegistrationAgency } from "../utils/proprietorTrack";
@@ -33,6 +34,10 @@ import {
   REGION_12_LABEL,
   REGION_12_PROVINCES,
 } from "../constants/region12";
+import {
+  DATE_ESTABLISHED_HINT,
+  DATE_ESTABLISHED_LABEL,
+} from "../constants/enterpriseProfileFields";
 import { PrioritySectorSelect } from "./PrioritySectorSelect";
 import { DemoModeBanner } from "./DemoModeBanner";
 import { DemoModeLogoTrigger } from "./DemoModeLogoTrigger";
@@ -117,24 +122,30 @@ function Field({
   required,
   children,
   hint,
+  hintBefore,
   error,
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
   hint?: string;
+  hintBefore?: boolean;
   error?: string;
 }) {
+  const hintEl =
+    hint && !error ? (
+      <p className="text-[10px] text-gray-400 leading-snug">{hint}</p>
+    ) : null;
+
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
         {label}{" "}
         {required && <span className="text-red-500">*</span>}
       </label>
+      {hintBefore && hintEl}
       {children}
-      {hint && !error && (
-        <p className="text-[10px] text-gray-400">{hint}</p>
-      )}
+      {!hintBefore && hintEl}
       {error && (
         <p className="text-[10px] text-red-500 flex items-center gap-1">
           <AlertCircle className="w-3 h-3" />
@@ -533,6 +544,7 @@ export function RegisterPage({
 }: RegisterPageProps) {
   const [step, setStep] = useState(1);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>(
     {},
   );
@@ -674,7 +686,10 @@ export function RegisterPage({
       if (tinErr) errs.tinNumber = tinErr;
       const regType = nonEmptySelect(form.registrationType, "registration type");
       if (regType) errs.registrationType = regType;
-      const start = requiredTrimmed(form.companyStartDate, "Company start date");
+      const start = requiredTrimmed(
+        form.companyStartDate,
+        DATE_ESTABLISHED_LABEL,
+      );
       if (start) errs.companyStartDate = start;
       const sector = nonEmptySelect(
         form.businessSector,
@@ -701,6 +716,8 @@ export function RegisterPage({
 
   const handleAgree = async () => {
     setShowPrivacy(false);
+    setSubmitting(true);
+    try {
     // Save to applicant store, then create backend auth user + case blob
     const app = applicantStore.add({
       applicantName: `${form.firstName} ${form.lastName}`,
@@ -775,11 +792,17 @@ export function RegisterPage({
     }
 
     onSuccess();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ── Render steps ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0C2461] via-[#1a3a7a] to-[#0e4d8a] flex items-center justify-center p-4">
+      {submitting && (
+        <DostLogoLoader variant="overlay" label="Creating your account…" />
+      )}
       {showPrivacy && (
         <DataPrivacyModal
           onAgree={handleAgree}
@@ -1340,44 +1363,49 @@ export function RegisterPage({
                   </Field>
                 </div>
 
-                <Field
-                  label="Company Start Date"
-                  required
-                  error={errors.companyStartDate}
-                  hint="When did your enterprise start operations?"
-                >
-                  <input
-                    type="date"
-                    value={form.companyStartDate}
-                    onChange={(e) => {
-                      set("companyStartDate", e.target.value);
-                      clearErr("companyStartDate");
-                    }}
-                    className={inputCls}
-                    max={new Date().toISOString().split("T")[0]}
-                  />
-                </Field>
+                <div className="space-y-3">
+                  <Field
+                    label={DATE_ESTABLISHED_LABEL}
+                    required
+                    error={errors.companyStartDate}
+                    hint={DATE_ESTABLISHED_HINT}
+                  >
+                    <input
+                      type="date"
+                      value={form.companyStartDate}
+                      onChange={(e) => {
+                        set("companyStartDate", e.target.value);
+                        clearErr("companyStartDate");
+                      }}
+                      className={inputCls}
+                      max={new Date().toISOString().split("T")[0]}
+                    />
+                  </Field>
 
-                <Field
-                  label="Brief Description of Company"
-                  hint="Describe your enterprise's products, services, and operations (max 500 characters)"
-                >
-                  <textarea
-                    value={form.companyDescription}
-                    onChange={(e) =>
-                      set(
-                        "companyDescription",
-                        e.target.value.slice(0, 500),
-                      )
-                    }
-                    rows={3}
-                    className={inputCls + " resize-none"}
-                    placeholder="We are a food processing enterprise specializing in..."
-                  />
-                  <p className="text-[10px] text-gray-400 text-right">
-                    {form.companyDescription.length}/500
-                  </p>
-                </Field>
+                  <Field
+                    label="Brief Description of Company"
+                    hint="Describe your enterprise's products, services, and operations (max 500 characters)"
+                    hintBefore
+                  >
+                    <textarea
+                      value={form.companyDescription}
+                      onChange={(e) =>
+                        set(
+                          "companyDescription",
+                          e.target.value.slice(0, 500),
+                        )
+                      }
+                      rows={5}
+                      className={
+                        inputCls + " min-h-[7rem] resize-y leading-relaxed"
+                      }
+                      placeholder="We are a food processing enterprise specializing in..."
+                    />
+                    <p className="text-[10px] text-gray-400 text-right -mt-0.5">
+                      {form.companyDescription.length}/500
+                    </p>
+                  </Field>
+                </div>
 
                 {/* Image uploads */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -1501,7 +1529,7 @@ export function RegisterPage({
                       value: `${form.registrationType} — ${form.registrationNumber}`,
                     },
                     {
-                      label: "Operating Since",
+                      label: "Date established",
                       value: form.companyStartDate,
                     },
                   ].map((r) => (

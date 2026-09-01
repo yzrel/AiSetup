@@ -2,8 +2,8 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { Printer } from "lucide-react";
 import type { ApprovalLetterForm } from "../api/types";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import { PreviewToolbar } from "./PreviewLayout";
 import {
   DostOfficialLetterheadFooter,
@@ -36,14 +36,7 @@ export function ApprovalLetterPreview({
     <div className={compact ? "" : "space-y-4"}>
       {showToolbar && onPrint && (
         <PreviewToolbar className="justify-end">
-          <button
-            type="button"
-            onClick={onPrint}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg bg-[#0C2461] text-white hover:opacity-90"
-          >
-            <Printer className="w-4 h-4" />
-            Download PDF
-          </button>
+          <DocumentPrintButton onClick={onPrint} />
         </PreviewToolbar>
       )}
 

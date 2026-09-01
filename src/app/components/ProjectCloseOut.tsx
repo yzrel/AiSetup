@@ -6,14 +6,16 @@ import { useState } from "react";
 import {
   CheckCircle,
   ClipboardCheck,
-  Eye,
   FileText,
-  Pencil,
   Plus,
-  Printer,
+  RefreshCw,
   Trash2,
   Upload,
 } from "lucide-react";
+import {
+  DocumentPrintButton,
+  EditPreviewToggleButton,
+} from "./DocumentActionButtons";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantChangeEffect, useApplicantSyncedState } from "../hooks/useApplicantSyncedState";
 import { ModuleFormHeader } from "./ModuleFormHeader";
@@ -27,14 +29,18 @@ import {
   saveCloseOutDraft,
   submitCloseOut,
 } from "../utils/projectCloseOut";
-import type { EquipmentInventoryRow } from "../api/types";
+import type { EquipmentInventoryRow, ProjectCloseOutForm } from "../api/types";
 import { formatFormMention } from "../constants/setupForms";
 import { formatInventoryAmountTotal } from "../constants/inventoryOfEquipmentLayout";
 import { allowWhenDemo } from "../utils/demoMode";
-import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
+import { ACTION_ROW, MODULE_BODY, MODULE_HEADER } from "./moduleTheme";
 import { notifyCloseoutComplete } from "../utils/notificationHelpers";
 import { InventoryOfEquipmentPreview } from "./InventoryOfEquipmentPreview";
 import { printInventoryOfEquipmentPdf } from "../utils/inventoryOfEquipmentPrint";
+import { PropertyTransferReceiptEditor } from "./PropertyTransferReceiptEditor";
+import { PropertyTransferReceiptPreview } from "./PropertyTransferReceiptPreview";
+import { printPropertyTransferReceiptPdf } from "../utils/propertyTransferReceiptPrint";
+import { syncPropertyTransferFromPrior } from "../utils/propertyTransferReceipt";
 
 interface ProjectCloseOutProps {
   user?: import("../store/authStore").AuthUser | null;
@@ -43,19 +49,23 @@ interface ProjectCloseOutProps {
 
 const DOST_BLUE = "#0C2461";
 
-type InventoryView = "edit" | "preview";
+type FormView = "edit" | "preview";
 
 export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps) {
   const { applicant, isStaff } = useStaffApplicant(user);
   const [form, setForm] = useApplicantSyncedState(applicant, getCloseOutForm);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
-  const [inventoryView, setInventoryView] = useState<InventoryView>("edit");
+  const [inventoryView, setInventoryView] = useState<FormView>("edit");
+  const [ptrView, setPtrView] = useState<FormView>("edit");
+  const [ptrSyncNotice, setPtrSyncNotice] = useState("");
 
   useApplicantChangeEffect(applicant, () => {
     setErrors([]);
     setNotice("");
+    setPtrSyncNotice("");
     setInventoryView("edit");
+    setPtrView("edit");
   });
 
   if (!applicant) {
@@ -74,10 +84,36 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
     );
   }
 
-  const patch = (partial: Partial<typeof form>) => {
+  const patch = (partial: Partial<ProjectCloseOutForm>) => {
     const next = { ...form, ...partial };
     setForm(next);
     saveCloseOutDraft(applicant.id, next);
+  };
+
+  const handlePtrFormChange = (next: ProjectCloseOutForm) => {
+    setForm(next);
+    saveCloseOutDraft(applicant.id, next);
+  };
+
+  const handlePtrSync = () => {
+    const synced = syncPropertyTransferFromPrior(form, applicant);
+    setForm(synced);
+    saveCloseOutDraft(applicant.id, synced);
+    setPtrSyncNotice("Form 005 fields synced from case data (blank fields only).");
+  };
+
+  const handleInventoryPrint = () => {
+    void printInventoryOfEquipmentPdf({
+      form,
+      applicationId: applicant.applicationId,
+    });
+  };
+
+  const handlePtrPrint = () => {
+    void printPropertyTransferReceiptPdf({
+      form,
+      applicationId: applicant.applicationId,
+    });
   };
 
   const updateInventoryRow = (id: string, field: keyof EquipmentInventoryRow, value: string) => {
@@ -101,12 +137,7 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
     });
   };
 
-  const handlePrint = () => {
-    void printInventoryOfEquipmentPdf({
-      form,
-      applicationId: applicant.applicationId,
-    });
-  };
+  const handlePrint = handleInventoryPrint;
 
   const handleSubmit = () => {
     const errs = submitCloseOut(applicant.id, user?.email ?? "staff");
@@ -160,10 +191,6 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
                 key: "auditedFinancialFileName" as const,
                 label: "Audited Financial Report",
               },
-              {
-                key: "equipmentAcknowledgementFileName" as const,
-                label: "Equipment Acknowledgement Receipt",
-              },
             ].map(({ key, label }) => (
               <div key={key} className="border border-gray-200 rounded-xl p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">{label}</p>
@@ -191,40 +218,15 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
                 {formatFormMention("006")}
               </h3>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setInventoryView("edit")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold ${
-                      inventoryView === "edit"
-                        ? "bg-[#0C2461] text-white"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInventoryView("preview")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold ${
-                      inventoryView === "preview"
-                        ? "bg-[#0C2461] text-white"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    Preview
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-xs font-semibold hover:bg-blue-50"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Print
-                </button>
+                <EditPreviewToggleButton
+                  isPreview={inventoryView === "preview"}
+                  onToggle={() =>
+                    setInventoryView((v) => (v === "edit" ? "preview" : "edit"))
+                  }
+                />
+                {inventoryView === "preview" && (
+                  <DocumentPrintButton onClick={handlePrint} />
+                )}
               </div>
             </div>
 
@@ -382,6 +384,79 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
             )}
           </div>
 
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                {formatFormMention("005")}
+              </h3>
+              <div className={`${ACTION_ROW} flex-wrap`}>
+                {isStaff && (
+                  <button
+                    type="button"
+                    onClick={handlePtrSync}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#0C2461]/30 text-[#0C2461] text-sm font-bold hover:bg-blue-50"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Sync fields
+                  </button>
+                )}
+                <EditPreviewToggleButton
+                  isPreview={ptrView === "preview"}
+                  onToggle={() => setPtrView((v) => (v === "edit" ? "preview" : "edit"))}
+                  editLabel="Edit Form 005"
+                  previewLabel="Preview Form 005"
+                />
+                {ptrView === "preview" && (
+                  <DocumentPrintButton onClick={handlePtrPrint} />
+                )}
+              </div>
+            </div>
+
+            {ptrSyncNotice && (
+              <p className="px-4 pt-3 text-xs text-green-700">{ptrSyncNotice}</p>
+            )}
+
+            <div className="p-4 space-y-4">
+              {ptrView === "edit" ? (
+                <PropertyTransferReceiptEditor form={form} onChange={handlePtrFormChange} />
+              ) : (
+                <div className="bg-gray-100 -mx-4 sm:mx-0 sm:rounded-lg overflow-hidden">
+                  <PropertyTransferReceiptPreview
+                    form={form}
+                    applicationId={applicant.applicationId}
+                    onPrint={handlePtrPrint}
+                    compact
+                  />
+                </div>
+              )}
+
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase">
+                  Attach signed scan
+                </p>
+                <p className="text-sm text-gray-500">
+                  After the Regional Director signs Form 005, upload the signed PDF or image.
+                </p>
+                <label className="flex items-center gap-2 text-sm text-blue-700 cursor-pointer w-fit max-w-full">
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span className="truncate">
+                    {form.propertyTransferSignedFileName || "Upload signed Form 005"}
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) patch({ propertyTransferSignedFileName: f.name });
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
           <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer">
             <input
               type="checkbox"
@@ -399,8 +474,9 @@ export function ProjectCloseOut({ user, onSubmitSuccess }: ProjectCloseOutProps)
             <div className="text-sm">
               <p className="font-semibold text-gray-800">Certificate of Ownership & IRP issued</p>
               <p className="text-gray-500 text-xs mt-0.5">
-                Confirm full refund and technology transfer fee (0.5%) are settled and ownership
-                transferred per SETUP Guidelines.
+                Confirm full refund and technology transfer fee (0.5%) are settled, Form 005
+                Property Transfer Receipt is accomplished, and ownership transferred per SETUP
+                Guidelines.
               </p>
             </div>
           </label>

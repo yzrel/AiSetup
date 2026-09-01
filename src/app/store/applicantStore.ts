@@ -410,6 +410,12 @@ const seedApplicants: Applicant[] = [
 let applicants: Applicant[] = [];
 let listeners: (() => void)[] = [];
 let hydrated = false;
+/** True while an in-flight hydrateFromBackend is awaiting the API. */
+let hydrating = false;
+
+function notifyListeners() {
+  listeners.forEach((l) => l());
+}
 
 function parseWhen(value: string | undefined | null): number {
   if (!value) return 0;
@@ -465,6 +471,12 @@ function applicantFromRecord(
 
 export const applicantStore = {
   getAll: () => applicants,
+
+  /** True after at least one successful SoR hydrate for the current session. */
+  isHydrated: () => hydrated,
+
+  /** True while hydrateFromBackend is awaiting the backend. */
+  isHydrating: () => hydrating,
 
   getById: (id: string) => applicants.find(a => a.id === id),
 
@@ -556,53 +568,62 @@ export const applicantStore = {
       return;
     }
 
-    if (authStore.isStaff(user.role)) {
-      const records = await fetchBackendApplicants();
-      if (records == null) return;
-      hydrated = true;
-      const byId = new Map(applicants.map((a) => [a.id, a]));
-      applicants = records
-        .filter((record) => !!record?.id)
-        .map((record) => applicantFromRecord(record, byId.get(record.id)));
-      listeners.forEach((l) => l());
-      return;
-    }
+    hydrating = true;
+    notifyListeners();
+    try {
+      if (authStore.isStaff(user.role)) {
+        const records = await fetchBackendApplicants();
+        if (records == null) return;
+        hydrated = true;
+        const byId = new Map(applicants.map((a) => [a.id, a]));
+        applicants = records
+          .filter((record) => !!record?.id)
+          .map((record) => applicantFromRecord(record, byId.get(record.id)));
+        notifyListeners();
+        return;
+      }
 
-    const applicantId = user.applicationId
-      ? applicants.find((a) => a.applicationId === user.applicationId)?.id
-      : user.id;
-    // Prefer linked applicant id from login payload when present on AuthUser.
-    const linkedId =
-      (user as { applicantId?: string }).applicantId ??
-      applicantId ??
-      user.id;
-    const record = await fetchBackendApplicant(linkedId);
-    if (!record) return;
-    hydrated = true;
-    const index = applicants.findIndex((a) => a.id === record.id);
-    const local = index >= 0 ? applicants[index] : undefined;
-    if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
-      return;
+      const applicantId = user.applicationId
+        ? applicants.find((a) => a.applicationId === user.applicationId)?.id
+        : user.id;
+      // Prefer linked applicant id from login payload when present on AuthUser.
+      const linkedId =
+        (user as { applicantId?: string }).applicantId ??
+        applicantId ??
+        user.id;
+      const record = await fetchBackendApplicant(linkedId);
+      if (!record) return;
+      hydrated = true;
+      const index = applicants.findIndex((a) => a.id === record.id);
+      const local = index >= 0 ? applicants[index] : undefined;
+      if (local && parseWhen(local.lastUpdated) > parseWhen(record.updatedAt)) {
+        return;
+      }
+      const merged = applicantFromRecord(record, local);
+      if (index >= 0) {
+        applicants = applicants.map((a, i) => (i === index ? merged : a));
+      } else {
+        applicants = [...applicants, merged];
+      }
+      notifyListeners();
+    } finally {
+      hydrating = false;
+      notifyListeners();
     }
-    const merged = applicantFromRecord(record, local);
-    if (index >= 0) {
-      applicants = applicants.map((a, i) => (i === index ? merged : a));
-    } else {
-      applicants = [...applicants, merged];
-    }
-    listeners.forEach((l) => l());
   },
 
   /** Test helper: clear the live list and allow hydrate to run again. */
   resetForTests: () => {
     applicants = [];
     hydrated = false;
+    hydrating = false;
   },
 
   /** Test-only: load demo seedApplicants (never used on real boot). */
   loadDemoSeedsForTests: () => {
     applicants = [...seedApplicants];
     hydrated = false;
+    hydrating = false;
   },
 
   advanceModule: (id: string, nextModule: ModuleStatus) => {
