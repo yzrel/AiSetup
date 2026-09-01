@@ -16,6 +16,7 @@ import { formatApprovalDisplayDate } from "./approvalLetter";
 import { getProjectProposalForm } from "./projectProposal";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { printHtmlDocument } from "./printHtml";
+import { getDostOfficialLetterheadPrintStyles } from "../components/DostOfficialLetterhead";
 import { resolveApplicantOfficeId } from "./provincialOffice";
 import { emptyLandBankForm, getLandBankStored } from "./landBankWithdrawal";
 
@@ -349,9 +350,7 @@ export function getLbpIntroductionPrintStyles(): string {
   return `
     ${a4PageRule(A4_MARGIN_LETTER)}
     body { font-family: Georgia, 'Segoe UI', serif; padding: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
-    .lbp-letterhead { text-align: center; margin-bottom: 16px; }
-    .lbp-letterhead img { height: 56px; margin: 0 auto 8px; display: block; }
-    .lbp-letterhead p { margin: 2px 0; font-size: 11px; }
+    ${getDostOfficialLetterheadPrintStyles()}
     .lbp-date { margin-bottom: 20px; font-size: 12px; }
     .lbp-addressee { margin-bottom: 16px; font-size: 12px; }
     .lbp-addressee .lbp-name { font-weight: 700; text-transform: uppercase; }
@@ -359,7 +358,6 @@ export function getLbpIntroductionPrintStyles(): string {
     .lbp-body p { text-align: justify; margin: 0 0 12px; }
     .lbp-closing { margin-top: 24px; }
     .lbp-sig-name { font-weight: 700; text-transform: uppercase; margin-top: 32px; }
-    .lbp-footer { margin-top: 32px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #6b7280; text-align: center; line-height: 1.4; }
   `;
 }
 

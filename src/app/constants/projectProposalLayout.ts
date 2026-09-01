@@ -57,6 +57,8 @@ export const PP_VOLUME_OF_ORDERS_COLUMNS = [
   "Volume of orders",
 ] as const;
 
+export const PP_COMPETITORS_COLUMNS = ["List", "Address"] as const;
+
 export const PP_VOLUME_OF_ORDERS_SAMPLE_ROWS: string[][] = [
   [
     "Koronadal City Local Government",
@@ -169,43 +171,7 @@ export const PP_COMPANY_PROFILE_COLUMN_COUNT = 9;
 export const PP_ORG_NONPROFIT_COLSPAN = 5;
 export const PP_ORG_MEDIUM_COLSPAN = 3;
 
-/** Business activities in official 2-column grid order (left column, then right column per row). */
-export const PP_BUSINESS_ACTIVITY_PAIRS: readonly [string, string][] = [
-  [
-    "Crop and animal production, hunting, and related service activities",
-    "Chemicals and chemical products manufacturing",
-  ],
-  [
-    "Forestry and Logging",
-    "Basic pharmaceutical products and pharmaceutical preparations manufacturing",
-  ],
-  [
-    "Fishing and Aquaculture",
-    "Rubber and plastic products manufacturing",
-  ],
-  ["Food processing", "Non-metallic mineral products manufacturing"],
-  ["Beverage manufacturing", "Fabricated metal products manufacturing"],
-  [
-    "Textile manufacturing",
-    "Machinery and equipment, Not Elsewhere Classified (NEC) manufacturing",
-  ],
-  [
-    "Wearing apparel manufacturing",
-    "Other transport equipment manufacturing",
-  ],
-  [
-    "Leather and related products manufacturing",
-    "Furniture manufacturing",
-  ],
-  [
-    "Wood and products of wood and cork manufacturing",
-    "Information and Communication",
-  ],
-  [
-    "Paper and paper products manufacturing",
-    "Other regional priority industries approved by the Regional Development Council, please specify:",
-  ],
-];
+export { PP_BUSINESS_ACTIVITY_PAIRS } from "./prioritySectors";
 
 export const PP_EXPECTED_OUTPUT_HEADINGS = [
   "Percentage increase in productivity",

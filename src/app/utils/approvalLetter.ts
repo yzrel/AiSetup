@@ -17,6 +17,7 @@ import { getRtecReportForm, getRtecReportStored } from "./rtecReport";
 import { isDemoModeActive } from "./demoMode";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { printHtmlDocument } from "./printHtml";
+import { getDostOfficialLetterheadPrintStyles } from "../components/DostOfficialLetterhead";
 import {
   mergeApprovalLetterPreservePublished,
   normalizeApprovalLetterStored,
@@ -504,10 +505,7 @@ export function getApprovalLetterPrintStyles(): string {
   return `
     ${a4PageRule(A4_MARGIN_LETTER)}
     body { font-family: Georgia, 'Segoe UI', serif; padding: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
-    .al-letterhead { text-align: center; margin-bottom: 16px; }
-    .al-letterhead img { height: 56px; margin: 0 auto 8px; display: block; }
-    .al-letterhead p { margin: 2px 0; font-size: 11px; }
-    .al-letterhead .al-form-title { font-weight: 700; font-size: 12px; margin-top: 6px; }
+    ${getDostOfficialLetterheadPrintStyles()}
     .al-meta { text-align: right; margin-bottom: 20px; font-size: 11px; }
     .al-addressee { margin-bottom: 16px; font-size: 12px; }
     .al-addressee .al-name { font-weight: 700; text-transform: uppercase; }
@@ -517,7 +515,6 @@ export function getApprovalLetterPrintStyles(): string {
     .al-sig-name { font-weight: 700; text-transform: uppercase; margin-top: 32px; }
     .al-conforme { margin-top: 36px; page-break-inside: avoid; }
     .al-sig-line { border-bottom: 1px solid #374151; min-height: 28px; margin: 12px 0 8px; max-width: 280px; }
-    .al-footer { margin-top: 32px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #6b7280; text-align: center; line-height: 1.4; }
     .al-ack-name { font-style: italic; font-size: 11px; }
   `;
 }

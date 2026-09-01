@@ -190,7 +190,7 @@ export function ClientSubmittedFilesPanel({
         <div className="border border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400">
           <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
           {allFiles.length === 0
-            ? "Documents will appear here as the client progresses from Letter of Intent onward."
+            ? "Documents will appear here as the cooperator progresses from Letter of Intent onward."
             : "No documents match your filter."}
         </div>
       ) : (

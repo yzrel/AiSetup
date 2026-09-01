@@ -16,7 +16,7 @@ import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPick
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
+import { notifyRequirementsSubmitted, notifyRequirementsDecision, notifyStaffVerificationRemark } from "../utils/notificationHelpers";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import {
   buildRequirementUploadList,
@@ -28,6 +28,7 @@ import {
   persistRequirementNotes,
   persistRequirementStaffReview,
   persistRequirementUploads,
+  shouldNotifyRequirementRemark,
   type RequirementStaffRemark,
   type StoredRequirementUpload,
 } from "../utils/submissionRequirements";
@@ -161,28 +162,110 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const [staffNotes, setStaffNotes]     = useState("");
   const [staffDecision, setStaffDecision] = useState<"approved" | "needs-revision" | "">("");
   const [staffName, setStaffName]       = useState("");
+  const [notifiedRemarks, setNotifiedRemarks] = useState<Record<string, string>>({});
 
   // Client revision state
   const [revisionNotes, setRevisionNotes] = useState("");
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const maybeNotifyStaffRemark = (
+    docId: string,
+    prev: RequirementStaffRemark | undefined,
+    next: RequirementStaffRemark,
+    docName: string,
+    currentNotified: Record<string, string>,
+  ): Record<string, string> => {
+    if (!applicant) return currentNotified;
+    if (
+      !shouldNotifyRequirementRemark({
+        prevStatus: prev?.status ?? "",
+        nextStatus: next.status,
+        nextRemark: next.remark,
+        notifiedRemark: currentNotified[docId],
+      })
+    ) {
+      return currentNotified;
+    }
+    notifyStaffVerificationRemark({
+      applicant,
+      moduleKey: "requirements",
+      moduleLabel: "Submission Requirements",
+      documentId: docId,
+      documentName: docName,
+      remark: next.remark,
+      view: "requirements",
+    });
+    return {
+      ...currentNotified,
+      [docId]: next.remark.trim(),
+    };
+  };
+
   const persistStaffRemarks = (
     next: Record<string, RequirementStaffRemark>,
-    extra?: { staffNotes?: string; staffName?: string },
+    extra?: {
+      staffNotes?: string;
+      staffName?: string;
+      notifyDocId?: string;
+      notifyDocName?: string;
+    },
   ) => {
     setStaffRemarks(next);
     if (!applicant) return;
+    let nextNotified = notifiedRemarks;
+    if (extra?.notifyDocId && extra.notifyDocName) {
+      nextNotified = maybeNotifyStaffRemark(
+        extra.notifyDocId,
+        staffRemarks[extra.notifyDocId],
+        next[extra.notifyDocId] ?? { status: "", remark: "" },
+        extra.notifyDocName,
+        notifiedRemarks,
+      );
+      if (nextNotified !== notifiedRemarks) {
+        setNotifiedRemarks(nextNotified);
+      }
+    }
     persistRequirementStaffReview(
       applicant.id,
       {
         remarks: next,
         staffNotes: extra?.staffNotes,
         staffName: extra?.staffName,
+        notifiedRemarks: nextNotified,
       },
       applicantStore,
     );
   };
+
+  const debounceNotifyRemark = useDebouncedCallback(
+    (docId: string, docName: string, remarkEntry: RequirementStaffRemark) => {
+      if (!applicant || remarkEntry.status !== "flagged") return;
+      const nextNotified = maybeNotifyStaffRemark(
+        docId,
+        staffRemarks[docId],
+        remarkEntry,
+        docName,
+        notifiedRemarks,
+      );
+      if (nextNotified === notifiedRemarks) return;
+      setNotifiedRemarks(nextNotified);
+      persistRequirementStaffReview(
+        applicant.id,
+        {
+          remarks: {
+            ...staffRemarks,
+            [docId]: remarkEntry,
+          },
+          staffNotes,
+          staffName,
+          notifiedRemarks: nextNotified,
+        },
+        applicantStore,
+      );
+    },
+    1500,
+  );
 
   // Auto-load applicant from store
   useEffect(() => {
@@ -208,6 +291,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     });
     setStaffRemarks(init);
     setStaffNotes(storedReview.staffNotes ?? "");
+    setNotifiedRemarks(storedReview.notifiedRemarks ?? {});
     setStaffName(
       storedReview.staffName ||
         (typeof applicant?.moduleData?.staffVerifiedBy === "string"
@@ -435,7 +519,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         <div className={`${MODULE_HEADER} text-white`} style={{ background: `linear-gradient(135deg,${DOST_BLUE},${DOST_MID})` }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-800 font-black text-sm">ai</span>
+              <span className="text-blue-800 font-black text-sm">Ai</span>
             </div>
             <div>
               <h1 className="text-xl font-black">Submission of Requirements</h1>
@@ -802,14 +886,20 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                           </button>
                           <button
                             onClick={() =>
-                              persistStaffRemarks({
-                                ...staffRemarks,
-                                [doc.id]: {
-                                  ...(staffRemarks[doc.id] ?? { remark: "" }),
-                                  status: "flagged",
-                                  remark: staffRemarks[doc.id]?.remark ?? "",
+                              persistStaffRemarks(
+                                {
+                                  ...staffRemarks,
+                                  [doc.id]: {
+                                    ...(staffRemarks[doc.id] ?? { remark: "" }),
+                                    status: "flagged",
+                                    remark: staffRemarks[doc.id]?.remark ?? "",
+                                  },
                                 },
-                              })
+                                {
+                                  notifyDocId: doc.id,
+                                  notifyDocName: doc.name,
+                                },
+                              )
                             }
                             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${sr.status === "flagged" ? "bg-red-500 text-white border-red-500" : "text-red-600 border-red-300 hover:bg-red-50"}`}
                           >
@@ -824,16 +914,29 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                             className={inputCls + " text-xs"}
                             placeholder="Enter reason for flagging this document..."
                             value={sr.remark}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const nextEntry: RequirementStaffRemark = {
+                                ...(staffRemarks[doc.id] ?? { status: "flagged" }),
+                                status: staffRemarks[doc.id]?.status || "flagged",
+                                remark: e.target.value,
+                              };
                               persistStaffRemarks({
                                 ...staffRemarks,
-                                [doc.id]: {
-                                  ...(staffRemarks[doc.id] ?? { status: "flagged" }),
-                                  status: staffRemarks[doc.id]?.status || "flagged",
-                                  remark: e.target.value,
+                                [doc.id]: nextEntry,
+                              });
+                              debounceNotifyRemark(doc.id, doc.name, nextEntry);
+                            }}
+                            onBlur={() => {
+                              const entry = staffRemarks[doc.id];
+                              if (!entry || entry.status !== "flagged") return;
+                              persistStaffRemarks(
+                                { ...staffRemarks, [doc.id]: entry },
+                                {
+                                  notifyDocId: doc.id,
+                                  notifyDocName: doc.name,
                                 },
-                              })
-                            }
+                              );
+                            }}
                           />
                         </div>
                       )}
@@ -976,11 +1079,21 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                   notifyRequirementsDecision(
                     applicant,
                     staffDecision === "approved" ? "approved" : "needs-revision",
+                    staffDecision === "needs-revision"
+                      ? {
+                          flaggedItems: flaggedDocs.map(([id, v]) => ({
+                            name: documents.find((d) => d.id === id)?.name ?? id,
+                            remark: v.remark,
+                          })),
+                          staffNotes,
+                        }
+                      : undefined,
                   );
                   const reviewPayload = {
                     remarks: staffRemarks,
                     staffNotes,
                     staffName,
+                    notifiedRemarks,
                     updatedAt: new Date().toISOString(),
                   };
                   applicantStore.update(applicant.id, {

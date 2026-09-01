@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import {
   AlertCircle,
   Archive,
@@ -12,6 +12,8 @@ import {
   Package,
   Plus,
   RefreshCw,
+  Save,
+  Send,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -42,7 +44,20 @@ import {
   updateProcurementItem,
   validateProcurementSubmit,
 } from "../utils/procurementLiquidation";
-import { allowWhenDemo } from "../utils/demoMode";
+import {
+  downloadUntagLetterPdf,
+  getUntagLetterForm,
+  getUntagLetterStored,
+  hasUntagLetterPublished,
+  publishUntagLetter,
+  saveUntagLetterDraft,
+  syncUntagLetterFromUpstream,
+  validateUntagLetterPublish,
+} from "../utils/untagLetter";
+import type { UntagLetterForm } from "../api/types";
+import { UntagLetterEditor } from "./UntagLetterEditor";
+import { UntagLetterPreview } from "./UntagLetterPreview";
+import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
 import { SubmittedFileActions } from "./SubmittedFileActions";
 
@@ -79,6 +94,8 @@ export function ProcurementAndLiquidation({
   const [step, setStep] = useState<StepId>("procurement");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [untagForm, setUntagForm] = useState<UntagLetterForm | null>(null);
+  const [untagNotice, setUntagNotice] = useState("");
   useApplicantStoreVersion();
 
   const form = applicant ? getProcurementForm(applicant) : null;
@@ -86,6 +103,16 @@ export function ProcurementAndLiquidation({
   const summary = getProcurementFinancialSummary(applicant);
   const prerequisiteOk = hasProcurementPrerequisite(applicant);
   const uploadedBy = user?.email ?? "applicant";
+  const untagPublished = hasUntagLetterPublished(applicant);
+  const untagStored = applicant ? getUntagLetterStored(applicant) : null;
+
+  useEffect(() => {
+    if (!applicant) {
+      setUntagForm(null);
+      return;
+    }
+    setUntagForm(getUntagLetterForm(applicant));
+  }, [applicant?.id, applicant?.moduleData?.procurement]);
 
   const maxReached = stored?.submitted
     ? 2
@@ -159,6 +186,57 @@ export function ProcurementAndLiquidation({
     notifyProcurementComplete(applicant);
     setSubmitErrors([]);
     onSubmitSuccess?.();
+  };
+
+  const handleUntagChange = (next: UntagLetterForm) => {
+    setUntagForm(next);
+    if (!applicant || untagPublished) return;
+    saveUntagLetterDraft(applicant.id, next);
+  };
+
+  const handleUntagSync = () => {
+    if (!applicant || !untagForm) return;
+    const synced = syncUntagLetterFromUpstream(applicant, untagForm);
+    setUntagForm(synced);
+    saveUntagLetterDraft(applicant.id, synced);
+    setUntagNotice("Synced from upstream applicant data.");
+  };
+
+  const handleUntagSave = () => {
+    if (!applicant || !untagForm) return;
+    saveUntagLetterDraft(applicant.id, untagForm);
+    setUntagNotice("Letter to Untag draft saved.");
+  };
+
+  const handleUntagPublish = () => {
+    if (!applicant || !untagForm) return;
+    const errors = validateUntagLetterPublish(untagForm);
+    if (errors.length) {
+      setSubmitErrors(errors);
+      return;
+    }
+    const publishErrors = publishUntagLetter(applicant.id, untagForm, uploadedBy);
+    if (publishErrors.length) {
+      setSubmitErrors(publishErrors);
+      return;
+    }
+    setSubmitErrors([]);
+    setUntagNotice("Letter to Untag published to applicant.");
+  };
+
+  const handleProceedUntag = () => {
+    if (!applicant) return;
+    if (!untagPublished && !isDemoModeActive()) {
+      setSubmitErrors(["Publish the Letter to Untag before marking the account untagged."]);
+      return;
+    }
+    if (!untagPublished && isDemoModeActive()) {
+      setUntagNotice(
+        "Demo mode: proceeding without a published Letter to Untag. Publish before production use.",
+      );
+    }
+    setAccountUntagged(applicant.id);
+    setSubmitErrors([]);
   };
 
   const alerts = (
@@ -650,9 +728,27 @@ export function ProcurementAndLiquidation({
           )}
           <div className="p-5 space-y-4">
             <p className="text-sm text-gray-600">
-              Mark completion of SETUP project financial activities after all procurement and
-              liquidation documents are verified.
+              Prepare and publish the DOST Letter to Untag for LandBank, then mark completion
+              of SETUP project financial activities after procurement and liquidation are
+              verified.
             </p>
+
+            {untagNotice && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm text-blue-800">
+                {untagNotice}
+              </div>
+            )}
+
+            {isDemoModeActive() && !untagPublished && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>
+                  Demo mode: you may proceed without publishing the Letter to Untag, but the
+                  amber warning stays visible.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border border-gray-200 rounded-lg p-4 space-y-2 text-xs">
                 {[
@@ -662,6 +758,7 @@ export function ProcurementAndLiquidation({
                     done: hasLiquidationFiled(form),
                   },
                   { label: "Equipment Documented", done: form.items.length > 0 },
+                  { label: "Letter to Untag Published", done: untagPublished },
                   { label: "Account Untagged", done: form.untagged },
                 ].map((s) => (
                   <div key={s.label} className="flex items-center gap-2 py-1">
@@ -687,11 +784,12 @@ export function ProcurementAndLiquidation({
                     Remaining: <strong>{summary.remainingBalance}</strong>
                   </div>
                 </div>
-                {!form.untagged && !stored?.submitted && (
+                {!form.untagged && !stored?.submitted && isStaff && (
                   <button
                     type="button"
-                    onClick={() => setAccountUntagged(applicant.id)}
-                    className="w-full py-2.5 rounded-lg text-white text-sm font-semibold"
+                    onClick={handleProceedUntag}
+                    disabled={!allowWhenDemo(untagPublished)}
+                    className="w-full py-2.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
                     style={{ background: DOST_BLUE }}
                   >
                     Proceed with Account Untagging
@@ -705,6 +803,65 @@ export function ProcurementAndLiquidation({
                 )}
               </div>
             </div>
+
+            {isStaff && untagForm && !untagPublished && !stored?.submitted && (
+              <>
+                <div className="flex flex-wrap gap-2 print:hidden">
+                  <button
+                    type="button"
+                    onClick={handleUntagSync}
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Sync from upstream
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUntagSave}
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUntagPublish}
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg text-white"
+                    style={{ background: DOST_BLUE }}
+                  >
+                    <Send className="w-4 h-4" />
+                    Publish to applicant
+                  </button>
+                </div>
+                <UntagLetterEditor form={untagForm} onChange={handleUntagChange} />
+              </>
+            )}
+
+            {isStaff && untagPublished && untagForm && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Published
+                {untagStored?.publishedAt
+                  ? ` on ${new Date(untagStored.publishedAt).toLocaleDateString()}`
+                  : ""}
+                . Applicant may download and present at LandBank.
+              </div>
+            )}
+
+            {!isStaff && !untagPublished && (
+              <p className="text-sm text-gray-600">
+                DOST staff will publish the Letter to Untag after liquidation is verified.
+                When published, download it here and present it at your LandBank branch.
+              </p>
+            )}
+
+            {(untagPublished || isStaff) && untagForm && (
+              <UntagLetterPreview
+                form={untagForm}
+                applicationId={applicant.applicationId}
+                onPrint={() => downloadUntagLetterPdf(applicant.applicationId)}
+              />
+            )}
           </div>
         </div>
       )}

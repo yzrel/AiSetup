@@ -6,7 +6,10 @@ import { Printer } from "lucide-react";
 import type { ApprovalLetterForm } from "../api/types";
 import { PreviewToolbar } from "./PreviewLayout";
 import {
-  APPROVAL_LETTER_ADDRESS,
+  DostOfficialLetterheadFooter,
+  DostOfficialLetterheadHeader,
+} from "./DostOfficialLetterhead";
+import {
   buildApprovalLetterBody,
   formatApprovalDisplayDate,
 } from "../utils/approvalLetter";
@@ -48,23 +51,7 @@ export function ApprovalLetterPreview({
         id="approval-letter-preview"
         className="print-a4-sheet bg-white border border-gray-200 rounded-xl p-4 sm:p-6 md:p-10 text-gray-800 font-serif"
       >
-        {/* Letterhead */}
-        <div className="al-letterhead text-center mb-6">
-          <img
-            src="/assets/dost-logo-mark.png"
-            alt="DOST"
-            className="h-14 mx-auto mb-2"
-          />
-          <p className="text-xs">Republic of the Philippines</p>
-          <p className="text-sm font-bold uppercase tracking-wide">
-            Department of Science and Technology
-          </p>
-          <p className="text-sm font-semibold">Regional Office No. XII</p>
-          <p className="al-form-title text-sm font-bold mt-2">
-            Approval Letter
-          </p>
-          <p className="text-xs text-gray-600 mt-1">{APPROVAL_LETTER_ADDRESS}</p>
-        </div>
+        <DostOfficialLetterheadHeader formTitle="Approval Letter" />
 
         {/* Series + date */}
         <div className="al-meta text-right text-sm mb-6">
@@ -130,15 +117,7 @@ export function ApprovalLetterPreview({
           </p>
         </div>
 
-        {/* Footer */}
-        <div className="al-footer mt-10 pt-3 border-t border-gray-200 text-center text-[9px] text-gray-500 leading-relaxed">
-          <p>Regional Guidelines on SETUP (Revision 3.0)</p>
-          <p>Notice of Approval</p>
-          <p>Page 1 of 1</p>
-          {applicationId && (
-            <p className="mt-1 text-gray-400">Application ID: {applicationId}</p>
-          )}
-        </div>
+        <DostOfficialLetterheadFooter applicationId={applicationId} />
       </div>
     </div>
   );

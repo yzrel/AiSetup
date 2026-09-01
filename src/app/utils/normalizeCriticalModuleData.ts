@@ -69,6 +69,30 @@ function normalizeScheduleTableStored(raw: unknown): string[][] {
     : [Array(SCHEDULE_COL_COUNT).fill("")];
 }
 
+const COMPETITORS_COL_COUNT = 2;
+
+function normalizeCompetitorsRowStored(row: unknown): string[] {
+  const raw = Array.isArray(row) ? row.map((c) => String(c ?? "")) : [];
+  const cells = [...raw];
+  while (cells.length < COMPETITORS_COL_COUNT) cells.push("");
+  return cells.slice(0, COMPETITORS_COL_COUNT);
+}
+
+function normalizeCompetitorsTableStored(
+  raw: unknown,
+  legacyCompetitors?: unknown,
+): string[][] {
+  const rows = asObjectList(raw);
+  const normalized = rows.length
+    ? rows.map(normalizeCompetitorsRowStored)
+    : [];
+  const hasContent = normalized.some((row) => row.some((cell) => cell.trim()));
+  if (hasContent) return normalized;
+  const legacy = asString(legacyCompetitors).trim();
+  if (legacy) return [[legacy, ""]];
+  return [Array(COMPETITORS_COL_COUNT).fill("")];
+}
+
 /** Shared publish-document coerce: object + form object + published boolean. */
 export function normalizePublishDocumentStored(
   raw: unknown,
@@ -208,12 +232,23 @@ export function normalizeTna1Stored(raw: unknown): Record<string, unknown> | und
     "production",
     "equipment",
   ]);
-  return {
+  const out: Record<string, unknown> = {
     ...obj,
     form,
     tables,
     submitted: asBool(obj.submitted),
   };
+  if (obj.docReview != null) {
+    const review = asRecord(obj.docReview);
+    if (review) out.docReview = review;
+    else delete out.docReview;
+  }
+  if (obj.notifiedRemarks != null) {
+    const notified = asRecord(obj.notifiedRemarks);
+    if (notified) out.notifiedRemarks = notified;
+    else delete out.notifiedRemarks;
+  }
+  return out;
 }
 
 export function normalizeFinancialProjectionStored(
@@ -257,6 +292,7 @@ export function normalizeProjectProposalStored(
     "compensationTable",
     "productPriceTable",
     "volumeOfOrdersTable",
+    "competitorsTable",
     "marketStrategies",
     "equipmentTable",
     "interventionCostTable",
@@ -272,6 +308,10 @@ export function normalizeProjectProposalStored(
     "riskRows",
   ]);
   form.scheduleTable = normalizeScheduleTableStored(form.scheduleTable);
+  form.competitorsTable = normalizeCompetitorsTableStored(
+    form.competitorsTable,
+    form.competitors,
+  );
   const out: Record<string, unknown> = {
     ...obj,
     form,
@@ -373,11 +413,23 @@ export function normalizeFormModuleStored(
     "refundSchedule",
     "equipmentInventory",
   ]);
-  return {
+  const out: Record<string, unknown> = {
     ...obj,
     form,
     submitted: asBool(obj.submitted),
   };
+  // Preserve nested publish-gated Letter to Untag when present.
+  if (obj.untagLetter != null) {
+    const letter = asRecord(obj.untagLetter);
+    if (letter) {
+      out.untagLetter = {
+        ...letter,
+        form: asRecord(letter.form) ?? {},
+        published: asBool(letter.published),
+      };
+    }
+  }
+  return out;
 }
 
 /**
@@ -396,14 +448,21 @@ export function normalizeLandBankStored(
     const tranches = asRecord(form.tranches);
     if (tranches) {
       const nextTranches: Record<string, unknown> = { ...tranches };
-      for (const key of ["first", "second"] as const) {
+      for (const key of ["first", "second", "third"] as const) {
         const pack = asRecord(tranches[key]);
         if (pack) {
-          nextTranches[key] = coerceArrayKeys(pack, [
-            "equipment",
+          const nextPack = coerceArrayKeys(pack, [
             "quotations",
             "equipmentPhotos",
           ]);
+          if (Array.isArray(nextPack.suppliers)) {
+            nextPack.suppliers = (nextPack.suppliers as unknown[]).map((s) => {
+              const block = asRecord(s);
+              if (!block) return s;
+              return coerceArrayKeys(block, ["equipment"]);
+            });
+          }
+          nextTranches[key] = nextPack;
         }
       }
       form.tranches = nextTranches;

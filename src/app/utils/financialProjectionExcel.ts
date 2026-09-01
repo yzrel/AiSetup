@@ -56,7 +56,7 @@ export async function buildFinancialProjectionWorkbook(opts: {
 }): Promise<ExcelJS.Workbook> {
   const { inputs, snapshot, applicationId, enterpriseName, frozenAt } = opts;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "aiSETUP DOST Region XII";
+  wb.creator = "AiSETUP DOST Region XII";
   wb.created = new Date();
 
   const year0 = wb.addWorksheet("Year 0");

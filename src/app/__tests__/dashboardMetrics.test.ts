@@ -164,10 +164,16 @@ describe("buildFundDisbursementChartData", () => {
             tranches: {
               first: {
                 tranche: 1,
-                supplierName: "Supplier",
-                equipment: [
-                  { id: "e1", item: "Machine", amount: "₱1,200,000" },
+                suppliers: [
+                  {
+                    id: "s1",
+                    name: "Supplier",
+                    equipment: [
+                      { id: "e1", item: "Machine", amount: "₱1,200,000" },
+                    ],
+                  },
                 ],
+                selectedSupplierId: "s1",
                 signedLetter: {
                   id: "doc1",
                   fileName: "t1.pdf",
@@ -179,8 +185,17 @@ describe("buildFundDisbursementChartData", () => {
               },
               second: {
                 tranche: 2,
-                supplierName: "",
-                equipment: [],
+                suppliers: [],
+                selectedSupplierId: null,
+                signedLetter: null,
+                quotations: [],
+                equipmentPhotos: [],
+                status: "draft",
+              },
+              third: {
+                tranche: 3,
+                suppliers: [],
+                selectedSupplierId: null,
                 signedLetter: null,
                 quotations: [],
                 equipmentPhotos: [],

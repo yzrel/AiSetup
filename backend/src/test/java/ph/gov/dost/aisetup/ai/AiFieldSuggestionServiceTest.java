@@ -69,7 +69,10 @@ class AiFieldSuggestionServiceTest {
                 assertFalse(res.isAiGenerated(), field + " should use template when AI unavailable");
                 boolean hasText = res.getText() != null && !res.getText().isBlank();
                 boolean hasBullets = res.getBullets() != null && !res.getBullets().isEmpty();
-                assertTrue(hasText || hasBullets, "Expected text or bullets for " + moduleEntry.getKey() + "." + field);
+                boolean hasRiskRows = res.getRiskRows() != null && !res.getRiskRows().isEmpty();
+                assertTrue(
+                        hasText || hasBullets || hasRiskRows,
+                        "Expected text, bullets, or riskRows for " + moduleEntry.getKey() + "." + field);
                 count++;
             }
         }

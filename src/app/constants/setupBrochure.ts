@@ -3,6 +3,7 @@
  */
 
 import region12Offices from "@shared/region12-offices.json";
+import { FINANCIAL_STATEMENT_BROCHURE_LABEL } from "./financialStatementLabels";
 
 /** SETUP 4.0 brochure content — DOST SOCCSKSARGEN */
 
@@ -21,23 +22,31 @@ export const SETUP_4_PURPOSE =
 export const SETUP_4_BENEFITS =
   "Through the provision of Enterprise- and Industry-Level Science Technology Innovation (STI) Assistance, SETUP 4.0 can help MSMEs in upgrading their business operations increase their productivity, generate more employment, enhance human capital and improve their resiliency, and competitiveness.";
 
-export const SETUP_PRIORITY_SECTORS = [
-  "Agriculture, Forestry, Livestock",
-  "Food Processing",
-  "Tool and Die",
-  "Furniture, Jewelry, GHD and Creatives",
-  "Marine and Aquaculture",
-  "Marine Transport",
-  "Health and Wellness (Biotech, Medical Services, Pharmaceuticals, Food Supplements)",
-  "Electronics and ICT Services",
-  "Agrimachinery / Farm Implements / Food Processing Equipment",
-] as const;
+export {
+  SETUP_PRIORITY_SECTOR_CATALOG,
+  SETUP_PRIORITY_SECTORS,
+  SETUP_PRIORITY_SECTOR_DESCRIPTIONS,
+  LEGACY_PRIORITY_SECTOR_ALIASES,
+  type SetupPrioritySector,
+  normalizePrioritySector,
+  isSetupPrioritySector,
+} from "./prioritySectors";
 
-export type SetupPrioritySector = (typeof SETUP_PRIORITY_SECTORS)[number];
+/** Regional SETUP assist totals — hero landing page (Micro / Small / Medium). */
+export const SETUP_MSME_ASSISTED_TOTAL = 12400;
 
-export function isSetupPrioritySector(sector: string): boolean {
-  return SETUP_PRIORITY_SECTORS.includes(sector as SetupPrioritySector);
+export interface SetupMsmeAssistedSize {
+  id: "micro" | "small" | "medium";
+  label: string;
+  count: number;
 }
+
+/** MSMEs assisted by enterprise size (sums to SETUP_MSME_ASSISTED_TOTAL). */
+export const SETUP_MSME_ASSISTED_BY_SIZE: readonly SetupMsmeAssistedSize[] = [
+  { id: "micro", label: "Micro", count: 5580 },
+  { id: "small", label: "Small", count: 4960 },
+  { id: "medium", label: "Medium", count: 1860 },
+] as const;
 
 export const SETUP_SERVICES = [
   "Infusion of Appropriate Technologies",
@@ -67,7 +76,7 @@ export const SETUP_DOCUMENTS_REQUIRED = [
   "Letter of intent to avail of the SETUP assistance stating commitment to refund the iFund support and cover the insurance cost for the acquired equipment.",
   "Proposal following SETUP Form 001 (Project Proposal Format).",
   "Copy of business permits and licenses issued by LGUs and other appropriate government agencies.",
-  "Financial Statements of at least the past three (3) years.",
+  FINANCIAL_STATEMENT_BROCHURE_LABEL,
   "Projected Financial Statements for the next five (5) years.",
   "Photocopy of Official Receipt.",
   "Certificate of Registration of Business.",

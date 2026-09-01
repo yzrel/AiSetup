@@ -823,7 +823,7 @@ export function RegisterPage({
                 <DOSTMark size={28} />
                 <div>
                   <span className="text-[#00AEEF] font-black text-lg">
-                    ai
+                    Ai
                   </span>
                   <span className="text-white font-black text-lg">
                     SETUP

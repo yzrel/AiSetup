@@ -43,7 +43,7 @@ export function StaffClientBar({
     <div className="bg-[#0C2461]/95 text-white px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 text-sm border-b border-white/10">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <Building2 className="w-4 h-4 shrink-0 text-[#00AEEF]" />
-        <span className="font-semibold text-white/80">Active client:</span>
+        <span className="font-semibold text-white/80">Active cooperator:</span>
         {hasSelection && applicant ? (
           <span className="font-bold truncate max-w-[200px] sm:max-w-xs">
             {applicant.enterpriseName}
@@ -66,7 +66,7 @@ export function StaffClientBar({
           applicants={scopedApplicants}
           value={selectedApplicantId}
           onChange={setSelectedApplicantId}
-          placeholder="Switch client…"
+          placeholder="Switch cooperator…"
           showApplicationId
           variant="bar"
           className="flex-1 sm:flex-none min-w-0"

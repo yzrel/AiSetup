@@ -241,7 +241,7 @@ export function Dashboard({
               sub="Staff action required"
               icon={Banknote}
               color="bg-amber-500"
-              trend="Open Clients hub"
+              trend="Open Cooperators hub"
             />
           </>
         )}
@@ -277,14 +277,14 @@ export function Dashboard({
           {onNavigate && (
             <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
               <p className="text-sm text-gray-600">
-                Manage client case files, assessments, and provincial scope in Clients.
+                Manage cooperator case files, assessments, and provincial scope in Cooperators.
               </p>
               <button
                 type="button"
                 onClick={() => onNavigate("clients")}
                 className="text-sm font-bold text-[#0C2461] hover:underline shrink-0"
               >
-                Open Clients →
+                Open Cooperators →
               </button>
             </div>
           )}

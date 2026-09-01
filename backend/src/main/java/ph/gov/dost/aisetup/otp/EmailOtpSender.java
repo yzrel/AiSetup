@@ -27,7 +27,7 @@ public class EmailOtpSender {
         }
         String plain =
                 """
-                Your DOST SOCCSKSARGEN aiSETUP verification code is: %s
+                Your DOST SOCCSKSARGEN AiSETUP verification code is: %s
 
                 This code expires in 10 minutes. If you did not request this, you can ignore this email.
                 """
@@ -35,7 +35,7 @@ public class EmailOtpSender {
         mailService.send(
                 List.of(toEmail),
                 List.of(),
-                "aiSETUP verification code",
+                "AiSETUP verification code",
                 plain,
                 MailHtmlLayout.wrapOtp(code),
                 List.of());

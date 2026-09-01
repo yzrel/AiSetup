@@ -8,7 +8,7 @@
 import { AuthUser, authStore } from "./authStore";
 import { applicantStore } from "./applicantStore";
 
-export type OutboxEmailKind = "printable" | "signed-receipt";
+export type OutboxEmailKind = "printable" | "signed-receipt" | "status";
 
 export interface OutboxAttachment {
   fileName: string;

@@ -151,6 +151,7 @@ export function saveProcurementDraft(applicantId: string, form: ProcurementForm)
       ...applicant.moduleData,
       [MODULE_KEY]: {
         form: normalized,
+        untagLetter: existing?.untagLetter,
         submitted: existing?.submitted,
         submittedAt: existing?.submittedAt,
         submittedBy: existing?.submittedBy,
@@ -382,6 +383,9 @@ export function validateProcurementSubmit(applicant: Applicant | null): string[]
   if (!form.untagged) {
     errors.push("Complete account untagging before proceeding to monitoring.");
   }
+  if (!getProcurementStored(applicant)?.untagLetter?.published) {
+    errors.push("Publish the Letter to Untag before submitting this module.");
+  }
   return errors;
 }
 
@@ -396,6 +400,7 @@ export function submitProcurement(applicantId: string, submittedBy: string): str
       ...applicant.moduleData,
       [MODULE_KEY]: {
         form: getProcurementForm(applicant),
+        untagLetter: getProcurementStored(applicant)?.untagLetter,
         submitted: true,
         submittedAt: new Date().toISOString(),
         submittedBy,

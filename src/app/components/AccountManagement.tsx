@@ -55,6 +55,7 @@ const STAFF_ROLES: ApiStaffRole[] = [
   "agent",
   "provincial-director",
   "regional-director",
+  "rtec-staff",
 ];
 
 const emptyCreateForm = (): ApiCreateStaffRequest => ({
@@ -537,7 +538,7 @@ function ApplicantAccountsPanel({ user }: { user: AuthUser }) {
                   </button>
                 )}
                 <p className="text-[10px] text-gray-400 text-center mt-2">
-                  Blocked applicants cannot sign in to aiSETUP.
+                  Blocked applicants cannot sign in to AiSETUP.
                 </p>
               </div>
             </div>

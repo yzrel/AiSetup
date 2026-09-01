@@ -168,14 +168,10 @@ public class ModuleContentValidationService {
             errors.add("Production plan is required.");
         }
         require(errors, stringField(form, "plantLayoutFileName"), "Plant lay-out upload is required.");
-        String processMode = stringField(form, "processFlowMode");
-        if ("attachment".equals(processMode)) {
-            require(
-                    errors,
-                    stringField(form, "processFlowFileName"),
-                    "Process flow attachment is required.");
-        } else {
-            require(errors, stringField(form, "processFlow"), "Process flow is required.");
+        boolean hasProcessFlow = !TextUtils.isBlank(stringField(form, "processFlowFileName"))
+                || !TextUtils.isBlank(stringField(form, "processFlow"));
+        if (!hasProcessFlow) {
+            errors.add("Process flow is required (text description and/or attachment).");
         }
         require(errors, stringField(form, "preparedDate"), "Prepared date is required.");
         return errors;

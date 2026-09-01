@@ -12,6 +12,14 @@ alwaysApply: true
 - Qualification: `applicant.qualified` gates Enterprise+ SETUP. Unqualified clients who pick a recommended program get a **program LOI** (no seed-fund budget paragraph, no refund commitment) — not a SETUP LOI.
 - Keep Region XII offices / module order / staff-publish key lists in sync via **repo-root `shared/*.json`** (`module-order.json`, `module-keys.json`, `region12-offices.json`). FE imports via `@shared`; BE loads from classpath (Maven copies `shared/` → `target/classes/shared/`). Do **not** re-hardcode duplicate maps in FE and BE.
 
+### Financial statements (historical)
+
+- **SETUP Guidelines:** Micro enterprises = at least **1 year** of financial statements; Small/Medium = **3 years** (with notarized sworn statement).
+- **Applicant upload UI** (Module 4 Submission Requirements): always label **“past 3 years”**, **single file slot**, **no** `msmeSize` branching or year-count validation.
+- **Brochure / landing / chatbot:** generic **3 years** copy only — do **not** add a Micro 1-year exception in public-facing text.
+- **Micro/SME distinction:** **RTEC Form 002 compliance label only** (`RTEC_COMPLIANCE_ITEMS` id `financial` in `rtecReport.ts`). Staff apply year-count manually at RTEC; the portal does not auto-validate FS year count.
+- Shared applicant-facing labels: `FINANCIAL_STATEMENT_UPLOAD_LABEL` / `FINANCIAL_STATEMENT_BROCHURE_LABEL` in `src/app/constants/financialStatementLabels.ts`.
+
 ## Stack / architecture
 
 - **FE:** React 18 + Vite + Tailwind 4 + shadcn under `src/app/components/ui/`; path alias `@` → `src`, `@shared` → `shared`.

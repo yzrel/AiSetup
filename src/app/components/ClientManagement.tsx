@@ -109,7 +109,7 @@ export function ClientManagement({
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Clients in scope", value: scoped.length, icon: Users },
+          { label: "Cooperators in scope", value: scoped.length, icon: Users },
           {
             label: "Needs assessment",
             value: needsReviewCount,
@@ -160,7 +160,7 @@ export function ClientManagement({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search clients..."
+                placeholder="Search cooperators..."
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0C2461]/20"
               />
             </div>
@@ -208,12 +208,12 @@ export function ClientManagement({
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
-              {filtered.length} client{filtered.length !== 1 ? "s" : ""}
+              {filtered.length} cooperator{filtered.length !== 1 ? "s" : ""}
             </div>
             <div className="divide-y divide-gray-50 max-h-[520px] overflow-y-auto">
               {filtered.length === 0 && (
                 <p className="p-6 text-sm text-gray-400 text-center">
-                  No clients match your filters.
+                  No cooperators match your filters.
                 </p>
               )}
               {filtered.map((a) => {
@@ -278,9 +278,9 @@ export function ClientManagement({
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
               <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="font-semibold text-gray-700">Select a client</p>
+              <p className="font-semibold text-gray-700">Select a cooperator</p>
               <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">
-                Choose a client from the list to view their case file, timeline,
+                Choose a cooperator from the list to view their case file, timeline,
                 and assessment tasks.
               </p>
             </div>

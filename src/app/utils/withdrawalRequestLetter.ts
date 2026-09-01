@@ -1,7 +1,7 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Letter Request for Withdrawal (1st / 2nd tranche) — printable HTML matching
+ * Letter Request for Withdrawal (1st / 2nd / 3rd tranche) — printable HTML matching
  * the DOST SETUP letter-request template (equipment list + supplier + total).
  */
 
@@ -9,6 +9,8 @@ import type { Applicant } from "../store/applicantStore";
 import type {
   WithdrawalEquipmentRow,
   WithdrawalLetterDraft,
+  WithdrawalSupplierBlock,
+  WithdrawalTrancheNum,
   WithdrawalTranchePackage,
 } from "../api/types";
 import {
@@ -20,6 +22,21 @@ import { getProjectProposalForm } from "./projectProposal";
 import { getApprovalLetterForm } from "./approvalLetter";
 import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 import { printHtmlDocument } from "./printHtml";
+
+function resolveSelectedSupplier(
+  pkg: WithdrawalTranchePackage,
+): WithdrawalSupplierBlock | null {
+  if (!pkg.suppliers?.length) return null;
+  if (pkg.selectedSupplierId) {
+    const found = pkg.suppliers.find((s) => s.id === pkg.selectedSupplierId);
+    if (found) return found;
+  }
+  return pkg.suppliers.find((s) => s.name.trim()) ?? pkg.suppliers[0] ?? null;
+}
+
+function resolveTrancheSupplierName(pkg: WithdrawalTranchePackage): string {
+  return resolveSelectedSupplier(pkg)?.name.trim() ?? "";
+}
 
 const DEFAULT_OFFICE_LINES = [
   DOST_REGION_12_OFFICE.toUpperCase().replace("NO.", "NO."),
@@ -92,20 +109,25 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function trancheLabel(tranche: 1 | 2): string {
-  return tranche === 1 ? "first" : "second";
+export function trancheLabel(tranche: WithdrawalTrancheNum): string {
+  if (tranche === 1) return "first";
+  if (tranche === 2) return "second";
+  return "third";
 }
 
 export function buildWithdrawalRequestLetterHtml(
   draft: WithdrawalLetterDraft,
   pkg: WithdrawalTranchePackage,
+  supplier?: WithdrawalSupplierBlock | null,
 ): string {
+  const selected = supplier ?? resolveSelectedSupplier(pkg);
+  const equipment = selected?.equipment ?? [];
   const firm = escapeHtml(draft.firmName.trim() || "—");
-  const supplier = escapeHtml(
-    (draft.supplierName || pkg.supplierName).trim() || "—",
+  const supplierName = escapeHtml(
+    (draft.supplierName || selected?.name || resolveTrancheSupplierName(pkg)).trim() || "—",
   );
-  const total = sumWithdrawalEquipment(pkg.equipment);
-  const equipmentLines = pkg.equipment
+  const total = sumWithdrawalEquipment(equipment);
+  const equipmentLines = equipment
     .filter((r) => r.item.trim() || r.amount.trim())
     .map((r) => {
       const item = escapeHtml(r.item.trim() || "—");
@@ -117,7 +139,6 @@ export function buildWithdrawalRequestLetterHtml(
     })
     .join("");
 
-  // officeLines already include Department / REGIONAL OFFICE / address (see emptyWithdrawalLetterDraft).
   const officeBlock = [
     escapeHtml(draft.addresseeName),
     escapeHtml(draft.addresseeTitle),
@@ -127,7 +148,6 @@ export function buildWithdrawalRequestLetterHtml(
     .map((l) => `<div>${l}</div>`)
     .join("");
 
-  // Annex sample (1st tranche) opens with "Once again…"; use the same lead for both tranches.
   const thankLead =
     "Once again, we thank you for the opportunity you have given";
 
@@ -147,7 +167,7 @@ export function buildWithdrawalRequestLetterHtml(
         We would like to immediately commence upgrading of our production. In this connection, may
         we request for the release of the <strong>${trancheLabel(pkg.tranche)} tranche</strong> of
         DOST-SETUP assistance for the purchase of the following equipment at
-        <strong>${supplier}</strong>.
+        <strong>${supplierName}</strong>.
       </p>
       <ul style="margin:8px 0 8px 28px; padding:0; list-style:disc;">
         ${equipmentLines || "<li>—</li>"}
@@ -173,11 +193,13 @@ export function validateWithdrawalLetterGenerate(
   draft: WithdrawalLetterDraft,
 ): string[] {
   const errors: string[] = [];
+  const selected = resolveSelectedSupplier(pkg);
   if (!draft.firmName.trim()) errors.push("Enterprise / firm name is required.");
-  if (!(draft.supplierName || pkg.supplierName).trim()) {
+  const supplierName = (draft.supplierName || selected?.name || resolveTrancheSupplierName(pkg)).trim();
+  if (!supplierName) {
     errors.push("Supplier name is required.");
   }
-  const rows = pkg.equipment.filter((r) => r.item.trim() || r.amount.trim());
+  const rows = (selected?.equipment ?? []).filter((r) => r.item.trim() || r.amount.trim());
   if (rows.length === 0) errors.push("Add at least one equipment item.");
   for (const row of rows) {
     if (!row.item.trim()) errors.push("Each equipment row needs an item name.");
@@ -190,9 +212,11 @@ export function downloadWithdrawalRequestLetterPdf(
   draft: WithdrawalLetterDraft,
   pkg: WithdrawalTranchePackage,
   applicationId?: string,
+  supplier?: WithdrawalSupplierBlock | null,
 ): void {
+  const selected = supplier ?? resolveSelectedSupplier(pkg);
   const title = `Letter-Request-Withdrawal-T${pkg.tranche}-${applicationId || "SETUP"}`;
-  const html = buildWithdrawalRequestLetterHtml(draft, pkg);
+  const html = buildWithdrawalRequestLetterHtml(draft, pkg, selected);
   printHtmlDocument(
     title,
     html,

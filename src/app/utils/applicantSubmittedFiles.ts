@@ -741,6 +741,13 @@ export function collectApplicantSubmittedFiles(
     label: "Withdrawal letter request (2nd tranche)",
     sourceModule: "LandBank & Withdrawal",
   });
+  const t3 = landBank?.form?.tranches?.third;
+  pushModuleDocument(files, t3?.signedLetter ?? null, {
+    id: "landbank-withdrawal-t3",
+    category: "landbank",
+    label: "Withdrawal letter request (3rd tranche)",
+    sourceModule: "LandBank & Withdrawal",
+  });
   for (const [i, doc] of asRowList<ModuleDocument>(t1?.quotations).entries()) {
     pushModuleDocument(files, doc, {
       id: `landbank-quotation-t1-${i}`,

@@ -157,8 +157,9 @@ public class Tna1GenerationService {
         boolean needProduction = isTableEmpty(r.getTables().getProduction());
         boolean needEquipment = isTableEmpty(r.getTables().getEquipment());
 
-        String processFlowMode = stringVal(r.getForm().get("processFlowMode"));
-        if (!"attachment".equalsIgnoreCase(processFlowMode) && isBlank(r.getForm().get("processFlow"))) {
+        boolean hasProcessFlow = !stringVal(r.getForm().get("processFlowFileName")).isBlank()
+                || !isBlank(r.getForm().get("processFlow"));
+        if (!hasProcessFlow) {
             if (!emptyFields.contains("processFlow")) {
                 emptyFields.add("processFlow");
             }
@@ -297,10 +298,8 @@ public class Tna1GenerationService {
                 "The enterprise follows basic good manufacturing practices appropriate to its product line; formal HACCP certification is being pursued where applicable.");
         putIfEmpty(r.getForm(), suggestions, "purchasingSystem",
                 "Suppliers are evaluated for quality and reliability; purchase orders are issued for major raw material acquisitions.");
-        if (!"attachment".equalsIgnoreCase(stringVal(r.getForm().get("processFlowMode")))) {
-            putIfEmpty(r.getForm(), suggestions, "processFlow",
-                    "Receiving → preparation → processing → packaging → storage → distribution.");
-        }
+        putIfEmpty(r.getForm(), suggestions, "processFlow",
+                "Receiving → preparation → processing → packaging → storage → distribution.");
         putIfEmpty(r.getForm(), suggestions, "marketingPlan",
                 "Products are marketed through local retailers, institutional buyers, and direct sales channels with planned expansion after capacity upgrades.");
         putIfEmpty(r.getForm(), suggestions, "marketOutlets",

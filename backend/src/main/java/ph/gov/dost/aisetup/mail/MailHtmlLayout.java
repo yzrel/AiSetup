@@ -80,7 +80,7 @@ public final class MailHtmlLayout {
         String safeCode = escape(code == null ? "" : code.trim());
         return """
                 <p style="margin:0 0 20px;color:%s;font-size:15px;line-height:1.55;font-family:Arial,Helvetica,sans-serif;">
-                  Your DOST SOCCSKSARGEN aiSETUP verification code is:
+                  Your DOST SOCCSKSARGEN AiSETUP verification code is:
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="margin:0 0 20px;">
                   <tr>
@@ -111,7 +111,7 @@ public final class MailHtmlLayout {
                 <head>
                   <meta charset="UTF-8">
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <title>aiSETUP — DOST SOCCSKSARGEN</title>
+                  <title>AiSETUP — DOST SOCCSKSARGEN</title>
                 </head>
                 <body style="margin:0;padding:0;background:#eef2f7;font-family:Arial,Helvetica,sans-serif;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="background:#eef2f7;padding:24px 12px;">
@@ -121,7 +121,7 @@ public final class MailHtmlLayout {
                           <tr>
                             <td bgcolor="#0C2461" style="background-color:%s;padding:20px 24px 18px;text-align:center;border-bottom:3px solid %s;">
                               <img src="cid:%s" alt="Department of Science and Technology" width="420" style="display:block;margin:0 auto 14px;max-width:100%%;height:auto;border:0;outline:none;text-decoration:none;background-color:transparent;">
-                              <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;">aiSETUP</div>
+                              <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.02em;font-family:Arial,Helvetica,sans-serif;">AiSETUP</div>
                               <div style="font-size:12px;color:#ffffff;margin-top:4px;font-weight:600;opacity:0.9;font-family:Arial,Helvetica,sans-serif;">DOST SOCCSKSARGEN</div>
                             </td>
                           </tr>
@@ -142,7 +142,7 @@ public final class MailHtmlLayout {
                           </tr>
                         </table>
                         <p style="margin:16px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;">
-                          This message was sent by aiSETUP — DOST SOCCSKSARGEN (SOCCSKSARGEN).
+                          This message was sent by AiSETUP — DOST SOCCSKSARGEN (SOCCSKSARGEN).
                         </p>
                       </td>
                     </tr>

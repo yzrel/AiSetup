@@ -57,6 +57,7 @@ import {
   PP_SECTION_WASTE,
   PP_SUBHEADING_CAPACITY,
   PP_VOLUME_OF_ORDERS_COLUMNS,
+  PP_COMPETITORS_COLUMNS,
   PP_WASTE_SUBHEADINGS,
   PROJECT_PROPOSAL_TITLE,
   companyProfileEmployeeTotals,
@@ -68,6 +69,7 @@ import {
 import {
   buildInvestmentDecisionAnalysis,
   compensationTableFooterRow,
+  competitorsTableHasRows,
   existingEquipmentFooterRow,
   formatRiskAndAssumptions,
   PROPOSAL_ATTACHMENT_LABELS,
@@ -784,7 +786,14 @@ export function ProjectProposalDocument({
           <SubHeading>{PP_MARKETING_SUBHEADINGS.C}</SubHeading>
           <NarrativeBlock text={narrative("distributionChannel", "distributionChannel")} />
           <SubHeading>{PP_MARKETING_SUBHEADINGS.D}</SubHeading>
-          <NarrativeBlock text={narrative("competitors", "competitors")} />
+          {competitorsTableHasRows(form.competitorsTable) ? (
+            <DataTable
+              columns={PP_COMPETITORS_COLUMNS}
+              rows={form.competitorsTable}
+            />
+          ) : (
+            <NarrativeBlock text={narrative("competitors", "competitors")} />
+          )}
           <SubHeading>{PP_MARKETING_SUBHEADINGS.E}</SubHeading>
           <NarrativeBlock
             text={narrative("existingMarketingProblems", "existingMarketingProblems")}
@@ -802,6 +811,20 @@ export function ProjectProposalDocument({
         <Indent level={3}>
           <DashLabel>{PP_PRODUCTION_DASH_ITEMS[0]}</DashLabel>
           <NarrativeBlock text={narrative("productionProcess", "productionProcess")} />
+          {findAttachment("processFlow") ? (
+            <AttachmentFigure
+              attachment={findAttachment("processFlow")}
+              label={PROPOSAL_ATTACHMENT_LABELS.processFlow}
+              applicantId={applicantId}
+            />
+          ) : null}
+          {findAttachment("productionPlan") ? (
+            <AttachmentFigure
+              attachment={findAttachment("productionPlan")}
+              label={PROPOSAL_ATTACHMENT_LABELS.productionPlan}
+              applicantId={applicantId}
+            />
+          ) : null}
           <DashLabel>{PP_PRODUCTION_DASH_ITEMS[1]}</DashLabel>
           <NarrativeBlock text={narrative("materialBalance", "materialBalance")} />
         </Indent>

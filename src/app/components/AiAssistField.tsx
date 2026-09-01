@@ -16,7 +16,7 @@ export const aiAssistLabelCls =
 
 export type AiAssistSuggestHandler = (userInstruction?: string) => void;
 
-function AiAssistControls({
+export function AiAssistControls({
   onAiSuggest,
   loading,
 }: {

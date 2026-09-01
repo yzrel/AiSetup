@@ -29,7 +29,7 @@ class MailHtmlLayoutTest {
     @Test
     void wrapIncludesBrandingAndCidLogo() {
         String doc = MailHtmlLayout.wrap("<p>Inner content</p>");
-        assertTrue(doc.contains("aiSETUP"));
+        assertTrue(doc.contains("AiSETUP"));
         assertTrue(doc.contains("DOST SOCCSKSARGEN"));
         assertTrue(doc.contains("cid:" + MailHtmlLayout.LOGO_CID));
         assertTrue(doc.contains("Inner content"));

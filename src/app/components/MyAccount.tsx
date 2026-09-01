@@ -472,7 +472,7 @@ export function MyAccount({ user }: { user: AuthUser }) {
           {tab === "registration" && (
             <div className="space-y-4">
               <p className="text-sm text-gray-500">
-                Details you provided when registering for aiSETUP.
+                Details you provided when registering for AiSETUP.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">

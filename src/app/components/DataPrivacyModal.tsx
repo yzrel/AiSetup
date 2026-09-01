@@ -51,7 +51,7 @@ export function DataPrivacyModal({ onAgree, onDecline }: DataPrivacyModalProps) 
         >
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-4 h-4 text-[#0C2461] shrink-0" />
-            <p className="font-bold text-[#0C2461]">DOST aiSETUP — Privacy Notice and Consent Form</p>
+            <p className="font-bold text-[#0C2461]">DOST AiSETUP — Privacy Notice and Consent Form</p>
           </div>
 
           <p>

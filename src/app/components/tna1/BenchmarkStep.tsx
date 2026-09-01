@@ -94,6 +94,9 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           <FileAttachmentField
             label="Production Plan Attachment"
             fileName={form.productionPlanFileName}
+            fileData={form.productionPlanFileData}
+            fileId={form.productionPlanFileId}
+            mimeType={form.productionPlanFileMime}
             applicantId={ctx.applicant?.id}
             moduleKey="tna1-productionPlan"
             onFile={(name, data, meta) => {
@@ -113,6 +116,9 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
         <FileAttachmentField
           label="Plant Lay-Out"
           fileName={form.plantLayoutFileName}
+          fileData={form.plantLayoutFileData}
+          fileId={form.plantLayoutFileId}
+          mimeType={form.plantLayoutFileMime}
           applicantId={ctx.applicant?.id}
           moduleKey="tna1-plantLayout"
           onFile={(name, data, meta) => {
@@ -127,22 +133,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
 
       <div>
         <h2 className={sectionTitle}>🔄 Process Flow</h2>
-        <p className="text-xs text-gray-400 mb-2">Enter as text description or upload a diagram.</p>
-        <div className="flex gap-4 mb-3">
-          {(["text", "attachment"] as const).map((mode) => (
-            <label key={mode} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="radio"
-                name="processFlowMode"
-                checked={form.processFlowMode === mode}
-                onChange={() => set("processFlowMode", mode)}
-                className="w-4 h-4 text-blue-600"
-              />
-              {mode === "text" ? "Text description" : "File attachment"}
-            </label>
-          ))}
-        </div>
-        {form.processFlowMode === "text" ? (
+        <div className="space-y-3">
           <AiAssistTextarea
             label="Process Flow"
             value={form.processFlow}
@@ -150,13 +141,15 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
             inputClassName={inputCls}
             labelClassName={labelCls}
             minHeight="min-h-[100px]"
-            hint="Describe the production process flow step by step"
+            hint="Provide a text description and/or upload a diagram."
             {...tnaAi("processFlow", (v) => set("processFlow", v))}
           />
-        ) : (
           <FileAttachmentField
-            label=""
+            label="Process Flow Diagram"
             fileName={form.processFlowFileName}
+            fileData={form.processFlowFileData}
+            fileId={form.processFlowFileId}
+            mimeType={form.processFlowFileMime}
             applicantId={ctx.applicant?.id}
             moduleKey="tna1-processFlow"
             onFile={(name, data, meta) => {
@@ -166,7 +159,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
               set("processFlowFileMime", meta?.mimeType ?? "");
             }}
           />
-        )}
+        </div>
       </div>
 
       <div className="flex gap-3">

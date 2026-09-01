@@ -324,7 +324,6 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
   const totalMale = sumHeadcount(directMale, indirectMale);
   const totalFemale = sumHeadcount(directFemale, indirectFemale);
 
-  const processFlowIsAttachment = f.processFlowMode === "attachment";
   const consulted = val(f, "consultedOther");
 
   return (
@@ -689,9 +688,12 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           applicantId={applicantId}
           minHeight={160}
         />
-        {processFlowIsAttachment ? (
+        {val(f, "processFlow") ? (
+          <FormTextBlock label="Process Flow" value={val(f, "processFlow")} lines={4} />
+        ) : null}
+        {val(f, "processFlowFileName") ? (
           <FormAttachmentBlock
-            label="Process Flow"
+            label="Process Flow Diagram"
             fileName={val(f, "processFlowFileName")}
             fileData={val(f, "processFlowFileData")}
             fileId={val(f, "processFlowFileId")}
@@ -700,9 +702,9 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
             applicantId={applicantId}
             minHeight={140}
           />
-        ) : (
-          <FormTextBlock label="Process Flow" value={val(f, "processFlow")} lines={4} />
-        )}
+        ) : !val(f, "processFlow") ? (
+          <FormTextBlock label="Process Flow" value="" lines={4} />
+        ) : null}
         <FormTextBlock label="Inventory System" value={val(f, "inventorySystem")} lines={2} />
         <FormTextBlock label="Maintenance Program" value={val(f, "maintenanceProgram")} lines={2} />
         <FormTextBlock label="cGMP/HACCP Activities" value={val(f, "cgmpHaccp")} lines={2} />

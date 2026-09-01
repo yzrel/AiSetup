@@ -3,7 +3,11 @@
  */
 
 import { Applicant } from "../store/applicantStore";
+import { FINANCIAL_STATEMENT_UPLOAD_LABEL } from "../constants/financialStatementLabels";
+import { normalizePrioritySector } from "../constants/setupBrochure";
 import { RTEC_COMPLIANCE_ITEMS } from "./rtecReport";
+
+export { FINANCIAL_STATEMENT_UPLOAD_LABEL } from "../constants/financialStatementLabels";
 import { isNonSingleProprietor } from "./proprietorTrack";
 import { normalizeRequirementStaffReview } from "./normalizeCriticalModuleData";
 
@@ -37,7 +41,7 @@ export const SUBMISSION_REQUIREMENT_DOCS: RequirementDocumentDef[] = [
   {
     id: "financial",
     complianceId: "financial",
-    name: "Financial statements (past 3 years) with notarized sworn statement",
+    name: FINANCIAL_STATEMENT_UPLOAD_LABEL,
     required: true,
   },
   {
@@ -95,7 +99,7 @@ export const SUBMISSION_REQUIREMENT_DOCS: RequirementDocumentDef[] = [
     complianceId: "fda-certificate",
     name: "FDA License to Operate / Certificate (food sector enterprises)",
     required: false,
-    conditionalSector: ["Food Processing"],
+    conditionalSector: ["Food processing", "Beverage manufacturing"],
   },
 ];
 
@@ -129,9 +133,33 @@ export interface RequirementStaffReview {
   staffNotes?: string;
   staffName?: string;
   updatedAt?: string;
+  /** Last remark text notified per document id (dedup for immediate alerts). */
+  notifiedRemarks?: Record<string, string>;
 }
 
 export const REQUIREMENT_STAFF_REVIEW_KEY = "requirementStaffReview";
+
+/**
+ * Whether an immediate customer alert should fire for this document review change.
+ * Fires when newly flagged, or when remark text changes to a new non-empty value
+ * not already recorded in notifiedRemarks.
+ */
+export function shouldNotifyRequirementRemark(options: {
+  prevStatus: RequirementReviewStatus;
+  nextStatus: RequirementReviewStatus;
+  nextRemark: string;
+  notifiedRemark?: string;
+}): boolean {
+  const { prevStatus, nextStatus, nextRemark, notifiedRemark } = options;
+  if (nextStatus !== "flagged") return false;
+  const trimmed = nextRemark.trim();
+  if (prevStatus !== "flagged") {
+    // Newly flagged — always notify (email only if remark non-empty, handled by helper).
+    return true;
+  }
+  if (!trimmed) return false;
+  return trimmed !== (notifiedRemark ?? "").trim();
+}
 
 export function getRequirementAdditionalNotes(
   applicant: Applicant | null | undefined,
@@ -207,11 +235,18 @@ export function getRequirementStaffReview(
       };
     }
   }
+  const notifiedRemarks: Record<string, string> = {};
+  if (raw?.notifiedRemarks && typeof raw.notifiedRemarks === "object") {
+    for (const [id, value] of Object.entries(raw.notifiedRemarks)) {
+      if (typeof value === "string") notifiedRemarks[id] = value;
+    }
+  }
   return {
     remarks,
     staffNotes: typeof raw?.staffNotes === "string" ? raw.staffNotes : "",
     staffName: typeof raw?.staffName === "string" ? raw.staffName : "",
     updatedAt: typeof raw?.updatedAt === "string" ? raw.updatedAt : undefined,
+    notifiedRemarks,
   };
 }
 
@@ -225,6 +260,7 @@ export function persistRequirementStaffReview(
     remarks?: Record<string, RequirementStaffRemark>;
     staffNotes?: string;
     staffName?: string;
+    notifiedRemarks?: Record<string, string>;
   },
   store: {
     getById: (id: string) => Applicant | undefined;
@@ -239,6 +275,10 @@ export function persistRequirementStaffReview(
     staffNotes:
       patch.staffNotes !== undefined ? patch.staffNotes : prev.staffNotes,
     staffName: patch.staffName !== undefined ? patch.staffName : prev.staffName,
+    notifiedRemarks:
+      patch.notifiedRemarks !== undefined
+        ? patch.notifiedRemarks
+        : prev.notifiedRemarks,
     updatedAt: new Date().toISOString(),
   };
   store.update(applicantId, {
@@ -261,7 +301,8 @@ export function buildRequirementUploadList(
     // Sector-conditional docs (e.g. FDA certificate) only appear for
     // applicants in the matching priority sector — and are required for them.
     if (def.conditionalSector) {
-      return def.conditionalSector.includes(applicant?.businessSector ?? "");
+      const sector = normalizePrioritySector(applicant?.businessSector ?? "");
+      return def.conditionalSector.includes(sector);
     }
     return true;
   }).map((def) => {
@@ -346,6 +387,10 @@ export function countRequiredUploads(uploads: StoredRequirementUpload[]): {
   };
 }
 
+/**
+ * Official RTEC Form 002 compliance wording (includes Micro vs SME FS year rules).
+ * Do **not** use for applicant upload labels — use `FINANCIAL_STATEMENT_UPLOAD_LABEL` instead.
+ */
 export function complianceLabel(complianceId: string): string {
   return (
     RTEC_COMPLIANCE_ITEMS.find((i) => i.id === complianceId)?.label ?? complianceId

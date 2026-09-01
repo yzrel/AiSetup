@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-/** DOST SETUP aiSETUP — Region XII (SOCCSKSARGEN) deployment scope */
+/** DOST SETUP AiSETUP — Region XII (SOCCSKSARGEN) deployment scope */
 
 export const REGION_12_LABEL = "Region XII (SOCCSKSARGEN)";
 export const REGION_12_SHORT = "Region XII";

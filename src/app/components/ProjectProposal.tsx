@@ -44,6 +44,7 @@ import {
   applyGeneratedDocument,
   buildInvestmentDecisionAnalysis,
   buildLocalProjectProposalDocument,
+  buildLocalRiskRowsSuggestion,
   buildProjectProposalGenerationPayload,
   defaultExpectedOutputBullets,
   extractProposalFieldSuggestion,
@@ -69,6 +70,7 @@ import {
   sumExistingEquipmentColumns,
   sumRawMaterialAllocationColumns,
   sumRawMaterialCostColumns,
+  mergeRiskRowsFillEmpty,
   validateProjectProposalSubmit,
 } from "../utils/projectProposal";
 import type { ProposalAiField } from "../utils/projectProposal";
@@ -84,9 +86,8 @@ import { getPublishedTna2 } from "../utils/tnaForm02";
 import { getFinancialProjectionStored } from "../utils/financialProjectionStore";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { readAndUploadModuleDocument } from "../utils/readFileAsDataUrl";
-import { StoredFileImage } from "./StoredFilePreview";
-import { isImageFile } from "../utils/storedFilePreview";
-import { AiAssistNotice, AiAssistStringList, AiAssistTextarea } from "./AiAssistField";
+import { InlineAttachmentPreview } from "./InlineAttachmentPreview";
+import { AiAssistControls, AiAssistNotice, AiAssistStringList, AiAssistTextarea } from "./AiAssistField";
 import {
   PP_COMPENSATION_COLUMNS,
   PP_EQUIPMENT_COLUMNS,
@@ -96,6 +97,7 @@ import {
   PP_RAW_MATERIAL_COST_COLUMNS,
   PP_SUBHEADING_CAPACITY,
   PP_VOLUME_OF_ORDERS_COLUMNS,
+  PP_COMPETITORS_COLUMNS,
   PP_MARKETING_A_LABELS,
   PP_WASTE_SUBHEADINGS,
 } from "../constants/projectProposalLayout";
@@ -220,14 +222,15 @@ function AttachmentUpload({
         {attachment ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-[#0C2461]">📎 {attachment.fileName}</p>
-            {isImageFile(attachment.mimeType, attachment.fileName, attachment.dataUrl) && (
-              <StoredFileImage
-                applicantId={applicantId}
-                file={attachment}
-                alt={attachment.fileName}
-                className="max-h-32 mx-auto rounded border"
-              />
-            )}
+            <InlineAttachmentPreview
+              fileName={attachment.fileName}
+              dataUrl={attachment.dataUrl}
+              fileId={attachment.fileId}
+              mimeType={attachment.mimeType}
+              applicantId={applicantId}
+              moduleKey={`project-proposal-${kind}`}
+              alt={PROPOSAL_ATTACHMENT_LABELS[kind]}
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1 text-gray-500">
@@ -347,7 +350,8 @@ export function ProjectProposal({
     () => getProjectProposalStored(applicant)?.submitted ?? false,
   );
 
-  const { bind: bindAi, notice: aiFieldNotice } = useAiFieldSuggest("project-proposal");
+  const { bind: bindAi, notice: aiFieldNotice, suggest: suggestAi, loadingField: aiLoadingField } =
+    useAiFieldSuggest("project-proposal");
 
   const aiContext = useMemo(
     () => ({
@@ -434,6 +438,27 @@ export function ProjectProposal({
       ...bound,
       onAiSuggest: applicant ? bound.onAiSuggest : undefined,
     };
+  };
+
+  const riskAi = {
+    onAiSuggest: (userInstruction?: string) => {
+      if (!applicant || aiLoadingField) return;
+      void suggestAi(
+        "riskRows",
+        aiContext,
+        (value) => {
+          const suggested = Array.isArray(value)
+            ? (value as ProjectProposalRiskRow[])
+            : [];
+          patchForm({
+            riskRows: mergeRiskRowsFillEmpty(form.riskRows, suggested),
+          });
+        },
+        () => buildLocalRiskRowsSuggestion(applicant, form, attachments),
+        userInstruction,
+      );
+    },
+    aiLoading: aiLoadingField === "riskRows",
   };
 
   const handleSaveDraft = () => {
@@ -850,7 +875,12 @@ export function ProjectProposal({
             </div>
             <TableEditor label={PP_MARKETING_SUBHEADINGS.B} headers={["Product / Specification", "Price"]} rows={form.productPriceTable} onChange={(productPriceTable) => patchForm({ productPriceTable })} />
             <AiAssistTextarea label={PP_MARKETING_SUBHEADINGS.C} value={form.distributionChannel} onChange={(distributionChannel) => patchForm({ distributionChannel })} minHeight="min-h-[60px]" {...ai("distributionChannel")} />
-            <AiAssistTextarea label={PP_MARKETING_SUBHEADINGS.D} value={form.competitors} onChange={(competitors) => patchForm({ competitors })} minHeight="min-h-[60px]" {...ai("competitors")} />
+            <TableEditor
+              label={PP_MARKETING_SUBHEADINGS.D}
+              headers={[...PP_COMPETITORS_COLUMNS]}
+              rows={form.competitorsTable}
+              onChange={(competitorsTable) => patchForm({ competitorsTable })}
+            />
             <AiAssistTextarea label={PP_MARKETING_SUBHEADINGS.E} value={form.existingMarketingProblems} onChange={(existingMarketingProblems) => patchForm({ existingMarketingProblems })} minHeight="min-h-[60px]" hint="Marketing constraints only. Leave a brief note if none." {...ai("existingMarketingProblems")} />
             <AiAssistStringList label={PP_MARKETING_SUBHEADINGS.F} items={form.marketStrategies} onChange={(marketStrategies) => patchForm({ marketStrategies })} {...ai("marketStrategies")} />
           </div>
@@ -871,6 +901,22 @@ export function ProjectProposal({
                 minHeight="min-h-[100px]"
                 {...ai("productionProcess")}
               />
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <AttachmentUpload
+                  kind="processFlow"
+                  attachment={attachments.find((a) => a.kind === "processFlow")}
+                  onUpload={setAttachment}
+                  onRemove={() => removeAttachment("processFlow")}
+                  applicantId={applicant?.id}
+                />
+                <AttachmentUpload
+                  kind="productionPlan"
+                  attachment={attachments.find((a) => a.kind === "productionPlan")}
+                  onUpload={setAttachment}
+                  onRemove={() => removeAttachment("productionPlan")}
+                  applicantId={applicant?.id}
+                />
+              </div>
               <div className="mt-4">
                 <AiAssistTextarea
                   label="Material Balance"
@@ -1097,6 +1143,15 @@ export function ProjectProposal({
       case "risk":
         return (
           <div className="space-y-3">
+            <div>
+              <h3 className={sectionTitle}>
+                <Shield className="w-4 h-4 text-[#0C2461]" />
+                Risk Management
+              </h3>
+              {applicant && (
+                <AiAssistControls onAiSuggest={riskAi.onAiSuggest} loading={riskAi.aiLoading} />
+              )}
+            </div>
             <p className="text-xs text-gray-500">Official columns: OBJECTIVES | RISKS AND ASSUMPTIONS | RISK MANAGEMENT PLAN.</p>
             {form.riskRows.map((row) => (
               <div key={row.id} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
@@ -1169,7 +1224,7 @@ export function ProjectProposal({
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-blue-800 font-black text-sm">ai</span>
+              <span className="text-blue-800 font-black text-sm">Ai</span>
             </div>
             <ModuleFormHeader
               formKey="001"

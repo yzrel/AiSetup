@@ -5,6 +5,7 @@
 import {
   SETUP_PRIORITY_SECTORS,
   SetupPrioritySector,
+  normalizePrioritySector,
 } from "./setupBrochure";
 
 export type DostProgramScope = "region12" | "national";
@@ -53,12 +54,21 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Consulting teams help manufacturing MSMEs improve productivity and operations.",
     scope: "region12",
     sectors: [
-      "Food Processing",
-      "Tool and Die",
-      "Furniture, Jewelry, GHD and Creatives",
-      "Marine Transport",
-      "Agrimachinery / Farm Implements / Food Processing Equipment",
-      "Health and Wellness (Biotech, Medical Services, Pharmaceuticals, Food Supplements)",
+      "Food processing",
+      "Beverage manufacturing",
+      "Textile manufacturing",
+      "Wearing apparel manufacturing",
+      "Leather and related products manufacturing",
+      "Wood and products of wood and cork manufacturing",
+      "Paper and paper products manufacturing",
+      "Chemicals and chemical products manufacturing",
+      "Basic pharmaceutical products and pharmaceutical preparations manufacturing",
+      "Rubber and plastic products manufacturing",
+      "Non-metallic mineral products manufacturing",
+      "Fabricated metal products manufacturing",
+      "Machinery and equipment, NEC (Not Elsewhere Classified) manufacturing",
+      "Other transport equipment manufacturing",
+      "Furniture manufacturing",
     ],
     description:
       "The Manufacturing Productivity Extension (MPEX) Program deploys accredited consulting teams to assist micro, small, and medium enterprises in the manufacturing sector. Consultants work on-site to identify bottlenecks, recommend process improvements, and help implement productivity measures on both short- and long-term bases.",
@@ -96,8 +106,9 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Technology and farm-management consultancy for agriculture and aquaculture MSMEs.",
     scope: "region12",
     sectors: [
-      "Agriculture, Forestry, Livestock",
-      "Marine and Aquaculture",
+      "Crop and animal production, hunting, and related service activities",
+      "Forestry and logging",
+      "Fishing and aquaculture",
     ],
     description:
       "CAPE provides consultancy teams to undertake technology improvement and enterprise productivity studies for MSMEs in the agricultural and aquaculture sectors. The program aims to institutionalize effective farm management strategies and transfer better technologies to improve yields, reduce post-harvest losses, and strengthen rural enterprise competitiveness.",
@@ -135,8 +146,9 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Promotes safe food handling and compliance for processed food MSMEs.",
     scope: "region12",
     sectors: [
-      "Food Processing",
-      "Health and Wellness (Biotech, Medical Services, Pharmaceuticals, Food Supplements)",
+      "Food processing",
+      "Beverage manufacturing",
+      "Basic pharmaceutical products and pharmaceutical preparations manufacturing",
     ],
     description:
       "The DOST Food Safety Program helps food processors and related stakeholders adopt safe food handling practices, meet regulatory requirements, and improve product quality. Assistance may include training, consultancy, and linkage to testing services for microbiological and chemical compliance.",
@@ -173,9 +185,11 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Identifies energy-saving opportunities for manufacturing and industrial MSMEs.",
     scope: "region12",
     sectors: [
-      "Tool and Die",
-      "Marine Transport",
-      "Agrimachinery / Farm Implements / Food Processing Equipment",
+      "Chemicals and chemical products manufacturing",
+      "Non-metallic mineral products manufacturing",
+      "Fabricated metal products manufacturing",
+      "Machinery and equipment, NEC (Not Elsewhere Classified) manufacturing",
+      "Other transport equipment manufacturing",
     ],
     description:
       "The Energy Audit program assists enterprises in assessing energy consumption patterns and identifying cost-saving and sustainability improvements. Recommendations may cover equipment efficiency, process optimization, and adoption of cleaner production practices aligned with SETUP 4.0 resiliency themes.",
@@ -247,9 +261,12 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Package development, labeling, and design support to improve market appeal.",
     scope: "region12",
     sectors: [
-      "Food Processing",
-      "Furniture, Jewelry, GHD and Creatives",
-      "Health and Wellness (Biotech, Medical Services, Pharmaceuticals, Food Supplements)",
+      "Food processing",
+      "Beverage manufacturing",
+      "Textile manufacturing",
+      "Wearing apparel manufacturing",
+      "Furniture manufacturing",
+      "Basic pharmaceutical products and pharmaceutical preparations manufacturing",
     ],
     description:
       "DOST assists MSMEs in developing functional and market-ready packaging and labels through its network of packaging centers, ITDI, and partner institutions. Support includes package design, labeling compliance, and training on packaging technology to boost product competitiveness.",
@@ -318,7 +335,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
     summary:
       "Equity-free grants for startup R&D, IP protection, and market validation.",
     scope: "national",
-    sectors: ["Electronics and ICT Services"],
+    sectors: ["Information and Communication"],
     description:
       "The Startup Grant Fund (SGF) supports early-stage startups in conducting research and development, strengthening intellectual property, and achieving initial market traction. Grants are awarded through periodic calls for proposals managed by DOST councils such as PCIEERD.",
     benefits: [
@@ -357,11 +374,12 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
       "Zero-interest funding to acquire strategic technologies for industry R&D.",
     scope: "national",
     sectors: [
-      "Tool and Die",
-      "Marine Transport",
-      "Health and Wellness (Biotech, Medical Services, Pharmaceuticals, Food Supplements)",
-      "Electronics and ICT Services",
-      "Agrimachinery / Farm Implements / Food Processing Equipment",
+      "Chemicals and chemical products manufacturing",
+      "Basic pharmaceutical products and pharmaceutical preparations manufacturing",
+      "Fabricated metal products manufacturing",
+      "Machinery and equipment, NEC (Not Elsewhere Classified) manufacturing",
+      "Other transport equipment manufacturing",
+      "Information and Communication",
     ],
     description:
       "The BIST Program helps Filipino-owned companies acquire novel and strategic technologies—such as state-of-the-art equipment, technology licenses, and patent rights—to level up innovation capacity. Financial assistance covers up to 70% of eligible technology costs and is repaid to DOST at zero percent interest.",
@@ -436,7 +454,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
     summary:
       "Funding to commercialize research outputs and startup technologies (TRL 5–7).",
     scope: "national",
-    sectors: ["Electronics and ICT Services"],
+    sectors: ["Information and Communication"],
     description:
       "TECHNiCOM supports the commercialization of research and development outputs from RDIs, SUCs, HEIs, startups, and spin-offs. Startup firms with existing prototypes and technology ownership may apply to bridge the gap between development and market-ready products.",
     benefits: [
@@ -510,7 +528,7 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
     summary:
       "Incubation, mentoring, and regional startup ecosystem development programs.",
     scope: "national",
-    sectors: ["Electronics and ICT Services"],
+    sectors: ["Information and Communication"],
     description:
       "DOST's Technology Business Incubation (TBI) network and the Regional Startup Enabler for Ecosystem Development (ReSEED) Program support early-stage ventures through incubation facilities, mentoring, and regional ecosystem building. Startups may access TBIs hosted at universities and DOST partner institutions nationwide.",
     benefits: [
@@ -540,42 +558,73 @@ export const DOST_PROGRAMS: Record<DostProgramId, DostProgram> = {
 };
 
 const SECTOR_PROGRAM_MAP: Record<SetupPrioritySector, DostProgramId[]> = {
-  "Agriculture, Forestry, Livestock": [
+  "Crop and animal production, hunting, and related service activities": [
     "cape",
     "tech-training",
     "rstl",
     "landbank-financing",
   ],
-  "Food Processing": [
+  "Forestry and logging": ["cape", "rstl", "tech-training"],
+  "Fishing and aquaculture": ["cape", "rstl", "tech-training"],
+  "Food processing": [
     "food-safety",
     "packaging-labeling",
     "mpex",
     "rstl",
     "landbank-financing",
   ],
-  "Tool and Die": ["mpex", "energy-audit", "bist", "rstl"],
-  "Furniture, Jewelry, GHD and Creatives": [
+  "Beverage manufacturing": [
+    "food-safety",
+    "packaging-labeling",
+    "mpex",
+    "rstl",
+  ],
+  "Textile manufacturing": ["mpex", "packaging-labeling", "tech-training"],
+  "Wearing apparel manufacturing": ["mpex", "packaging-labeling"],
+  "Leather and related products manufacturing": ["mpex", "packaging-labeling"],
+  "Wood and products of wood and cork manufacturing": ["mpex", "tech-training"],
+  "Paper and paper products manufacturing": [
     "mpex",
     "packaging-labeling",
-    "tech-training",
+    "rstl",
   ],
-  "Marine and Aquaculture": ["cape", "rstl", "tech-training"],
-  "Marine Transport": ["mpex", "energy-audit", "bist"],
-  "Health and Wellness (Biotech, Medical Services, Pharmaceuticals, Food Supplements)":
+  "Chemicals and chemical products manufacturing": [
+    "mpex",
+    "rstl",
+    "bist",
+    "energy-audit",
+  ],
+  "Basic pharmaceutical products and pharmaceutical preparations manufacturing":
     ["rstl", "bist", "food-safety"],
-  "Electronics and ICT Services": [
+  "Rubber and plastic products manufacturing": ["mpex", "rstl", "bist"],
+  "Non-metallic mineral products manufacturing": [
+    "mpex",
+    "energy-audit",
+    "bist",
+  ],
+  "Fabricated metal products manufacturing": [
+    "mpex",
+    "energy-audit",
+    "bist",
+    "rstl",
+  ],
+  "Machinery and equipment, NEC (Not Elsewhere Classified) manufacturing": [
+    "mpex",
+    "energy-audit",
+    "bist",
+    "rstl",
+  ],
+  "Other transport equipment manufacturing": ["mpex", "energy-audit", "bist"],
+  "Furniture manufacturing": ["mpex", "packaging-labeling", "tech-training"],
+  "Information and Communication": [
     "sgf",
     "bist",
     "technicom",
     "landbank-financing",
     "tbi-reseed",
   ],
-  "Agrimachinery / Farm Implements / Food Processing Equipment": [
-    "mpex",
-    "energy-audit",
-    "bist",
-    "rstl",
-  ],
+  "Other regional priority industries approved by the Regional Development Council":
+    ["cape", "mpex", "tech-training", "rstl", "landbank-financing"],
 };
 
 const STARTUP_PROGRAM_IDS: DostProgramId[] = [
@@ -608,7 +657,7 @@ export function getRecommendedPrograms(
     ids.push(...STARTUP_PROGRAM_IDS);
   }
 
-  const sectorKey = sector as SetupPrioritySector;
+  const sectorKey = normalizePrioritySector(sector) as SetupPrioritySector;
   if (SECTOR_PROGRAM_MAP[sectorKey]) {
     for (const id of SECTOR_PROGRAM_MAP[sectorKey]) {
       if (!ids.includes(id)) ids.push(id);

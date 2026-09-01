@@ -30,7 +30,7 @@ import { getProjectProposalForm } from "./projectProposal";
 
 import { hasProcurementComplete } from "./procurementLiquidation";
 
-import { formatCurrency, getLandBankForm, getLandBankStored, WITHDRAWAL_SIGNED_KEY } from "./landBankWithdrawal";
+import { formatCurrency, getLandBankForm, getLandBankStored, WITHDRAWAL_SIGNED_KEY, sumTrancheEquipment } from "./landBankWithdrawal";
 
 import { resolveApplicantProvince } from "./provincialOffice";
 
@@ -41,7 +41,6 @@ import {
   REFUND_GRACE_MONTHS,
 } from "./refundSchedule";
 import { normalizeFormModuleStored } from "./normalizeCriticalModuleData";
-import { sumWithdrawalEquipment } from "./withdrawalRequestLetter";
 import { getSignedDocument } from "./documentDelivery";
 
 const MODULE_KEY = "refund";
@@ -742,14 +741,19 @@ export function getFundDisbursementChartData(applicants: Applicant[]) {
     const stored = getLandBankStored(applicant);
     const packages = [
       {
-        amount: sumWithdrawalEquipment(form.tranches.first.equipment),
+        amount: sumTrancheEquipment(form.tranches.first),
         signedKey: WITHDRAWAL_SIGNED_KEY.first,
         letter: form.tranches.first.signedLetter,
       },
       {
-        amount: sumWithdrawalEquipment(form.tranches.second.equipment),
+        amount: sumTrancheEquipment(form.tranches.second),
         signedKey: WITHDRAWAL_SIGNED_KEY.second,
         letter: form.tranches.second.signedLetter,
+      },
+      {
+        amount: sumTrancheEquipment(form.tranches.third),
+        signedKey: WITHDRAWAL_SIGNED_KEY.third,
+        letter: form.tranches.third.signedLetter,
       },
     ] as const;
 

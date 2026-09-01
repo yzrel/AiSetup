@@ -177,12 +177,10 @@ export function buildLocalTna1Document(
     "purchasingSystem",
     "Suppliers are evaluated for quality and reliability; purchase orders are issued for major acquisitions.",
   );
-  if (payload.form.processFlowMode !== "attachment") {
-    put(
-      "processFlow",
-      "Receiving → preparation → processing → packaging → storage → distribution.",
-    );
-  }
+  put(
+    "processFlow",
+    "Receiving → preparation → processing → packaging → storage → distribution.",
+  );
   put(
     "marketingPlan",
     "Products are marketed through local retailers, institutional buyers, and direct sales channels.",

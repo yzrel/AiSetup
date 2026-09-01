@@ -159,7 +159,7 @@ export function DOSTNavBrand({
               variant === "light" ? "text-white" : "text-[#0C2461]"
             }`}
           >
-            ai
+            Ai
           </span>
           <span className="font-black text-[15px] text-[#00AEEF]">SETUP</span>
         </div>

@@ -67,7 +67,7 @@ export function StaffApplicantCombobox({
   allowClear = false,
   variant = "module",
   className,
-  emptyLabel = "No clients found.",
+  emptyLabel = "No cooperators found.",
 }: StaffApplicantComboboxProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -192,9 +192,9 @@ export function StaffApplicantCombobox({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search client name or LOI…"
+            placeholder="Search cooperator name or LOI…"
             className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-gray-400"
-            aria-label="Search clients"
+            aria-label="Search cooperators"
           />
         </div>
         <ul className="overflow-y-auto overscroll-contain py-1 min-h-0 flex-1">

@@ -105,6 +105,17 @@ public class ModuleDataIntegrityService {
                 assertPublishedDocumentShape(intro, "landBank.introductionLetter");
             }
         }
+        Object procurement = moduleData.get("procurement");
+        if (procurement instanceof Map<?, ?> proc) {
+            Object untag = proc.get("untagLetter");
+            if (untag != null) {
+                if (!(untag instanceof Map<?, ?>)) {
+                    throw new IllegalArgumentException(
+                            "moduleData.procurement.untagLetter must be a JSON object when present");
+                }
+                assertPublishedDocumentShape(untag, "procurement.untagLetter");
+            }
+        }
     }
 
     public void assertModulePatchShape(String moduleKey, Map<String, Object> data) {
@@ -122,6 +133,14 @@ public class ModuleDataIntegrityService {
                         "moduleData.landBank.introductionLetter must be a JSON object when present");
             }
             assertPublishedDocumentShape(intro, "landBank.introductionLetter");
+        }
+        if ("procurement".equals(moduleKey) && data.get("untagLetter") != null) {
+            Object untag = data.get("untagLetter");
+            if (!(untag instanceof Map<?, ?>)) {
+                throw new IllegalArgumentException(
+                        "moduleData.procurement.untagLetter must be a JSON object when present");
+            }
+            assertPublishedDocumentShape(untag, "procurement.untagLetter");
         }
     }
 

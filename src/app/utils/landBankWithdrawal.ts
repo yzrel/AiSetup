@@ -9,6 +9,8 @@ import type {
   ModuleDocument,
   ProjectProposalBudgetRow,
   WithdrawalEquipmentRow,
+  WithdrawalSupplierBlock,
+  WithdrawalTrancheNum,
   WithdrawalTranchePackage,
 } from "../api/types";
 import { getApprovalLetterForm, getSignedMoa } from "./approvalLetter";
@@ -24,17 +26,52 @@ import { normalizeLandBankStored } from "./normalizeCriticalModuleData";
 
 const MODULE_KEY = "landBank";
 
+export type TrancheMapKey = "first" | "second" | "third";
+
 /** Signed-document map keys used by DocumentDeliveryPanel */
 export const WITHDRAWAL_SIGNED_KEY = {
   first: "withdrawal-request-t1",
   second: "withdrawal-request-t2",
+  third: "withdrawal-request-t3",
 } as const;
 
-export function emptyTranchePackage(tranche: 1 | 2): WithdrawalTranchePackage {
+export function trancheMapKey(tranche: WithdrawalTrancheNum): TrancheMapKey {
+  if (tranche === 1) return "first";
+  if (tranche === 2) return "second";
+  return "third";
+}
+
+export function trancheSignedKey(tranche: WithdrawalTrancheNum): string {
+  return WITHDRAWAL_SIGNED_KEY[trancheMapKey(tranche)];
+}
+
+export function trancheDisplayLabel(tranche: WithdrawalTrancheNum): string {
+  if (tranche === 1) return "1st";
+  if (tranche === 2) return "2nd";
+  return "3rd";
+}
+
+function newRowId(): string {
+  return `we-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function newSupplierId(): string {
+  return `ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function emptySupplierBlock(name = ""): WithdrawalSupplierBlock {
+  return {
+    id: newSupplierId(),
+    name,
+    equipment: [],
+  };
+}
+
+export function emptyTranchePackage(tranche: WithdrawalTrancheNum): WithdrawalTranchePackage {
   return {
     tranche,
-    supplierName: "",
-    equipment: [],
+    suppliers: [],
+    selectedSupplierId: null,
     signedLetter: null,
     quotations: [],
     equipmentPhotos: [],
@@ -51,12 +88,9 @@ export function emptyLandBankForm(): LandBankForm {
     tranches: {
       first: emptyTranchePackage(1),
       second: emptyTranchePackage(2),
+      third: emptyTranchePackage(3),
     },
   };
-}
-
-function newRowId(): string {
-  return `we-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function budgetRowToWithdrawalEquipment(
@@ -71,34 +105,94 @@ export function budgetRowToWithdrawalEquipment(
   };
 }
 
+function normalizeEquipmentRows(
+  raw: WithdrawalEquipmentRow[] | WithdrawalEquipmentRow | undefined,
+): WithdrawalEquipmentRow[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw) return [raw];
+  return [];
+}
+
+function normalizeSuppliers(
+  raw: Partial<WithdrawalTranchePackage> | undefined,
+): WithdrawalSupplierBlock[] {
+  if (raw?.suppliers?.length) {
+    return raw.suppliers.map((s) => ({
+      id: s.id || newSupplierId(),
+      name: s.name ?? "",
+      equipment: normalizeEquipmentRows(s.equipment),
+    }));
+  }
+
+  const legacyName = raw?.supplierName?.trim() ?? "";
+  const legacyEquipment = normalizeEquipmentRows(raw?.equipment);
+  if (legacyName || legacyEquipment.length) {
+    const block = emptySupplierBlock(legacyName);
+    block.equipment = legacyEquipment;
+    return [block];
+  }
+
+  return [];
+}
+
+function resolveSelectedSupplierId(
+  suppliers: WithdrawalSupplierBlock[],
+  rawId: string | null | undefined,
+): string | null {
+  if (rawId && suppliers.some((s) => s.id === rawId)) return rawId;
+  const named = suppliers.find((s) => s.name.trim());
+  return named?.id ?? suppliers[0]?.id ?? null;
+}
+
+function normalizeDocList(
+  raw: ModuleDocument[] | ModuleDocument | undefined,
+): ModuleDocument[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw) return [raw];
+  return [];
+}
+
 function normalizeTranche(
   raw: Partial<WithdrawalTranchePackage> | undefined,
-  tranche: 1 | 2,
+  tranche: WithdrawalTrancheNum,
 ): WithdrawalTranchePackage {
   const base = emptyTranchePackage(tranche);
   if (!raw) return base;
+  const suppliers = normalizeSuppliers(raw);
   return {
     ...base,
     ...raw,
     tranche,
-    supplierName: raw.supplierName ?? "",
-    equipment: Array.isArray(raw.equipment)
-      ? raw.equipment
-      : raw.equipment
-        ? [raw.equipment]
-        : [],
-    quotations: Array.isArray(raw.quotations)
-      ? raw.quotations
-      : raw.quotations
-        ? [raw.quotations]
-        : [],
-    equipmentPhotos: Array.isArray(raw.equipmentPhotos)
-      ? raw.equipmentPhotos
-      : raw.equipmentPhotos
-        ? [raw.equipmentPhotos]
-        : [],
+    suppliers,
+    selectedSupplierId: resolveSelectedSupplierId(suppliers, raw.selectedSupplierId),
+    quotations: normalizeDocList(raw.quotations),
+    equipmentPhotos: normalizeDocList(raw.equipmentPhotos),
     signedLetter: raw.signedLetter ?? null,
   };
+}
+
+/** All equipment rows across supplier blocks on a tranche package. */
+export function getTrancheEquipment(pkg: WithdrawalTranchePackage): WithdrawalEquipmentRow[] {
+  return pkg.suppliers.flatMap((s) => s.equipment);
+}
+
+export function getSelectedSupplierBlock(
+  pkg: WithdrawalTranchePackage,
+): WithdrawalSupplierBlock | null {
+  if (!pkg.suppliers.length) return null;
+  if (pkg.selectedSupplierId) {
+    const found = pkg.suppliers.find((s) => s.id === pkg.selectedSupplierId);
+    if (found) return found;
+  }
+  return pkg.suppliers.find((s) => s.name.trim()) ?? pkg.suppliers[0] ?? null;
+}
+
+export function getTrancheSupplierName(pkg: WithdrawalTranchePackage): string {
+  return getSelectedSupplierBlock(pkg)?.name.trim() ?? "";
+}
+
+export function sumTrancheEquipment(pkg: WithdrawalTranchePackage): number {
+  return sumWithdrawalEquipment(getTrancheEquipment(pkg));
 }
 
 /** Normalize legacy LandBank forms and overlay signed letters from delivery map. */
@@ -108,26 +202,26 @@ export function normalizeLandBankForm(
 ): LandBankForm {
   const first = normalizeTranche(form.tranches?.first, 1);
   const second = normalizeTranche(form.tranches?.second, 2);
+  const third = normalizeTranche(form.tranches?.third, 3);
 
-  // Migrate deprecated single withdrawalLetter → tranche 1 signed letter
   if (!first.signedLetter && form.withdrawalLetter) {
     first.signedLetter = form.withdrawalLetter;
     if (!first.status || first.status === "draft") first.status = "signed";
   }
 
   if (applicant) {
-    const t1Signed = getSignedDocument(applicant, WITHDRAWAL_SIGNED_KEY.first);
-    const t2Signed = getSignedDocument(applicant, WITHDRAWAL_SIGNED_KEY.second);
-    if (t1Signed && !first.signedLetter) {
-      first.signedLetter = t1Signed;
-      if (!first.status || first.status === "draft" || first.status === "sent") {
-        first.status = "signed";
-      }
-    }
-    if (t2Signed && !second.signedLetter) {
-      second.signedLetter = t2Signed;
-      if (!second.status || second.status === "draft" || second.status === "sent") {
-        second.status = "signed";
+    const signedByTranche: [WithdrawalTranchePackage, string][] = [
+      [first, WITHDRAWAL_SIGNED_KEY.first],
+      [second, WITHDRAWAL_SIGNED_KEY.second],
+      [third, WITHDRAWAL_SIGNED_KEY.third],
+    ];
+    for (const [pkg, key] of signedByTranche) {
+      const signed = getSignedDocument(applicant, key);
+      if (signed && !pkg.signedLetter) {
+        pkg.signedLetter = signed;
+        if (!pkg.status || pkg.status === "draft" || pkg.status === "sent") {
+          pkg.status = "signed";
+        }
       }
     }
   }
@@ -137,7 +231,7 @@ export function normalizeLandBankForm(
     withdrawalLetter: form.withdrawalLetter ?? first.signedLetter ?? null,
     withdrawalRemarks: form.withdrawalRemarks ?? "",
     authorityLetterGenerated: form.authorityLetterGenerated ?? false,
-    tranches: { first, second },
+    tranches: { first, second, third },
   };
 }
 
@@ -155,19 +249,25 @@ export function getLandBankForm(applicant: Applicant | null): LandBankForm {
 
 export function getTranchePackage(
   form: LandBankForm,
-  tranche: 1 | 2,
+  tranche: WithdrawalTrancheNum,
 ): WithdrawalTranchePackage {
-  return tranche === 1 ? form.tranches.first : form.tranches.second;
+  return form.tranches[trancheMapKey(tranche)];
 }
 
 export function updateTranchePackage(
   form: LandBankForm,
-  tranche: 1 | 2,
+  tranche: WithdrawalTrancheNum,
   patch: Partial<WithdrawalTranchePackage>,
 ): LandBankForm {
-  const key = tranche === 1 ? "first" : "second";
+  const key = trancheMapKey(tranche);
   const current = getTranchePackage(form, tranche);
   const nextPkg: WithdrawalTranchePackage = { ...current, ...patch, tranche };
+  if (patch.suppliers) {
+    nextPkg.selectedSupplierId = resolveSelectedSupplierId(
+      nextPkg.suppliers,
+      patch.selectedSupplierId ?? nextPkg.selectedSupplierId,
+    );
+  }
   const next: LandBankForm = {
     ...form,
     tranches: {
@@ -191,6 +291,19 @@ export function isTranche2Complete(pkg: WithdrawalTranchePackage): boolean {
   return !!pkg.signedLetter;
 }
 
+export function isTranche3Complete(pkg: WithdrawalTranchePackage): boolean {
+  return !!pkg.signedLetter;
+}
+
+export function isTrancheComplete(
+  pkg: WithdrawalTranchePackage,
+  tranche: WithdrawalTrancheNum,
+): boolean {
+  if (tranche === 1) return isTranche1Complete(pkg);
+  if (tranche === 2) return isTranche2Complete(pkg);
+  return isTranche3Complete(pkg);
+}
+
 export function isWithdrawalRequestReady(form: LandBankForm): boolean {
   return isTranche1Complete(form.tranches.first);
 }
@@ -204,6 +317,7 @@ export interface LandBankOverview {
   totalWithdrawal: string;
   tranche1Amount: string;
   tranche2Amount: string;
+  tranche3Amount: string;
 }
 
 function formatPeso(num: number): string {
@@ -215,25 +329,27 @@ function parseAmount(amount: string): number {
 }
 
 export function getLandBankOverview(applicant: Applicant | null): LandBankOverview {
-  if (!applicant) {
-    return {
-      projectTitle: "—",
-      enterpriseName: "—",
-      accountHolder: "—",
-      approvedAmount: "₱0",
-      remainingBalance: "₱0",
-      totalWithdrawal: "₱0.00",
-      tranche1Amount: "₱0.00",
-      tranche2Amount: "₱0.00",
-    };
-  }
+  const empty = {
+    projectTitle: "—",
+    enterpriseName: "—",
+    accountHolder: "—",
+    approvedAmount: "₱0",
+    remainingBalance: "₱0",
+    totalWithdrawal: "₱0.00",
+    tranche1Amount: "₱0.00",
+    tranche2Amount: "₱0.00",
+    tranche3Amount: "₱0.00",
+  };
+  if (!applicant) return empty;
+
   const form = getLandBankForm(applicant);
   const approval = getApprovalLetterForm(applicant);
   const pp = getProjectProposalForm(applicant);
   const amount = approval.approvedAmount || pp.amountRequested || "₱0";
-  const t1 = sumWithdrawalEquipment(form.tranches.first.equipment);
-  const t2 = sumWithdrawalEquipment(form.tranches.second.equipment);
-  const withdrawn = t1 + t2;
+  const t1 = sumTrancheEquipment(form.tranches.first);
+  const t2 = sumTrancheEquipment(form.tranches.second);
+  const t3 = sumTrancheEquipment(form.tranches.third);
+  const withdrawn = t1 + t2 + t3;
   const approvedNum = parseAmount(amount);
   const remaining = Math.max(0, approvedNum - withdrawn);
 
@@ -246,6 +362,7 @@ export function getLandBankOverview(applicant: Applicant | null): LandBankOvervi
     totalWithdrawal: formatPeso(withdrawn),
     tranche1Amount: formatPeso(t1),
     tranche2Amount: formatPeso(t2),
+    tranche3Amount: formatPeso(t3),
   };
 }
 
@@ -266,11 +383,11 @@ export function saveLandBankDraft(applicantId: string, form: LandBankForm): void
   const signedDocuments = {
     ...getSignedDocuments(applicant),
   };
-  if (normalized.tranches.first.signedLetter) {
-    signedDocuments[WITHDRAWAL_SIGNED_KEY.first] = normalized.tranches.first.signedLetter;
-  }
-  if (normalized.tranches.second.signedLetter) {
-    signedDocuments[WITHDRAWAL_SIGNED_KEY.second] = normalized.tranches.second.signedLetter;
+  for (const key of ["first", "second", "third"] as const) {
+    const letter = normalized.tranches[key].signedLetter;
+    if (letter) {
+      signedDocuments[WITHDRAWAL_SIGNED_KEY[key]] = letter;
+    }
   }
 
   applicantStore.update(applicantId, {
@@ -317,8 +434,10 @@ export function validateTranchePackage(
   options?: { requireDocs?: boolean },
 ): string[] {
   const errors: string[] = [];
-  if (!pkg.supplierName.trim()) errors.push("Supplier name is required.");
-  if (pkg.equipment.filter((r) => r.item.trim()).length === 0) {
+  const selected = getSelectedSupplierBlock(pkg);
+  if (!selected?.name.trim()) errors.push("Supplier name is required.");
+  const equipment = selected?.equipment.filter((r) => r.item.trim()) ?? [];
+  if (equipment.length === 0) {
     errors.push("Add at least one equipment item from the project proposal budget.");
   }
   if (options?.requireDocs) {
@@ -329,6 +448,9 @@ export function validateTranchePackage(
     }
     if (pkg.tranche === 2 && !isTranche2Complete(pkg)) {
       errors.push("2nd tranche requires a signed letter request.");
+    }
+    if (pkg.tranche === 3 && !isTranche3Complete(pkg)) {
+      errors.push("3rd tranche requires a signed letter request.");
     }
   }
   return errors;
@@ -380,23 +502,38 @@ export function markAuthorityLetterGenerated(applicantId: string): void {
   saveLandBankDraft(applicantId, { ...form, authorityLetterGenerated: true });
 }
 
+function authorityTrancheAmount(
+  overview: LandBankOverview,
+  tranche: WithdrawalTrancheNum,
+): string {
+  if (tranche === 1) return overview.tranche1Amount;
+  if (tranche === 2) return overview.tranche2Amount;
+  return overview.tranche3Amount;
+}
+
+function authorityTrancheWord(tranche: WithdrawalTrancheNum): string {
+  if (tranche === 1) return "first";
+  if (tranche === 2) return "second";
+  return "third";
+}
+
 export function downloadAuthorityLetterPdf(
   applicant: Applicant | null,
   applicationId?: string,
-  tranche: 1 | 2 = 1,
+  tranche: WithdrawalTrancheNum = 1,
 ): void {
   if (!applicant) return;
   const overview = getLandBankOverview(applicant);
   const form = getLandBankForm(applicant);
   const pkg = getTranchePackage(form, tranche);
+  const supplierName = getTrancheSupplierName(pkg);
   const approval = getApprovalLetterForm(applicant);
   const ref = approval.referenceNumber || applicationId || applicant.applicationId || "—";
   const title = applicationId
     ? `Authority-Letter-T${tranche}-${applicationId}`
     : `Authority-Letter-Withdraw-T${tranche}`;
-  const withdrawAmount =
-    tranche === 1 ? overview.tranche1Amount : overview.tranche2Amount;
-  const trancheWord = tranche === 1 ? "first" : "second";
+  const withdrawAmount = authorityTrancheAmount(overview, tranche);
+  const trancheWord = authorityTrancheWord(tranche);
 
   markAuthorityLetterGenerated(applicant.id);
 
@@ -414,7 +551,7 @@ export function downloadAuthorityLetterPdf(
         project funds from the dedicated savings account for the project titled
         <strong>${escapeHtml(overview.projectTitle)}</strong>, in the amount of
         <strong>${escapeHtml(withdrawAmount)}</strong>
-        ${pkg.supplierName ? ` for equipment procurement at <strong>${escapeHtml(pkg.supplierName)}</strong>` : ""},
+        ${supplierName ? ` for equipment procurement at <strong>${escapeHtml(supplierName)}</strong>` : ""},
         subject to DOST SETUP guidelines and documentary requirements.
       </p>
       <p style="text-align:justify;margin-top:12px;">
@@ -422,7 +559,7 @@ export function downloadAuthorityLetterPdf(
       </p>
       <p style="margin-top:48px;font-weight:bold;">DOST SOCCSKSARGEN — SETUP 4.0</p>
       <p style="font-size:10px;color:#6b7280;margin-top:32px;text-align:center;">
-        Generated via aiSETUP · Demo document for presentation purposes
+        Generated via AiSETUP · Demo document for presentation purposes
       </p>
     </div>
   `;
@@ -434,14 +571,18 @@ export function downloadAuthorityLetterPdf(
   );
 }
 
-/** Proposal budget lines not yet assigned to either tranche (by sourceBudgetItemId). */
+/** Proposal budget lines not yet assigned to any tranche supplier (by sourceBudgetItemId). */
 export function availableProposalBudgetItems(
   applicant: Applicant | null,
   form: LandBankForm,
 ): ProjectProposalBudgetRow[] {
   const pp = getProjectProposalForm(applicant);
   const used = new Set(
-    [...form.tranches.first.equipment, ...form.tranches.second.equipment]
+    [
+      ...getTrancheEquipment(form.tranches.first),
+      ...getTrancheEquipment(form.tranches.second),
+      ...getTrancheEquipment(form.tranches.third),
+    ]
       .map((r) => r.sourceBudgetItemId)
       .filter(Boolean) as string[],
   );

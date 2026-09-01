@@ -15,6 +15,7 @@ import type {
 import {
   buildInvestmentDecisionAnalysis,
   compensationTableFooterRow,
+  competitorsTableHasRows,
   existingEquipmentFooterRow,
   formatRiskAndAssumptions,
   PROPOSAL_ATTACHMENT_LABELS,
@@ -56,6 +57,7 @@ import {
   PP_SECTION_WASTE,
   PP_SUBHEADING_CAPACITY,
   PP_VOLUME_OF_ORDERS_COLUMNS,
+  PP_COMPETITORS_COLUMNS,
   PP_WASTE_SUBHEADINGS,
   PROJECT_PROPOSAL_TITLE,
   companyProfileEmployeeTotals,
@@ -534,7 +536,11 @@ export function ProjectProposalPreview({
             <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.C}</h3>
             <Narrative text={narrative("distributionChannel", "distributionChannel")} />
             <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.D}</h3>
-            <Narrative text={narrative("competitors", "competitors")} />
+            {competitorsTableHasRows(form.competitorsTable) ? (
+              <Table headers={PP_COMPETITORS_COLUMNS} rows={form.competitorsTable ?? []} />
+            ) : (
+              <Narrative text={narrative("competitors", "competitors")} />
+            )}
             <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.E}</h3>
             <Narrative text={narrative("existingMarketingProblems", "existingMarketingProblems")} />
             <h3 className="pp-form-subheading">{PP_MARKETING_SUBHEADINGS.F}</h3>

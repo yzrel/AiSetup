@@ -19,8 +19,8 @@ import {
   getLandBankForm,
   getLandBankStored,
   WITHDRAWAL_SIGNED_KEY,
+  sumTrancheEquipment,
 } from "./landBankWithdrawal";
-import { sumWithdrawalEquipment } from "./withdrawalRequestLetter";
 import { getSignedDocument } from "./documentDelivery";
 import { getProjectInformationSheetStored } from "./projectInformationSheet";
 import type { PisEmploymentMatrix, PisSexCounts } from "../api/types";
@@ -222,19 +222,24 @@ function releaseEvents(applicant: Applicant): { date: Date; amount: number }[] {
   const form = getLandBankForm(applicant);
   const stored = getLandBankStored(applicant);
   const packages: {
-    tranche: 1 | 2;
+    tranche: 1 | 2 | 3;
     amount: number;
     signedKey: string;
   }[] = [
     {
       tranche: 1,
-      amount: sumWithdrawalEquipment(form.tranches.first.equipment),
+      amount: sumTrancheEquipment(form.tranches.first),
       signedKey: WITHDRAWAL_SIGNED_KEY.first,
     },
     {
       tranche: 2,
-      amount: sumWithdrawalEquipment(form.tranches.second.equipment),
+      amount: sumTrancheEquipment(form.tranches.second),
       signedKey: WITHDRAWAL_SIGNED_KEY.second,
+    },
+    {
+      tranche: 3,
+      amount: sumTrancheEquipment(form.tranches.third),
+      signedKey: WITHDRAWAL_SIGNED_KEY.third,
     },
   ];
 
@@ -244,7 +249,9 @@ function releaseEvents(applicant: Applicant): { date: Date; amount: number }[] {
     const letter =
       pkg.tranche === 1
         ? form.tranches.first.signedLetter
-        : form.tranches.second.signedLetter;
+        : pkg.tranche === 2
+          ? form.tranches.second.signedLetter
+          : form.tranches.third.signedLetter;
     const date =
       parseFlexibleDate(signed?.uploadedAt) ||
       parseFlexibleDate(letter?.uploadedAt) ||

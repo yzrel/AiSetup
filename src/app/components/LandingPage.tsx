@@ -21,7 +21,9 @@ import {
   SETUP_4_TAGLINE,
   SETUP_DOCUMENTS_REQUIRED,
   SETUP_HOW_TO_APPLY,
-  SETUP_PRIORITY_SECTORS,
+  SETUP_MSME_ASSISTED_BY_SIZE,
+  SETUP_MSME_ASSISTED_TOTAL,
+  SETUP_PRIORITY_SECTOR_CATALOG,
   SETUP_SERVICES,
   SETUP_WHO_CAN_APPLY,
 } from "../constants/setupBrochure";
@@ -54,14 +56,15 @@ import {
   Cpu,
   Tractor,
   Facebook,
+  Factory,
   Globe,
+  Package,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface LandingPageProps {
   onLogin: () => void;
-  onStaffLogin: () => void;
   onRegister: (
     type: "single-proprietor" | "non-single-proprietor",
   ) => void;
@@ -188,11 +191,9 @@ import { DOSTHorizontalLogo, DOSTMark, DOSTNavBrand } from "./DOSTLogos";
 
 function Navbar({
   onLogin,
-  onStaffLogin,
   onRegister,
 }: {
   onLogin: () => void;
-  onStaffLogin: () => void;
   onRegister: (type: "single-proprietor" | "non-single-proprietor") => void;
 }) {
   const [scrolled, setScrolled] = useState(false);
@@ -245,23 +246,14 @@ function Navbar({
             ),
           )}
           <button
-            onClick={onStaffLogin}
-            className={`flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-lg border transition-colors ${
-              scrolled
-                ? "border-purple-200 text-purple-700 hover:bg-purple-50"
-                : "border-white/30 text-white/90 hover:bg-white/10"
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            Staff Portal
-          </button>
-          <button
             onClick={onLogin}
-            className={`text-sm font-semibold transition-colors hover:text-[#00AEEF] ${
-              scrolled ? "text-gray-600" : "text-white/90"
+            className={`text-sm font-bold px-5 py-2 rounded-xl transition-all shadow-md ${
+              scrolled
+                ? "bg-[#0C2461] text-white hover:bg-[#1a3a7a] hover:shadow-lg"
+                : "bg-white text-[#0C2461] hover:bg-white/90 hover:shadow-lg"
             }`}
           >
-            Applicant Sign In
+            Sign In
           </button>
           <button
             onClick={() => onRegister("single-proprietor")}
@@ -305,17 +297,10 @@ function Navbar({
             ),
           )}
           <button
-            onClick={onStaffLogin}
-            className="w-full flex items-center justify-center gap-2 border border-purple-200 text-purple-700 text-sm font-semibold py-2.5 rounded-xl"
-          >
-            <Shield className="w-4 h-4" />
-            DOST Staff Portal
-          </button>
-          <button
             onClick={onLogin}
-            className="w-full text-[#0C2461] text-sm font-semibold py-2"
+            className="w-full bg-[#0C2461] text-white text-sm font-bold py-2.5 rounded-xl shadow-sm"
           >
-            Applicant Sign In
+            Sign In
           </button>
           <button
             onClick={() => onRegister("single-proprietor")}
@@ -367,7 +352,7 @@ function HeroSection({
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-4 animate-slide-up delay-100">
-          <span className="text-[#00AEEF]">ai</span>SETUP
+          <span className="text-[#00AEEF]">Ai</span>SETUP
           <span className="block text-2xl sm:text-3xl font-bold text-white/90 mt-2">
             Small Enterprise Technology Upgrading Program
           </span>
@@ -397,35 +382,23 @@ function HeroSection({
           </button>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mt-16 animate-slide-up delay-500">
-          {[
-            {
-              label: "MSMEs Assisted",
-              value: 12400,
-              suffix: "+",
-            },
-            {
-              label: "Funds Released",
-              value: 2.8,
-              suffix: "B₱",
-            },
-            { label: "Provinces Served", value: 5, suffix: "" },
-            { label: "Approval Rate", value: 78, suffix: "%" },
-          ].map((stat) => (
+        {/* Stats row — total MSMEs assisted + Micro / Small / Medium */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mt-8 animate-slide-up delay-500">
+          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
+            <p className="text-2xl sm:text-3xl font-black text-white">
+              <Counter end={SETUP_MSME_ASSISTED_TOTAL} suffix="+" />
+            </p>
+            <p className="text-xs text-white/60 mt-0.5">MSMEs Assisted</p>
+          </div>
+          {SETUP_MSME_ASSISTED_BY_SIZE.map((size) => (
             <div
-              key={stat.label}
+              key={size.id}
               className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4"
             >
               <p className="text-2xl sm:text-3xl font-black text-white">
-                <Counter
-                  end={stat.value}
-                  suffix={stat.suffix}
-                />
+                <Counter end={size.count} suffix="+" />
               </p>
-              <p className="text-xs text-white/60 mt-0.5">
-                {stat.label}
-              </p>
+              <p className="text-xs text-white/60 mt-0.5">{size.label}</p>
             </div>
           ))}
         </div>
@@ -472,7 +445,7 @@ function AboutSection() {
             <Shield className="w-8 h-8 text-[#0C2461] mb-4" />
             <h3 className="text-lg font-bold text-gray-800 mb-2">Region XII Coverage</h3>
             <p className="text-gray-500 text-sm leading-relaxed">
-              This aiSETUP portal serves MSMEs in South Cotabato, Cotabato, Sultan Kudarat,
+              This AiSETUP portal serves MSMEs in South Cotabato, Cotabato, Sultan Kudarat,
               Sarangani, and General Santos City — with provincial S&amp;T centers across
               SOCCSKSARGEN.
             </p>
@@ -487,7 +460,20 @@ function AboutSection() {
   );
 }
 
-const SECTOR_ICONS = [Leaf, Utensils, Wrench, Gem, Fish, Ship, HeartPulse, Cpu, Tractor];
+const SECTOR_ICONS = [
+  Leaf,
+  Utensils,
+  Wrench,
+  Gem,
+  Fish,
+  Ship,
+  HeartPulse,
+  Cpu,
+  Tractor,
+  Building2,
+  Factory,
+  Package,
+] as const;
 
 function PrioritySectorsSection() {
   return (
@@ -505,17 +491,24 @@ function PrioritySectorsSection() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SETUP_PRIORITY_SECTORS.map((sector, i) => {
-            const Icon = SECTOR_ICONS[i] ?? Building2;
+          {SETUP_PRIORITY_SECTOR_CATALOG.map((entry, i) => {
+            const Icon = SECTOR_ICONS[i % SECTOR_ICONS.length] ?? Building2;
             return (
               <div
-                key={sector}
+                key={entry.id}
                 className="card-hover flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#0C2461]/10 flex items-center justify-center shrink-0">
                   <Icon className="w-5 h-5 text-[#0C2461]" />
                 </div>
-                <p className="text-sm font-semibold text-gray-700 leading-snug">{sector}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-700 leading-snug">
+                    {entry.label}
+                  </p>
+                  <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
+                    {entry.description}
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -597,7 +590,7 @@ function EligibilitySection() {
               Documents required
             </h2>
             <p className="text-xs text-white/60 mb-3">
-              Prepare these before submitting your Letter of Intent through aiSETUP:
+              Prepare these before submitting your Letter of Intent through AiSETUP:
             </p>
             <ul className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {SETUP_DOCUMENTS_REQUIRED.map((doc) => (
@@ -875,7 +868,7 @@ function ProcessSection({ onLogin }: { onLogin: () => void }) {
     {
       n: "02",
       label: "Sign In",
-      desc: "Sign in with your registered email and password to access the aiSETUP application portal.",
+      desc: "Sign in with your registered email and password to access the AiSETUP application portal.",
     },
     {
       n: "03",
@@ -963,7 +956,7 @@ function ProcessSection({ onLogin }: { onLogin: () => void }) {
             onClick={onLogin}
             className="text-[#0C2461] font-bold hover:underline"
           >
-            Sign in to open aiSETUP →
+            Sign in to open AiSETUP →
           </button>
         </p>
       </div>
@@ -1092,7 +1085,7 @@ function CTASection({
 
 // ── Footer ────────────────────────────────────────────────────────────────────
 
-function Footer({ onStaffLogin }: { onStaffLogin: () => void }) {
+function Footer({ onLogin }: { onLogin: () => void }) {
   return (
     <footer className="bg-gradient-to-br from-[#0C2461] to-[#1a3a7a] text-white py-12 border-t border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -1106,7 +1099,7 @@ function Footer({ onStaffLogin }: { onStaffLogin: () => void }) {
               </p>
             </div>
             <div className="flex items-center gap-1 mb-2">
-              <span className="font-black text-base text-white">ai</span>
+              <span className="font-black text-base text-white">Ai</span>
               <span className="font-black text-base text-[#00AEEF]">SETUP</span>
               <span className="text-xs text-white/50 ml-2">SETUP 4.0 Portal</span>
             </div>
@@ -1156,11 +1149,10 @@ function Footer({ onStaffLogin }: { onStaffLogin: () => void }) {
               <li>
                 <button
                   type="button"
-                  onClick={onStaffLogin}
-                  className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors font-semibold"
+                  onClick={onLogin}
+                  className="text-xs text-[#00AEEF] hover:text-sky-300 transition-colors font-semibold"
                 >
-                  <Shield className="w-3 h-3" />
-                  DOST Staff Portal
+                  Sign In
                 </button>
               </li>
               {[
@@ -1203,7 +1195,7 @@ function Footer({ onStaffLogin }: { onStaffLogin: () => void }) {
 
         <div className="border-t border-white/15 pt-5 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-white/50">
-            Powered by aiSETUP Platform — Built with ❤️ for
+            Powered by AiSETUP Platform — Built with ❤️ for
             Filipino MSMEs
           </p>
           <div className="flex gap-4 text-xs text-white/50">
@@ -1227,7 +1219,6 @@ function Footer({ onStaffLogin }: { onStaffLogin: () => void }) {
 
 export function LandingPage({
   onLogin,
-  onStaffLogin,
   onRegister,
 }: LandingPageProps) {
   return (
@@ -1237,7 +1228,7 @@ export function LandingPage({
         fontFamily: "'Segoe UI', system-ui, sans-serif",
       }}
     >
-      <Navbar onLogin={onLogin} onStaffLogin={onStaffLogin} onRegister={onRegister} />
+      <Navbar onLogin={onLogin} onRegister={onRegister} />
       <HeroSection onRegister={onRegister} />
       <AboutSection />
       <PrioritySectorsSection />
@@ -1248,7 +1239,7 @@ export function LandingPage({
       <ContactOfficesSection />
       <FAQSection />
       <CTASection onRegister={onRegister} />
-      <Footer onStaffLogin={onStaffLogin} />
+      <Footer onLogin={onLogin} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ export type ApiRole =
   | "agent"
   | "provincial-director"
   | "regional-director"
+  | "rtec-staff"
   | "admin";
 
 export interface ApiAuthResponse {
@@ -35,7 +36,8 @@ export type ApiStaffRole =
   | "admin"
   | "agent"
   | "provincial-director"
-  | "regional-director";
+  | "regional-director"
+  | "rtec-staff";
 
 export interface ApiStaffUser {
   id: string;
@@ -366,7 +368,9 @@ export type ProjectProposalAttachmentKind =
   | "vicinityMap"
   | "plantLayout"
   | "orgChart"
-  | "financialReports";
+  | "financialReports"
+  | "productionPlan"
+  | "processFlow";
 
 export interface ProjectProposalAttachment {
   id: string;
@@ -453,6 +457,7 @@ export interface ProjectProposalForm {
   productPriceTable: string[][];
   distributionChannel: string;
   competitors: string;
+  competitorsTable: string[][];
   existingMarketingProblems: string;
   marketStrategies: string[];
   productionProcess: string;
@@ -671,6 +676,7 @@ export interface AiFieldSuggestionResponse {
   field: string;
   text?: string;
   bullets?: string[];
+  riskRows?: ProjectProposalRiskRow[];
   aiGenerated: boolean;
 }
 
@@ -990,10 +996,23 @@ export interface WithdrawalLetterDraft {
 
 export type WithdrawalTrancheStatus = "draft" | "sent" | "signed" | "complete";
 
-export interface WithdrawalTranchePackage {
-  tranche: 1 | 2;
-  supplierName: string;
+export type WithdrawalTrancheNum = 1 | 2 | 3;
+
+export interface WithdrawalSupplierBlock {
+  id: string;
+  name: string;
   equipment: WithdrawalEquipmentRow[];
+}
+
+export interface WithdrawalTranchePackage {
+  tranche: WithdrawalTrancheNum;
+  suppliers: WithdrawalSupplierBlock[];
+  /** Supplier block used when generating the letter request */
+  selectedSupplierId: string | null;
+  /** @deprecated Migrated into `suppliers` on read */
+  supplierName?: string;
+  /** @deprecated Migrated into `suppliers` on read */
+  equipment?: WithdrawalEquipmentRow[];
   letterDraft?: WithdrawalLetterDraft;
   /** Signed letter request uploaded after client signs */
   signedLetter?: ModuleDocument | null;
@@ -1015,6 +1034,7 @@ export interface LandBankForm {
   tranches: {
     first: WithdrawalTranchePackage;
     second: WithdrawalTranchePackage;
+    third: WithdrawalTranchePackage;
   };
 }
 
@@ -1085,8 +1105,34 @@ export interface ProcurementForm {
   untaggedAt?: string;
 }
 
+/** DOST → LandBank Letter to Untag (Module 16) */
+export interface UntagLetterForm {
+  letterDate: string;
+  branchManagerName: string;
+  branchManagerTitle: string;
+  landbankBranch: string;
+  branchCityProvince: string;
+  proponentName: string;
+  enterpriseName: string;
+  projectTitle: string;
+  accountNumber: string;
+  signatoryName: string;
+  signatoryTitle: string;
+  regionalOfficeName: string;
+}
+
+export interface UntagLetterStored {
+  form: UntagLetterForm;
+  published: boolean;
+  publishedAt?: string;
+  publishedBy?: string;
+  updatedAt?: string;
+}
+
 export interface ProcurementStored {
   form: ProcurementForm;
+  /** Nested DOST Letter to Untag (publish-gated for applicants). */
+  untagLetter?: UntagLetterStored;
   submitted?: boolean;
   submittedAt?: string;
   submittedBy?: string;

@@ -44,6 +44,8 @@ export const PROPOSAL_ATTACHMENT_LABELS: Record<
   plantLayout: "Proposed plant layout",
   orgChart: "Organizational chart",
   financialReports: "Financial statements / reports",
+  productionPlan: "Production plan document",
+  processFlow: "Process flow diagram",
 };
 
 export const REQUIRED_ATTACHMENTS: ProjectProposalAttachmentKind[] = [
@@ -145,6 +147,44 @@ export function formatRiskAndAssumptions(row: ProjectProposalRiskRow): string {
   const assumption = (row.assumption ?? "").trim();
   if (risk && assumption) return `${risk}; ${assumption}`;
   return risk || assumption;
+}
+
+function riskCellBlank(value: string | undefined): boolean {
+  return !String(value ?? "").trim();
+}
+
+function firstNonBlankRiskCell(existing: string, suggested: string): string {
+  return riskCellBlank(existing) ? String(suggested ?? "").trim() : existing;
+}
+
+/** Merge AI-suggested risk rows without overwriting user-entered cells. */
+export function mergeRiskRowsFillEmpty(
+  existing: ProjectProposalRiskRow[],
+  suggested: ProjectProposalRiskRow[],
+): ProjectProposalRiskRow[] {
+  const merged = existing.map((row, index) => {
+    const suggestion = suggested[index];
+    if (!suggestion) return normalizeRiskRow(row);
+    return normalizeRiskRow({
+      id: row.id,
+      objective: firstNonBlankRiskCell(row.objective, suggestion.objective),
+      risk: firstNonBlankRiskCell(row.risk, suggestion.risk),
+      assumption: firstNonBlankRiskCell(row.assumption, suggestion.assumption),
+      plan: firstNonBlankRiskCell(row.plan, suggestion.plan),
+    });
+  });
+  for (let index = existing.length; index < suggested.length; index++) {
+    const suggestion = suggested[index];
+    merged.push(
+      normalizeRiskRow({
+        objective: suggestion.objective,
+        risk: suggestion.risk,
+        assumption: suggestion.assumption,
+        plan: suggestion.plan,
+      }),
+    );
+  }
+  return merged;
 }
 
 function parseHeadcount(value: string | undefined): number {
@@ -293,6 +333,7 @@ export function emptyProjectProposalForm(): ProjectProposalForm {
     productPriceTable: [["", ""]],
     distributionChannel: "",
     competitors: "",
+    competitorsTable: [["", ""]],
     existingMarketingProblems: "",
     marketStrategies: [""],
     productionProcess: "",
@@ -686,6 +727,10 @@ export function buildProjectProposalDraft(
       : [["", "", ""]],
     distributionChannel: String(form.marketOutlets ?? "").trim() || "Local",
     competitors: String(form.marketCompetitors ?? ""),
+    competitorsTable: (() => {
+      const mc = String(form.marketCompetitors ?? "").trim();
+      return mc ? [[mc, ""]] : [["", ""]];
+    })(),
     existingMarketingProblems: "",
     marketStrategies: (() => {
       const fromTna = [form.marketingPlan, form.promotionalStrategies]
@@ -782,6 +827,7 @@ function mergeProposalForm(
     if (cur === undefined || cur === null) continue;
     if (typeof cur === "string" && cur.trim() === "") continue;
     if (key === "volumeOfOrdersTable" && isBlankStringTable(cur)) continue;
+    if (key === "competitorsTable" && isBlankStringTable(cur)) continue;
     if (
       Array.isArray(cur) &&
       cur.length === 1 &&
@@ -808,6 +854,10 @@ function mergeProposalForm(
   merged.riskRows = (merged.riskRows ?? []).map((row) => normalizeRiskRow(row));
   merged.refundSchedule = normalizeRefundSchedule(merged.refundSchedule);
   merged.scheduleTable = normalizeScheduleTable(merged.scheduleTable);
+  merged.competitorsTable = normalizeCompetitorsTable(
+    merged.competitorsTable,
+    merged.competitors,
+  );
   merged.netProfitMarginTable = merged.netProfitMarginTable?.length
     ? merged.netProfitMarginTable
     : [
@@ -866,9 +916,70 @@ export function getProjectProposalAttachments(
   applicant: Applicant | null,
 ): ProjectProposalAttachment[] {
   const attachments = getProjectProposalStored(applicant)?.attachments;
-  if (Array.isArray(attachments)) return attachments;
-  if (attachments) return [attachments];
-  return [];
+  const base = Array.isArray(attachments)
+    ? attachments
+    : attachments
+      ? [attachments]
+      : [];
+  return mergeProposalAttachmentsFromTna(applicant, base);
+}
+
+const TNA_TO_PROPOSAL_ATTACHMENT_MAP: {
+  kind: ProjectProposalAttachmentKind;
+  fileNameKey: string;
+  fileDataKey: string;
+  fileIdKey: string;
+  mimeKey: string;
+}[] = [
+  {
+    kind: "productionPlan",
+    fileNameKey: "productionPlanFileName",
+    fileDataKey: "productionPlanFileData",
+    fileIdKey: "productionPlanFileId",
+    mimeKey: "productionPlanFileMime",
+  },
+  {
+    kind: "plantLayout",
+    fileNameKey: "plantLayoutFileName",
+    fileDataKey: "plantLayoutFileData",
+    fileIdKey: "plantLayoutFileId",
+    mimeKey: "plantLayoutFileMime",
+  },
+  {
+    kind: "processFlow",
+    fileNameKey: "processFlowFileName",
+    fileDataKey: "processFlowFileData",
+    fileIdKey: "processFlowFileId",
+    mimeKey: "processFlowFileMime",
+  },
+];
+
+/** Prefill empty proposal attachment slots from TNA Form 01 uploads. */
+export function mergeProposalAttachmentsFromTna(
+  applicant: Applicant | null,
+  existing: ProjectProposalAttachment[],
+): ProjectProposalAttachment[] {
+  if (!applicant) return existing;
+  const { form } = getTna1Data(applicant);
+  const result = [...existing];
+
+  for (const mapping of TNA_TO_PROPOSAL_ATTACHMENT_MAP) {
+    if (result.some((a) => a.kind === mapping.kind)) continue;
+    const fileName = String(form[mapping.fileNameKey] ?? "").trim();
+    if (!fileName) continue;
+    const dataUrl = String(form[mapping.fileDataKey] ?? "").trim();
+    result.push({
+      id: uid(),
+      kind: mapping.kind,
+      fileName,
+      mimeType: String(form[mapping.mimeKey] ?? ""),
+      dataUrl: dataUrl || undefined,
+      fileId: String(form[mapping.fileIdKey] ?? "").trim() || undefined,
+      uploadedAt: new Date().toISOString(),
+    });
+  }
+
+  return result;
 }
 
 export function saveProjectProposalDraft(
@@ -986,6 +1097,16 @@ export function buildProjectProposalGenerationPayload(
     form,
     attachmentKinds: attachments.map((a) => a.kind),
   };
+}
+
+export function buildLocalRiskRowsSuggestion(
+  applicant: Applicant,
+  form: ProjectProposalForm,
+  attachments: ProjectProposalAttachment[],
+): ProjectProposalRiskRow[] {
+  const payload = buildProjectProposalGenerationPayload(applicant, form, attachments);
+  const doc = buildLocalProjectProposalDocument(payload);
+  return (doc.riskRows ?? []).map((row) => normalizeRiskRow(row));
 }
 
 export function buildLocalProjectProposalDocument(
@@ -1556,6 +1677,35 @@ export function normalizeRawMaterialAllocationRow(row: unknown): string[] {
   const cells = [...raw];
   while (cells.length < RAW_MATERIAL_ALLOCATION_COL_COUNT) cells.push("");
   return cells.slice(0, RAW_MATERIAL_ALLOCATION_COL_COUNT);
+}
+
+export const COMPETITORS_COL_COUNT = 2;
+
+export function emptyCompetitorsRow(): string[] {
+  return Array(COMPETITORS_COL_COUNT).fill("");
+}
+
+export function normalizeCompetitorsRow(row: unknown): string[] {
+  const raw = Array.isArray(row) ? row.map((c) => String(c ?? "")) : [];
+  const cells = [...raw];
+  while (cells.length < COMPETITORS_COL_COUNT) cells.push("");
+  return cells.slice(0, COMPETITORS_COL_COUNT);
+}
+
+export function normalizeCompetitorsTable(
+  rows: string[][] | undefined,
+  legacyCompetitors?: string,
+): string[][] {
+  const list = rows?.length ? rows.map((row) => normalizeCompetitorsRow(row)) : [];
+  const hasContent = list.some((row) => row.some((cell) => cell.trim()));
+  if (hasContent) return list;
+  const legacy = String(legacyCompetitors ?? "").trim();
+  if (legacy) return [[legacy, ""]];
+  return [emptyCompetitorsRow()];
+}
+
+export function competitorsTableHasRows(rows: string[][] | undefined): boolean {
+  return (rows ?? []).some((row) => row.some((cell) => String(cell ?? "").trim()));
 }
 
 export function normalizeRawMaterialAllocationTable(

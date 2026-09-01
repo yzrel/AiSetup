@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 
 /**
  * Shared "try AI, fall back to template" wrapper for the document generation
- * services. AI is optional in aiSETUP: any failure (missing key, timeout,
+ * services. AI is optional in AiSETUP: any failure (missing key, timeout,
  * empty output) downgrades to the deterministic template result.
  */
 public final class AiTemplateFallback {

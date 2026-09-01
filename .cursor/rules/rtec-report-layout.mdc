@@ -31,6 +31,10 @@ alwaysApply: false
 
 Cover + cost split → I. Brief description (company profile with checkbox grids, objectives, expected outputs) → II. Compliance → III. Highlights (management, technical, marketing, financial, waste, risk) → IV. Recommendation + signatures.
 
+## Section II — Compliance (financial row)
+
+The **financial** compliance row (`RTEC_COMPLIANCE_ITEMS` id `financial` in `rtecReport.ts`) is the **only** portal surface that states the SETUP Guidelines Micro vs SME year rule (1 year for micro, 3 years for small/medium). Do not duplicate that Micro exception on applicant upload labels or brochure copy — see **Financial statements (historical)** in [aisetup-project.mdc](aisetup-project.mdc).
+
 ## Shared checkbox grids
 
 Company profile reuses `PP_ORGANIZATION_TYPES`, `PP_PROFIT_TYPES`, `PP_MSME_SIZES`, `PP_BUSINESS_ACTIVITY_PAIRS` from project proposal layout via `isOptionChecked()`. Registration offices include **LGU** (`RTEC_REGISTRATION_OFFICES`).

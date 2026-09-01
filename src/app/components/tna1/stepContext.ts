@@ -20,11 +20,13 @@ export type TnaFormState = ReturnType<typeof buildInitialTnaForm> &
 export type TnaTables = typeof EMPTY_TNA_TABLES;
 
 export interface Tna1Doc {
+  id: string;
   name: string;
   required: boolean;
   uploaded: boolean;
   verified: boolean;
   flagged: boolean;
+  remark: string;
   file: string | null;
 }
 
@@ -84,6 +86,11 @@ export interface Tna1StepContext {
   setDocs: Dispatch<SetStateAction<Tna1Doc[]>>;
   uploadedDocs: Tna1Doc[];
   allDocReviewed: boolean;
+  persistDocReview: (
+    nextDocs: Tna1Doc[],
+    opts?: { notifyDocId?: string },
+  ) => void;
+  notifyDocRemarkDebounced: (docId: string, remark: string) => void;
 
   // Validation
   allGA: boolean;

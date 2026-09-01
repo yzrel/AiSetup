@@ -38,7 +38,8 @@ public class UserPrincipal implements UserDetails {
         return "admin".equals(role)
                 || "agent".equals(role)
                 || "provincial-director".equals(role)
-                || "regional-director".equals(role);
+                || "regional-director".equals(role)
+                || "rtec-staff".equals(role);
     }
 
     public boolean isAdmin() {

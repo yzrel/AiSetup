@@ -39,7 +39,7 @@ export function SubmittedFileActions({
     return (
       <span
         className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg"
-        title="Only the filename was saved. Ask the client to re-upload for preview."
+        title="Only the filename was saved. Ask the cooperator to re-upload for preview."
       >
         Content unavailable
       </span>

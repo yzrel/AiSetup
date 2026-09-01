@@ -7,7 +7,6 @@
  * via POST /mail/send (best-effort, non-blocking).
  */
 
-import { api } from "../api/client";
 import { AdminView, AuthUser, authStore } from "../store/authStore";
 import { Applicant, applicantStore } from "../store/applicantStore";
 import {
@@ -17,6 +16,7 @@ import {
 } from "../store/emailOutboxStore";
 import { notificationStore } from "../store/notificationStore";
 import { resolveApplicantOfficeId } from "./provincialOffice";
+import { deliverViaSmtpBestEffort } from "./smtpDelivery";
 // TEMP: restore with PSTO / records email delivery:
 // import { getOfficeContact, resolveApplicantOfficeId } from "./provincialOffice";
 import type { SignedDocumentValue } from "../components/SignedDocumentUpload";
@@ -25,13 +25,6 @@ import { normalizeSignedDocumentsMap } from "./normalizeCriticalModuleData";
 
 // TEMP: restore when PSTO / regional records should receive mail again.
 // const REGIONAL_RECORDS_EMAIL = "records@region12.dost.gov.ph";
-
-/** Cache /health smtpEnabled so document sends do not hit health every time. */
-const SMTP_CACHE_MS = 60_000;
-let smtpEnabledCache: { value: boolean; at: number } | null = null;
-
-/** Stay under Gmail’s ~25 MB message limit for inline (non-fileId) payloads. */
-const MAX_INLINE_BASE64_CHARS = Math.floor(15 * 1024 * 1024 * 1.37);
 
 export interface SignedDocumentRecord extends SignedDocumentValue {
   signedDate?: string;
@@ -60,69 +53,6 @@ function dostRecipients(applicant: Applicant): {
 function notificationView(moduleKey: string): AdminView {
   if (moduleKey.startsWith("withdrawal-request")) return "landbank-withdrawal";
   return (moduleKey as AdminView) || "landbank-withdrawal";
-}
-
-async function isSmtpEnabled(): Promise<boolean> {
-  const now = Date.now();
-  if (smtpEnabledCache && now - smtpEnabledCache.at < SMTP_CACHE_MS) {
-    return smtpEnabledCache.value;
-  }
-  try {
-    const health = await api.health();
-    smtpEnabledCache = { value: !!health.smtpEnabled, at: now };
-    return smtpEnabledCache.value;
-  } catch {
-    smtpEnabledCache = { value: false, at: now };
-    return false;
-  }
-}
-
-function attachmentsForApi(attachments: OutboxAttachment[]) {
-  return attachments.map((a) => {
-    const payload: {
-      fileName?: string;
-      mimeType?: string;
-      fileId?: string;
-      contentBase64?: string;
-    } = {
-      fileName: a.fileName,
-      mimeType: a.mimeType,
-    };
-    if (a.fileId) {
-      payload.fileId = a.fileId;
-    } else if (a.dataUrl) {
-      const raw = a.dataUrl.includes(",")
-        ? a.dataUrl.slice(a.dataUrl.indexOf(",") + 1)
-        : a.dataUrl;
-      if (raw.length <= MAX_INLINE_BASE64_CHARS) {
-        payload.contentBase64 = a.dataUrl;
-      }
-    }
-    return payload;
-  });
-}
-
-/** Fire-and-forget SMTP delivery; outbox remains the audit trail either way. */
-function deliverViaSmtpBestEffort(email: OutboxEmail): void {
-  void (async () => {
-    if (!email.to.length) return;
-    if (!(await isSmtpEnabled())) return;
-    try {
-      await api.sendMail({
-        to: email.to,
-        cc: email.cc.length ? email.cc : undefined,
-        subject: email.subject,
-        body: email.body,
-        applicantId: email.applicantId,
-        attachments: attachmentsForApi(email.attachments),
-      });
-    } catch (err) {
-      console.warn(
-        "[documentDelivery] SMTP send failed; outbox entry kept",
-        err,
-      );
-    }
-  })();
 }
 
 /** True when the outbox attachment has payload bytes (fileId or data URL). */
@@ -175,15 +105,15 @@ function printableBody(options: {
   } = options;
   const main = hasAttachment
     ? `Please find attached the ${documentTitle} of ${enterpriseName} ` +
-      `(Application ID: ${applicationId}) submitted through the aiSETUP system.`
+      `(Application ID: ${applicationId}) submitted through the AiSETUP system.`
     : `This notice concerns the ${documentTitle} of ${enterpriseName} ` +
-      `(Application ID: ${applicationId}) submitted through the aiSETUP system. ` +
-      `No file is attached to this email — open the document in the aiSETUP portal if needed.`;
+      `(Application ID: ${applicationId}) submitted through the AiSETUP system. ` +
+      `No file is attached to this email — open the document in the AiSETUP portal if needed.`;
   return (
     `${greeting}\n\n` +
     `${main}\n\n` +
     `${closingNote}\n\n` +
-    `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`
+    `Respectfully,\nAiSETUP — DOST SOCCSKSARGEN`
   );
 }
 
@@ -216,7 +146,7 @@ export function sendPrintableToDost(options: {
     kind: "printable",
     to,
     cc,
-    subject: `AiSetup ${documentTitle} — ${applicant.enterpriseName} (${applicant.applicationId})`,
+    subject: `AiSETUP ${documentTitle} — ${applicant.enterpriseName} (${applicant.applicationId})`,
     body: printableBody({
       greeting: "Good day,",
       documentTitle,
@@ -284,7 +214,7 @@ export function sendPrintableToClient(options: {
     kind: "printable",
     to: clientEmail ? [clientEmail] : [],
     cc: [],
-    subject: `AiSetup Please sign — ${documentTitle} (${applicant.applicationId})`,
+    subject: `AiSETUP Please sign — ${documentTitle} (${applicant.applicationId})`,
     body: printableBody({
       greeting: `Good day ${applicant.applicantName},`,
       documentTitle,
@@ -292,7 +222,7 @@ export function sendPrintableToClient(options: {
       applicationId: applicant.applicationId,
       hasAttachment: realAttachment,
       closingNote:
-        "Kindly print, sign, and upload the signed copy back through aiSETUP.",
+        "Kindly print, sign, and upload the signed copy back through AiSETUP.",
     }),
     attachments: realAttachment ? [resolved] : [],
     sentBy: user?.email ?? applicant.emailAddress,
@@ -410,14 +340,14 @@ export function saveSignedDocumentWithReceipts(options: {
     kind: "signed-receipt",
     to: applicant.emailAddress ? [applicant.emailAddress] : [],
     cc: [],
-    subject: `AiSetup Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
+    subject: `AiSETUP Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
     body:
       `Good day ${applicant.applicantName},\n\n` +
       `This confirms that the signed ${documentTitle} for ${applicant.enterpriseName} ` +
       `(Application ID: ${applicant.applicationId}) was uploaded by ${uploaderLabel} ` +
       `on ${new Date(document.uploadedAt).toLocaleString("en-PH")} and is now on file.\n\n` +
       `Keep this email as your receipt / proof of delivery.\n\n` +
-      `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`,
+      `Respectfully,\nAiSETUP — DOST SOCCSKSARGEN`,
     attachments: realAttachment ? [attachment] : [],
     sentBy: user?.email ?? applicant.emailAddress,
     applicantId: applicant.id,
@@ -429,18 +359,18 @@ export function saveSignedDocumentWithReceipts(options: {
   // TEMP: clients only — do not email signed-copy receipts to PSTO / records.
   // const staffAttachNote = realAttachment
   //   ? " The document is attached for your records."
-  //   : " Open the signed file in the aiSETUP portal for your records.";
+  //   : " Open the signed file in the AiSETUP portal for your records.";
   // const staffReceipt = emailOutboxStore.send({
   //   kind: "signed-receipt",
   //   to,
   //   cc: [],
-  //   subject: `AiSetup Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
+  //   subject: `AiSETUP Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
   //   body:
   //     `Good day,\n\n` +
   //     `The signed ${documentTitle} of ${applicant.enterpriseName} ` +
   //     `(Application ID: ${applicant.applicationId}) was uploaded by ${uploaderLabel}.` +
   //     `${staffAttachNote}\n\n` +
-  //     `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`,
+  //     `Respectfully,\nAiSETUP — DOST SOCCSKSARGEN`,
   //   attachments: realAttachment ? [attachment] : [],
   //   sentBy: user?.email ?? applicant.emailAddress,
   //   applicantId: applicant.id,
@@ -501,7 +431,7 @@ export function sendSignedMoaReceiptsToDost(options: {
     kind: "signed-receipt",
     to: applicant.emailAddress ? [applicant.emailAddress] : [],
     cc: [],
-    subject: `AiSetup Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
+    subject: `AiSETUP Receipt — Signed ${documentTitle} on file (${applicant.applicationId})`,
     body:
       `Good day ${applicant.applicantName},\n\n` +
       `This confirms that the signed ${documentTitle} for ${applicant.enterpriseName} ` +
@@ -512,7 +442,7 @@ export function sendSignedMoaReceiptsToDost(options: {
         : "") +
       (document.notes ? `Notes: ${document.notes}\n` : "") +
       `\nKeep this email as your receipt / proof of delivery.\n\n` +
-      `Respectfully,\naiSETUP — DOST SOCCSKSARGEN`,
+      `Respectfully,\nAiSETUP — DOST SOCCSKSARGEN`,
     attachments: realAttachment ? [attachment] : [],
     sentBy: user?.email ?? applicant.emailAddress,
     applicantId: applicant.id,
@@ -524,12 +454,12 @@ export function sendSignedMoaReceiptsToDost(options: {
   // TEMP: clients only — do not email MOA receipts to PSTO / records.
   // const staffMoaAttachNote = realAttachment
   //   ? " The document is attached for your records."
-  //   : " Open the signed file in the aiSETUP portal for your records.";
+  //   : " Open the signed file in the AiSETUP portal for your records.";
   // const staffMoaReceipt = emailOutboxStore.send({
   //   kind: "signed-receipt",
   //   to,
   //   cc: [],
-  //   subject: `AiSetup Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
+  //   subject: `AiSETUP Signed ${documentTitle} uploaded — ${applicant.enterpriseName} (${applicant.applicationId})`,
   //   body:
   //     `Good day,\n\n` +
   //     `The signed ${documentTitle} of ${applicant.enterpriseName} ` +
@@ -539,7 +469,7 @@ export function sendSignedMoaReceiptsToDost(options: {
   //       ? `MOA signed date: ${document.signedDate}.\n`
   //       : "") +
   //     (document.notes ? `Notes: ${document.notes}\n` : "") +
-  //     `\nRespectfully,\naiSETUP — DOST SOCCSKSARGEN`,
+  //     `\nRespectfully,\nAiSETUP — DOST SOCCSKSARGEN`,
   //   attachments: realAttachment ? [attachment] : [],
   //   sentBy: user?.email ?? applicant.emailAddress,
   //   applicantId: applicant.id,

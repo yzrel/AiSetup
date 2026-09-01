@@ -1,7 +1,7 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Shared A4 page sizing for printable documents across aiSETUP.
+ * Shared A4 page sizing for printable documents across AiSETUP.
  */
 
 /** ISO 216 A4 dimensions */

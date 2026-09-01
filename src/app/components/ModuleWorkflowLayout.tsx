@@ -190,7 +190,7 @@ export function ModuleWorkflowLayout({
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-800 font-black text-sm">ai</span>
+              <span className="text-blue-800 font-black text-sm">Ai</span>
             </div>
             <ModuleFormHeader
               title={title}

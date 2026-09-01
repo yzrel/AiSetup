@@ -633,7 +633,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         <div className={`${MODULE_HEADER} text-white`} style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-              <span className="text-blue-800 font-black text-sm">ai</span>
+              <span className="text-blue-800 font-black text-sm">Ai</span>
             </div>
             <div>
               <h1 className="text-xl font-black">Letter of Intent</h1>
@@ -1431,7 +1431,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
               <h3 className="font-black text-green-800 text-lg">Letter of Intent Generated!</h3>
               <p className="text-sm text-green-600 mt-1">
-                Your LOI has been submitted and recorded in the DOST aiSETUP system. Reference: <strong>{applicant?.applicationId}</strong>
+                Your LOI has been submitted and recorded in the DOST AiSETUP system. Reference: <strong>{applicant?.applicationId}</strong>
               </p>
               {hasProgram && (
                 <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-3 text-left">

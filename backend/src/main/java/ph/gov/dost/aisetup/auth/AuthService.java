@@ -36,7 +36,7 @@ import ph.gov.dost.aisetup.persistence.ApplicantRecordRepository;
 public class AuthService {
 
     private static final List<String> STAFF_ROLES =
-            List.of("admin", "agent", "provincial-director", "regional-director");
+            List.of("admin", "agent", "provincial-director", "regional-director", "rtec-staff");
 
     private final UserAccountRepository userAccountRepository;
     private final ApplicantRecordRepository applicantRecordRepository;
@@ -359,7 +359,7 @@ public class AuthService {
         String role = raw.trim().toLowerCase(Locale.ROOT);
         if (!STAFF_ROLES.contains(role)) {
             throw new IllegalArgumentException(
-                    "Staff role must be admin, agent, provincial-director, or regional-director");
+                    "Staff role must be admin, agent, provincial-director, regional-director, or rtec-staff");
         }
         return role;
     }

@@ -6,6 +6,7 @@
  */
 
 import { useRef } from "react";
+import { InlineAttachmentPreview } from "../InlineAttachmentPreview";
 import { readAndUploadModuleDocument } from "../../utils/readFileAsDataUrl";
 export { ValidationRow } from "../ValidationRow";
 
@@ -75,6 +76,9 @@ export function FileAttachmentField({
   label,
   accept = ".pdf,.jpg,.jpeg,.png,.doc,.docx",
   fileName,
+  fileData,
+  fileId,
+  mimeType,
   onFile,
   hint,
   applicantId,
@@ -83,6 +87,9 @@ export function FileAttachmentField({
   label: string;
   accept?: string;
   fileName: string;
+  fileData?: string;
+  fileId?: string;
+  mimeType?: string;
   onFile: (
     name: string,
     dataUrl: string,
@@ -130,7 +137,18 @@ export function FileAttachmentField({
           }}
         />
         {fileName ? (
-          <p className="text-sm font-medium text-[#0C2461]">📎 {fileName}</p>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-[#0C2461]">📎 {fileName}</p>
+            <InlineAttachmentPreview
+              fileName={fileName}
+              dataUrl={fileData}
+              fileId={fileId}
+              mimeType={mimeType}
+              applicantId={applicantId}
+              moduleKey={moduleKey}
+              alt={label || fileName}
+            />
+          </div>
         ) : (
           <p className="text-sm text-gray-500">Click to upload (PDF, image, or document)</p>
         )}

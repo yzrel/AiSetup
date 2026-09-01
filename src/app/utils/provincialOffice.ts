@@ -78,6 +78,7 @@ export function getApplicantsForStaff(user: AuthUser | null): Applicant[] {
     "regional-director",
     "agent",
     "provincial-director",
+    "rtec-staff",
   ];
   if (!user || !staffRoles.includes(user.role)) {
     return all;

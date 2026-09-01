@@ -1,8 +1,8 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * Sent Emails view — shows the email outbox (printables sent to DOST and
- * signed-document receipts). Staff see office-scoped traffic with client
+ * Sent Emails view — shows the email outbox (status notices, printables,
+ * and signed-document receipts). Staff see office-scoped traffic with client
  * filtering; under Administration. Banner reflects live SMTP vs local-only.
  */
 
@@ -65,9 +65,13 @@ function OutboxAttachmentRow({
 }
 
 function kindBadge(kind: OutboxEmail["kind"]) {
-  return kind === "printable"
-    ? { label: "Printable", cls: "bg-blue-100 text-blue-800" }
-    : { label: "Signed receipt", cls: "bg-emerald-100 text-emerald-800" };
+  if (kind === "printable") {
+    return { label: "Printable", cls: "bg-blue-100 text-blue-800" };
+  }
+  if (kind === "signed-receipt") {
+    return { label: "Signed receipt", cls: "bg-emerald-100 text-emerald-800" };
+  }
+  return { label: "Status", cls: "bg-amber-100 text-amber-900" };
 }
 
 function clientLabel(applicantId?: string): string {
@@ -172,7 +176,7 @@ export function EmailOutbox({ user }: { user: AuthUser }) {
             <div>
               <h1 className="text-xl font-black">Sent Emails</h1>
               <p className="text-white/60 text-sm">
-                Documents and receipts emailed through aiSETUP — filter by client
+                Documents and receipts emailed through AiSETUP — filter by cooperator
               </p>
             </div>
           </div>
@@ -210,7 +214,7 @@ export function EmailOutbox({ user }: { user: AuthUser }) {
                   onChange={(e) => setClientFilter(e.target.value)}
                   className="w-full pl-10 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 appearance-none bg-white"
                 >
-                  <option value="all">All clients</option>
+                  <option value="all">All cooperators</option>
                   <option value="unlinked">Unlinked / system</option>
                   {clientOptions.map((opt) => (
                     <option key={opt.id} value={opt.id}>
@@ -231,7 +235,7 @@ export function EmailOutbox({ user }: { user: AuthUser }) {
               <p className="text-xs mt-1">
                 {emails.length === 0
                   ? "Emails appear here when documents are sent to DOST or signed copies are uploaded."
-                  : "Try another client or clear the search."}
+                  : "Try another cooperator or clear the search."}
               </p>
             </div>
           ) : (

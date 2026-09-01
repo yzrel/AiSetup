@@ -27,6 +27,7 @@ import {
   PP_SCHEDULE_WEEKS_PER_MONTH,
   PP_VOLUME_OF_ORDERS_COLUMNS,
   PP_VOLUME_OF_ORDERS_SAMPLE_ROWS,
+  PP_COMPETITORS_COLUMNS,
   companyProfileEmployeeTotals,
   companyProfileMsmeSizeLabel,
   formatCompanyProfileMsmeSize,
@@ -40,14 +41,18 @@ import {
   buildLocalProjectProposalDocument,
   buildProjectProposalDraft,
   companyProfileMsmeSizeLabelFromApplicant,
+  competitorsTableHasRows,
   deriveDirectEmploymentCounts,
   emptyProjectProposalForm,
   formatRiskAndAssumptions,
+  mergeRiskRowsFillEmpty,
   isScheduleMonthChecked,
+  normalizeCompetitorsTable,
   normalizeRefundSchedule,
   normalizeScheduleTable,
   toBudgetPrintRow,
 } from "../projectProposal";
+import { normalizeProjectProposalStored } from "../normalizeCriticalModuleData";
 
 describe("Form 001 marketing lettering", () => {
   it("uses official A–F marketing subheadings", () => {
@@ -136,6 +141,38 @@ describe("empty Form 001 fields", () => {
     expect(form.budgetItems[0].lgiaShare).toBe("");
     expect(form.riskRows[0].objective).toBe("");
     expect(form.volumeOfOrdersTable).toEqual([["", "", ""]]);
+    expect(form.competitorsTable).toEqual([["", ""]]);
+    expect(PP_COMPETITORS_COLUMNS).toEqual(["List", "Address"]);
+  });
+});
+
+describe("competitors table", () => {
+  it("prefills competitorsTable from TNA marketCompetitors", () => {
+    const draft = buildProjectProposalDraft(tnaApplicant({}));
+    expect(draft.competitorsTable).toEqual([["Regional brands", ""]]);
+    expect(draft.competitors).toBe("Regional brands");
+  });
+
+  it("migrates legacy competitors string when table is blank", () => {
+    const stored = normalizeProjectProposalStored({
+      form: {
+        competitors: "Imported snacks and regional brands",
+        competitorsTable: [["", ""]],
+      },
+      attachments: [],
+      submitted: false,
+    });
+    expect(stored?.form).toMatchObject({
+      competitorsTable: [["Imported snacks and regional brands", ""]],
+    });
+  });
+
+  it("detects populated competitor rows", () => {
+    expect(competitorsTableHasRows([["", ""]])).toBe(false);
+    expect(competitorsTableHasRows([["Acme Corp", "Koronadal City"]])).toBe(true);
+    expect(normalizeCompetitorsTable(undefined, "Legacy only")).toEqual([
+      ["Legacy only", ""],
+    ]);
   });
 });
 
@@ -463,6 +500,78 @@ describe("budget LGIA and risk print helpers", () => {
         plan: "Maintain stock",
       }),
     ).toBe("Breakdown; Spare parts on hand");
+  });
+});
+
+describe("mergeRiskRowsFillEmpty", () => {
+  it("preserves filled cells and fills blank cells from suggestions", () => {
+    const existing = [
+      {
+        id: "keep-id",
+        objective: "User objective",
+        risk: "",
+        assumption: "User assumption",
+        plan: "",
+      },
+    ];
+    const suggested = [
+      {
+        id: "s1",
+        objective: "Suggested objective",
+        risk: "Suggested risk",
+        assumption: "Suggested assumption",
+        plan: "Suggested plan",
+      },
+    ];
+    const merged = mergeRiskRowsFillEmpty(existing, suggested);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe("keep-id");
+    expect(merged[0].objective).toBe("User objective");
+    expect(merged[0].risk).toBe("Suggested risk");
+    expect(merged[0].assumption).toBe("User assumption");
+    expect(merged[0].plan).toBe("Suggested plan");
+  });
+
+  it("appends extra suggested rows beyond existing length", () => {
+    const existing = [
+      {
+        id: "r1",
+        objective: "",
+        risk: "",
+        assumption: "",
+        plan: "",
+      },
+    ];
+    const suggested = [
+      {
+        id: "s1",
+        objective: "Objective 1",
+        risk: "Risk 1",
+        assumption: "Assumption 1",
+        plan: "Plan 1",
+      },
+      {
+        id: "s2",
+        objective: "Objective 2",
+        risk: "Risk 2",
+        assumption: "Assumption 2",
+        plan: "Plan 2",
+      },
+    ];
+    const merged = mergeRiskRowsFillEmpty(existing, suggested);
+    expect(merged).toHaveLength(2);
+    expect(merged[0].objective).toBe("Objective 1");
+    expect(merged[1].objective).toBe("Objective 2");
+    expect(merged[1].id).toBeTruthy();
+    expect(merged[1].id).not.toBe("s2");
+  });
+
+  it("normalizes ids on merged output", () => {
+    const merged = mergeRiskRowsFillEmpty(
+      [{ id: "", objective: "", risk: "", assumption: "", plan: "" }],
+      [{ id: "", objective: "Obj", risk: "Risk", assumption: "Assumption", plan: "Plan" }],
+    );
+    expect(merged[0].id).toMatch(/^[a-z0-9-]+$/i);
   });
 });
 

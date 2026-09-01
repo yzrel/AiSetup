@@ -87,7 +87,7 @@ public class MailSendService {
             body.append("\n\n---\n");
             body.append(
                     "Note: The following attachment(s) were omitted because they exceed the mail size limit or could not be loaded. ");
-            body.append("Download them from the aiSETUP portal instead: ");
+            body.append("Download them from the AiSETUP portal instead: ");
             body.append(String.join(", ", skipped));
             body.append(".\n");
         }

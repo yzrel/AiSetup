@@ -185,7 +185,7 @@ export function ClientCaseDetail({
 
         <section>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
-            Client profile
+            Cooperator profile
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div className="flex items-start gap-2">
@@ -233,7 +233,7 @@ export function ClientCaseDetail({
               Recommended DOST programs
             </h3>
             <p className="text-xs text-gray-500 mb-3">
-              Alternative programs suggested based on the client&apos;s priority
+              Alternative programs suggested based on the cooperator&apos;s priority
               sector. Staff may share these with the applicant.
             </p>
             <DostProgramRecommendationCards
@@ -337,7 +337,7 @@ export function ClientCaseDetail({
             <input
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add a note for this client..."
+              placeholder="Add a note for this cooperator..."
               className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C2461]/20"
             />
             <button

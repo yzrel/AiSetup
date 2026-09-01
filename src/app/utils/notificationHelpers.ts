@@ -3,15 +3,41 @@
  */
 
 import { AdminView } from "../store/authStore";
-import { Applicant } from "../store/applicantStore";
+import {
+  Applicant,
+  MODULE_LABELS,
+  MODULE_ORDER,
+  type ModuleStatus,
+} from "../store/applicantStore";
 import { notificationStore } from "../store/notificationStore";
 import { resolveApplicantOfficeId } from "./provincialOffice";
 import { staffContextStore } from "../store/staffContextStore";
 import { formatFormMention } from "../constants/setupForms";
+import { emailApplicantNotice } from "./applicantStatusMail";
 
 function staffOffice(applicant: Applicant) {
   return resolveApplicantOfficeId(applicant);
 }
+
+/**
+ * Modules that already emit a customer in-app notice on the same submit
+ * that advances the workflow. `notifyModuleCompleted` still emails, but
+ * skips a second generic "step completed" banner.
+ */
+const MODULES_WITH_APPLICANT_STEP_NOTICE: ReadonlySet<ModuleStatus> = new Set([
+  "prescreening",
+  "letter-of-intent",
+  "requirements",
+  "tna1",
+  "tna2",
+  "project-proposal",
+  "conduct-rtec",
+  "approval-letter",
+  "landbank-withdrawal",
+  "procurement-liquidation",
+  "refund-delinquent",
+  "project-closeout",
+]);
 
 export function notifyRequirementsSubmitted(applicant: Applicant) {
   const officeId = staffOffice(applicant);
@@ -39,9 +65,139 @@ export function notifyRequirementsSubmitted(applicant: Applicant) {
   ]);
 }
 
+export interface StaffVerificationFlaggedItem {
+  name: string;
+  remark?: string;
+}
+
+function simpleHash(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) {
+    h = (h * 31 + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
+/**
+ * Immediate in-app (+ email when remark non-empty) when staff flags a document
+ * or updates its remark during staff verification.
+ */
+export function notifyStaffVerificationRemark(options: {
+  applicant: Applicant;
+  moduleKey: string;
+  moduleLabel: string;
+  documentId: string;
+  documentName: string;
+  remark: string;
+  view: AdminView;
+}): void {
+  const {
+    applicant,
+    moduleKey,
+    moduleLabel,
+    documentId,
+    documentName,
+    remark,
+    view,
+  } = options;
+  const trimmed = remark.trim();
+  const title = "Document flagged for revision";
+  const message = trimmed
+    ? `DOST staff flagged "${documentName}" under ${moduleLabel}: ${trimmed}`
+    : `DOST staff flagged "${documentName}" under ${moduleLabel}. Please review remarks in the portal.`;
+  const hash = simpleHash(`${documentId}|${trimmed}`);
+  notificationStore.add({
+    id: `staff-verify-remark-${applicant.id}-${moduleKey}-${documentId}-${hash}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "warning",
+    title,
+    message,
+    urgent: true,
+    view,
+  });
+  if (trimmed) {
+    emailApplicantNotice({
+      applicant,
+      title,
+      message,
+      module: moduleKey,
+    });
+  }
+}
+
+/**
+ * Final revision decision: consolidated in-app + email with all flagged items.
+ */
+export function notifyStaffVerificationRevisionSummary(options: {
+  applicant: Applicant;
+  moduleKey: string;
+  moduleLabel: string;
+  flaggedItems: StaffVerificationFlaggedItem[];
+  staffNotes?: string;
+  view: AdminView;
+  title?: string;
+  inAppMessage?: string;
+}): void {
+  const {
+    applicant,
+    moduleKey,
+    moduleLabel,
+    flaggedItems,
+    staffNotes,
+    view,
+    title = "Revisions requested",
+    inAppMessage,
+  } = options;
+  const count = flaggedItems.length;
+  const message =
+    inAppMessage ??
+    (count > 0
+      ? `DOST staff requested corrections to ${count} document(s) under ${moduleLabel}. Please review and resubmit.`
+      : `DOST staff requested corrections under ${moduleLabel}. Please review and resubmit.`);
+
+  notificationStore.add({
+    id: `staff-verify-revision-${applicant.id}-${moduleKey}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "warning",
+    title,
+    message,
+    urgent: true,
+    view,
+  });
+
+  const lines: string[] = [
+    `DOST staff requested revisions to your ${moduleLabel} submission.`,
+  ];
+  if (flaggedItems.length > 0) {
+    lines.push("", "Flagged documents:");
+    for (const item of flaggedItems) {
+      const remark = item.remark?.trim();
+      lines.push(remark ? `• ${item.name} — ${remark}` : `• ${item.name}`);
+    }
+  }
+  const notes = staffNotes?.trim();
+  if (notes) {
+    lines.push("", `Staff notes: ${notes}`);
+  }
+  lines.push("", "Please sign in to AiSETUP, review the remarks, and resubmit.");
+
+  emailApplicantNotice({
+    applicant,
+    title,
+    message: lines.join("\n"),
+    module: moduleKey,
+  });
+}
+
 export function notifyRequirementsDecision(
   applicant: Applicant,
   decision: "approved" | "needs-revision",
+  context?: {
+    flaggedItems?: StaffVerificationFlaggedItem[];
+    staffNotes?: string;
+  },
 ) {
   if (decision === "approved") {
     notificationStore.add({
@@ -54,29 +210,33 @@ export function notifyRequirementsDecision(
       view: "requirements",
     });
   } else {
-    notificationStore.add({
-      id: `req-revision-${applicant.id}-${Date.now()}`,
-      audience: "applicant",
-      applicantId: applicant.id,
-      kind: "warning",
-      title: "Revisions requested",
-      message: "DOST staff flagged documents that need correction. Please review and resubmit.",
-      urgent: true,
+    notifyStaffVerificationRevisionSummary({
+      applicant,
+      moduleKey: "requirements",
+      moduleLabel: "Submission Requirements",
+      flaggedItems: context?.flaggedItems ?? [],
+      staffNotes: context?.staffNotes,
       view: "requirements",
+      title: "Revisions requested",
+      inAppMessage:
+        "DOST staff flagged documents that need correction. Please review and resubmit.",
     });
   }
 }
 
 export function notifyPrescreeningResult(applicant: Applicant, qualified: boolean) {
   if (qualified) {
+    const title = "Pre-screening passed";
+    const message =
+      "You meet the SETUP requirements. Continue with enterprise registration.";
     notificationStore.addMany([
       {
         id: `prescreen-${applicant.id}-ok`,
         audience: "applicant",
         applicantId: applicant.id,
         kind: "success",
-        title: "Pre-screening passed",
-        message: "You meet the SETUP requirements. Continue with enterprise registration.",
+        title,
+        message,
         view: "registration",
       },
       {
@@ -90,18 +250,72 @@ export function notifyPrescreeningResult(applicant: Applicant, qualified: boolea
         view: "clients",
       },
     ]);
+    emailApplicantNotice({
+      applicant,
+      title,
+      message,
+      module: "prescreening",
+    });
     return;
   }
+  const title = "Not qualified for SETUP";
+  const message =
+    "You do not yet meet SETUP requirements. Review recommended DOST programs for your sector on the pre-screening page.";
   notificationStore.add({
     id: `prescreen-${applicant.id}-no`,
     audience: "applicant",
     applicantId: applicant.id,
     kind: "warning",
-    title: "Not qualified for SETUP",
-    message:
-      "You do not yet meet SETUP requirements. Review recommended DOST programs for your sector on the pre-screening page.",
+    title,
+    message,
     view: "prescreening",
     urgent: true,
+  });
+  emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: "prescreening",
+  });
+}
+
+/**
+ * Customer email (and in-app when no more specific notice already fired)
+ * after a workflow step is finished.
+ */
+export function notifyModuleCompleted(
+  applicant: Applicant,
+  completedModule: ModuleStatus,
+) {
+  const label = MODULE_LABELS[completedModule] ?? completedModule;
+  const next = MODULE_ORDER[MODULE_ORDER.indexOf(completedModule) + 1];
+  const nextLabel =
+    next && next !== "completed" ? MODULE_LABELS[next] : undefined;
+  const title = `${label} completed`;
+  const message = nextLabel
+    ? `You completed ${label}. You may now proceed to ${nextLabel} in the AiSETUP portal.`
+    : `You completed ${label}.`;
+
+  emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: completedModule,
+  });
+
+  if (MODULES_WITH_APPLICANT_STEP_NOTICE.has(completedModule)) {
+    return;
+  }
+
+  const view = (next && next !== "completed" ? next : completedModule) as AdminView;
+  notificationStore.add({
+    id: `step-complete-${applicant.id}-${completedModule}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title,
+    message,
+    view,
   });
 }
 
@@ -182,16 +396,23 @@ export function notifyTna1DirectorValidated(
   ]);
 }
 
-export function notifyTna1Resubmission(applicant: Applicant) {
-  notificationStore.add({
-    id: `tna1-resubmit-${applicant.id}-${Date.now()}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "warning",
-    title: `${formatFormMention("tna01")} resubmission requested`,
-    message: `DOST staff requested corrections to your ${formatFormMention("tna01")}. Please update and resubmit.`,
-    urgent: true,
+export function notifyTna1Resubmission(
+  applicant: Applicant,
+  context?: {
+    flaggedItems?: StaffVerificationFlaggedItem[];
+    staffNotes?: string;
+  },
+) {
+  const label = formatFormMention("tna01");
+  notifyStaffVerificationRevisionSummary({
+    applicant,
+    moduleKey: "tna1",
+    moduleLabel: label,
+    flaggedItems: context?.flaggedItems ?? [],
+    staffNotes: context?.staffNotes,
     view: "tna1",
+    title: `${label} resubmission requested`,
+    inAppMessage: `DOST staff requested corrections to your ${label}. Please update and resubmit.`,
   });
 }
 
@@ -475,15 +696,17 @@ export function notifyApprovalLetterConforme(applicant: Applicant) {
 
 export function notifyCloseoutComplete(applicant: Applicant) {
   const stamp = Date.now();
+  const title = "Project close-out complete";
+  const message =
+    "Your SETUP project close-out and certificate of ownership have been recorded.";
   notificationStore.addMany([
     {
       id: `closeout-applicant-${applicant.id}-${stamp}`,
       audience: "applicant",
       applicantId: applicant.id,
       kind: "success",
-      title: "Project close-out complete",
-      message:
-        "Your SETUP project close-out and certificate of ownership have been recorded.",
+      title,
+      message,
       view: "project-closeout",
     },
     {
@@ -497,6 +720,12 @@ export function notifyCloseoutComplete(applicant: Applicant) {
       view: "project-closeout",
     },
   ]);
+  emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: "project-closeout",
+  });
 }
 
 export function notifyDelinquencyFlagged(

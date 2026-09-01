@@ -34,7 +34,9 @@ import {
   notifyTna1Resubmission,
   notifyTna1AwaitingDirector,
   notifyTna1DirectorValidated,
+  notifyStaffVerificationRemark,
 } from "../utils/notificationHelpers";
+import { shouldNotifyRequirementRemark } from "../utils/submissionRequirements";
 import { resolveApplicantOfficeId, getOfficeContact } from "../utils/provincialOffice";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice } from "./AiAssistField";
@@ -54,6 +56,42 @@ import { ValidationStep } from "./tna1/ValidationStep";
 import { CompleteStep } from "./tna1/CompleteStep";
 import { StaffReviewStep } from "./tna1/StaffReviewStep";
 import { ReportsStep } from "./tna1/ReportsStep";
+
+const DEFAULT_TNA1_DOCS: Tna1Doc[] = [
+  { id: "general-agreements", name: "General Agreements", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "general_agreements.pdf" },
+  { id: "undertaking", name: "Undertaking", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "undertaking_signed.pdf" },
+  { id: "enterprise-profile", name: "Enterprise Profile", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "enterprise_profile.pdf" },
+  { id: "benchmark", name: "Benchmark Information", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "benchmark_data.pdf" },
+  { id: "production-plan", name: "Production Plan", required: true, uploaded: false, verified: false, flagged: false, remark: "", file: null },
+  { id: "marketing", name: "Marketing", required: true, uploaded: false, verified: false, flagged: false, remark: "", file: null },
+  { id: "finance-hr", name: "Finance / Other Concerns", required: false, uploaded: false, verified: false, flagged: false, remark: "", file: null },
+];
+
+function hydrateTna1Docs(saved: Record<string, unknown> | undefined | null): Tna1Doc[] {
+  const docReview = (saved?.docReview ?? {}) as Record<
+    string,
+    { status?: string; remark?: string }
+  >;
+  return DEFAULT_TNA1_DOCS.map((d) => {
+    const review = docReview[d.id];
+    const status = review?.status;
+    return {
+      ...d,
+      verified: status === "ok",
+      flagged: status === "flagged",
+      remark: typeof review?.remark === "string" ? review.remark : "",
+    };
+  });
+}
+
+function docsToDocReview(docs: Tna1Doc[]): Record<string, { status: "ok" | "flagged"; remark: string }> {
+  const out: Record<string, { status: "ok" | "flagged"; remark: string }> = {};
+  for (const d of docs) {
+    if (d.verified) out[d.id] = { status: "ok", remark: d.remark ?? "" };
+    else if (d.flagged) out[d.id] = { status: "flagged", remark: d.remark ?? "" };
+  }
+  return out;
+}
 
 export function TechnologyNeedsAssessment1({
   user,
@@ -84,15 +122,14 @@ export function TechnologyNeedsAssessment1({
   const [directorValidatedAt, setDirectorValidatedAt] = useState("");
 
   // ── Document state ───────────────────────────────────────────────────────────
-  const [docs, setDocs] = useState<Tna1Doc[]>([
-    { name: "General Agreements",        required: true,  uploaded: true,  verified: false, flagged: false, file: "general_agreements.pdf" },
-    { name: "Undertaking",               required: true,  uploaded: true,  verified: false, flagged: false, file: "undertaking_signed.pdf" },
-    { name: "Enterprise Profile",        required: true,  uploaded: true,  verified: false, flagged: false, file: "enterprise_profile.pdf" },
-    { name: "Benchmark Information",     required: true,  uploaded: true,  verified: false, flagged: false, file: "benchmark_data.pdf" },
-    { name: "Production Plan",           required: true,  uploaded: false, verified: false, flagged: false, file: null },
-    { name: "Marketing",                 required: true,  uploaded: false, verified: false, flagged: false, file: null },
-    { name: "Finance / Other Concerns",  required: false, uploaded: false, verified: false, flagged: false, file: null },
-  ]);
+  const [docs, setDocs] = useState<Tna1Doc[]>(() =>
+    DEFAULT_TNA1_DOCS.map((d) => ({ ...d })),
+  );
+  const [notifiedRemarks, setNotifiedRemarks] = useState<Record<string, string>>({});
+  const docsRef = useRef(docs);
+  const notifiedRemarksRef = useRef(notifiedRemarks);
+  docsRef.current = docs;
+  notifiedRemarksRef.current = notifiedRemarks;
 
   const { bind: bindTnaAi, notice: tnaAiNotice } = useAiFieldSuggest("tna1");
   const tnaAiContext = useMemo(
@@ -174,6 +211,15 @@ export function TechnologyNeedsAssessment1({
       saved?.staffReviewNotesDraft ?? saved?.staffNotes ?? "",
     );
     if (draftNotes) setStaffNotes(draftNotes);
+    const hydrated = hydrateTna1Docs(saved);
+    setDocs(hydrated);
+    docsRef.current = hydrated;
+    const notified =
+      saved?.notifiedRemarks && typeof saved.notifiedRemarks === "object"
+        ? (saved.notifiedRemarks as Record<string, string>)
+        : {};
+    setNotifiedRemarks(notified);
+    notifiedRemarksRef.current = notified;
     // Submitted / post-submit review: unlock all section tabs for navigation.
     if (saved?.submitted || saved?.staffReviewed || saved?.directorValidated) {
       setMaxReached(STEPS.length - 1);
@@ -207,26 +253,136 @@ export function TechnologyNeedsAssessment1({
       null;
     const hasPlan =
       !!fileName || !!String(form.productionPlan ?? "").trim();
-    setDocs((prev) =>
-      prev.map((d) =>
-        d.name === "Production Plan"
+    setDocs((prev) => {
+      const next = prev.map((d) =>
+        d.id === "production-plan"
           ? {
               ...d,
               uploaded: hasPlan,
               file: fileName,
             }
           : d,
-      ),
-    );
+      );
+      docsRef.current = next;
+      return next;
+    });
   }, [
     form.productionPlan,
     form.productionPlanFileName,
     applicant?.moduleData?.productionPlanFile,
   ]);
 
+  const maybeNotifyTna1Remark = useCallback(
+    (
+      doc: Tna1Doc,
+      prev: Tna1Doc | undefined,
+      currentNotified: Record<string, string>,
+    ): Record<string, string> => {
+      if (!applicant) return currentNotified;
+      const prevStatus = prev?.flagged ? "flagged" : prev?.verified ? "ok" : "";
+      const nextStatus = doc.flagged ? "flagged" : doc.verified ? "ok" : "";
+      if (
+        !shouldNotifyRequirementRemark({
+          prevStatus,
+          nextStatus,
+          nextRemark: doc.remark ?? "",
+          notifiedRemark: currentNotified[doc.id],
+        })
+      ) {
+        return currentNotified;
+      }
+      notifyStaffVerificationRemark({
+        applicant,
+        moduleKey: "tna1",
+        moduleLabel: formatFormMention("tna01"),
+        documentId: doc.id,
+        documentName: doc.name,
+        remark: doc.remark ?? "",
+        view: "tna1",
+      });
+      return { ...currentNotified, [doc.id]: (doc.remark ?? "").trim() };
+    },
+    [applicant],
+  );
+
+  const persistDocReview = useCallback(
+    (nextDocs: Tna1Doc[], opts?: { notifyDocId?: string }) => {
+      const prevDocs = docsRef.current;
+      setDocs(nextDocs);
+      docsRef.current = nextDocs;
+      if (!applicant) return;
+      let nextNotified = notifiedRemarksRef.current;
+      if (opts?.notifyDocId) {
+        const nextDoc = nextDocs.find((d) => d.id === opts.notifyDocId);
+        const prevDoc = prevDocs.find((d) => d.id === opts.notifyDocId);
+        if (nextDoc) {
+          nextNotified = maybeNotifyTna1Remark(
+            nextDoc,
+            prevDoc,
+            notifiedRemarksRef.current,
+          );
+          if (nextNotified !== notifiedRemarksRef.current) {
+            setNotifiedRemarks(nextNotified);
+            notifiedRemarksRef.current = nextNotified;
+          }
+        }
+      }
+      applicantStore.update(applicant.id, {
+        moduleData: {
+          ...applicant.moduleData,
+          tna1: {
+            ...(applicant.moduleData?.tna1 ?? {}),
+            form: formRef.current,
+            tables: tablesRef.current,
+            docReview: docsToDocReview(nextDocs),
+            notifiedRemarks: nextNotified,
+          },
+        },
+      });
+    },
+    [applicant, maybeNotifyTna1Remark],
+  );
+
+  const notifyDocRemarkDebounced = useDebouncedCallback(
+    (docId: string, remark: string) => {
+      if (!applicant) return;
+      const current = docsRef.current;
+      const doc = current.find((d) => d.id === docId);
+      if (!doc || !doc.flagged) return;
+      const withRemark = current.map((d) =>
+        d.id === docId ? { ...d, remark } : d,
+      );
+      const nextDoc = withRemark.find((d) => d.id === docId)!;
+      const nextNotified = maybeNotifyTna1Remark(
+        nextDoc,
+        doc,
+        notifiedRemarksRef.current,
+      );
+      if (nextNotified === notifiedRemarksRef.current) return;
+      setNotifiedRemarks(nextNotified);
+      notifiedRemarksRef.current = nextNotified;
+      setDocs(withRemark);
+      docsRef.current = withRemark;
+      applicantStore.update(applicant.id, {
+        moduleData: {
+          ...applicant.moduleData,
+          tna1: {
+            ...(applicant.moduleData?.tna1 ?? {}),
+            form: formRef.current,
+            tables: tablesRef.current,
+            docReview: docsToDocReview(withRemark),
+            notifiedRemarks: nextNotified,
+          },
+        },
+      });
+    },
+    1500,
+  );
+
   const persistStaffReview = useCallback(
     (decision: "approved" | "needs-revision") => {
       if (!applicant || !user) return;
+      const currentDocs = docsRef.current;
       if (decision === "needs-revision") {
         const assessmentUpdate = appendStaffAssessment(applicant, {
           stage: "tna1",
@@ -245,10 +401,18 @@ export function TechnologyNeedsAssessment1({
               tables,
               submitted: false,
               staffReviewed: false,
+              docReview: docsToDocReview(currentDocs),
+              notifiedRemarks: notifiedRemarksRef.current,
+              staffNotes: staffNotes || undefined,
             },
           },
         });
-        notifyTna1Resubmission(applicant);
+        notifyTna1Resubmission(applicant, {
+          flaggedItems: currentDocs
+            .filter((d) => d.flagged)
+            .map((d) => ({ name: d.name, remark: d.remark })),
+          staffNotes,
+        });
         setApplicantSubmitted(false);
         setStaffApproved(false);
         setMaxReached(0);
@@ -276,6 +440,8 @@ export function TechnologyNeedsAssessment1({
             siteVisitDate: siteVisitDate || undefined,
             siteVisitNotes: siteVisitNotes || undefined,
             siteVisitCompleted: !!siteVisitDate,
+            docReview: docsToDocReview(currentDocs),
+            notifiedRemarks: notifiedRemarksRef.current,
           },
         },
       });
@@ -372,6 +538,8 @@ export function TechnologyNeedsAssessment1({
           siteVisitDate: siteVisitDateRef.current || undefined,
           siteVisitNotes: siteVisitNotesRef.current || undefined,
           staffReviewNotesDraft: staffNotesRef.current || undefined,
+          docReview: docsToDocReview(docsRef.current),
+          notifiedRemarks: notifiedRemarksRef.current,
         },
       };
       applicantStore.update(applicant.id, {
@@ -535,8 +703,10 @@ export function TechnologyNeedsAssessment1({
     { label: "Plant Lay-Out Upload",    value: form.plantLayoutFileName, passed: !!form.plantLayoutFileName },
     {
       label: "Process Flow",
-      value: form.processFlowMode === "attachment" ? form.processFlowFileName : form.processFlow,
-      passed: form.processFlowMode === "attachment" ? !!form.processFlowFileName : !!form.processFlow,
+      value: form.processFlowFileName || form.processFlow,
+      passed:
+        !!form.processFlowFileName ||
+        !!String(form.processFlow ?? "").trim(),
     },
     { label: "Prepared Date",           value: form.preparedDate, passed: !!form.preparedDate },
   ];
@@ -593,6 +763,8 @@ export function TechnologyNeedsAssessment1({
     setDocs,
     uploadedDocs,
     allDocReviewed,
+    persistDocReview,
+    notifyDocRemarkDebounced,
     allGA,
     validationChecks,
     allValid,

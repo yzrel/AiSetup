@@ -28,6 +28,7 @@ import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { LandingPage } from "./components/LandingPage";
+import { DOSTMark } from "./components/DOSTLogos";
 import { authStore, AuthUser, AdminView, ROLE_LABELS, normalizeAdminView } from "./store/authStore";
 import { loadCurrentView, saveCurrentView, loadAuthPage, saveAuthPage } from "./store/navigationStore";
 import { applicantStore, MODULE_ORDER, type ModuleStatus } from "./store/applicantStore";
@@ -38,6 +39,7 @@ import { getAuthToken } from "./api/authToken";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
 import { isSentEmailsNavUnlocked } from "./utils/documentDelivery";
+import { notifyModuleCompleted } from "./utils/notificationHelpers";
 import { getSetupFormTitle } from "./constants/setupForms";
 import { emailOutboxStore } from "./store/emailOutboxStore";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
@@ -112,7 +114,8 @@ function resolveViewForUser(user: AuthUser | null): ViewType {
   return authStore.getDefaultView(user.role);
 }
 
-import { DOSTMark } from "./components/DOSTLogos";
+const SIDEBAR_WIDTH = "280px";
+const SIDEBAR_DRAWER_WIDTH = "300px";
 import { DemoModeLogoTrigger } from "./components/DemoModeLogoTrigger";
 
 function SidebarLogo() {
@@ -123,7 +126,7 @@ function SidebarLogo() {
       <div>
         <div className="flex items-center gap-1 leading-none">
           <span className="text-white font-black text-[15px] tracking-tight">
-            ai
+            Ai
           </span>
           <span className="text-[#00AEEF] font-black text-[15px] tracking-tight">
             SETUP
@@ -160,8 +163,6 @@ interface MenuItem {
   id: ViewType;
   label: string;
   icon: typeof LayoutDashboard;
-  /** Step badge shown next to the label (e.g. "Step 1") */
-  module?: string;
 }
 
 const menuGroups: { label: string; items: MenuItem[] }[] = [
@@ -182,19 +183,16 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "prescreening" as ViewType,
         label: "Pre-Screening",
         icon: ClipboardCheck,
-        module: "Step 1",
       },
       {
         id: "registration" as ViewType,
         label: "Enterprise Registration",
         icon: UserPlus,
-        module: "Step 2",
       },
       {
         id: "letter-of-intent" as ViewType,
         label: "Letter of Intent",
         icon: FileText,
-        module: "Step 3",
       },
     ],
   },
@@ -205,25 +203,21 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "tna1" as ViewType,
         label: "Application for TNA",
         icon: BarChart2,
-        module: "Module 5",
       },
       {
         id: "tna2" as ViewType,
         label: "TNA Report",
         icon: FileText,
-        module: "Module 6",
       },
       {
         id: "project-proposal" as ViewType,
         label: "Project Proposal",
         icon: ClipboardCheck,
-        module: "Module 7",
       },
       {
         id: "requirements" as ViewType,
         label: "Submit Requirements",
         icon: Upload,
-        module: "Step 4",
       },
     ],
   },
@@ -234,13 +228,11 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "conduct-rtec" as ViewType,
         label: "Conduct of RTEC",
         icon: BarChart2,
-        module: "Module 8",
       },
       {
         id: "approval-letter" as ViewType,
         label: "Approval Letter",
         icon: FileText,
-        module: "Module 9",
       },
     ],
   },
@@ -251,13 +243,11 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "landbank-withdrawal" as ViewType,
         label: "LandBank & Withdrawal",
         icon: Upload,
-        module: "Module 10+",
       },
       {
         id: "procurement-liquidation" as ViewType,
         label: "Procurement & Liquidation",
         icon: ClipboardCheck,
-        module: "Mod 14–16",
       },
     ],
   },
@@ -268,13 +258,11 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         id: "refund-delinquent" as ViewType,
         label: "Refund & Delinquent Mgmt",
         icon: BarChart2,
-        module: "Mod 17",
       },
       {
         id: "project-closeout" as ViewType,
         label: "Project Close-Out",
         icon: ClipboardCheck,
-        module: "Mod 18",
       },
     ],
   },
@@ -283,27 +271,23 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
     items: [
       {
         id: "clients" as ViewType,
-        label: "Clients",
+        label: "Cooperators",
         icon: Users,
-        module: "Admin",
       },
       {
         id: "client-files" as ViewType,
-        label: "Client Files",
+        label: "Cooperator Files",
         icon: FolderOpen,
-        module: "Admin",
       },
       {
         id: "sent-emails" as ViewType,
         label: "Sent Emails",
         icon: Mail,
-        module: "Admin",
       },
       {
         id: "account-management" as ViewType,
         label: "Account Management",
         icon: Settings,
-        module: "Settings",
       },
     ],
   },
@@ -374,12 +358,12 @@ const viewTitles: Record<
     subtitle: "Module 18 — Terminal Report, Equipment Inventory & Ownership",
   },
   clients: {
-    title: "Clients",
+    title: "Cooperators",
     subtitle: "Overview, case files & assessment",
   },
   "client-files": {
-    title: "Client Files",
-    subtitle: "Attachments & generated documents by client",
+    title: "Cooperator Files",
+    subtitle: "Attachments & generated documents by cooperator",
   },
   "account-management": {
     title: "Account Management",
@@ -430,7 +414,7 @@ function SidebarNav({
   return (
     <>
       <nav
-        className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5"
+        className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5"
         style={{ scrollbarWidth: "none" }}
       >
         {visibleGroups.map((group) => (
@@ -467,14 +451,14 @@ function SidebarNav({
                     disabled={!navigable}
                     title={
                       sentEmailsLocked
-                        ? "Available after a client uploads a signed document."
+                        ? "Available after a cooperator uploads a signed document."
                         : moduleLocked
                           ? demoMode
                             ? "Normally locked — demo mode lets you open this module"
                             : "Complete earlier application steps to unlock this module"
                           : undefined
                     }
-                    className={`w-full flex items-center gap-3 px-3 py-[10px] rounded-lg transition-all mb-0.5 group text-left ${
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 min-h-[48px] rounded-lg transition-all mb-0.5 group text-left ${
                       locked && !navigable
                         ? "opacity-40 cursor-not-allowed text-white/35"
                         : locked && demoMode
@@ -488,22 +472,11 @@ function SidebarNav({
                       className={`w-0.5 h-5 rounded-full shrink-0 ${active ? "bg-[#00AEEF]" : "bg-transparent"}`}
                     />
                     <Icon
-                      className={`w-4 h-4 shrink-0 ${active ? "text-[#00AEEF]" : "text-white/35 group-hover:text-white/60"}`}
+                      className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#00AEEF]" : "text-white/35 group-hover:text-white/60"}`}
                     />
-                    <span className="text-[13px] font-medium leading-tight flex-1">
+                    <span className="text-[14px] font-medium leading-snug flex-1 min-w-0">
                       {item.label}
                     </span>
-                    {item.module && (
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
-                          active
-                            ? "bg-[#00AEEF]/20 text-[#00AEEF]"
-                            : "bg-white/8 text-white/25"
-                        }`}
-                      >
-                        {item.module}
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -512,13 +485,13 @@ function SidebarNav({
       </nav>
 
       {/* Bottom actions */}
-      <div className="px-2 py-3 border-t border-white/10 space-y-0.5">
+      <div className="px-3 py-3 border-t border-white/10 space-y-0.5">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/40 hover:bg-white/10 hover:text-red-300 transition-colors"
+          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-white/40 hover:bg-white/10 hover:text-red-300 transition-colors"
         >
-          <LogOut className="w-3.5 h-3.5" />
-          <span className="text-[12px] font-medium">
+          <LogOut className="w-4 h-4" />
+          <span className="text-[13px] font-medium">
             Logout
           </span>
         </button>
@@ -741,7 +714,6 @@ export default function App() {
       return (
         <LandingPage
           onLogin={() => setAuthPage("login")}
-          onStaffLogin={() => setAuthPage("login")}
           onRegister={(type) => {
             setRegistrationPrefill(
               type === "non-single-proprietor" ? "SEC" : "DTI",
@@ -811,6 +783,9 @@ export default function App() {
     if (app && next) {
       applicantStore.update(app.id, { currentModule: next });
     }
+    if (app && module !== "prescreening") {
+      notifyModuleCompleted(applicantStore.getById(app.id) ?? app, module);
+    }
     const fallbackView =
       normalizeAdminView(navigateTo) ??
       normalizeAdminView(next) ??
@@ -836,8 +811,11 @@ export default function App() {
       }}
     >
       {/* ══ DESKTOP SIDEBAR (hidden on mobile/tablet) ══ */}
-      <aside className="hidden lg:flex w-[240px] bg-[#0C2461] flex-col shrink-0 shadow-2xl z-20">
-        <div className="px-4 pt-5 pb-4 border-b border-white/10">
+      <aside
+        className="hidden lg:flex bg-[#0C2461] flex-col shrink-0 shadow-2xl z-20"
+        style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
+      >
+        <div className="px-5 pt-5 pb-4 border-b border-white/10">
           <SidebarLogo />
         </div>
         <SidebarNav
@@ -863,12 +841,13 @@ export default function App() {
 
       {/* ══ MOBILE DRAWER PANEL ══ */}
       <aside
-        className={`fixed top-0 left-0 h-full w-[270px] bg-[#0C2461] flex flex-col z-50 shadow-2xl transition-transform duration-300 lg:hidden ${
+        className={`fixed top-0 left-0 h-full bg-[#0C2461] flex flex-col z-50 shadow-2xl transition-transform duration-300 lg:hidden ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        style={{ width: SIDEBAR_DRAWER_WIDTH, minWidth: SIDEBAR_DRAWER_WIDTH }}
       >
         {/* Drawer header */}
-        <div className="px-4 pt-5 pb-4 border-b border-white/10 flex items-center justify-between">
+        <div className="px-5 pt-5 pb-4 border-b border-white/10 flex items-center justify-between">
           <SidebarLogo />
           <button
             onClick={() => setDrawerOpen(false)}
@@ -1073,6 +1052,7 @@ export default function App() {
                     const app = resolveApplicantForUser(user);
                     // Program-referral LOI ends here — do not open SETUP modules (TNA1…).
                     if (app && isOnProgramTrack(app)) {
+                      notifyModuleCompleted(app, "letter-of-intent");
                       navigate("dashboard");
                       return;
                     }
@@ -1105,6 +1085,7 @@ export default function App() {
                     const app = resolveApplicantForUser(user);
                     if (!app) return;
                     if (app.moduleData?.routingDecision === "mpex") {
+                      notifyModuleCompleted(app, "requirements");
                       navigate("dashboard");
                       return;
                     }
@@ -1188,7 +1169,7 @@ export default function App() {
               Philippines
             </span>
             <span className="flex items-center gap-1">
-              <Cpu className="w-3 h-3" /> Powered by aiSETUP
+              <Cpu className="w-3 h-3" /> Powered by AiSETUP
             </span>
           </div>
           <p className="text-[10px] text-gray-300 hidden sm:block">

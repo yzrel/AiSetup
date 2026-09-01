@@ -266,7 +266,7 @@ export function EnterpriseRegistration({
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-              <span className="text-blue-800 font-black text-sm">ai</span>
+              <span className="text-blue-800 font-black text-sm">Ai</span>
             </div>
             <div>
               <h1 className="text-xl font-black">Enterprise Registration</h1>
@@ -414,7 +414,7 @@ export function EnterpriseRegistration({
                 onChange={(e) => setField("fdaNumber", e.target.value)}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Required for food sector enterprises (Food Processing).
+                Required for food sector enterprises (Food processing, Beverage manufacturing).
               </p>
             </div>
           )}

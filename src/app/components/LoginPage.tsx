@@ -112,7 +112,7 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
                     <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <span className="text-white font-bold text-sm">
-                    aiSETUP Sign In
+                    AiSETUP Sign In
                   </span>
                 </div>
               </div>
@@ -137,7 +137,7 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
             {fromRegistration && (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl px-3 py-2.5 mb-4">
                 <Building2 className="w-4 h-4 shrink-0" />
-                Your account was created. Sign in below to open aiSETUP.
+                Your account was created. Sign in below to open AiSETUP.
               </div>
             )}
 

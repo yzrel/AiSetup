@@ -14,6 +14,7 @@ export type UserRole =
   | "agent"
   | "provincial-director"
   | "regional-director"
+  | "rtec-staff"
   | "admin";
 
 export type LoginPortal = "client" | "admin";
@@ -107,6 +108,7 @@ const STAFF_ALL: UserRole[] = [
   "regional-director",
   "agent",
   "provincial-director",
+  "rtec-staff",
 ];
 const STAFF_AND_CLIENT: UserRole[] = [
   ...STAFF_ALL,
@@ -150,6 +152,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   agent: "DOST Agent",
   "provincial-director": "Provincial Director",
   "regional-director": "Regional Director",
+  "rtec-staff": "RTEC Staff",
   client: "Client",
   applicant: "Applicant",
 };
@@ -238,7 +241,7 @@ export const authStore = {
     };
   },
 
-  /** Client community portal — disabled; all applicants use aiSETUP application workflow */
+  /** Client community portal — disabled; all applicants use AiSETUP application workflow */
   usesClientPortal: (_user: AuthUser) => {
     // if (user.portal === "client") return true;
     // if (user.portal === "admin") return false;

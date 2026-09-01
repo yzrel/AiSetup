@@ -82,10 +82,10 @@ export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
             <FolderOpen className="w-5 h-5 text-[#0C2461]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-gray-900">Client Files</h2>
+            <h2 className="text-base font-bold text-gray-900">Cooperator Files</h2>
             <p className="text-sm text-gray-500 mt-0.5">
               Browse attachments and generated official documents from Letter of
-              Intent through Project Close-Out for each client in your scope.
+              Intent through Project Close-Out for each cooperator in your scope.
             </p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search clients..."
+                placeholder="Search cooperators..."
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0C2461]/20"
               />
             </div>
@@ -123,12 +123,12 @@ export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wide">
-              {filtered.length} client{filtered.length !== 1 ? "s" : ""}
+              {filtered.length} cooperator{filtered.length !== 1 ? "s" : ""}
             </div>
             <div className="divide-y divide-gray-50 max-h-[560px] overflow-y-auto">
               {filtered.length === 0 && (
                 <p className="p-6 text-sm text-gray-400 text-center">
-                  No clients match your filters.
+                  No cooperators match your filters.
                 </p>
               )}
               {filtered.map((a) => {
@@ -196,15 +196,15 @@ export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
                 applicant={selected}
                 onNavigate={onNavigate}
                 scope="loi-onward"
-                title="Client attachments & generated documents"
+                title="Cooperator attachments & generated documents"
               />
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
               <FolderOpen className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="font-semibold text-gray-700">Select a client</p>
+              <p className="font-semibold text-gray-700">Select a cooperator</p>
               <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">
-                Choose a client to view all attachments and generated official
+                Choose a cooperator to view all attachments and generated official
                 documents from Letter of Intent through close-out.
               </p>
             </div>

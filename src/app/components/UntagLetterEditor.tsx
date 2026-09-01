@@ -1,0 +1,179 @@
+/**
+ * Author: Yzrel Jade B. Eborde
+ */
+
+import type { ReactNode } from "react";
+import type { UntagLetterForm } from "../api/types";
+import { resolveLbpBranchByBranchName } from "../utils/untagLetter";
+
+interface UntagLetterEditorProps {
+  form: UntagLetterForm;
+  onChange: (form: UntagLetterForm) => void;
+  readOnly?: boolean;
+}
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">
+      {children}
+    </label>
+  );
+}
+
+function TextInput({
+  value,
+  onChange,
+  placeholder,
+  readOnly,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+}) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      readOnly={readOnly}
+      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 read-only:bg-gray-50"
+    />
+  );
+}
+
+export function UntagLetterEditor({
+  form,
+  onChange,
+  readOnly,
+}: UntagLetterEditorProps) {
+  const patch = (partial: Partial<UntagLetterForm>) =>
+    onChange({ ...form, ...partial });
+
+  const handleBranchChange = (landbankBranch: string) => {
+    const branchDefaults = resolveLbpBranchByBranchName(landbankBranch);
+    const next: Partial<UntagLetterForm> = { landbankBranch };
+    if (branchDefaults) {
+      const managerEmpty = !form.branchManagerName.trim();
+      const cityEmpty = !form.branchCityProvince.trim();
+      if (managerEmpty || form.branchManagerName === branchDefaults.branchManagerName) {
+        next.branchManagerName = branchDefaults.branchManagerName;
+      }
+      if (cityEmpty || form.branchCityProvince === branchDefaults.branchCityProvince) {
+        next.branchCityProvince = branchDefaults.branchCityProvince;
+      }
+    }
+    patch(next);
+  };
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm text-gray-600">
+        Letter to Untag — DOST request to LandBank to release the SETUP-tagged savings
+        account after procurement and liquidation. Sync from upstream to refresh enterprise,
+        project, and branch details.
+      </p>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <FieldLabel>Letter date</FieldLabel>
+          <input
+            type="date"
+            value={form.letterDate}
+            onChange={(e) => patch({ letterDate: e.target.value })}
+            readOnly={readOnly}
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 read-only:bg-gray-50"
+          />
+        </div>
+        <div>
+          <FieldLabel>LandBank branch</FieldLabel>
+          <TextInput
+            value={form.landbankBranch}
+            onChange={handleBranchChange}
+            placeholder="Kidapawan Branch"
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <FieldLabel>Branch manager</FieldLabel>
+          <TextInput
+            value={form.branchManagerName}
+            onChange={(branchManagerName) => patch({ branchManagerName })}
+            placeholder="Ms. Elena R. Vasquez"
+            readOnly={readOnly}
+          />
+        </div>
+        <div>
+          <FieldLabel>Branch city / province</FieldLabel>
+          <TextInput
+            value={form.branchCityProvince}
+            onChange={(branchCityProvince) => patch({ branchCityProvince })}
+            placeholder="Kidapawan City, North Cotabato"
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <FieldLabel>Enterprise</FieldLabel>
+          <TextInput
+            value={form.enterpriseName}
+            onChange={(enterpriseName) => patch({ enterpriseName })}
+            readOnly={readOnly}
+          />
+        </div>
+        <div>
+          <FieldLabel>Proponent / manager</FieldLabel>
+          <TextInput
+            value={form.proponentName}
+            onChange={(proponentName) => patch({ proponentName })}
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
+
+      <div>
+        <FieldLabel>Project title</FieldLabel>
+        <TextInput
+          value={form.projectTitle}
+          onChange={(projectTitle) => patch({ projectTitle })}
+          readOnly={readOnly}
+        />
+      </div>
+
+      <div>
+        <FieldLabel>LandBank savings account number</FieldLabel>
+        <TextInput
+          value={form.accountNumber}
+          onChange={(accountNumber) => patch({ accountNumber })}
+          placeholder="SA 0742-0134-21"
+          readOnly={readOnly}
+        />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <FieldLabel>Signatory</FieldLabel>
+          <TextInput
+            value={form.signatoryName}
+            onChange={(signatoryName) => patch({ signatoryName })}
+            readOnly={readOnly}
+          />
+        </div>
+        <div>
+          <FieldLabel>Signatory title</FieldLabel>
+          <TextInput
+            value={form.signatoryTitle}
+            onChange={(signatoryTitle) => patch({ signatoryTitle })}
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

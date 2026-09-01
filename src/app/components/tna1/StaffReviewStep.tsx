@@ -24,7 +24,6 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
     setStaffMode,
     form,
     docs,
-    setDocs,
     uploadedDocs,
     allDocReviewed,
     staffNotes,
@@ -34,6 +33,8 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
     siteVisitNotes,
     setSiteVisitNotes,
     persistStaffReview,
+    persistDocReview,
+    notifyDocRemarkDebounced,
     tnaAiGenerated,
     previewForm,
     previewTables,
@@ -131,31 +132,98 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
           <div>
             <h2 className={sectionTitle}>📋 Document Verification Checklist</h2>
             <div className="space-y-2">
-              {docs.map((doc, i) => (
-                <div key={i} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+              {docs.map((doc) => (
+                <div key={doc.id} className={`p-3.5 rounded-xl border transition-all ${
                   doc.flagged  ? "bg-red-50 border-red-200"
                   : doc.verified ? "bg-green-50 border-green-200"
                   : doc.uploaded ? "bg-blue-50 border-blue-100"
                                  : "bg-gray-50 border-gray-100"
                 }`}>
-                  <span className="text-lg">{doc.flagged ? "⚠️" : doc.verified ? "✅" : doc.uploaded ? "📄" : "⭕"}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800">{doc.name}{doc.required && " *"}</p>
-                    {doc.file && <p className="text-xs text-gray-400">{doc.file}</p>}
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{doc.flagged ? "⚠️" : doc.verified ? "✅" : doc.uploaded ? "📄" : "⭕"}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{doc.name}{doc.required && " *"}</p>
+                      {doc.file && <p className="text-xs text-gray-400">{doc.file}</p>}
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      {doc.uploaded && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              persistDocReview(
+                                docs.map((x) =>
+                                  x.id === doc.id
+                                    ? { ...x, verified: true, flagged: false }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                              doc.verified
+                                ? "bg-green-600 text-white"
+                                : "bg-green-600 text-white hover:bg-green-700"
+                            }`}
+                          >
+                            ✓ Verify
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              persistDocReview(
+                                docs.map((x) =>
+                                  x.id === doc.id
+                                    ? { ...x, flagged: true, verified: false }
+                                    : x,
+                                ),
+                                { notifyDocId: doc.id },
+                              )
+                            }
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                              doc.flagged
+                                ? "bg-red-500 text-white"
+                                : "bg-red-500 text-white hover:bg-red-600"
+                            }`}
+                          >
+                            ⚑ Flag
+                          </button>
+                        </>
+                      )}
+                      {!doc.uploaded && (
+                        <span className="text-xs text-gray-400 italic">Not uploaded</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    {doc.uploaded && !doc.verified && !doc.flagged && (
-                      <>
-                        <button onClick={() => setDocs(d => d.map((x, j) => j === i ? {...x, verified: true, flagged: false} : x))}
-                          className="text-xs font-bold px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">✓ Verify</button>
-                        <button onClick={() => setDocs(d => d.map((x, j) => j === i ? {...x, flagged: true, verified: false} : x))}
-                          className="text-xs font-bold px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">⚑ Flag</button>
-                      </>
-                    )}
-                    {!doc.uploaded && (
-                      <span className="text-xs text-gray-400 italic">Not uploaded</span>
-                    )}
-                  </div>
+                  {doc.flagged && (
+                    <div className="mt-3">
+                      <input
+                        type="text"
+                        className={`${inputCls} text-xs`}
+                        placeholder="Enter reason for flagging this document..."
+                        value={doc.remark}
+                        onChange={(e) => {
+                          const remark = e.target.value;
+                          persistDocReview(
+                            docs.map((x) =>
+                              x.id === doc.id ? { ...x, remark } : x,
+                            ),
+                          );
+                          notifyDocRemarkDebounced(doc.id, remark);
+                        }}
+                        onBlur={(e) => {
+                          const remark = e.target.value;
+                          persistDocReview(
+                            docs.map((x) =>
+                              x.id === doc.id
+                                ? { ...x, remark, flagged: true, verified: false }
+                                : x,
+                            ),
+                            { notifyDocId: doc.id },
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

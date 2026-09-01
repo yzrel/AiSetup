@@ -46,7 +46,7 @@ export function StaffApplicantPicker({
       />
       {!hasSelection && (
         <p className={MODULE_HEADER_HINT}>
-          Select a client from Clients or the header bar to begin assessment.
+          Select a cooperator from Cooperators or the header bar to begin assessment.
         </p>
       )}
     </div>
@@ -58,7 +58,7 @@ export function StaffApplicantBanner({ user }: { user?: AuthUser | null }) {
   if (!isStaff || hasSelection) return null;
   return (
     <div className="mx-4 sm:mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-      No active client selected. Open <strong>Clients</strong> or use the header bar to
+      No active cooperator selected. Open <strong>Cooperators</strong> or use the header bar to
       select an applicant before reviewing this module.
     </div>
   );

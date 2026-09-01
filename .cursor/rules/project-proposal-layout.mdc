@@ -67,7 +67,7 @@ Cover → PROJECT BACKGROUND (A. Company Profile with checkbox grids, B. Managem
   - Production / Non-Production style nesting: Product demand and the table sit under heading A; do not add a separate supply field
 - B. Product specifications and product price (`productPriceTable`)
 - C. Distribution channel (local/export)
-- D. Competitors
+- D. Competitors — `competitorsTable` (List, Address); legacy `competitors` narrative prints when the table is empty
 - E. Existing problems (if any) — `existingMarketingProblems` (do **not** reuse S&T `interventionProblem`)
 - F. Market plans/strategies
 
@@ -167,7 +167,9 @@ A. Company Profile is **one 9-column table** matching Word `tblGrid` / `vMerge` 
 
 - `orgChart` — Management section
 - `vicinityMap` — Plant site section
-- `plantLayout` — S&T intervention section
+- `plantLayout` — S&T intervention section (prefilled from TNA Form 01 when empty)
+- `processFlow` — optional; under Production Process narrative (prefilled from TNA Form 01 when empty)
+- `productionPlan` — optional; under Production Process narrative (prefilled from TNA Form 01 when empty)
 - Financial reports referenced by static note text only
 
 ## Key files

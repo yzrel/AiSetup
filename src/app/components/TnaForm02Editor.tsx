@@ -170,7 +170,15 @@ export function TnaForm02Editor({
 
   const ai = (field: string, apply: (value: string | string[]) => void) => {
     if (!aiContext) return {};
-    return bindAi(field, aiContext, apply);
+    return bindAi(field, aiContext, (value) => {
+      if (typeof value === "string") {
+        apply(value);
+        return;
+      }
+      if (Array.isArray(value) && (value.length === 0 || typeof value[0] === "string")) {
+        apply(value as string[]);
+      }
+    });
   };
 
   const patch = (partial: Partial<Tna2DocumentResponse>) =>

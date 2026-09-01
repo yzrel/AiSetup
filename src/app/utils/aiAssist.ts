@@ -4,14 +4,17 @@
 
 import { useCallback, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { AiFieldSuggestionResponse, AiSuggestModule } from "../api/types";
+import type { AiFieldSuggestionResponse, AiSuggestModule, ProjectProposalRiskRow } from "../api/types";
 import { Applicant } from "../store/applicantStore";
 import { aiAssistNotice } from "./demoMode";
+import { normalizeRiskRow } from "./projectProposal";
 
 export const AI_ASSIST_INSTRUCTION_MAX = 500;
 
+export type AiSuggestValue = string | string[] | ProjectProposalRiskRow[];
+
 export type AiSuggestResult = {
-  value: string | string[];
+  value: AiSuggestValue;
   aiGenerated: boolean;
 };
 
@@ -67,7 +70,7 @@ export async function suggestAiField(
   module: AiSuggestModule,
   field: string,
   context: Record<string, unknown>,
-  localFallback?: () => string | string[],
+  localFallback?: () => AiSuggestValue,
   userInstruction?: string,
 ): Promise<AiSuggestResult> {
   try {
@@ -78,6 +81,12 @@ export async function suggestAiField(
       context,
       ...(trimmed ? { userInstruction: trimmed } : {}),
     });
+    if (res.riskRows?.length) {
+      return {
+        value: res.riskRows.map((row) => normalizeRiskRow(row)),
+        aiGenerated: res.aiGenerated,
+      };
+    }
     if (res.bullets?.length) {
       return { value: res.bullets, aiGenerated: res.aiGenerated };
     }
@@ -131,8 +140,8 @@ export function useAiFieldSuggest(module: AiSuggestModule) {
     async (
       field: string,
       context: Record<string, unknown>,
-      apply: (value: string | string[]) => void,
-      localFallback?: () => string | string[],
+      apply: (value: AiSuggestValue) => void,
+      localFallback?: () => AiSuggestValue,
       userInstruction?: string,
     ) => {
       setLoadingField(field);
@@ -158,7 +167,7 @@ export function useAiFieldSuggest(module: AiSuggestModule) {
   );
 
   const bind = useCallback(
-    (field: string, context: Record<string, unknown>, apply: (value: string | string[]) => void, localFallback?: () => string | string[]) => ({
+    (field: string, context: Record<string, unknown>, apply: (value: AiSuggestValue) => void, localFallback?: () => AiSuggestValue) => ({
       onAiSuggest: (userInstruction?: string) => {
         if (loadingField) return;
         void suggest(field, context, apply, localFallback, userInstruction);

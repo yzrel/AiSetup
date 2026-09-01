@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import ph.gov.dost.aisetup.ai.dto.AiFieldSuggestionRequest;
 import ph.gov.dost.aisetup.ai.dto.AiFieldSuggestionResponse;
 import ph.gov.dost.aisetup.common.GadLanguagePolicy;
+import ph.gov.dost.aisetup.proposal.dto.ProjectProposalRiskRowDto;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,7 +33,7 @@ public class AiFieldSuggestionService {
         this.objectMapper = objectMapper;
     }
 
-    private record FieldSpec(String label, String formSection, boolean bullets, String styleNote) {}
+    private record FieldSpec(String label, String formSection, boolean bullets, boolean rows, String styleNote) {}
 
     private static final Map<String, Map<String, FieldSpec>> REGISTRY = buildRegistry();
 
@@ -57,7 +58,14 @@ public class AiFieldSuggestionService {
         try {
             JsonNode ai = anthropicClient.generateJsonObject(
                     buildPrompt(spec, context, userInstruction), SUGGEST_MAX_TOKENS);
-            if (spec.bullets()) {
+            if (spec.rows()) {
+                List<ProjectProposalRiskRowDto> rows = readRiskRows(ai);
+                if (!rows.isEmpty()) {
+                    response.setRiskRows(rows);
+                    response.setAiGenerated(true);
+                    return response;
+                }
+            } else if (spec.bullets()) {
                 List<String> bullets = readBullets(ai);
                 if (!bullets.isEmpty()) {
                     response.setBullets(bullets);
@@ -96,7 +104,12 @@ public class AiFieldSuggestionService {
             contextJson = context.toString();
         }
 
-        String outputShape = spec.bullets()
+        String outputShape = spec.rows()
+                ? """
+                { "rows": [
+                  { "objective": "...", "risk": "...", "assumption": "...", "plan": "..." }
+                ] }"""
+                : spec.bullets()
                 ? "{ \"bullets\": [\"...\", \"...\"] }"
                 : "{ \"text\": \"...\" }";
 
@@ -161,6 +174,25 @@ public class AiFieldSuggestionService {
         return node.path("text").asText("").trim();
     }
 
+    private List<ProjectProposalRiskRowDto> readRiskRows(JsonNode node) {
+        List<ProjectProposalRiskRowDto> out = new ArrayList<>();
+        JsonNode arr = node.path("rows");
+        if (!arr.isArray()) return out;
+        int seq = 0;
+        for (JsonNode item : arr) {
+            ProjectProposalRiskRowDto row = new ProjectProposalRiskRowDto();
+            row.setId(String.valueOf(seq++));
+            row.setObjective(item.path("objective").asText("").trim());
+            row.setRisk(item.path("risk").asText("").trim());
+            row.setAssumption(item.path("assumption").asText("").trim());
+            row.setPlan(item.path("plan").asText("").trim());
+            if (!row.getObjective().isBlank() || !row.getRisk().isBlank()) {
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
     private void applyTemplateFallback(
             AiFieldSuggestionResponse response,
             FieldSpec spec,
@@ -186,6 +218,11 @@ public class AiFieldSuggestionService {
                         empCount(ctx, "employeesMale"),
                         empCount(ctx, "employeesFemale")));
             }
+            return;
+        }
+
+        if (spec.rows()) {
+            response.setRiskRows(templateRiskRows());
             return;
         }
 
@@ -728,7 +765,9 @@ public class AiFieldSuggestionService {
                 entry("financialAnalysis", "Financial Analysis", "Financial", false,
                         "Write 4-5 sentences on financial capacity, ratios, and ability to co-fund and repay."),
                 entry("genderInvolvement", "Gender and Development (GAD) — Participation and Involvement", "Management / GAD", false,
-                        "Write one short paragraph (3-5 sentences) describing how women and men participate in the enterprise and how the SETUP intervention benefits them equitably. Use ONLY the provided Male/Female employee counts; do not invent roles, ratios, or headcounts. Use gender-fair language per DOST GAD guidelines.")
+                        "Write one short paragraph (3-5 sentences) describing how women and men participate in the enterprise and how the SETUP intervention benefits them equitably. Use ONLY the provided Male/Female employee counts; do not invent roles, ratios, or headcounts. Use gender-fair language per DOST GAD guidelines."),
+                rowsEntry("riskRows", "Risk Management Table", "Risk Management",
+                        "Provide 3-5 risk management rows. Each row must include objective (linked to specific objectives where possible), risk (uncertain negative event), assumption (condition for success), and risk management plan (mitigation activities). Ground risks in the intervention, production process, equipment, supply chain, and market context from the applicant data.")
         ));
 
         reg.put("loi", Map.ofEntries(
@@ -776,6 +815,37 @@ public class AiFieldSuggestionService {
     }
 
     private static Map.Entry<String, FieldSpec> entry(String field, String label, String section, boolean bullets, String style) {
-        return Map.entry(field, new FieldSpec(label, section, bullets, style));
+        return Map.entry(field, new FieldSpec(label, section, bullets, false, style));
+    }
+
+    private static Map.Entry<String, FieldSpec> rowsEntry(String field, String label, String section, String style) {
+        return Map.entry(field, new FieldSpec(label, section, false, true, style));
+    }
+
+    private static List<ProjectProposalRiskRowDto> templateRiskRows() {
+        return List.of(
+                riskRow("Maintain uninterrupted production during equipment commissioning",
+                        "Equipment malfunction causing production delays",
+                        "Equipment will operate efficiently with regular maintenance",
+                        "Schedule regular maintenance and maintain service contracts"),
+                riskRow("Secure reliable raw material supply for scaled output",
+                        "Supplier delays for raw materials",
+                        "Suppliers will deliver on time",
+                        "Maintain multiple suppliers and buffer stock"),
+                riskRow("Retain and expand the enterprise client base",
+                        "Market competition",
+                        "Enterprise will retain and attract clients",
+                        "Competitive pricing and quality improvement initiatives")
+        );
+    }
+
+    private static ProjectProposalRiskRowDto riskRow(String objective, String risk, String assumption, String plan) {
+        ProjectProposalRiskRowDto row = new ProjectProposalRiskRowDto();
+        row.setId(String.valueOf(risk.hashCode()));
+        row.setObjective(objective);
+        row.setRisk(risk);
+        row.setAssumption(assumption);
+        row.setPlan(plan);
+        return row;
     }
 }

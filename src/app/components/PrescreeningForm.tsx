@@ -341,10 +341,10 @@ export function PrescreeningForm({
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-                <span className="text-blue-800 font-black text-sm">ai</span>
+                <span className="text-blue-800 font-black text-sm">Ai</span>
               </div>
               <div>
-                <h1 className="text-xl font-black">aiSETUP Pre-Screening</h1>
+                <h1 className="text-xl font-black">AiSETUP Pre-Screening</h1>
                 <p className="text-white/60 text-sm">
                   Determine eligibility for the DOST SETUP Program
                 </p>
