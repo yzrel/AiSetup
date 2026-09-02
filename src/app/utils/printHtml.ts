@@ -69,6 +69,10 @@ export function printHtmlDocument(
       #${PRINT_ROOT_ID} {
         display: block !important;
         visibility: visible !important;
+        position: static !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
         color: #111 !important;
       }
       #${PRINT_ROOT_ID} * {

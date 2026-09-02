@@ -354,10 +354,11 @@
 }
 
 @media print {
-  body.tna-form-01-printing,
-  body.tna-form-01-printing html {
+  html:has(body.tna-form-01-printing),
+  body.tna-form-01-printing {
     width: auto !important;
     height: auto !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -369,9 +370,12 @@
 
   body.tna-form-01-printing #tna-form-01-print-root {
     display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    left: auto !important;
+    top: auto !important;
     width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;
@@ -423,6 +427,8 @@
   #tna-form-01-print-root .tna-form-block,
   #tna-form-01-print-root .tna-print-section {
     margin-bottom: 4mm;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   #tna-form-01-print-root .tna-form-section-heading,

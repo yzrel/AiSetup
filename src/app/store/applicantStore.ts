@@ -17,6 +17,7 @@ import {
   fetchBackendApplicants,
   syncApplicantToBackendBestEffort,
 } from "../utils/applicantPersistence";
+import { coerceApplicantStringFields } from "../utils/applicantText";
 import { normalizeModuleDataForHydrate } from "../utils/normalizeCriticalModuleData";
 import { api } from "../api/client";
 import { getAuthToken } from "../api/authToken";
@@ -455,7 +456,7 @@ function applicantFromRecord(
     lastUpdated: "",
     moduleData: {},
   };
-  return {
+  return coerceApplicantStringFields({
     ...base,
     ...profile,
     id: record.id,
@@ -466,7 +467,7 @@ function applicantFromRecord(
     ),
     moduleData,
     lastUpdated: record.updatedAt ?? base.lastUpdated,
-  };
+  });
 }
 
 export const applicantStore = {

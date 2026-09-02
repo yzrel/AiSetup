@@ -25,6 +25,10 @@ import {
   PP_PROFIT_TYPES,
   PP_SCHEDULE_MONTHS,
   PP_SCHEDULE_WEEKS_PER_MONTH,
+  PP_SIGN_DATE,
+  PP_SIGN_OFFICIAL_USE,
+  PP_SIGN_PREPARED_BY,
+  PP_SIGN_PROPONENT_ROLE,
   PP_VOLUME_OF_ORDERS_COLUMNS,
   PP_VOLUME_OF_ORDERS_SAMPLE_ROWS,
   PP_COMPETITORS_COLUMNS,
@@ -122,6 +126,13 @@ describe("Form 001 marketing lettering", () => {
     for (const pair of PP_BUSINESS_ACTIVITY_PAIRS) {
       expect(pair).toHaveLength(2);
     }
+  });
+
+  it("prints a Prepared by / Date closing block after risk management", () => {
+    expect(PP_SIGN_PREPARED_BY).toMatch(/Prepared by/i);
+    expect(PP_SIGN_DATE).toMatch(/^Date:/);
+    expect(PP_SIGN_PROPONENT_ROLE).toMatch(/Proponent/i);
+    expect(PP_SIGN_OFFICIAL_USE).toMatch(/DOST Regional Office/i);
   });
 });
 

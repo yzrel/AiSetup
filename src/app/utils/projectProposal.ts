@@ -961,6 +961,13 @@ const TNA_TO_PROPOSAL_ATTACHMENT_MAP: {
     fileIdKey: "processFlowFileId",
     mimeKey: "processFlowFileMime",
   },
+  {
+    kind: "orgChart",
+    fileNameKey: "orgStructureFileName",
+    fileDataKey: "orgStructureFileData",
+    fileIdKey: "orgStructureFileId",
+    mimeKey: "orgStructureFileMime",
+  },
 ];
 
 /** Prefill empty proposal attachment slots from TNA Form 01 uploads. */

@@ -24,6 +24,7 @@ import {
   getOverallAssessmentLabel,
   needsStaffAssessment,
 } from "../utils/clientAssessment";
+import { applicantMatchesSearch } from "../utils/applicantText";
 import {
   getApplicantsForStaff,
   getOfficeName,
@@ -75,19 +76,13 @@ export function ClientManagement({
   const provinces = getStaffProvinces(user);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     return scoped.filter((a) => {
       if (provinceFilter && resolveApplicantProvince(a) !== provinceFilter)
         return false;
       if (moduleFilter && a.currentModule !== moduleFilter) return false;
       if (reviewOnly && !needsStaffAssessment(a)) return false;
-      if (!q) return true;
-      return (
-        a.enterpriseName.toLowerCase().includes(q) ||
-        a.applicantName.toLowerCase().includes(q) ||
-        a.applicationId.toLowerCase().includes(q) ||
-        a.emailAddress.toLowerCase().includes(q)
-      );
+      return applicantMatchesSearch(a, q);
     });
   }, [scoped, search, provinceFilter, moduleFilter, reviewOnly]);
 

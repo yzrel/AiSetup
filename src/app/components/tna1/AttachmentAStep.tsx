@@ -9,7 +9,8 @@ import { AiAssistTextarea } from "../AiAssistField";
 import { PrioritySectorSelect } from "../PrioritySectorSelect";
 import { allowWhenDemo } from "../../utils/demoMode";
 import type { Tna1StepContext } from "./stepContext";
-import { DOST_BLUE, InfoBanner, inputCls, labelCls } from "./tna1Ui";
+import { FIELD_GUIDANCE } from "../../constants/fieldGuidance";
+import { DOST_BLUE, FileAttachmentField, InfoBanner, inputCls, labelCls } from "./tna1Ui";
 
 export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
   const { form, set, tnaAi, setStep, goToStep } = ctx;
@@ -237,6 +238,24 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
               </div>
             )}
           </div>
+
+          <FileAttachmentField
+            label="Organizational Structure"
+            fileName={form.orgStructureFileName}
+            fileData={form.orgStructureFileData}
+            fileId={form.orgStructureFileId}
+            mimeType={form.orgStructureFileMime}
+            applicantId={ctx.applicant?.id}
+            moduleKey="tna1-orgStructure"
+            onFile={(name, data, meta) => {
+              set("orgStructureFileName", name);
+              set("orgStructureFileData", data);
+              set("orgStructureFileId", meta?.fileId ?? "");
+              set("orgStructureFileMime", meta?.mimeType ?? "");
+            }}
+            hint={FIELD_GUIDANCE.orgStructure}
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

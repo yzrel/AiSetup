@@ -462,10 +462,11 @@
 }
 
 @media print {
-  body.rtec-report-printing,
-  body.rtec-report-printing html {
+  html:has(body.rtec-report-printing),
+  body.rtec-report-printing {
     width: auto !important;
     height: auto !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -477,9 +478,12 @@
 
   body.rtec-report-printing #rtec-report-print-root {
     display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    left: auto !important;
+    top: auto !important;
     width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;
@@ -531,5 +535,10 @@
   #rtec-report-print-root .rtec-form-title {
     color: #111 !important;
     text-align: center !important;
+  }
+
+  #rtec-report-print-root .rtec-form-block {
+    break-inside: auto;
+    page-break-inside: auto;
   }
 }

@@ -328,16 +328,8 @@ function HeroSection({
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background image layer — replace src with actual photo */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url(/assets/hero-bg.jpg)",
-          backgroundPosition: "center 30%",
-        }}
-      />
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0C2461]/90 via-[#0C2461]/75 to-[#00AEEF]/40" />
+      {/* Gradient hero — brochure imagery uses official logos above the fold */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0C2461] via-[#0C2461]/85 to-[#00AEEF]/35" />
       {/* Diagonal accent */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
 

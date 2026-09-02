@@ -27,9 +27,11 @@ No inline per-section footers. Live print uses CSS counters (Word hard-codes ~12
 
 ## Pagination
 
-- Section titles stay with content (`break-inside: avoid` on `.tna-form-block`).
+- Section titles stay with the next paragraph (`break-after: avoid` on headings).
+- Long `.tna-form-block` sections use `break-inside: auto` in print so tables and narratives are not clipped.
 - Do **not** force one section per physical page.
 - Never use `break-before: always` on sections.
+- Official print root stays in-flow (`position: static`).
 
 ## Official print vs portal
 

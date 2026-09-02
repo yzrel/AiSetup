@@ -12,6 +12,7 @@ import {
 import {
   buildApprovalLetterBody,
   formatApprovalDisplayDate,
+  printApprovalLetter,
 } from "../utils/approvalLetter";
 
 interface ApprovalLetterPreviewProps {
@@ -31,12 +32,13 @@ export function ApprovalLetterPreview({
 }: ApprovalLetterPreviewProps) {
   const paragraphs = buildApprovalLetterBody(form);
   const displayDate = formatApprovalDisplayDate(form.approvalDate);
+  const handlePrint = onPrint ?? (() => printApprovalLetter(applicationId));
 
   return (
     <div className={compact ? "" : "space-y-4"}>
-      {showToolbar && onPrint && (
+      {showToolbar && !compact && (
         <PreviewToolbar className="justify-end">
-          <DocumentPrintButton onClick={onPrint} />
+          <DocumentPrintButton onClick={handlePrint} />
         </PreviewToolbar>
       )}
 

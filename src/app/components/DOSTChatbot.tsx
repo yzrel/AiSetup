@@ -68,7 +68,7 @@ Key Facts:
 - SETUP provides up to ₱5 million in financial assistance to MSMEs
 - Eligible: Filipino-owned (≥60%), registered DTI/SEC/CDA, operating ≥1 year
 - Enterprise sizes: Micro (≤₱3M assets), Small (₱3M–₱15M), Medium (₱15M–₱100M)
-- Modules: (1) Pre-Screening (2) Registration (3) LOI (4) Requirements (5) TNA1 (6) TNA2 (7) Project Proposal (8) RTEC (9) Approval Letter (10) MOA (11) LandBank Account (12) Withdrawal Request (13) Authority Letter (14) Procurement (15) Liquidation (16) Untagging (17) Delinquent Management
+- Modules (canonical pipeline): (1) Pre-Screening (2) Enterprise Registration (3) Letter of Intent (4) TNA Form 01 (5) TNA Form 02 / technical report (6) Project Proposal — Form 001 (7) Submission Requirements (8) Conduct of RTEC — staff only (9) Approval Letter & MOA signing (10) LandBank & Withdrawal (11) Procurement & Liquidation (12) Refund & Delinquent Monitoring (13) Project Close-Out (14) Completed. Pre-PIS (Form 008) may be prepared around MOA signing; it is optional for LandBank enrollment.
 
 When asked to generate a report/checklist/summary/proposal outline, respond ONLY with this JSON (no extra text):
 {"type":"report","report":{"title":"Title Here","type":"checklist","sections":[{"heading":"Section","content":"Content"}]},"message":"Short friendly intro"}

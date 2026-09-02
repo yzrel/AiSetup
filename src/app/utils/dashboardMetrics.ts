@@ -522,6 +522,26 @@ export function mergeProgramKpisWithFallback(
   });
 }
 
+/** Live KPI rows for staff dashboard — never substitute demo numbers during a presentation. */
+export function formatProgramKpisForDisplay(
+  live: ProgramKpi[],
+): { label: string; value: string }[] {
+  const labels = [
+    "Avg. Processing Time",
+    "Approval Rate",
+    "Avg. Grant Amount",
+    "Enterprises Upgraded",
+    "Jobs Created / Retained",
+  ] as const;
+  return labels.map((label) => {
+    const found = live.find((l) => l.label === label);
+    return {
+      label,
+      value: found?.value?.trim() ? found.value : "—",
+    };
+  });
+}
+
 export function getQuarterComparisonData(
   applicants: Applicant[],
   now = new Date(),

@@ -38,6 +38,8 @@ export const FIELD_GUIDANCE = {
     "How you order and receive supplies and raw materials (suppliers, purchase orders, receiving checks).",
   plantLayout:
     "Upload a floor plan or drawing of work areas and equipment placement (required per TNA Form 01).",
+  orgStructure:
+    "Upload the enterprise organizational chart (owner/proprietor and reporting lines). Prefills from the Form 001 chart when already on file.",
   cashFlow:
     "Describe money coming in vs going out over time, or note if cash-flow / financial statements are attached elsewhere.",
   capitalSource:

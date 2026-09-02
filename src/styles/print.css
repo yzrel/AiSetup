@@ -16,9 +16,12 @@
     margin: 12mm;
   }
 
+  /* In-flow width: a fixed 210mm body plus @page margins overflows and clips. */
   html,
   body {
-    width: 210mm;
-    margin: 0 auto;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
   }
 }

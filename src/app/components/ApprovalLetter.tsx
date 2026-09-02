@@ -44,6 +44,7 @@ import {
   ensureApprovalLetterPublished,
   validateApprovalLetterAcknowledge,
   validateApprovalLetterPublish,
+  printApprovalLetter,
 } from "../utils/approvalLetter";
 import {
   getMoaAnnexCForm,
@@ -584,7 +585,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                   <ApprovalLetterPreview
                     form={form}
                     applicationId={applicant.applicationId}
-                    showToolbar={false}
+                    onPrint={() => printApprovalLetter(applicant.applicationId)}
                   />
                   <DocumentDeliveryPanel
                     applicant={applicant}

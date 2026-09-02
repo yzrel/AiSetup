@@ -702,6 +702,7 @@ export function TechnologyNeedsAssessment1({
       value: form.productionPlanFileName || form.productionPlan,
       passed: !!form.productionPlanFileName || !!String(form.productionPlan ?? "").trim(),
     },
+    { label: "Organizational Structure", value: form.orgStructureFileName, passed: !!form.orgStructureFileName },
     { label: "Plant Lay-Out Upload",    value: form.plantLayoutFileName, passed: !!form.plantLayoutFileName },
     {
       label: "Process Flow",

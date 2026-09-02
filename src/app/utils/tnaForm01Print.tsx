@@ -38,6 +38,10 @@ const ATTACHMENT_FIELDS = [
     prefix: "processFlow",
     moduleKey: "tna1-processFlow",
   },
+  {
+    prefix: "orgStructure",
+    moduleKey: "tna1-orgStructure",
+  },
 ] as const;
 
 function waitForImages(root: HTMLElement): Promise<void> {

@@ -254,10 +254,11 @@
 }
 
 @media print {
-  body.property-transfer-receipt-printing,
-  body.property-transfer-receipt-printing html {
+  html:has(body.property-transfer-receipt-printing),
+  body.property-transfer-receipt-printing {
     width: auto !important;
     height: auto !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
@@ -269,9 +270,12 @@
 
   body.property-transfer-receipt-printing #property-transfer-receipt-print-root {
     display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    left: auto !important;
+    top: auto !important;
     width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;

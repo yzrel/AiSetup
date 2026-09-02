@@ -146,7 +146,25 @@
     visibility: visible !important;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) * {
+  body.inventory-of-equipment-printing * {
+    visibility: hidden !important;
+  }
+
+  body.inventory-of-equipment-printing #inventory-of-equipment-print-root,
+  body.inventory-of-equipment-printing #inventory-of-equipment-print-root * {
+    visibility: visible !important;
+  }
+
+  body.property-transfer-receipt-printing * {
+    visibility: hidden !important;
+  }
+
+  body.property-transfer-receipt-printing #property-transfer-receipt-print-root,
+  body.property-transfer-receipt-printing #property-transfer-receipt-print-root * {
+    visibility: visible !important;
+  }
+
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing):not(.inventory-of-equipment-printing):not(.property-transfer-receipt-printing) * {
     visibility: hidden;
   }
 
@@ -164,22 +182,30 @@
   #pre-pis-preview *,
   #lbp-introduction-preview,
   #lbp-introduction-preview *,
+  #inventory-of-equipment-preview,
+  #inventory-of-equipment-preview *,
+  #property-transfer-receipt-preview,
+  #property-transfer-receipt-preview *,
   #aisetup-html-print-root,
   #aisetup-html-print-root * {
     visibility: visible;
   }
 
   #moa-annex-c-print-root,
-  #moa-annex-c-print-root * {
+  #moa-annex-c-print-root *,
+  #inventory-of-equipment-print-root,
+  #inventory-of-equipment-print-root *,
+  #property-transfer-receipt-print-root,
+  #property-transfer-receipt-print-root * {
     visibility: visible;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) #tna-form-01-preview,
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) #tna-form-01-preview * {
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing):not(.inventory-of-equipment-printing):not(.property-transfer-receipt-printing) #tna-form-01-preview,
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing):not(.inventory-of-equipment-printing):not(.property-transfer-receipt-printing) #tna-form-01-preview * {
     visibility: visible;
   }
 
-  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing) #tna-form-01-preview {
+  body:not(.tna-form-01-printing):not(.tna-form-02-printing):not(.project-proposal-printing):not(.rtec-report-printing):not(.aisetup-html-printing):not(.financial-projection-printing):not(.moa-annex-c-printing):not(.inventory-of-equipment-printing):not(.property-transfer-receipt-printing) #tna-form-01-preview {
     position: absolute;
     left: 0;
     right: 0;
@@ -196,6 +222,7 @@
     background: #fff !important;
   }
 
+  /* Preview Ctrl+P: overlay the sheet. Official createRoot print roots stay in-flow. */
   #loi-document-print,
   #tna-form-02-preview,
   #approval-letter-preview,
@@ -203,8 +230,8 @@
   #rtec-report-preview,
   #pre-pis-preview,
   #lbp-introduction-preview,
-  #aisetup-html-print-root,
-  #moa-annex-c-print-root {
+  #inventory-of-equipment-preview,
+  #property-transfer-receipt-preview {
     position: absolute;
     left: 0;
     top: 0;
@@ -218,13 +245,28 @@
     border-radius: 0 !important;
   }
 
+  #tna-form-01-print-root,
+  #tna-form-02-print-root,
+  #project-proposal-print-root,
+  #rtec-report-print-root,
+  #financial-projection-print-root,
+  #moa-annex-c-print-root,
+  #inventory-of-equipment-print-root,
+  #property-transfer-receipt-print-root,
+  #aisetup-html-print-root {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
   .tna-page-break {
     page-break-before: always;
     break-before: page;
   }
 
   .tna-print-section {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: auto;
+    break-inside: auto;
   }
 }

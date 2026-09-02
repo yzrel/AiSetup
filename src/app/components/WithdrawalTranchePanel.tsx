@@ -26,6 +26,7 @@ import type {
   WithdrawalTrancheNum,
   WithdrawalTranchePackage,
 } from "../api/types";
+import { DocumentPrintButton } from "./DocumentActionButtons";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { SubmittedFileActions } from "./SubmittedFileActions";
 import { WithdrawalRequestLetterPreview } from "./WithdrawalRequestLetterPreview";
@@ -215,6 +216,16 @@ export function WithdrawalTranchePanel({
     });
   };
 
+  const handlePrint = () => {
+    if (!selectedSupplier) return;
+    downloadWithdrawalRequestLetterPdf(
+      draftForLetter(),
+      pkg,
+      applicant.applicationId,
+      selectedSupplier,
+    );
+  };
+
   const handleGenerate = () => {
     if (!canEditStaffWorkflow || !selectedSupplier) return;
     const draft = {
@@ -350,9 +361,14 @@ export function WithdrawalTranchePanel({
       {/* Letter preview & generate (staff) */}
       {(canEditStaffWorkflow || showPreview) && (
         <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-          <div className="flex items-center gap-2 font-semibold text-sm text-gray-700">
-            <FileText className="w-4 h-4 text-blue-600" />
-            Letter preview
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2 font-semibold text-sm text-gray-700">
+              <FileText className="w-4 h-4 text-blue-600" />
+              Letter preview
+            </div>
+            {showPreview && selectedSupplier && (
+              <DocumentPrintButton onClick={handlePrint} />
+            )}
           </div>
 
           {letterErrors.length > 0 && (
@@ -375,8 +391,8 @@ export function WithdrawalTranchePanel({
               pkg={pkg}
               selectedSupplier={selectedSupplier}
               applicationId={applicant.applicationId}
-              onPrint={canEditStaffWorkflow ? handleGenerate : undefined}
-              showToolbar={canEditStaffWorkflow}
+              onPrint={handlePrint}
+              showToolbar={false}
             />
           ) : (
             <p className="text-xs text-gray-500 italic">

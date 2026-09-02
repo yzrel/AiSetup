@@ -33,7 +33,6 @@ import {
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
 import { getStaffDashboardUpdatedLabel } from "../utils/dashboardMetrics";
-import { FALLBACK_LAST_UPDATED } from "./dashboard/dashboardData";
 import { StatCard } from "./dashboard/widgets";
 import { DashboardProvinceFilter } from "./dashboard/DashboardProvinceFilter";
 import { ApplicantOverviewTab } from "./dashboard/ApplicantOverviewTab";
@@ -113,7 +112,9 @@ export function Dashboard({
             <Calendar className="w-3.5 h-3.5" />
             {isClientView
               ? `${user.enterpriseName}${user.applicationId ? ` · ${user.applicationId}` : ""}`
-              : `Last updated: ${getStaffDashboardUpdatedLabel(scopedApplicants, FALLBACK_LAST_UPDATED)}`}
+              : scopedApplicants.length === 0
+                ? "No cooperators in scope"
+                : `Last updated: ${getStaffDashboardUpdatedLabel(scopedApplicants, "—")}`}
           </p>
         </div>
         {allowedTabs.length > 1 && (

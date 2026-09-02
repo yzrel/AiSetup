@@ -2,8 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  *
  * Staff dashboard overview: pipeline charts, sector/KPI panels, recent
- * applications, and the payment monitor — live from scoped applicants with
- * sample fallbacks when a series is empty.
+ * applications, and the payment monitor — live from scoped applicants only.
  */
 
 import {
@@ -43,20 +42,13 @@ import {
   getRegistrantGenderBreakdown,
   getTopSectorsData,
   getWorkforceGenderTotals,
-  mergeProgramKpisWithFallback,
-  withLiveOrFallback,
+  formatProgramKpisForDisplay,
 } from "../../utils/dashboardMetrics";
 import { timeAgo } from "../../utils/timeAgo";
 import {
-  FALLBACK_PAYMENT_RECORDS,
-  FALLBACK_PROGRAM_KPIS,
-  FALLBACK_REGISTRANT_GENDER,
-  FALLBACK_WORKFORCE_GENDER,
-  pipelineData,
-  recentApps,
-  regionData,
-  topSectors,
-} from "./dashboardData";
+  DashboardChartEmpty,
+  DashboardScopeEmptyBanner,
+} from "./DashboardEmptyStates";
 import { PaymentMonitor } from "./PaymentMonitor";
 import { RecentAppStatusBadge, SectionTitle, recentAppColumns } from "./widgets";
 
@@ -84,44 +76,24 @@ export function StaffOverviewTab({
     getApplicantsForStaff(user),
     provinceFilter,
   );
-  const livePaymentRecords = getPaymentMonitorRecords(scopedApplicants);
-  const paymentMonitorRecords = withLiveOrFallback(
-    livePaymentRecords,
-    FALLBACK_PAYMENT_RECORDS,
-  );
-  const livePipeline = getPipelineChartData(scopedApplicants);
-  const chartPipeline = withLiveOrFallback(livePipeline, pipelineData);
-  const liveRegions = getRegionBreakdownData(scopedApplicants);
-  const chartRegions = withLiveOrFallback(liveRegions, regionData);
-  const liveSectors = getTopSectorsData(scopedApplicants);
-  const chartSectors = withLiveOrFallback(liveSectors, topSectors);
-  const liveRecent = getRecentApplicationsRows(scopedApplicants);
-  const chartRecent = withLiveOrFallback(liveRecent, recentApps);
-  const programKpis = mergeProgramKpisWithFallback(
+  const hasScopedApplicants = scopedApplicants.length > 0;
+  const paymentMonitorRecords = getPaymentMonitorRecords(scopedApplicants);
+  const chartPipeline = getPipelineChartData(scopedApplicants);
+  const chartRegions = getRegionBreakdownData(scopedApplicants);
+  const chartSectors = getTopSectorsData(scopedApplicants);
+  const chartRecent = getRecentApplicationsRows(scopedApplicants);
+  const programKpis = formatProgramKpisForDisplay(
     getProgramKpis(scopedApplicants),
-    FALLBACK_PROGRAM_KPIS,
   );
-  const registrantGender = withLiveOrFallback(
-    getRegistrantGenderBreakdown(scopedApplicants),
-    FALLBACK_REGISTRANT_GENDER,
-  );
-  const workforceTotals = getWorkforceGenderTotals(scopedApplicants);
-  const workforceDisplay =
-    workforceTotals.total > 0
-      ? workforceTotals
-      : {
-          male:
-            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Male")?.count ?? 0,
-          female:
-            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Female")?.count ??
-            0,
-          total: FALLBACK_WORKFORCE_GENDER.reduce((s, r) => s + r.count, 0),
-        };
+  const registrantGender = getRegistrantGenderBreakdown(scopedApplicants);
+  const workforceDisplay = getWorkforceGenderTotals(scopedApplicants);
   const userNotifications = notificationStore.getForUser(user);
   const unreadNotifications = userNotifications.filter((n) => !n.read);
 
   return (
     <>
+      {!hasScopedApplicants && <DashboardScopeEmptyBanner />}
+
       {/* Charts row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* Pipeline bar chart */}
@@ -130,6 +102,7 @@ export function StaffOverviewTab({
             Application Pipeline
           </SectionTitle>
           <div className="h-48 sm:h-[210px]">
+          {chartPipeline.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartPipeline} barSize={30}>
               <CartesianGrid
@@ -168,6 +141,9 @@ export function StaffOverviewTab({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          ) : (
+            <DashboardChartEmpty message="No pipeline data for cooperators in scope." />
+          )}
           </div>
         </div>
 
@@ -177,6 +153,7 @@ export function StaffOverviewTab({
             Region XII Breakdown
           </SectionTitle>
           <div className="h-36 sm:h-[130px]">
+          {chartRegions.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -202,9 +179,12 @@ export function StaffOverviewTab({
               />
             </PieChart>
           </ResponsiveContainer>
+          ) : (
+            <DashboardChartEmpty message="No regional breakdown yet." />
+          )}
           </div>
           <div className="space-y-1.5 mt-1">
-            {chartRegions.map((r) => (
+            {chartRegions.length > 0 ? chartRegions.map((r) => (
               <div
                 key={r.name}
                 className="flex items-center justify-between text-xs"
@@ -222,7 +202,9 @@ export function StaffOverviewTab({
                   {r.value}
                 </span>
               </div>
-            ))}
+            )) : (
+              <p className="text-xs text-gray-400">No province data yet.</p>
+            )}
           </div>
         </div>
       </div>
@@ -277,7 +259,7 @@ export function StaffOverviewTab({
             Top Sectors
           </SectionTitle>
           <div className="space-y-3">
-            {chartSectors.map((s, i) => (
+            {chartSectors.length > 0 ? chartSectors.map((s, i) => (
               <div key={s.sector}>
                 <div className="flex justify-between text-xs mb-1">
                   <div className="flex items-center gap-1.5">
@@ -299,7 +281,9 @@ export function StaffOverviewTab({
                   />
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-xs text-gray-400">No sector data yet.</p>
+            )}
           </div>
         </div>
 
@@ -417,6 +401,7 @@ export function StaffOverviewTab({
           getRowKey={(app, i) => `${app.name}-${i}`}
           mobileClassName="px-4 pb-4"
           desktopClassName="overflow-x-auto [&_th]:px-5 [&_th]:py-3 [&_th]:text-[11px] [&_th]:font-bold [&_th]:text-gray-400 [&_th]:uppercase [&_th]:tracking-wider [&_tr]:border-t [&_tr]:border-gray-50 [&_tr:hover]:bg-[#0C2461]/[0.02] [&_thead_tr]:bg-gray-50"
+          emptyMessage="No recent applications in scope."
           renderMobileCard={(app) => (
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
               <div className="flex items-start gap-2.5">

@@ -74,4 +74,15 @@ describe("filterApplicantsByProvince", () => {
       filterApplicantsByProvince(applicants, "Sarangani"),
     ).toHaveLength(0);
   });
+
+  it("does not throw when address and region are null on the applicant", () => {
+    const row = baseApplicant({
+      id: "null-addr",
+      address: null as unknown as string,
+      region: null as unknown as string,
+      moduleData: {},
+    });
+    expect(() => filterApplicantsByProvince([row], "Cotabato")).not.toThrow();
+    expect(filterApplicantsByProvince([row], "Cotabato")).toHaveLength(0);
+  });
 });

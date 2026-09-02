@@ -35,6 +35,7 @@ import { REGION_12_LABEL, REGION_12_PROVINCES } from "../constants/region12";
 import { SETUP_PRIORITY_SECTORS } from "../constants/setupBrochure";
 import { AuthUser } from "../store/authStore";
 import { getApplicantsForStaff } from "../utils/provincialOffice";
+import { applicantMatchesSearch } from "../utils/applicantText";
 import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -560,18 +561,7 @@ export function ApplicantListView({
     const matchModule =
       filterModule === "all" ||
       a.currentModule === filterModule;
-    const matchSearch =
-      a.applicantName
-        .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      a.enterpriseName
-        .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      a.applicationId
-        .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      a.region.toLowerCase().includes(search.toLowerCase());
-    return matchModule && matchSearch;
+    return matchModule && applicantMatchesSearch(a, search);
   });
 
   const selectedApplicant = selectedId

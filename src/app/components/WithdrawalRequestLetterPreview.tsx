@@ -12,6 +12,7 @@ import type {
 import { DocumentPrintButton } from "./DocumentActionButtons";
 import { PreviewToolbar } from "./PreviewLayout";
 import {
+  downloadWithdrawalRequestLetterPdf,
   formatWithdrawalPhp,
   sumWithdrawalEquipment,
   trancheLabel,
@@ -42,12 +43,21 @@ export function WithdrawalRequestLetterPreview({
   const total = sumWithdrawalEquipment(equipment);
   const firm = draft.firmName.trim() || "—";
   const rows = equipment.filter((r) => r.item.trim() || r.amount.trim());
+  const handlePrint =
+    onPrint ??
+    (() =>
+      downloadWithdrawalRequestLetterPdf(
+        draft,
+        pkg,
+        applicationId,
+        selectedSupplier,
+      ));
 
   return (
     <div className={compact ? "" : "space-y-4"}>
-      {showToolbar && onPrint && (
+      {showToolbar && !compact && (
         <PreviewToolbar className="justify-end">
-          <DocumentPrintButton onClick={onPrint} />
+          <DocumentPrintButton onClick={handlePrint} />
         </PreviewToolbar>
       )}
 

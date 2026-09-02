@@ -8,6 +8,8 @@ import { getProgramsByIds } from "../constants/dostProgramRecommendations";
 import type { LoIAdditionalFields } from "./applicantPrefill";
 import type { LoiGenerationRequest } from "../api/types";
 import type { LoiDocumentResponse } from "../api/types";
+import { printHtmlDocument } from "./printHtml";
+import { a4PageRule, A4_MARGIN_LETTER } from "./printPage";
 
 export const LOI_REGIONAL_ADDRESSEE = {
   name: "ENGR. SAMMY P. MALAWAN",
@@ -460,4 +462,74 @@ export function coerceLoiDocument(
       obj.provincialOfficeDefaulted ?? thruFallback.defaulted,
     ),
   };
+}
+
+export function getLoiPrintStyles(): string {
+  return `
+    ${a4PageRule(A4_MARGIN_LETTER)}
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      padding: 0;
+      color: #1f2937;
+      font-size: 12pt;
+      line-height: 1.5;
+    }
+    .print-a4-sheet {
+      width: 100%;
+      min-height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .loi-letterhead { margin-bottom: 16px; }
+    .loi-letterhead .loi-enterprise {
+      font-weight: 900;
+      font-size: 14pt;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .loi-letterhead p { margin: 0 0 2px; }
+    .loi-block { margin-bottom: 16px; }
+    .loi-block p { margin: 0 0 2px; }
+    .loi-block .loi-first-line { font-weight: 600; }
+    .loi-body p { text-align: justify; margin: 0 0 12px; }
+    .loi-closing { margin-top: 8px; }
+    .loi-signature {
+      margin-top: 32px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .loi-signature .loi-typed {
+      font-weight: 900;
+      font-style: italic;
+      border-bottom: 1px solid #6b7280;
+      display: inline-block;
+      padding-bottom: 2px;
+      padding-right: 5rem;
+    }
+    .loi-signature p { margin: 0 0 2px; }
+    .loi-meta {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 9pt;
+      color: #9ca3af;
+    }
+    .loi-meta p { margin: 0 0 2px; }
+  `;
+}
+
+export function printLoiDocument(applicationId?: string): void {
+  const el = document.getElementById("loi-document-print");
+  const title = applicationId
+    ? `Letter-of-Intent-${applicationId}`
+    : "Letter-of-Intent";
+  if (!el) {
+    window.print();
+    return;
+  }
+  printHtmlDocument(title, el.innerHTML, getLoiPrintStyles());
 }

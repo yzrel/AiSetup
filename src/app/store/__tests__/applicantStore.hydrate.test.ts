@@ -25,6 +25,11 @@ vi.mock("../../utils/applicantPersistence", () => ({
 
 import { authStore, type AuthUser } from "../authStore";
 import { applicantStore } from "../applicantStore";
+import { applicantMatchesSearch } from "../../utils/applicantText";
+import {
+  getApplicantsForStaff,
+  resolveApplicantProvince,
+} from "../../utils/provincialOffice";
 
 function staffUser(): AuthUser {
   return {
@@ -108,5 +113,31 @@ describe("applicantStore.hydrateFromBackend", () => {
     fetchBackendApplicants.mockResolvedValue([]);
     await applicantStore.hydrateFromBackend();
     expect(applicantStore.getAll()).toEqual([]);
+  });
+
+  it("coerces null profile strings so province resolution and search do not throw", async () => {
+    fetchBackendApplicants.mockResolvedValue([
+      {
+        id: "null-profile-1",
+        applicationId: "LOI-2026-999999",
+        enterpriseName: "Null Profile Co",
+        currentModule: "prescreening",
+        moduleData: { province: "Cotabato" },
+        profile: {
+          applicantName: null,
+          address: null,
+          emailAddress: null,
+          region: null,
+        },
+        updatedAt: "2026-09-02T00:00:00.000Z",
+      },
+    ]);
+    await applicantStore.hydrateFromBackend();
+    const row = applicantStore.getById("null-profile-1");
+    expect(row?.applicantName).toBe("");
+    expect(row?.address).toBe("");
+    expect(resolveApplicantProvince(row!)).toBe("Cotabato");
+    expect(applicantMatchesSearch(row!, "null")).toBe(true);
+    expect(getApplicantsForStaff(staffUser())).toHaveLength(1);
   });
 });

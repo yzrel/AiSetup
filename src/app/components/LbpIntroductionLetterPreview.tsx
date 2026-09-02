@@ -13,6 +13,7 @@ import {
   buildLbpIntroductionBody,
   formatApprovalDisplayDate,
   managerSalutation,
+  printLbpIntroductionLetter,
 } from "../utils/lbpIntroductionLetter";
 
 interface LbpIntroductionLetterPreviewProps {
@@ -32,12 +33,14 @@ export function LbpIntroductionLetterPreview({
 }: LbpIntroductionLetterPreviewProps) {
   const paragraphs = buildLbpIntroductionBody(form);
   const displayDate = formatApprovalDisplayDate(form.letterDate);
+  const handlePrint =
+    onPrint ?? (() => printLbpIntroductionLetter(applicationId));
 
   return (
     <div className={compact ? "" : "space-y-4"}>
-      {showToolbar && onPrint && (
+      {showToolbar && !compact && (
         <PreviewToolbar className="justify-end">
-          <DocumentPrintButton onClick={onPrint} />
+          <DocumentPrintButton onClick={handlePrint} />
         </PreviewToolbar>
       )}
 

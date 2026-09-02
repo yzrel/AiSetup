@@ -37,6 +37,7 @@ import {
 } from "../store/applicantStore";
 import { AuthUser, ROLE_LABELS } from "../store/authStore";
 import { getApplicantsForStaff, getOfficeName } from "../utils/provincialOffice";
+import { applicantMatchesSearch } from "../utils/applicantText";
 import { DOST_REGION_12_CONTACTS } from "../constants/setupBrochure";
 import { REGION_12_PROVINCES } from "../constants/region12";
 import { TnaForm01Preview, printTnaForm01 } from "./TnaForm01Preview";
@@ -171,13 +172,7 @@ function ApplicantAccountsPanel({ user }: { user: AuthUser }) {
   }, []);
 
   const filtered = accounts.filter((a) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      a.applicantName.toLowerCase().includes(q) ||
-      a.emailAddress.toLowerCase().includes(q) ||
-      a.enterpriseName.toLowerCase().includes(q) ||
-      a.applicationId.toLowerCase().includes(q);
+    const matchSearch = applicantMatchesSearch(a, search);
     const blocked = applicantStore.isAccountBlocked(a);
     const matchFilter =
       filter === "all" ||

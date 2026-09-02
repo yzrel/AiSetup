@@ -48,6 +48,10 @@ import {
   PP_REGISTRATION_OFFICES,
   PP_RISK_COLUMNS,
   PP_RISK_FOOTNOTE,
+  PP_SIGN_DATE,
+  PP_SIGN_OFFICIAL_USE,
+  PP_SIGN_PREPARED_BY,
+  PP_SIGN_PROPONENT_ROLE,
   PP_QUICK_RATIO_COLUMNS,
   PP_SECTION_FINANCIAL,
   PP_SECTION_MARKETING,
@@ -98,12 +102,16 @@ function val(value: unknown): string {
 function FormBlock({
   children,
   className = "",
+  keep = false,
 }: {
   children: ReactNode;
   className?: string;
+  keep?: boolean;
 }) {
   return (
-    <div className={`pp-form-block pp-print-section ${className}`.trim()}>
+    <div
+      className={`pp-form-block pp-print-section${keep ? " pp-form-block-keep" : ""} ${className}`.trim()}
+    >
       {children}
     </div>
   );
@@ -828,6 +836,9 @@ export function ProjectProposalDocument({
           <DashLabel>{PP_PRODUCTION_DASH_ITEMS[1]}</DashLabel>
           <NarrativeBlock text={narrative("materialBalance", "materialBalance")} />
         </Indent>
+      </FormBlock>
+
+      <FormBlock>
         <Indent level={1}>
           <SubHeading>B. Existing production equipment</SubHeading>
           <NarrativeBlock text={narrative("equipmentNarrative", "equipmentNarrative")} />
@@ -838,6 +849,11 @@ export function ProjectProposalDocument({
             footerRow={existingEquipmentFooterRow(form.equipmentTable)}
             numericCols={[1, 2, 3, 4, 5, 6, 7, 8]}
           />
+        </Indent>
+      </FormBlock>
+
+      <FormBlock>
+        <Indent level={1}>
           <SubHeading>
             C. Technical constraints on the production line and proposed S&T intervention
           </SubHeading>
@@ -867,6 +883,9 @@ export function ProjectProposalDocument({
             applicantId={applicantId}
           />
         </Indent>
+      </FormBlock>
+
+      <FormBlock>
         <Indent level={1}>
           <SubHeading>D. Cost and specification of S&T Intervention-Related Equipment</SubHeading>
           <DataTable
@@ -874,10 +893,25 @@ export function ProjectProposalDocument({
             rows={form.interventionCostTable}
             numericCols={[1, 2, 3]}
           />
+        </Indent>
+      </FormBlock>
+
+      <FormBlock>
+        <Indent level={1}>
           <SubHeading>E. List of equipment fabricators (name and address)</SubHeading>
           <DataTable columns={PP_FABRICATOR_COLUMNS} rows={form.fabricatorTable} />
+        </Indent>
+      </FormBlock>
+
+      <FormBlock>
+        <Indent level={1}>
           <SubHeading>F. Schedule of activities for the proposed project</SubHeading>
           <ScheduleGanttTable rows={form.scheduleTable} />
+        </Indent>
+      </FormBlock>
+
+      <FormBlock>
+        <Indent level={1}>
           <SubHeading>G. Expected Output/Impact (measured results)</SubHeading>
         </Indent>
         {PP_EXPECTED_OUTPUT_HEADINGS.map((heading, i) => (
@@ -929,6 +963,9 @@ export function ProjectProposalDocument({
           />
           <NarrativeBlock text={narrative("financialAnalysis", "financialAnalysis")} />
         </Indent>
+      </FormBlock>
+
+      <FormBlock>
         <Indent level={1}>
           <SubHeading>B. Financial constraints</SubHeading>
           <FieldValue>{form.financialConstraintsNote || PP_FINANCIAL_ATTACH_NOTE}</FieldValue>
@@ -937,7 +974,9 @@ export function ProjectProposalDocument({
             <FieldValue>{PP_FINANCIAL_ATTACH_NOTE}</FieldValue>
           ) : null}
         </Indent>
-        {projTables ? (
+      </FormBlock>
+      {projTables ? (
+        <FormBlock>
           <Indent level={2}>
             <FieldLabel>Income Statement (Years 1–5)</FieldLabel>
             <DataTable
@@ -945,12 +984,24 @@ export function ProjectProposalDocument({
               columns={projTables.income[0] ?? []}
               rows={projTables.income.slice(1)}
             />
+          </Indent>
+        </FormBlock>
+      ) : null}
+      {projTables ? (
+        <FormBlock>
+          <Indent level={2}>
             <FieldLabel>Cash Flow (Years 1–5)</FieldLabel>
             <DataTable
               className="pp-form-projection-table"
               columns={projTables.cashFlow[0] ?? []}
               rows={projTables.cashFlow.slice(1)}
             />
+          </Indent>
+        </FormBlock>
+      ) : null}
+      {projTables ? (
+        <FormBlock>
+          <Indent level={2}>
             <FieldLabel>Balance Sheet (end of year)</FieldLabel>
             <DataTable
               className="pp-form-projection-table"
@@ -958,7 +1009,10 @@ export function ProjectProposalDocument({
               rows={projTables.balance.slice(1)}
             />
           </Indent>
-        ) : null}
+        </FormBlock>
+      ) : null}
+
+      <FormBlock>
         <Indent level={1}>
           <SubHeading>D. Budgetary Requirement for the proposed project</SubHeading>
           <DataTable
@@ -968,6 +1022,11 @@ export function ProjectProposalDocument({
             numericCols={[1, 2, 3, 4, 5, 6, 7]}
           />
           <p className="pp-form-note">{PP_BUDGET_NOTE}</p>
+        </Indent>
+      </FormBlock>
+
+      <FormBlock>
+        <Indent level={1}>
           <SubHeading>E. Proposed Refund Schedule</SubHeading>
           <FormTable className="pp-form-refund-table">
             <thead>
@@ -1024,6 +1083,26 @@ export function ProjectProposalDocument({
           {PP_RISK_FOOTNOTE.map((line) => (
             <p key={line}>{line}</p>
           ))}
+        </div>
+      </FormBlock>
+
+      <FormBlock keep className="pp-form-sign">
+        <div className="pp-form-sign-grid">
+          <div>
+            <p className="pp-form-field-label" style={{ marginTop: 0 }}>
+              {PP_SIGN_PREPARED_BY}
+            </p>
+            <div className="pp-form-sign-line" />
+            <p>{val(form.contactPerson) || val(form.proponentName) || "\u00a0"}</p>
+            <p className="pp-form-note">{PP_SIGN_PROPONENT_ROLE}</p>
+          </div>
+          <div>
+            <p className="pp-form-field-label" style={{ marginTop: 0 }}>
+              {PP_SIGN_DATE}
+            </p>
+            <div className="pp-form-sign-line" />
+            <p className="pp-form-note">{PP_SIGN_OFFICIAL_USE}</p>
+          </div>
         </div>
       </FormBlock>
     </div>

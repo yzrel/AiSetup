@@ -48,6 +48,37 @@ function yearFromYearsOfOperation(yearsOfOperation: string): string {
   return String(new Date().getFullYear() - years);
 }
 
+/** Prefill TNA Form 01 Organizational Structure from Form 001 org-chart upload. */
+export function orgStructureFromProposal(applicant: Applicant | null): {
+  orgStructureFileName: string;
+  orgStructureFileData: string;
+  orgStructureFileId: string;
+  orgStructureFileMime: string;
+} {
+  const empty = {
+    orgStructureFileName: "",
+    orgStructureFileData: "",
+    orgStructureFileId: "",
+    orgStructureFileMime: "",
+  };
+  const pp = applicant?.moduleData?.projectProposal as
+    | { attachments?: Array<Record<string, unknown>> }
+    | undefined;
+  const attachments = Array.isArray(pp?.attachments) ? pp.attachments : [];
+  const org = attachments.find(
+    (a) =>
+      String(a?.kind ?? "") === "orgChart" &&
+      String(a?.fileName ?? "").trim() !== "",
+  );
+  if (!org) return empty;
+  return {
+    orgStructureFileName: String(org.fileName ?? ""),
+    orgStructureFileData: String(org.dataUrl ?? ""),
+    orgStructureFileId: String(org.fileId ?? ""),
+    orgStructureFileMime: String(org.mimeType ?? ""),
+  };
+}
+
 export function buildInitialTnaForm(applicant: Applicant | null) {
   const md = applicant?.moduleData ?? {};
   const dateEstablished = String(md.dateEstablished ?? "");
@@ -137,6 +168,7 @@ export function buildInitialTnaForm(applicant: Applicant | null) {
     plan5Years: "",
     plan10Years: "",
     agreements: "",
+    ...orgStructureFromProposal(applicant),
     cashFlow: "",
     capitalSource: "",
     accountingSystem: "",

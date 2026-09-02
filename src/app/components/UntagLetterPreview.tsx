@@ -13,6 +13,7 @@ import {
   buildUntagLetterBody,
   formatApprovalDisplayDate,
   managerSalutation,
+  downloadUntagLetterPdf,
 } from "../utils/untagLetter";
 
 interface UntagLetterPreviewProps {
@@ -32,12 +33,14 @@ export function UntagLetterPreview({
 }: UntagLetterPreviewProps) {
   const paragraphs = buildUntagLetterBody(form);
   const displayDate = formatApprovalDisplayDate(form.letterDate);
+  const handlePrint =
+    onPrint ?? (() => downloadUntagLetterPdf(applicationId));
 
   return (
     <div className={compact ? "" : "space-y-4"}>
-      {showToolbar && onPrint && (
+      {showToolbar && !compact && (
         <PreviewToolbar className="justify-end">
-          <DocumentPrintButton onClick={onPrint} />
+          <DocumentPrintButton onClick={handlePrint} />
         </PreviewToolbar>
       )}
 

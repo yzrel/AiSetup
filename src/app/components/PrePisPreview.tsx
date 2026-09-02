@@ -9,7 +9,10 @@ import {
   FORM_008_FOOTER,
   FORM_008_TITLE,
 } from "../constants/pisFormLayout";
-import { PIS_DOST_BLUE } from "../utils/projectInformationSheet";
+import {
+  downloadPrePisPdf,
+  PIS_DOST_BLUE,
+} from "../utils/projectInformationSheet";
 import { PreviewFieldRow, PreviewTable, PreviewToolbar } from "./PreviewLayout";
 import { PisEmploymentMatrixPreview } from "./PisEmploymentMatrixFields";
 
@@ -33,12 +36,13 @@ export function PrePisPreview({
   const assistanceLabels = FORM_008_ASSISTANCE_OPTIONS.filter((o) =>
     draft.dostAssistance.includes(o.id),
   ).map((o) => o.label);
+  const handlePrint = onPrint ?? (() => downloadPrePisPdf(applicationId));
 
   return (
     <div>
-      {showToolbar && onPrint && (
+      {showToolbar && (
         <PreviewToolbar className="justify-end mb-3">
-          <DocumentPrintButton onClick={onPrint} label="Print for MOA signing day" />
+          <DocumentPrintButton onClick={handlePrint} label="Print for MOA signing day" />
         </PreviewToolbar>
       )}
 

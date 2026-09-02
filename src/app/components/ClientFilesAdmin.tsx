@@ -20,6 +20,7 @@ import {
   resolveApplicantOfficeId,
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
+import { applicantMatchesSearch } from "../utils/applicantText";
 import { MODULE_PAGE } from "./moduleTheme";
 
 interface ClientFilesAdminProps {
@@ -52,18 +53,12 @@ export function ClientFilesAdmin({ user, onNavigate }: ClientFilesAdminProps) {
   const provinces = getStaffProvinces(user);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     return scoped.filter((a) => {
       if (provinceFilter && resolveApplicantProvince(a) !== provinceFilter) {
         return false;
       }
-      if (!q) return true;
-      return (
-        a.enterpriseName.toLowerCase().includes(q) ||
-        a.applicantName.toLowerCase().includes(q) ||
-        a.applicationId.toLowerCase().includes(q) ||
-        a.emailAddress.toLowerCase().includes(q)
-      );
+      return applicantMatchesSearch(a, q);
     });
   }, [scoped, search, provinceFilter]);
 

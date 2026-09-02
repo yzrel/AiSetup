@@ -326,6 +326,11 @@ export const PP_RISK_FOOTNOTE = [
   "Risk Management Plan – proposed activities to address the risks and assumptions.",
 ] as const;
 
+export const PP_SIGN_PREPARED_BY = "Prepared by:";
+export const PP_SIGN_DATE = "Date:";
+export const PP_SIGN_PROPONENT_ROLE = "Proponent / Authorized Representative";
+export const PP_SIGN_OFFICIAL_USE = "For official use — DOST Regional Office";
+
 export const PP_FINANCIAL_ATTACH_NOTE = "(Please refer to the attached financial reports)";
 
 export function projectProposalFooter(page: number, total: number): string {

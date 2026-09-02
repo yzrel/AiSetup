@@ -578,6 +578,17 @@ export function collectApplicantSubmittedFiles(
         mimeType: String(tna1FormFields.processFlowFileMime ?? "").trim() || undefined,
       },
     );
+    pushTnaFile(
+      files,
+      tna1FormFields.orgStructureFileName,
+      tna1FormFields.orgStructureFileData,
+      "Organizational structure",
+      "tna1-org-structure",
+      {
+        fileId: String(tna1FormFields.orgStructureFileId ?? "").trim() || undefined,
+        mimeType: String(tna1FormFields.orgStructureFileMime ?? "").trim() || undefined,
+      },
+    );
   }
 
   if (md.loiDocument) {

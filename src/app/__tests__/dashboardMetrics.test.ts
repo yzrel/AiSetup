@@ -15,6 +15,7 @@ import {
   getWorkforceGenderTotals,
   normalizeRegistrantGender,
   withLiveOrFallback,
+  formatProgramKpisForDisplay,
 } from "../utils/dashboardMetrics";
 import { WITHDRAWAL_SIGNED_KEY } from "../utils/landBankWithdrawal";
 
@@ -292,5 +293,31 @@ describe("gender / GAD metrics", () => {
     ]);
     const jobs = kpis.find((k) => k.label === "Jobs Created / Retained");
     expect(jobs?.value).toBe("12");
+  });
+});
+
+describe("formatProgramKpisForDisplay", () => {
+  it("uses em dash for missing live KPI values instead of demo fallbacks", () => {
+    const rows = formatProgramKpisForDisplay(getProgramKpis([]));
+    expect(rows.every((r) => r.value === "—")).toBe(true);
+    expect(rows.some((r) => r.value.includes("ABC"))).toBe(false);
+  });
+
+  it("keeps computed live KPI values", () => {
+    const rows = formatProgramKpisForDisplay(
+      getProgramKpis([
+        baseApplicant({
+          id: "1",
+          currentModule: "approval-letter",
+          moduleData: {
+            province: "South Cotabato",
+            tna1: { form: { employeesMale: "2", employeesFemale: "3" } },
+          },
+        }),
+      ]),
+    );
+    expect(rows.find((r) => r.label === "Jobs Created / Retained")?.value).toBe(
+      "5",
+    );
   });
 });

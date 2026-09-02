@@ -12,7 +12,7 @@ Use this when aligning a module’s **official PDF** to a regional `.docx` (e.g.
 
 1. **Audit the DOCX** — title, annex footer, `pgMar`/`pgSz`, section order, table columns, checkbox groups (including embedded images), signature labels. Note portal-only fields **not** on the Word form.
 2. **Layout constants** — `src/app/constants/<form>Layout.ts`: title, footer prefix, column headers, checkbox labels, computed helpers. Verbatim legal text (GA, undertaking) lives here once; wizard and print both import it.
-3. **Official document** — `src/app/components/<form>/<Form>Document.tsx`: section order matches Word; `FormBlock` + `break-inside: avoid`; no forced one-section-per-page; no portal chrome (Application ID, AI badges, Republic/DOST logo unless Word has them).
+3. **Official document** — `src/app/components/<form>/<Form>Document.tsx`: section order matches Word; headings use `break-after: avoid`; long sections use `break-inside: auto` (do not wrap a multi-page section in `break-inside: avoid`); no portal chrome (Application ID, AI badges, Republic/DOST logo unless Word has them).
 4. **Print CSS** — `src/styles/<form>.css`: A4, Word margins in `@page`, `counter(page)` / `counter(pages)` footer, `pt` typography on print. Hide `.…-screen-only` in print.
 5. **Print path** — `src/app/utils/<form>Print.tsx`: in-page `window.print()` via `#<form>-print-root` + `body.<form>-printing`. **`createRoot(<FormDocument … />)`** — never clone preview DOM; never popup `document.write` (long forms freeze).
 6. **Wizard / editor** — collect only fields the Word form shows; extra portal policy (e.g. GAD on TNA1) stays in the wizard, **off** the official document. Map wizard values → print checkboxes in constants (`mapOrganizationType`, etc.).
@@ -44,6 +44,8 @@ Both patterns: official PDF = print root only, no portal toolbar.
 - Hydrate attachment `dataUrl`s before print when needed (`hydrateStoredFileDataUrls`).
 - `waitForImages` + double `requestAnimationFrame` before `window.print()`.
 - Cleanup on `afterprint`: unmount root, revoke blob URLs, restore `document.title`.
+- Print root is in-flow (`position: static`, `overflow: visible`, `height: auto`). Hide siblings with `display: none`. Do not absolutely position the print root — later pages clip.
+- Include Form 005 / Form 006 body classes (`property-transfer-receipt-printing`, `inventory-of-equipment-printing`) in the global print `visibility` exceptions.
 
 ## Reference implementations
 

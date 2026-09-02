@@ -74,6 +74,19 @@ describe("mergeProposalAttachmentsFromTna", () => {
     );
   });
 
+  it("prefills orgChart from TNA Organizational Structure when the slot is empty", () => {
+    const applicant = tnaAttachmentApplicant({
+      orgStructureFileName: "threek-org.jpg",
+      orgStructureFileMime: "image/jpeg",
+      orgStructureFileId: "org-1",
+    });
+    const merged = mergeProposalAttachmentsFromTna(applicant, []);
+    expect(merged.find((a) => a.kind === "orgChart")?.fileName).toBe(
+      "threek-org.jpg",
+    );
+    expect(merged.find((a) => a.kind === "orgChart")?.fileId).toBe("org-1");
+  });
+
   it("does not overwrite existing proposal attachments", () => {
     const existing: ProjectProposalAttachment[] = [
       {

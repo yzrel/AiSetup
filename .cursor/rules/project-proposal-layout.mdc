@@ -34,7 +34,9 @@ Constants: `PP_FORM_INDENT_CLASS` / `PP_FORM_INDENT_IN`. Employee Production / N
   - `@bottom-center`: `SETUP Guidelines (Revision 3.0) Annex A-1: SETUP Form 001 - SETUP Project Proposal Page ` + `counter(page)` / `counter(pages)` (Arial Narrow 12pt)
 - Page: A4 portrait, **1in margins** on all sides (Word `pgMar` 1440 twips).
 - No per-section inline footers (avoid cross-bleed with TNA forms or fixed "Page X of 20").
-- `FormBlock` + `break-inside: avoid` — section titles stay with content; long tables may break across pages.
+- Long sections must be allowed to flow: `.pp-form-block` uses `break-inside: auto`. Do **not** wrap FINANCIAL / TECHNOLOGICAL (or other multi-page sections) in one `break-inside: avoid` block — Chromium clips overflow instead of paginating.
+- Section titles stay with the next paragraph via `break-after: avoid` on headings. Use `.pp-form-block-keep` only for short units (signature, a single attachment figure).
+- Tables: `break-inside: auto`; `thead { display: table-header-group }` so column headers repeat when a table continues onto the next sheet.
 
 ## Print typography
 
@@ -51,11 +53,13 @@ Match SETUP Form 001 Word (direct formatting, not Aptos theme):
 
 - In-page `window.print()` via `#project-proposal-print-root` + `body.project-proposal-printing`.
 - `createRoot` render (do not clone preview; do not use popup `document.write`).
-- Hide portal metadata in print: no Application ID, AI/draft badges, preview signature block.
+- Print root stays **in-flow** (`position: static`). Do not use `position: absolute` on official print roots — Chrome clips later pages.
+- Hide portal metadata in print: no Application ID or AI/draft badges.
+- Official closing block **does** print: Prepared by / Date (`PP_SIGN_*`), after RISK MANAGEMENT.
 
 ## Official sections (order)
 
-Cover → PROJECT BACKGROUND (A. Company Profile with checkbox grids, B. Management, C. Plant site, D. Capacity, E. Raw materials) → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT.
+Cover → PROJECT BACKGROUND (A. Company Profile with checkbox grids, B. Management, C. Plant site, D. Capacity, E. Raw materials) → MARKETING ASPECTS → TECHNOLOGICAL ASPECTS → WASTE MANAGEMENT → FINANCIAL ASPECT → RISK MANAGEMENT → Prepared by / Date.
 
 ## Marketing (official A–F)
 

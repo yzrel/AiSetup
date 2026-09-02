@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  *
  * Staff analytics tab: monthly trends, fund disbursement, quarter comparison —
- * live from scoped applicants with sample fallbacks when empty.
+ * live from scoped applicants only.
  */
 
 import {
@@ -36,17 +36,12 @@ import {
   getRegistrantGenderBreakdown,
   getWorkforceGenderBreakdown,
   getWorkforceGenderTotals,
-  withLiveOrFallback,
 } from "../../utils/dashboardMetrics";
-import {
-  FALLBACK_FUND_DISBURSEMENT,
-  FALLBACK_OWNER_SEX,
-  FALLBACK_QUARTER_COMPARISON,
-  FALLBACK_REGISTRANT_GENDER,
-  FALLBACK_WORKFORCE_GENDER,
-  monthlyData,
-} from "./dashboardData";
 import { SectionTitle } from "./widgets";
+import {
+  DashboardChartEmpty,
+  DashboardScopeEmptyBanner,
+} from "./DashboardEmptyStates";
 
 export function AnalyticsTab({
   user,
@@ -59,45 +54,18 @@ export function AnalyticsTab({
     getApplicantsForStaff(user),
     provinceFilter,
   );
-  const monthlyTrends = withLiveOrFallback(
-    getMonthlyTrendsData(scoped),
-    monthlyData,
-  );
-  const fundChartData = withLiveOrFallback(
-    buildFundDisbursementChartData(scoped),
-    FALLBACK_FUND_DISBURSEMENT,
-  );
-  const quarterRows = withLiveOrFallback(
-    getQuarterComparisonData(scoped),
-    FALLBACK_QUARTER_COMPARISON,
-  );
-  const registrantGender = withLiveOrFallback(
-    getRegistrantGenderBreakdown(scoped),
-    FALLBACK_REGISTRANT_GENDER,
-  );
-  const ownerSex = withLiveOrFallback(
-    getOwnerSexBreakdown(scoped),
-    FALLBACK_OWNER_SEX,
-  );
-  const workforceGender = withLiveOrFallback(
-    getWorkforceGenderBreakdown(scoped),
-    FALLBACK_WORKFORCE_GENDER,
-  );
-  const workforceTotals = getWorkforceGenderTotals(scoped);
-  const workforceDisplay =
-    workforceTotals.total > 0
-      ? workforceTotals
-      : {
-          male:
-            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Male")?.count ?? 0,
-          female:
-            FALLBACK_WORKFORCE_GENDER.find((r) => r.name === "Female")?.count ??
-            0,
-          total: FALLBACK_WORKFORCE_GENDER.reduce((s, r) => s + r.count, 0),
-        };
+  const hasScopedApplicants = scoped.length > 0;
+  const monthlyTrends = getMonthlyTrendsData(scoped);
+  const fundChartData = buildFundDisbursementChartData(scoped);
+  const quarterRows = getQuarterComparisonData(scoped);
+  const registrantGender = getRegistrantGenderBreakdown(scoped);
+  const ownerSex = getOwnerSexBreakdown(scoped);
+  const workforceGender = getWorkforceGenderBreakdown(scoped);
+  const workforceDisplay = getWorkforceGenderTotals(scoped);
 
   return (
     <div className="space-y-5">
+      {!hasScopedApplicants && <DashboardScopeEmptyBanner />}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Monthly trend */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
@@ -105,6 +73,7 @@ export function AnalyticsTab({
             Monthly Trends
           </SectionTitle>
           <div className="h-48 sm:h-[240px]">
+          {monthlyTrends.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthlyTrends}>
               <CartesianGrid
@@ -157,6 +126,9 @@ export function AnalyticsTab({
               />
             </LineChart>
           </ResponsiveContainer>
+          ) : (
+            <DashboardChartEmpty message="No monthly trend data for cooperators in scope." />
+          )}
           </div>
           <div className="flex gap-4 mt-2 justify-center">
             {[
@@ -184,6 +156,7 @@ export function AnalyticsTab({
             Fund Disbursement
           </SectionTitle>
           <div className="h-48 sm:h-[240px]">
+          {fundChartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={fundChartData}>
               <CartesianGrid
@@ -225,6 +198,9 @@ export function AnalyticsTab({
               />
             </AreaChart>
           </ResponsiveContainer>
+          ) : (
+            <DashboardChartEmpty message="No fund disbursement data yet." />
+          )}
           </div>
         </div>
       </div>
@@ -403,6 +379,7 @@ export function AnalyticsTab({
         <SectionTitle sub="Current vs previous quarter">
           Quarter Comparison
         </SectionTitle>
+        {quarterRows.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {quarterRows.map((item) => {
             const improved = item.lower
@@ -464,6 +441,9 @@ export function AnalyticsTab({
             );
           })}
         </div>
+        ) : (
+          <DashboardChartEmpty message="No quarter comparison data for cooperators in scope." />
+        )}
       </div>
     </div>
   );

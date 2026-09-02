@@ -614,7 +614,16 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
         />
         <FormTextBlock label="If No, why not?" value={consulted === "No" ? val(f, "whyNotConsulted") : ""} lines={2} />
 
-        <FormAttachmentBlock label="Organizational Structure" minHeight={140} />
+        <FormAttachmentBlock
+          label="Organizational Structure"
+          fileName={val(f, "orgStructureFileName")}
+          fileData={val(f, "orgStructureFileData")}
+          fileId={val(f, "orgStructureFileId")}
+          mimeType={val(f, "orgStructureFileMime")}
+          moduleKey="tna1-orgStructure"
+          applicantId={applicantId}
+          minHeight={140}
+        />
         <FormTextBlock
           label="Enterprise's plan for the next 5 years?"
           value={val(f, "plan5Years")}

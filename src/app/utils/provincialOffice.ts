@@ -6,9 +6,10 @@ import { DOST_REGION_12_CONTACTS, REGION_12_PROVINCE_TO_OFFICE } from "../consta
 import { REGION_12_PROVINCES } from "../constants/region12";
 import { applicantStore, Applicant } from "../store/applicantStore";
 import { AuthUser } from "../store/authStore";
+import { asApplicantString } from "./applicantText";
 
-export function normalizeProvinceKey(value: string): string {
-  return value.trim().toLowerCase();
+export function normalizeProvinceKey(value: string | null | undefined): string {
+  return asApplicantString(value).trim().toLowerCase();
 }
 
 export function resolveOfficeIdForProvince(province: string): string {
@@ -32,14 +33,15 @@ export function resolveApplicantProvince(applicant: Applicant): string {
   const fromModule = String(applicant.moduleData?.province ?? "").trim();
   if (fromModule) return fromModule;
 
-  const address = applicant.address.toLowerCase();
+  const address = asApplicantString(applicant.address).toLowerCase();
   for (const province of REGION_12_PROVINCES) {
     if (address.includes(province.toLowerCase())) return province;
   }
 
-  if (applicant.region && applicant.region !== "Region XII (SOCCSKSARGEN)") {
+  const region = asApplicantString(applicant.region);
+  if (region && region !== "Region XII (SOCCSKSARGEN)") {
     const match = REGION_12_PROVINCES.find(
-      (p) => p.toLowerCase() === applicant.region.toLowerCase(),
+      (p) => p.toLowerCase() === region.toLowerCase(),
     );
     if (match) return match;
   }

@@ -49,6 +49,10 @@ import {
   PP_REFUND_NOTE,
   PP_RISK_COLUMNS,
   PP_RISK_FOOTNOTE,
+  PP_SIGN_DATE,
+  PP_SIGN_OFFICIAL_USE,
+  PP_SIGN_PREPARED_BY,
+  PP_SIGN_PROPONENT_ROLE,
   PP_SECTION_FINANCIAL,
   PP_SECTION_MARKETING,
   PP_SECTION_PROJECT_BACKGROUND,
@@ -741,22 +745,22 @@ export function ProjectProposalPreview({
           </div>
         </div>
 
-        <div className="pp-form-preview-sign pp-print-section">
-          <div className="pp-form-preview-sign-grid">
+        <div className="pp-form-sign pp-form-block-keep pp-print-section">
+          <div className="pp-form-sign-grid">
             <div>
               <p className="pp-form-field-label" style={{ marginTop: 0 }}>
-                Prepared by:
+                {PP_SIGN_PREPARED_BY}
               </p>
-              <div className="pp-form-preview-sign-line" />
+              <div className="pp-form-sign-line" />
               <p>{form.contactPerson || form.proponentName}</p>
-              <p className="pp-form-note">Proponent / Authorized Representative</p>
+              <p className="pp-form-note">{PP_SIGN_PROPONENT_ROLE}</p>
             </div>
             <div>
               <p className="pp-form-field-label" style={{ marginTop: 0 }}>
-                Date:
+                {PP_SIGN_DATE}
               </p>
-              <div className="pp-form-preview-sign-line" />
-              <p className="pp-form-note">For official use — DOST Regional Office</p>
+              <div className="pp-form-sign-line" />
+              <p className="pp-form-note">{PP_SIGN_OFFICIAL_USE}</p>
             </div>
           </div>
         </div>

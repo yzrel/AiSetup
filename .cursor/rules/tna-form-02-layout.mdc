@@ -58,7 +58,8 @@ No Republic/DOST logo on official PDF.
 
 - Single flowing `FormPage`; natural page breaks via CSS.
 - `@page @bottom-center` footer with `counter(page)` / `counter(pages)`.
-- `FormBlock` + `break-inside: avoid`.
+- Flowing narrative uses `.tna2-form-block-flow` (`break-inside: auto`). Keep `.tna2-form-block-keep` for short header/signature units only.
+- Official print root stays in-flow (`position: static`).
 
 ## Key files
 
