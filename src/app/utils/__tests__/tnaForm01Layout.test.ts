@@ -12,6 +12,7 @@ import {
   mapOrganizationType,
   sumHeadcount,
   tnaForm01Footer,
+  resolveTnaProductionSexCounts,
 } from "../../constants/tnaForm01Layout";
 
 describe("TNA Form 01 Annex 1-1 layout constants", () => {
@@ -44,5 +45,36 @@ describe("TNA Form 01 Annex 1-1 layout constants", () => {
   it("sums employee headcount only from filled cells", () => {
     expect(sumHeadcount("", "")).toBe("");
     expect(sumHeadcount("2", "3", "")).toBe("5");
+  });
+
+  it("puts Direct Workers counts on Production when Production is empty", () => {
+    expect(
+      resolveTnaProductionSexCounts({
+        employeesMale: "3",
+        employeesFemale: "4",
+      }),
+    ).toEqual({ male: "3", female: "4" });
+  });
+
+  it("fills each Production sex from legacy Direct Workers when that cell is empty", () => {
+    expect(
+      resolveTnaProductionSexCounts({
+        employeesMale: "1",
+        employeesFemale: "4",
+        employeesProductionMale: "1",
+        employeesProductionFemale: "",
+      }),
+    ).toEqual({ male: "1", female: "4" });
+  });
+
+  it("prefers filled Production cells over legacy Direct Workers counts", () => {
+    expect(
+      resolveTnaProductionSexCounts({
+        employeesMale: "9",
+        employeesFemale: "8",
+        employeesProductionMale: "1",
+        employeesProductionFemale: "4",
+      }),
+    ).toEqual({ male: "1", female: "4" });
   });
 });

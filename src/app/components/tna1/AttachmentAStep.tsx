@@ -109,40 +109,54 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
             <div className="space-y-3">
               <div>
                 <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Direct Workers</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="mt-2 ml-3 sm:ml-5 space-y-3 border-l border-slate-200 pl-3">
                   <div>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
-                    <input type="number" min="0" value={form.employeesMale} onChange={e => set("employeesMale", e.target.value)} className={inputCls} placeholder="0" />
+                    <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Production</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={form.employeesProductionMale || form.employeesMale || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            set("employeesProductionMale", value);
+                            set("employeesMale", value);
+                          }}
+                          className={inputCls}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={form.employeesProductionFemale || form.employeesFemale || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            set("employeesProductionFemale", value);
+                            set("employeesFemale", value);
+                          }}
+                          className={inputCls}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
-                    <input type="number" min="0" value={form.employeesFemale} onChange={e => set("employeesFemale", e.target.value)} className={inputCls} placeholder="0" />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Production</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Male</span>
-                    <input type="number" min="0" value={form.employeesProductionMale ?? ""} onChange={e => set("employeesProductionMale", e.target.value)} className={inputCls} placeholder="0" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Female</span>
-                    <input type="number" min="0" value={form.employeesProductionFemale ?? ""} onChange={e => set("employeesProductionFemale", e.target.value)} className={inputCls} placeholder="0" />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Non-production</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Senior Citizen</span>
-                    <input type="number" min="0" value={form.employeesSeniorCitizen ?? ""} onChange={e => set("employeesSeniorCitizen", e.target.value)} className={inputCls} placeholder="0" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase">PWD</span>
-                    <input type="number" min="0" value={form.employeesPwd ?? ""} onChange={e => set("employeesPwd", e.target.value)} className={inputCls} placeholder="0" />
+                    <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Non-production</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase">Senior Citizen</span>
+                        <input type="number" min="0" value={form.employeesSeniorCitizen ?? ""} onChange={e => set("employeesSeniorCitizen", e.target.value)} className={inputCls} placeholder="0" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase">PWD</span>
+                        <input type="number" min="0" value={form.employeesPwd ?? ""} onChange={e => set("employeesPwd", e.target.value)} className={inputCls} placeholder="0" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -160,7 +174,7 @@ export function AttachmentAStep({ ctx }: { ctx: Tna1StepContext }) {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Per TNA Form 01 — Direct, Production, Indirect/Contract as male/female; Senior Citizen and PWD under Non-production.</p>
+            <p className="text-xs text-gray-400 mt-1.5">Per TNA Form 01 — Direct Workers is a heading only. Enter counts under Production (M/F) and Non-production (Senior Citizen / PWD). Indirect/Contract is separate. Total = Production + Indirect.</p>
           </div>
 
           <AiAssistTextarea

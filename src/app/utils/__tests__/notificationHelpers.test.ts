@@ -40,7 +40,9 @@ import {
   notifyStaffVerificationRemark,
   notifyStaffVerificationRevisionSummary,
   notifyRequirementsDecision,
+  notifyTna1DirectorValidated,
   notifyTna1Resubmission,
+  notifyTna1Reviewed,
 } from "../notificationHelpers";
 import { shouldNotifyRequirementRemark } from "../submissionRequirements";
 
@@ -400,5 +402,102 @@ describe("notifyTna1Resubmission", () => {
     const mail = outboxFor("app-tna1-rev");
     expect(mail.length).toBeGreaterThan(0);
     expect(mail[0].body).toContain("Production Plan");
+  });
+});
+
+describe("notifyTna1Reviewed", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("emails and notifies the client on staff approval", () => {
+    const applicant = sampleApplicant({ id: "app-tna1-approved" });
+    notifyTna1Reviewed(applicant);
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-tna1-approved" &&
+            n.audience === "applicant" &&
+            n.kind === "success",
+        ),
+    ).toBe(true);
+    const mail = outboxFor("app-tna1-approved");
+    expect(mail.length).toBeGreaterThan(0);
+    expect(mail[0].kind).toBe("status");
+    expect(mail[0].subject).toContain("approved");
+    expect(mail[0].body).toContain("Provincial Director validation");
+  });
+
+  it("skips email when the customer has no address", () => {
+    const applicant = sampleApplicant({
+      id: "app-tna1-approved-no-mail",
+      emailAddress: "",
+    });
+    notifyTna1Reviewed(applicant);
+    expect(outboxFor("app-tna1-approved-no-mail")).toHaveLength(0);
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-tna1-approved-no-mail" &&
+            n.audience === "applicant",
+        ),
+    ).toBe(true);
+  });
+});
+
+describe("notifyTna1DirectorValidated", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("emails and notifies the client on director validation", () => {
+    const applicant = sampleApplicant({ id: "app-tna1-director" });
+    notifyTna1DirectorValidated(applicant, "Dir. Santos");
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-tna1-director" &&
+            n.audience === "applicant" &&
+            n.kind === "success",
+        ),
+    ).toBe(true);
+    const mail = outboxFor("app-tna1-director");
+    expect(mail.length).toBeGreaterThan(0);
+    expect(mail[0].kind).toBe("status");
+    expect(mail[0].subject).toContain("validated");
+    expect(mail[0].body).toContain("Dir. Santos");
+    expect(mail[0].body).toContain("TNA Form 02");
+  });
+
+  it("skips email when the customer has no address", () => {
+    const applicant = sampleApplicant({
+      id: "app-tna1-director-no-mail",
+      emailAddress: "",
+    });
+    notifyTna1DirectorValidated(applicant, "Dir. Santos");
+    expect(outboxFor("app-tna1-director-no-mail")).toHaveLength(0);
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-tna1-director-no-mail" &&
+            n.audience === "applicant",
+        ),
+    ).toBe(true);
   });
 });

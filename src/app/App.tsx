@@ -41,6 +41,7 @@ import { landbankBranchStore } from "./store/landbankBranchStore";
 import { getAuthToken } from "./api/authToken";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
+import { canAdvanceFrom, tryAdvanceModule } from "./utils/moduleGateways";
 import { isSentEmailsNavUnlocked } from "./utils/documentDelivery";
 import { notifyModuleCompleted } from "./utils/notificationHelpers";
 import { getSetupFormTitle } from "./constants/setupForms";
@@ -888,14 +889,26 @@ export default function App() {
   /**
    * Marks the given module complete: advances the applicant to the next
    * module per MODULE_ORDER and navigates to it (or to `navigateTo`).
+   * Hard gates refuse advance outside demo mode.
    */
   const advanceFrom = (module: ModuleStatus, navigateTo?: ViewType) => {
-    const next = MODULE_ORDER[MODULE_ORDER.indexOf(module) + 1];
     const app = resolveApplicantForUser(user);
-    if (app && next) {
-      applicantStore.update(app.id, { currentModule: next });
+    const gate = app
+      ? canAdvanceFrom(app, module, user.role)
+      : { ok: false as const, reason: "No applicant", next: undefined };
+    const next = gate.next ?? MODULE_ORDER[MODULE_ORDER.indexOf(module) + 1];
+    if (app && gate.ok && gate.next) {
+      tryAdvanceModule(app.id, module, user.role);
+    } else if (app && !gate.ok) {
+      // Stay on current view; do not bump currentModule.
+      const fallbackView =
+        normalizeAdminView(navigateTo) ??
+        normalizeAdminView(module) ??
+        "dashboard";
+      navigate(fallbackView);
+      return;
     }
-    if (app && module !== "prescreening") {
+    if (app && gate.ok && module !== "prescreening") {
       notifyModuleCompleted(applicantStore.getById(app.id) ?? app, module);
     }
     const fallbackView =

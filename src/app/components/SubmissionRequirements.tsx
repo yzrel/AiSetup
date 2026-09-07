@@ -17,7 +17,7 @@ import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyRequirementsSubmitted, notifyRequirementsDecision, notifyStaffVerificationRemark } from "../utils/notificationHelpers";
+import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import {
   buildRequirementUploadList,
@@ -30,7 +30,6 @@ import {
   persistRequirementStaffReview,
   persistRequirementUploads,
   resolveProjectedFsYears,
-  shouldNotifyRequirementRemark,
   QUOTATIONS_PO_GUIDANCE,
   type RequirementStaffRemark,
   type StoredRequirementUpload,
@@ -167,109 +166,33 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
   const [staffDecision, setStaffDecision] = useState<"approved" | "needs-revision" | "">("");
   const [staffName, setStaffName]       = useState("");
   const [notifiedRemarks, setNotifiedRemarks] = useState<Record<string, string>>({});
+  const [resubmissionError, setResubmissionError] = useState("");
 
   // Client revision state
   const [revisionNotes, setRevisionNotes] = useState("");
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const maybeNotifyStaffRemark = (
-    docId: string,
-    prev: RequirementStaffRemark | undefined,
-    next: RequirementStaffRemark,
-    docName: string,
-    currentNotified: Record<string, string>,
-  ): Record<string, string> => {
-    if (!applicant) return currentNotified;
-    if (
-      !shouldNotifyRequirementRemark({
-        prevStatus: prev?.status ?? "",
-        nextStatus: next.status,
-        nextRemark: next.remark,
-        notifiedRemark: currentNotified[docId],
-      })
-    ) {
-      return currentNotified;
-    }
-    notifyStaffVerificationRemark({
-      applicant,
-      moduleKey: "requirements",
-      moduleLabel: "Submission Requirements",
-      documentId: docId,
-      documentName: docName,
-      remark: next.remark,
-      view: "requirements",
-    });
-    return {
-      ...currentNotified,
-      [docId]: next.remark.trim(),
-    };
-  };
-
   const persistStaffRemarks = (
     next: Record<string, RequirementStaffRemark>,
     extra?: {
       staffNotes?: string;
       staffName?: string;
-      notifyDocId?: string;
-      notifyDocName?: string;
     },
   ) => {
     setStaffRemarks(next);
     if (!applicant) return;
-    let nextNotified = notifiedRemarks;
-    if (extra?.notifyDocId && extra.notifyDocName) {
-      nextNotified = maybeNotifyStaffRemark(
-        extra.notifyDocId,
-        staffRemarks[extra.notifyDocId],
-        next[extra.notifyDocId] ?? { status: "", remark: "" },
-        extra.notifyDocName,
-        notifiedRemarks,
-      );
-      if (nextNotified !== notifiedRemarks) {
-        setNotifiedRemarks(nextNotified);
-      }
-    }
     persistRequirementStaffReview(
       applicant.id,
       {
         remarks: next,
         staffNotes: extra?.staffNotes,
         staffName: extra?.staffName,
-        notifiedRemarks: nextNotified,
+        notifiedRemarks,
       },
       applicantStore,
     );
   };
-
-  const debounceNotifyRemark = useDebouncedCallback(
-    (docId: string, docName: string, remarkEntry: RequirementStaffRemark) => {
-      if (!applicant || remarkEntry.status !== "flagged") return;
-      const nextNotified = maybeNotifyStaffRemark(
-        docId,
-        staffRemarks[docId],
-        remarkEntry,
-        docName,
-        notifiedRemarks,
-      );
-      if (nextNotified === notifiedRemarks) return;
-      setNotifiedRemarks(nextNotified);
-      persistRequirementStaffReview(
-        applicant.id,
-        {
-          remarks: {
-            ...staffRemarks,
-            [docId]: remarkEntry,
-          },
-          staffNotes,
-          staffName,
-          notifiedRemarks: nextNotified,
-        },
-        applicantStore,
-      );
-    },
-    1500,
-  );
 
   // Auto-load applicant from store
   useEffect(() => {
@@ -901,20 +824,14 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                           </button>
                           <button
                             onClick={() =>
-                              persistStaffRemarks(
-                                {
-                                  ...staffRemarks,
-                                  [doc.id]: {
-                                    ...(staffRemarks[doc.id] ?? { remark: "" }),
-                                    status: "flagged",
-                                    remark: staffRemarks[doc.id]?.remark ?? "",
-                                  },
+                              persistStaffRemarks({
+                                ...staffRemarks,
+                                [doc.id]: {
+                                  ...(staffRemarks[doc.id] ?? { remark: "" }),
+                                  status: "flagged",
+                                  remark: staffRemarks[doc.id]?.remark ?? "",
                                 },
-                                {
-                                  notifyDocId: doc.id,
-                                  notifyDocName: doc.name,
-                                },
-                              )
+                              })
                             }
                             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${sr.status === "flagged" ? "bg-red-500 text-white border-red-500" : "text-red-600 border-red-300 hover:bg-red-50"}`}
                           >
@@ -924,33 +841,24 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                       </div>
                       {sr.status === "flagged" && (
                         <div className="mt-3">
-                          <input
-                            type="text"
+                          <label className="text-[11px] font-semibold text-red-700 block mb-1">
+                            Comment for applicant (required before Request Revisions)
+                          </label>
+                          <textarea
+                            rows={3}
                             className={inputCls + " text-xs"}
-                            placeholder="Enter reason for flagging this document..."
+                            placeholder="Explain what must be corrected or re-uploaded…"
                             value={sr.remark}
                             onChange={(e) => {
                               const nextEntry: RequirementStaffRemark = {
                                 ...(staffRemarks[doc.id] ?? { status: "flagged" }),
-                                status: staffRemarks[doc.id]?.status || "flagged",
+                                status: "flagged",
                                 remark: e.target.value,
                               };
                               persistStaffRemarks({
                                 ...staffRemarks,
                                 [doc.id]: nextEntry,
                               });
-                              debounceNotifyRemark(doc.id, doc.name, nextEntry);
-                            }}
-                            onBlur={() => {
-                              const entry = staffRemarks[doc.id];
-                              if (!entry || entry.status !== "flagged") return;
-                              persistStaffRemarks(
-                                { ...staffRemarks, [doc.id]: entry },
-                                {
-                                  notifyDocId: doc.id,
-                                  notifyDocName: doc.name,
-                                },
-                              );
                             }}
                           />
                         </div>
@@ -1087,6 +995,27 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               <button
                 onClick={() => {
                   if (!applicant) return;
+                  if (staffDecision === "needs-revision") {
+                    if (flaggedDocs.length === 0) {
+                      setResubmissionError(
+                        "Flag at least one document and add a comment before requesting revisions.",
+                      );
+                      return;
+                    }
+                    const missing = flaggedDocs.find(
+                      ([, v]) => !String(v.remark ?? "").trim(),
+                    );
+                    if (missing) {
+                      const docName =
+                        documents.find((d) => d.id === missing[0])?.name ??
+                        missing[0];
+                      setResubmissionError(
+                        `Add a comment for flagged document: ${docName}.`,
+                      );
+                      return;
+                    }
+                  }
+                  setResubmissionError("");
                   recordRequirementsAssessment(
                     staffDecision,
                     staffNotes || undefined,
@@ -1119,7 +1048,11 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                       staffDecision,
                       ...(staffDecision === "approved"
                         ? { requirementsApprovedAt: new Date().toISOString() }
-                        : {}),
+                        : {
+                            documentsSubmitted: false,
+                            requirementsResubmissionRequestedAt:
+                              new Date().toISOString(),
+                          }),
                     },
                   });
                   advanceStep(
@@ -1133,6 +1066,11 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 {staffDecision === "approved" ? "Approve & Proceed to Routing →" : staffDecision === "needs-revision" ? "Send for Revision →" : "Submit Decision →"}
               </button>
             </div>
+            {resubmissionError && (
+              <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {resubmissionError}
+              </p>
+            )}
 
             {reviewOnly && user && (
               <RtecReviewCommentPanel

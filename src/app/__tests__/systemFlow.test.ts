@@ -81,6 +81,10 @@ import {
   validateProcurementSubmit,
 } from "../utils/procurementLiquidation";
 import {
+  emptyUntagLetterForm,
+  publishUntagLetter,
+} from "../utils/untagLetter";
+import {
   hasPdcsRecordedForDisbursement,
   hasRefundComplete,
   submitRefund,
@@ -101,6 +105,7 @@ import {
   isRoutedToMpex,
   moduleToApplicantView,
 } from "../utils/applicantProgress";
+import { canAdvanceFrom, isModuleComplete } from "../utils/moduleGateways";
 import type { ModuleDocument } from "../api/types";
 import { DOST_PROGRAMS } from "../constants/dostProgramRecommendations";
 
@@ -296,6 +301,8 @@ describe("system flow: registration through project close-out", () => {
         tna1: {
           submitted: true,
           submittedAt: new Date().toISOString(),
+          staffReviewed: true,
+          directorValidated: true,
           form: {
             enterpriseName: "Flow Test Foods",
             contactPerson: "Test Applicant",
@@ -321,16 +328,39 @@ describe("system flow: registration through project close-out", () => {
           },
         },
       },
-      currentModule: "tna2",
+      currentModule: "tna1",
     });
+    expect(isModuleComplete(getApplicant(id), "tna1")).toBe(true);
+    expect(canAdvanceFrom(getApplicant(id), "tna1").ok).toBe(true);
+    expect(canAdvanceFrom(getApplicant(id), "tna1").next).toBe("tna2");
+    // Incomplete TNA1 (no PD validation) must not advance
+    expect(
+      canAdvanceFrom(
+        {
+          ...getApplicant(id),
+          moduleData: {
+            ...getApplicant(id).moduleData,
+            tna1: {
+              ...getApplicant(id).moduleData.tna1,
+              directorValidated: false,
+            },
+          },
+        },
+        "tna1",
+      ).ok,
+    ).toBe(false);
+    applicantStore.update(id, { currentModule: "tna2" });
 
     // 6. TNA Form 02 (Module 6) — staff publishes the technical report
     expect(getPublishedTna2(getApplicant(id))).toBeNull();
+    expect(canAdvanceFrom(getApplicant(id), "tna2").ok).toBe(false);
     const tna2Document = buildLocalTna2Document(
       buildTna2GenerationPayload(getApplicant(id)),
     );
     publishTna2Document(id, tna2Document);
     expect(getPublishedTna2(getApplicant(id))).not.toBeNull();
+    expect(isModuleComplete(getApplicant(id), "tna2")).toBe(true);
+    expect(canAdvanceFrom(getApplicant(id), "tna2").ok).toBe(true);
     applicantStore.update(id, { currentModule: "project-proposal" });
 
     // 7. Project Proposal (Module 7, SETUP Form 001)
@@ -421,10 +451,25 @@ describe("system flow: registration through project close-out", () => {
         ...getApplicant(id).moduleData,
         documentsSubmitted: true,
         staffDecision: "approved",
-        routingDecision: "setup",
+        routingDecision: "conduct-rtec",
       },
-      currentModule: "conduct-rtec",
+      currentModule: "requirements",
     });
+    expect(isModuleComplete(getApplicant(id), "requirements")).toBe(true);
+    expect(canAdvanceFrom(getApplicant(id), "requirements").ok).toBe(true);
+    expect(
+      canAdvanceFrom(
+        {
+          ...getApplicant(id),
+          moduleData: {
+            ...getApplicant(id).moduleData,
+            staffDecision: "needs-revision",
+          },
+        },
+        "requirements",
+      ).ok,
+    ).toBe(false);
+    applicantStore.update(id, { currentModule: "conduct-rtec" });
     expect(isRoutedToMpex(getApplicant(id))).toBe(false);
     // Client is parked on the dashboard while RTEC runs (staff-only module)
     expect(moduleToApplicantView("conduct-rtec")).toBe("dashboard");
@@ -460,8 +505,11 @@ describe("system flow: registration through project close-out", () => {
     expect(publishApprovalLetter(id, approvalDraft).ok).toBe(true);
     expect(getApprovalLetterStored(getApplicant(id))?.published).toBe(true);
     expect(isAwaitingStaffReview(getApplicant(id))).toBe(false);
+    expect(canAdvanceFrom(getApplicant(id), "approval-letter").ok).toBe(false);
     acknowledgeApprovalLetter(id, "Test Applicant");
     expect(hasApprovalLetterAcknowledged(getApplicant(id))).toBe(true);
+    expect(isModuleComplete(getApplicant(id), "approval-letter")).toBe(true);
+    expect(canAdvanceFrom(getApplicant(id), "approval-letter").ok).toBe(true);
     applicantStore.update(id, { currentModule: "landbank-withdrawal" });
     expect(getApplicant(id).currentModule).toBe("landbank-withdrawal");
 
@@ -488,7 +536,16 @@ describe("system flow: registration through project close-out", () => {
     expect(
       publishLbpIntroduction(
         id,
-        getLbpIntroductionForm(getApplicant(id)),
+        {
+          ...getLbpIntroductionForm(getApplicant(id)),
+          branchManagerName: "Juan Branch Manager",
+          landbankBranch: "Land Bank of the Philippines — Koronadal",
+          branchCityProvince: "Koronadal City, South Cotabato",
+          proponentName: "Test Applicant",
+          enterpriseName: "Flow Test Foods",
+          projectTitle: "Vacuum Packaging Line Upgrade for Flow Test Foods",
+          approvedAmount: "₱2,000,000.00",
+        },
         "Regional Director",
       ),
     ).toEqual([]);
@@ -560,6 +617,23 @@ describe("system flow: registration through project close-out", () => {
       untagged: true,
       untaggedAt: new Date().toISOString(),
     });
+    expect(
+      publishUntagLetter(
+        id,
+        {
+          ...emptyUntagLetterForm(),
+          branchManagerName: "Juan Branch Manager",
+          landbankBranch: "Land Bank of the Philippines — Koronadal",
+          branchCityProvince: "Koronadal City, South Cotabato",
+          proponentName: "Test Applicant",
+          enterpriseName: "Flow Test Foods",
+          projectTitle: "Vacuum Packaging Line Upgrade for Flow Test Foods",
+          accountNumber: "1234567890",
+          signatoryName: "Regional Director",
+        },
+        "PSTO Staff",
+      ),
+    ).toEqual([]);
     expect(validateProcurementSubmit(getApplicant(id))).toEqual([]);
     expect(submitProcurement(id, "PSTO Staff")).toEqual([]);
     expect(hasProcurementComplete(getApplicant(id))).toBe(true);

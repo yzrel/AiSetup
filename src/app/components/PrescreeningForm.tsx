@@ -24,7 +24,7 @@ import {
 import { DostProgramRecommendationCards } from "./DostProgramRecommendationCards";
 import { getOfficeContact, resolveApplicantOfficeId } from "../utils/provincialOffice";
 import { allowWhenDemo } from "../utils/demoMode";
-import { MODULE_HEADER, MODULE_BODY, FORM_GRID_2 } from "./moduleTheme";
+import { MODULE_HEADER, MODULE_BODY } from "./moduleTheme";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { MSME_CLASSIFICATION_RANGES, MSME_EMPLOYEE_CLASSIFICATION_RANGES } from "../constants/msmeClassification";
 import { FIELD_GUIDANCE } from "../constants/fieldGuidance";
@@ -797,80 +797,70 @@ export function PrescreeningForm({
                   G. MSME Classification
                 </h2>
                 <div className="space-y-4">
-                  <div className={FORM_GRID_2}>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Asset Size (PHP)
-                      </label>
-                      <p className="text-xs text-gray-500 mb-1 leading-snug">
-                        {FIELD_GUIDANCE.assetSize}
-                      </p>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Enter amount"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.assetSize}
-                        onChange={(e) =>
-                          applyMsmeInputs("assetSize", e.target.value)
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Classification Range
-                      </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.classificationRange}
-                        onChange={(e) =>
-                          applyMsmeInputs("classificationRange", e.target.value)
-                        }
-                      >
-                        <option value="">Select range</option>
-                        {MSME_CLASSIFICATION_RANGES.map((range) => (
-                          <option key={range}>{range}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className={FORM_GRID_2}>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Employee Classification Range
-                      </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.employeeClassificationRange}
-                        onChange={(e) =>
-                          applyMsmeInputs(
-                            "employeeClassificationRange",
-                            e.target.value,
-                          )
-                        }
-                      >
-                        <option value="">Select range</option>
-                        {MSME_EMPLOYEE_CLASSIFICATION_RANGES.map((range) => (
-                          <option key={range}>{range}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Size *
-                      </label>
-                      <select
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                        value={formData.msmeSize}
-                        onChange={(e) => setMsmeSizeManual(e.target.value)}
-                      >
-                        <option value="">Select size</option>
-                        <option>Micro</option>
-                        <option>Small</option>
-                        <option>Medium</option>
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                    <label className="block text-sm font-medium text-gray-700 sm:col-start-1 sm:row-start-1">
+                      Asset Size (PHP)
+                    </label>
+                    <p className="text-xs text-gray-500 leading-snug sm:col-start-1 sm:row-start-2">
+                      {FIELD_GUIDANCE.assetSize}
+                    </p>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Enter amount"
+                      className="mb-3 sm:mb-0 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:col-start-1 sm:row-start-3"
+                      value={formData.assetSize}
+                      onChange={(e) =>
+                        applyMsmeInputs("assetSize", e.target.value)
+                      }
+                    />
+                    <label className="block text-sm font-medium text-gray-700 sm:col-start-2 sm:row-start-1">
+                      Classification Range
+                    </label>
+                    <select
+                      className="mb-3 sm:mb-0 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:col-start-2 sm:row-start-3"
+                      value={formData.classificationRange}
+                      onChange={(e) =>
+                        applyMsmeInputs("classificationRange", e.target.value)
+                      }
+                    >
+                      <option value="">Select range</option>
+                      {MSME_CLASSIFICATION_RANGES.map((range) => (
+                        <option key={range}>{range}</option>
+                      ))}
+                    </select>
+                    <label className="block text-sm font-medium text-gray-700 sm:col-start-1 sm:row-start-4 sm:mt-3">
+                      Employee Classification Range
+                    </label>
+                    <select
+                      className="mb-3 sm:mb-0 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:col-start-1 sm:row-start-5"
+                      value={formData.employeeClassificationRange}
+                      onChange={(e) =>
+                        applyMsmeInputs(
+                          "employeeClassificationRange",
+                          e.target.value,
+                        )
+                      }
+                    >
+                      <option value="">Select range</option>
+                      {MSME_EMPLOYEE_CLASSIFICATION_RANGES.map((range) => (
+                        <option key={range}>{range}</option>
+                      ))}
+                    </select>
+                    <label className="block text-sm font-medium text-gray-700 sm:col-start-2 sm:row-start-4 sm:mt-3">
+                      Size *
+                    </label>
+                    <select
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 sm:col-start-2 sm:row-start-5"
+                      value={formData.msmeSize}
+                      onChange={(e) => setMsmeSizeManual(e.target.value)}
+                    >
+                      <option value="">Select size</option>
+                      <option>Micro</option>
+                      <option>Small</option>
+                      <option>Medium</option>
+                    </select>
                   </div>
                   <p className="text-xs text-gray-500">
                     Auto-set from asset and employee classification ranges

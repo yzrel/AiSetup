@@ -7,7 +7,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -17,8 +16,9 @@ import org.springframework.stereotype.Component;
 import ph.gov.dost.aisetup.config.AisetupProperties;
 
 /**
- * Seeds staff + demo applicant logins when {@code aisetup.seed-users=true}
+ * Seeds staff logins when {@code aisetup.seed-users=true}
  * (default for local/dev; disabled on the prod profile).
+ * Does not seed applicant accounts — register real clients via the portal.
  */
 @Component
 public class UserSeedRunner implements ApplicationRunner {
@@ -128,31 +128,7 @@ public class UserSeedRunner implements ApplicationRunner {
                 "regional",
                 List.of());
 
-        seedApplicant(
-                "1",
-                "juan@abcfood.com",
-                "Juan",
-                "",
-                "Dela Cruz",
-                "ABC Food Processing",
-                "LOI-2024-000145");
-        seedApplicant(
-                "2",
-                "maria@techinno.com",
-                "Maria",
-                "",
-                "Santos",
-                "Tech Innovations Inc.",
-                "LOI-2024-000301");
-        seedApplicant(
-                "5",
-                "carlos@greenvalley.com",
-                "Carlos",
-                "",
-                "Reyes",
-                "Green Valley Farms",
-                "LOI-2024-000512");
-        log.info("Seed users ready (staff + demo applicants)");
+        log.info("Seed users ready (staff only)");
     }
 
     private void seedStaff(
@@ -185,35 +161,6 @@ public class UserSeedRunner implements ApplicationRunner {
         account.setUpdatedAt(now);
         userAccountRepository.save(account);
         log.info("Seeded staff user {} ({})", email, role);
-    }
-
-    private void seedApplicant(
-            String applicantId,
-            String email,
-            String firstName,
-            String middleName,
-            String lastName,
-            String enterpriseName,
-            String applicationId) {
-        if (userAccountRepository.existsByEmailIgnoreCase(email)) {
-            return;
-        }
-        Instant now = Instant.now();
-        UserAccount account = new UserAccount();
-        account.setId(UUID.randomUUID().toString());
-        account.setEmail(email);
-        account.setPasswordHash(passwordEncoder.encode("Demo@1234"));
-        account.setFirstName(firstName);
-        account.setMiddleName(middleName);
-        account.setLastName(lastName);
-        account.setRole("applicant");
-        account.setEnterpriseName(enterpriseName);
-        account.setApplicantId(applicantId);
-        account.setApplicationId(applicationId);
-        account.setEnabled(true);
-        account.setCreatedAt(now);
-        account.setUpdatedAt(now);
-        userAccountRepository.save(account);
     }
 
     private String writeJson(List<String> values) {

@@ -31,6 +31,7 @@ import {
   mapCapitalClassToOfficial,
   mapEmploymentClassToOfficial,
   mapOrganizationType,
+  resolveTnaProductionSexCounts,
   sumHeadcount,
 } from "../../constants/tnaForm01Layout";
 import { isImageFile, isPdfFile } from "../../utils/storedFilePreview";
@@ -315,14 +316,13 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
   const activityId = deriveBusinessActivity(val(f, "sector"), val(f, "commodity"));
 
   const k = TNA_FORM_01_EMPLOYEE_KEYS;
-  const directMale = val(f, k.directMale);
-  const directFemale = val(f, k.directFemale);
-  const productionMale = val(f, k.productionMale);
-  const productionFemale = val(f, k.productionFemale);
+  const production = resolveTnaProductionSexCounts(f);
+  const productionMale = production.male;
+  const productionFemale = production.female;
   const indirectMale = val(f, k.indirectMale);
   const indirectFemale = val(f, k.indirectFemale);
-  const totalMale = sumHeadcount(directMale, indirectMale);
-  const totalFemale = sumHeadcount(directFemale, indirectFemale);
+  const totalMale = sumHeadcount(productionMale, indirectMale);
+  const totalFemale = sumHeadcount(productionFemale, indirectFemale);
 
   const consulted = val(f, "consultedOther");
 
@@ -523,33 +523,36 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
             <tbody>
               <tr>
                 <FormLabelCell>Direct Workers</FormLabelCell>
-                <FormValueCell>{directMale}</FormValueCell>
-                <FormValueCell>{directFemale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{"\u00a0"}</FormValueCell>
+                <FormValueCell className="tna-form-center">{"\u00a0"}</FormValueCell>
               </tr>
               <tr>
                 <FormLabelCell className="tna-form-indent-label">Production</FormLabelCell>
-                <FormValueCell>{productionMale}</FormValueCell>
-                <FormValueCell>{productionFemale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{productionMale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{productionFemale}</FormValueCell>
               </tr>
               <tr>
                 <FormLabelCell className="tna-form-indent-label">Non-production</FormLabelCell>
-                <FormValueCell colSpan={2}>
-                  Senior Citizen: {val(f, k.seniorCitizen) || "\u00a0"}
-                  {" · "}
-                  PWD: {val(f, k.pwd) || "\u00a0"}
+                <FormValueCell className="tna-form-emp-split">
+                  <span className="tna-form-emp-sublabel">Senior Citizen</span>
+                  {val(f, k.seniorCitizen) || "\u00a0"}
+                </FormValueCell>
+                <FormValueCell className="tna-form-emp-split">
+                  <span className="tna-form-emp-sublabel">PWD</span>
+                  {val(f, k.pwd) || "\u00a0"}
                 </FormValueCell>
               </tr>
               <tr>
                 <FormLabelCell>Indirect/Contract Workers</FormLabelCell>
-                <FormValueCell>{indirectMale}</FormValueCell>
-                <FormValueCell>{indirectFemale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{indirectMale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{indirectFemale}</FormValueCell>
               </tr>
               <tr>
                 <FormLabelCell>
                   <strong>Total</strong>
                 </FormLabelCell>
-                <FormValueCell>{totalMale}</FormValueCell>
-                <FormValueCell>{totalFemale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{totalMale}</FormValueCell>
+                <FormValueCell className="tna-form-center">{totalFemale}</FormValueCell>
               </tr>
             </tbody>
           </FormTable>

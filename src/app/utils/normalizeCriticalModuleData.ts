@@ -253,6 +253,11 @@ export function normalizeTna1Stored(raw: unknown): Record<string, unknown> | und
     tables,
     submitted: asBool(obj.submitted),
   };
+  if (obj.sectionReview != null) {
+    const review = asRecord(obj.sectionReview);
+    if (review) out.sectionReview = review;
+    else delete out.sectionReview;
+  }
   if (obj.docReview != null) {
     const review = asRecord(obj.docReview);
     if (review) out.docReview = review;
@@ -335,6 +340,14 @@ export function normalizeProjectProposalStored(
   };
   if ("published" in obj) {
     out.published = asBool(obj.published);
+  }
+  if (obj.sectionReview != null) {
+    const review = asRecord(obj.sectionReview);
+    if (review) out.sectionReview = review;
+    else delete out.sectionReview;
+  }
+  if ("staffReviewed" in obj) {
+    out.staffReviewed = asBool(obj.staffReviewed);
   }
   return out;
 }

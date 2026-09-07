@@ -37,8 +37,9 @@ public class WorkflowGateService {
 
     /**
      * Validates module progression on full applicant save.
-     * Staff may advance freely; applicants may only move forward one step at a time
-     * unless demo bypass is enabled on the server.
+     * Applicants may only move forward one step at a time unless demo bypass is on.
+     * Staff may draft any module freely, but bumping {@code currentModule} requires
+     * the from-module content / publish gates (same as FE moduleGateways).
      * Program-referral and MPEX branch caps match FE {@code applicantProgress} locks.
      */
     public void assertSaveAllowed(ApplicantRecordDto incoming, ApplicantRecordDto existing) {
@@ -49,16 +50,14 @@ public class WorkflowGateService {
             assertRtecStaffSave(incoming, existing);
             return;
         }
-        if (principal.isStaff()) {
-            return;
-        }
 
         if (existing == null) {
-            // New registration — allow early modules only.
-            String module = incoming.currentModule();
-            if (module != null
-                    && ModuleOrder.indexOf(module) > ModuleOrder.indexOf("registration")) {
-                throw new AccessDeniedException("Applicants cannot create cases past registration");
+            if (!principal.isStaff()) {
+                String module = incoming.currentModule();
+                if (module != null
+                        && ModuleOrder.indexOf(module) > ModuleOrder.indexOf("registration")) {
+                    throw new AccessDeniedException("Applicants cannot create cases past registration");
+                }
             }
             return;
         }
@@ -71,6 +70,15 @@ public class WorkflowGateService {
         if (!ModuleOrder.isKnown(to)) {
             throw new IllegalArgumentException("Unknown module: " + to);
         }
+
+        if (principal.isStaff()) {
+            assertBranchCaps(to, incoming, existing);
+            assertFromModuleComplete(from, existing);
+            assertPublishGates(to, existing.moduleData(), existing.currentModule());
+            assertRdApprovalGate(to, existing.moduleData());
+            return;
+        }
+
         int fromIdx = ModuleOrder.indexOf(from);
         int toIdx = ModuleOrder.indexOf(to);
         if (toIdx > fromIdx + 1
@@ -80,6 +88,7 @@ public class WorkflowGateService {
                     "Cannot skip modules: current=" + from + ", requested=" + to);
         }
         assertBranchCaps(to, incoming, existing);
+        assertFromModuleComplete(from, existing);
         assertPublishGates(to, existing.moduleData(), existing.currentModule());
         assertRdApprovalGate(to, existing.moduleData());
     }
@@ -312,9 +321,38 @@ public class WorkflowGateService {
         if (isDemoBypassAllowed()) {
             return;
         }
+        int targetIdx = ModuleOrder.indexOf(targetModule);
+
+        if (targetIdx >= ModuleOrder.indexOf("tna2")
+                && !hasTna1DirectorValidated(existingModuleData)) {
+            throw new AccessDeniedException(
+                    "TNA Form 02 and later require Provincial Director validation of TNA Form 01");
+        }
+
+        if (targetIdx >= ModuleOrder.indexOf("project-proposal")
+                && !ModuleOrder.isPublished(existingModuleData, "tna2Document")
+                && !ModuleOrder.isPublished(existingModuleData, "tna2")) {
+            throw new AccessDeniedException(
+                    "Project Proposal and later require a published TNA Form 02");
+        }
+
+        if (targetIdx >= ModuleOrder.indexOf("conduct-rtec")) {
+            String decision = stringField(existingModuleData, "staffDecision");
+            String routing = stringField(existingModuleData, "routingDecision");
+            if (!"approved".equalsIgnoreCase(decision)) {
+                throw new AccessDeniedException(
+                        "RTEC and later require staff-approved Submission Requirements");
+            }
+            if (targetIdx == ModuleOrder.indexOf("conduct-rtec")
+                    && !"conduct-rtec".equalsIgnoreCase(routing)) {
+                throw new AccessDeniedException(
+                        "Conduct of RTEC requires routingDecision=conduct-rtec");
+            }
+        }
+
         // Soft publish gate for late modules — applicants should not jump past RTEC
         // unless staff already advanced currentModule or a published RTEC report exists.
-        if (ModuleOrder.indexOf(targetModule) >= ModuleOrder.indexOf("approval-letter")) {
+        if (targetIdx >= ModuleOrder.indexOf("approval-letter")) {
             boolean pastRtec =
                     ModuleOrder.indexOf(existingCurrentModule) >= ModuleOrder.indexOf("conduct-rtec");
             boolean rtecPublished = ModuleOrder.isPublished(existingModuleData, "rtecReport");
@@ -327,7 +365,8 @@ public class WorkflowGateService {
 
     /**
      * Clients cannot advance past Approval Letter until the Regional Director
-     * has approved and staff have published the Notice of Approval.
+     * has approved and staff have published the Notice of Approval, and the
+     * applicant has acknowledged conforme.
      */
     private void assertRdApprovalGate(String targetModule, Map<String, Object> existingModuleData) {
         if (isDemoBypassAllowed()) {
@@ -340,6 +379,92 @@ public class WorkflowGateService {
             throw new AccessDeniedException(
                     "LandBank and later modules require a Regional Director-approved, published Notice of Approval");
         }
+        if (!hasApprovalAcknowledged(existingModuleData)) {
+            throw new AccessDeniedException(
+                    "LandBank and later modules require applicant conforme on the Notice of Approval");
+        }
+    }
+
+    /**
+     * When bumping currentModule, require the from-module to look complete enough
+     * for the next hop (lightweight flags; detailed field rules stay in
+     * ModuleContentValidationService on submit/publish).
+     */
+    private void assertFromModuleComplete(String fromModule, ApplicantRecordDto existing) {
+        if (isDemoBypassAllowed() || fromModule == null) {
+            return;
+        }
+        Map<String, Object> md = moduleDataOf(existing);
+        switch (fromModule) {
+            case "prescreening" -> {
+                if (!Boolean.TRUE.equals(asBoolean(profileOf(existing).get("qualified")))
+                        && TextUtils.isBlank(stringField(md, "selectedProgramId"))) {
+                    throw new AccessDeniedException(
+                            "Cannot leave pre-screening without qualification or a program referral");
+                }
+            }
+            case "letter-of-intent" -> {
+                if (!(md.get("loiDocument") instanceof Map<?, ?>)) {
+                    throw new AccessDeniedException("Letter of Intent document is required before advancing");
+                }
+            }
+            case "tna1" -> {
+                if (!hasTna1DirectorValidated(md)) {
+                    throw new AccessDeniedException(
+                            "TNA Form 01 requires Provincial Director validation before advancing");
+                }
+            }
+            case "tna2" -> {
+                if (!ModuleOrder.isPublished(md, "tna2Document") && !ModuleOrder.isPublished(md, "tna2")) {
+                    throw new AccessDeniedException("Published TNA Form 02 is required before advancing");
+                }
+            }
+            case "project-proposal" -> {
+                Object pp = md.get("projectProposal");
+                boolean submitted =
+                        pp instanceof Map<?, ?> map && Boolean.TRUE.equals(asBoolean(map.get("submitted")));
+                if (!submitted) {
+                    throw new AccessDeniedException("Project Proposal must be submitted before advancing");
+                }
+            }
+            case "requirements" -> {
+                if (!"approved".equalsIgnoreCase(stringField(md, "staffDecision"))) {
+                    throw new AccessDeniedException(
+                            "Submission Requirements must be staff-approved before advancing");
+                }
+            }
+            case "approval-letter" -> {
+                if (!hasRdApprovedPublishedNotice(md) || !hasApprovalAcknowledged(md)) {
+                    throw new AccessDeniedException(
+                            "Notice of Approval must be published, RD-approved, and acknowledged before advancing");
+                }
+            }
+            default -> {
+                // Other modules rely on submit flags checked by content validation.
+            }
+        }
+    }
+
+    private static boolean hasTna1DirectorValidated(Map<String, Object> moduleData) {
+        if (moduleData == null) {
+            return false;
+        }
+        Object raw = moduleData.get("tna1");
+        if (!(raw instanceof Map<?, ?> tna1)) {
+            return false;
+        }
+        return Boolean.TRUE.equals(asBoolean(tna1.get("directorValidated")));
+    }
+
+    private static boolean hasApprovalAcknowledged(Map<String, Object> moduleData) {
+        if (moduleData == null) {
+            return false;
+        }
+        Object raw = moduleData.get("approvalLetter");
+        if (!(raw instanceof Map<?, ?> letter)) {
+            return false;
+        }
+        return Boolean.TRUE.equals(asBoolean(letter.get("acknowledged")));
     }
 
     private static boolean hasRdApprovedPublishedNotice(Map<String, Object> moduleData) {

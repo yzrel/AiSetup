@@ -21,6 +21,7 @@ export type AssessmentStage =
   | "requirements"
   | "tna1"
   | "tna2"
+  | "project-proposal"
   | "post-proposal"
   | "landbank-withdrawal"
   | "procurement-liquidation"

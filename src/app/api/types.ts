@@ -529,6 +529,13 @@ export interface ProjectProposalStored {
   submitted?: boolean;
   submittedAt?: string;
   updatedAt?: string;
+  /** Staff section verify/flag map (content tabs). */
+  sectionReview?: Record<string, { status: "ok" | "flagged"; remark: string }>;
+  staffReviewed?: boolean;
+  staffReviewedAt?: string;
+  staffNotes?: string;
+  staffReviewNotesDraft?: string;
+  resubmissionRequestedAt?: string;
 }
 
 export interface ProjectProposalDocumentResponse {

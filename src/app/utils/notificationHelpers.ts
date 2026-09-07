@@ -344,14 +344,22 @@ export function notifyTna1Submitted(applicant: Applicant) {
 }
 
 export function notifyTna1Reviewed(applicant: Applicant) {
+  const title = `${formatFormMention("tna01")} approved`;
+  const message = `DOST staff verified your ${formatFormMention("tna01")}. It now awaits Provincial Director validation.`;
   notificationStore.add({
     id: `tna1-reviewed-${applicant.id}-${Date.now()}`,
     audience: "applicant",
     applicantId: applicant.id,
     kind: "success",
-    title: `${formatFormMention("tna01")} approved`,
-    message: `DOST staff verified your ${formatFormMention("tna01")}. It now awaits Provincial Director validation.`,
+    title,
+    message,
     view: "tna1",
+  });
+  emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: "tna1",
   });
 }
 
@@ -373,14 +381,16 @@ export function notifyTna1DirectorValidated(
   directorName: string,
 ) {
   const stamp = Date.now();
+  const title = `${formatFormMention("tna01")} validated`;
+  const message = `${directorName} (Provincial Director) validated your ${formatFormMention("tna01")}. You may now proceed to TNA Form 02.`;
   notificationStore.addMany([
     {
       id: `tna1-director-validated-${applicant.id}-${stamp}`,
       audience: "applicant",
       applicantId: applicant.id,
       kind: "success",
-      title: `${formatFormMention("tna01")} validated`,
-      message: `${directorName} (Provincial Director) validated your ${formatFormMention("tna01")}. You may now proceed to TNA Form 02.`,
+      title,
+      message,
       view: "tna1",
     },
     {
@@ -394,6 +404,12 @@ export function notifyTna1DirectorValidated(
       view: "tna1",
     },
   ]);
+  emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: "tna1",
+  });
 }
 
 export function notifyTna1Resubmission(
@@ -570,6 +586,47 @@ export function notifyProjectProposalSubmitted(applicant: Applicant) {
       view: "project-proposal",
     },
   ]);
+}
+
+export function notifyProjectProposalReviewed(applicant: Applicant) {
+  const label = formatFormMention("001", "both");
+  const title = `${label} approved`;
+  const message = `DOST staff verified your ${label}. You may proceed when the next step is available.`;
+  notificationStore.add({
+    id: `pp-reviewed-${applicant.id}-${Date.now()}`,
+    audience: "applicant",
+    applicantId: applicant.id,
+    kind: "success",
+    title,
+    message,
+    view: "project-proposal",
+  });
+  emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: "project-proposal",
+  });
+}
+
+export function notifyProjectProposalResubmission(
+  applicant: Applicant,
+  context?: {
+    flaggedItems?: StaffVerificationFlaggedItem[];
+    staffNotes?: string;
+  },
+) {
+  const label = formatFormMention("001", "both");
+  notifyStaffVerificationRevisionSummary({
+    applicant,
+    moduleKey: "project-proposal",
+    moduleLabel: label,
+    flaggedItems: context?.flaggedItems ?? [],
+    staffNotes: context?.staffNotes,
+    view: "project-proposal",
+    title: `${label} resubmission requested`,
+    inAppMessage: `DOST staff requested corrections to your ${label}. Please update and resubmit.`,
+  });
 }
 
 export function notifyLoiSubmitted(applicant: Applicant) {

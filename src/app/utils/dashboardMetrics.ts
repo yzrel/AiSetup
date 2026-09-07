@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  *
  * Live dashboard aggregators from scoped applicants (DB-hydrated via applicantStore).
- * Charts use withLiveOrFallback so sample rows in dashboardData remain empty-state demos.
+ * Live chart/table rows are built from applicants — empty lists stay empty.
  */
 
 import {

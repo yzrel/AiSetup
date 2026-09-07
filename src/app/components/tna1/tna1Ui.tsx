@@ -34,6 +34,27 @@ export const STEPS = [
   { id: "reports",       label: "Complete",             icon: "✅" },
 ];
 
+/** Content tabs staff verify/flag in Staff Review (excludes Validation + post-submit steps). */
+export const TNA1_SECTION_REVIEW_STEP_IDS = [
+  "identification",
+  "attachment-a",
+  "benchmark",
+  "concerns",
+  "finance-hr",
+] as const;
+
+export const DEFAULT_TNA1_SECTIONS = TNA1_SECTION_REVIEW_STEP_IDS.map((id) => {
+  const step = STEPS.find((s) => s.id === id)!;
+  return {
+    id: step.id,
+    name: step.label,
+    required: true,
+    verified: false,
+    flagged: false,
+    remark: "",
+  };
+});
+
 // ─── Readonly blue field (same as LOI ReadonlyField) ─────────────────────────
 export function ReadonlyField({ label, value }: { label: string; value?: string }) {
   return (

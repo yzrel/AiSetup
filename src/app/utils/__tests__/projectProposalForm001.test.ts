@@ -723,7 +723,7 @@ describe("new Form 001 field forwarding from TNA", () => {
     expect(draft.volumeOfOrdersTable).toEqual([["", "", ""]]);
   });
 
-  it("prefills Product demand volume of orders for Three K Printshop", () => {
+  it("does not inject printshop sample volume-of-orders into live drafts", () => {
     const printshop = {
       ...tnaApplicant({
         tna1Form: {
@@ -739,8 +739,8 @@ describe("new Form 001 field forwarding from TNA", () => {
     const draft = buildProjectProposalDraft(printshop, {
       volumeOfOrdersTable: [["", "", ""]],
     });
-    expect(draft.volumeOfOrdersTable).toEqual(PP_VOLUME_OF_ORDERS_SAMPLE_ROWS);
-    expect(draft.productDemandSupply).toMatch(/tarpaulins/i);
+    expect(draft.volumeOfOrdersTable).toEqual([["", "", ""]]);
+    expect(draft.productDemandSupply).toBe("");
   });
 
   it("forwards TNA1 wasteManagement to wasteKinds and leaves existing wasteManagement empty", () => {

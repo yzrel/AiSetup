@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, Building2 } from 'lucide-react';
 import { authStore, type AuthUser, type UserRole } from '../store/authStore';
 import { applicantStore } from '../store/applicantStore';
@@ -16,8 +16,6 @@ import { DOSTMark } from './DOSTLogos';
 import { DostLogoLoader } from './DostLogoLoader';
 import { api, ApiError } from '../api/client';
 import { setAuthToken } from '../api/authToken';
-import { demoModeStore } from '../store/demoModeStore';
-
 function autoSelectStaffApplicant() {
   const user = authStore.getUser();
   if (!user || !authStore.isStaff(user.role)) return;
@@ -60,12 +58,6 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
-
-  useEffect(
-    () => demoModeStore.subscribe(() => setDemoMode(demoModeStore.isEnabled())),
-    [],
-  );
 
   const handleLogin = async () => {
     setError('');
@@ -217,18 +209,6 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
                 DOST staff accounts are issued by your office administrator.
               </p>
             </div>
-
-            {demoMode && (
-            <div className="mt-4 rounded-xl p-3 border bg-gray-50 border-gray-200">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Dev credentials (seeded users)</p>
-              <p className="text-[11px] text-gray-600"><span className="font-semibold text-[#0C2461]">Applicant:</span> <span className="font-mono">juan@abcfood.com</span> / <span className="font-mono">Demo@1234</span></p>
-              <p className="text-[11px] text-gray-600 mt-1.5"><span className="font-semibold text-[#0C2461]">Admin:</span> <span className="font-mono">admin@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-              <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-[#0C2461]">Regional Director:</span> <span className="font-mono">rd@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-              <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-[#0C2461]">Agent:</span> <span className="font-mono">agent@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-              <p className="text-[11px] text-gray-600 mt-0.5"><span className="font-semibold text-[#0C2461]">Provincial Director:</span> <span className="font-mono">director.cotabato@dost.gov.ph</span> / <span className="font-mono">admin123</span></p>
-              <p className="text-[10px] text-gray-400 mt-0.5">Also: <span className="font-mono">director.southcot</span>, <span className="font-mono">director.sk</span>, <span className="font-mono">director.sargen</span> @dost.gov.ph</p>
-            </div>
-            )}
           </div>
         </div>
 

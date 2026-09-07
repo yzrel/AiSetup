@@ -123,6 +123,46 @@ export const TNA_FORM_01_EMPLOYEE_KEYS = {
   indirectFemale: "employeesIndirectFemale",
 } as const;
 
+function headcountCell(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+/**
+ * Direct Workers is a category row only. Sex-disaggregated counts live on
+ * Production. Empty Production cells fall back per sex to legacy
+ * employeesMale / employeesFemale so a profile of 1 male and 4 female still
+ * prints when only one Production cell was stored.
+ */
+export function resolveTnaProductionSexCounts(form: Record<string, unknown>): {
+  male: string;
+  female: string;
+} {
+  const k = TNA_FORM_01_EMPLOYEE_KEYS;
+  return {
+    male:
+      headcountCell(form[k.productionMale]) ||
+      headcountCell(form[k.directMale]),
+    female:
+      headcountCell(form[k.productionFemale]) ||
+      headcountCell(form[k.directFemale]),
+  };
+}
+
+/** Write resolved Production M/F onto both Production and legacy Direct keys. */
+export function syncTnaProductionSexCounts<T extends Record<string, unknown>>(
+  form: T,
+): T {
+  const { male, female } = resolveTnaProductionSexCounts(form);
+  const k = TNA_FORM_01_EMPLOYEE_KEYS;
+  return {
+    ...form,
+    [k.productionMale]: male,
+    [k.productionFemale]: female,
+    [k.directMale]: male,
+    [k.directFemale]: female,
+  };
+}
+
 /** Map wizard MSME capital class to official checkbox id */
 export function mapCapitalClassToOfficial(value: string): string | null {
   const v = value.toLowerCase();

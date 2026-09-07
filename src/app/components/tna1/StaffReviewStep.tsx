@@ -1,10 +1,11 @@
 /**
  * Author: Yzrel Jade B. Eborde
  *
- * TNA Form 01 — Step 7: Staff Review (document verification + remarks).
+ * TNA Form 01 — Step 7: Staff Review (section verification + remarks).
+ * Flag opens a comment box (draft only). Request Resubmission sends in-app + email.
  */
 
-import { MODULE_BODY } from "../moduleTheme";
+import { MODULE_BODY, ACTION_ROW } from "../moduleTheme";
 import { TnaForm01Preview, printTnaForm01 } from "../TnaForm01Preview";
 import { allowWhenDemo } from "../../utils/demoMode";
 import type { Tna1StepContext } from "./stepContext";
@@ -23,9 +24,8 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
     staffMode,
     setStaffMode,
     form,
-    docs,
-    uploadedDocs,
-    allDocReviewed,
+    sections,
+    allSectionsReviewed,
     staffNotes,
     setStaffNotes,
     siteVisitDate,
@@ -33,8 +33,8 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
     siteVisitNotes,
     setSiteVisitNotes,
     persistStaffReview,
-    persistDocReview,
-    notifyDocRemarkDebounced,
+    persistSectionReview,
+    resubmissionError,
     tnaAiGenerated,
     previewForm,
     previewTables,
@@ -56,7 +56,6 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
         </div>
       ) : (
         <>
-          {/* Staff identity bar */}
           <div className="flex items-center gap-3 p-4 rounded-xl text-white" style={{ background: DOST_BLUE }}>
             <div className="w-9 h-9 rounded-full bg-sky-400 flex items-center justify-center font-bold text-blue-900 text-sm">PS</div>
             <div>
@@ -112,13 +111,11 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
             </div>
           </div>
 
-          {/* Doc verification stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { label: "Uploaded",  value: uploadedDocs.length,                       icon: "📤", color: "text-blue-600" },
-              { label: "Verified",  value: docs.filter(d => d.verified).length,        icon: "✅", color: "text-green-600" },
-              { label: "Flagged",   value: docs.filter(d => d.flagged).length,          icon: "⚠️", color: "text-red-500" },
-              { label: "Pending",   value: uploadedDocs.filter(d => !d.verified && !d.flagged).length, icon: "⏳", color: "text-amber-500" },
+              { label: "Verified",  value: sections.filter(s => s.verified).length, icon: "✅", color: "text-green-600" },
+              { label: "Flagged",   value: sections.filter(s => s.flagged).length,  icon: "⚠️", color: "text-red-500" },
+              { label: "Pending",   value: sections.filter(s => !s.verified && !s.flagged).length, icon: "⏳", color: "text-amber-500" },
             ].map((s, i) => (
               <div key={i} className="text-center p-4 bg-gray-50 border border-gray-100 rounded-xl">
                 <div className="text-xl">{s.icon}</div>
@@ -128,97 +125,84 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
             ))}
           </div>
 
-          {/* Document list */}
           <div>
-            <h2 className={sectionTitle}>📋 Document Verification Checklist</h2>
+            <h2 className={sectionTitle}>📋 Section Verification Checklist</h2>
+            <p className="text-xs text-gray-500 mb-2">
+              Verify or flag each form section. Flag opens a comment box (saved as draft). The applicant is notified and emailed only when you click Request Resubmission.
+            </p>
             <div className="space-y-2">
-              {docs.map((doc) => (
-                <div key={doc.id} className={`p-3.5 rounded-xl border transition-all ${
-                  doc.flagged  ? "bg-red-50 border-red-200"
-                  : doc.verified ? "bg-green-50 border-green-200"
-                  : doc.uploaded ? "bg-blue-50 border-blue-100"
-                                 : "bg-gray-50 border-gray-100"
+              {sections.map((section) => (
+                <div key={section.id} className={`p-3.5 rounded-xl border transition-all ${
+                  section.flagged  ? "bg-red-50 border-red-200"
+                  : section.verified ? "bg-green-50 border-green-200"
+                                 : "bg-blue-50 border-blue-100"
                 }`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{doc.flagged ? "⚠️" : doc.verified ? "✅" : doc.uploaded ? "📄" : "⭕"}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800">{doc.name}{doc.required && " *"}</p>
-                      {doc.file && <p className="text-xs text-gray-400">{doc.file}</p>}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-lg">{section.flagged ? "⚠️" : section.verified ? "✅" : "⭕"}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{section.name}{section.required && " *"}</p>
+                      </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      {doc.uploaded && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              persistDocReview(
-                                docs.map((x) =>
-                                  x.id === doc.id
-                                    ? { ...x, verified: true, flagged: false }
-                                    : x,
-                                ),
-                              )
-                            }
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                              doc.verified
-                                ? "bg-green-600 text-white"
-                                : "bg-green-600 text-white hover:bg-green-700"
-                            }`}
-                          >
-                            ✓ Verify
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              persistDocReview(
-                                docs.map((x) =>
-                                  x.id === doc.id
-                                    ? { ...x, flagged: true, verified: false }
-                                    : x,
-                                ),
-                                { notifyDocId: doc.id },
-                              )
-                            }
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                              doc.flagged
-                                ? "bg-red-500 text-white"
-                                : "bg-red-500 text-white hover:bg-red-600"
-                            }`}
-                          >
-                            ⚑ Flag
-                          </button>
-                        </>
-                      )}
-                      {!doc.uploaded && (
-                        <span className="text-xs text-gray-400 italic">Not uploaded</span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          persistSectionReview(
+                            sections.map((x) =>
+                              x.id === section.id
+                                ? { ...x, verified: true, flagged: false, remark: "" }
+                                : x,
+                            ),
+                          )
+                        }
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                          section.verified
+                            ? "bg-green-600 text-white"
+                            : "bg-green-600 text-white hover:bg-green-700"
+                        }`}
+                      >
+                        ✓ Verify
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          persistSectionReview(
+                            sections.map((x) =>
+                              x.id === section.id
+                                ? { ...x, flagged: true, verified: false }
+                                : x,
+                            ),
+                          )
+                        }
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                          section.flagged
+                            ? "bg-red-500 text-white"
+                            : "bg-red-500 text-white hover:bg-red-600"
+                        }`}
+                      >
+                        ⚑ Flag
+                      </button>
                     </div>
                   </div>
-                  {doc.flagged && (
+                  {section.flagged && (
                     <div className="mt-3">
-                      <input
-                        type="text"
+                      <label className="text-[11px] font-semibold text-red-700 block mb-1">
+                        Comment for applicant (required before Request Resubmission)
+                      </label>
+                      <textarea
+                        rows={3}
                         className={`${inputCls} text-xs`}
-                        placeholder="Enter reason for flagging this document..."
-                        value={doc.remark}
+                        placeholder="Explain what must be corrected in this section…"
+                        value={section.remark}
                         onChange={(e) => {
                           const remark = e.target.value;
-                          persistDocReview(
-                            docs.map((x) =>
-                              x.id === doc.id ? { ...x, remark } : x,
-                            ),
-                          );
-                          notifyDocRemarkDebounced(doc.id, remark);
-                        }}
-                        onBlur={(e) => {
-                          const remark = e.target.value;
-                          persistDocReview(
-                            docs.map((x) =>
-                              x.id === doc.id
+                          persistSectionReview(
+                            sections.map((x) =>
+                              x.id === section.id
                                 ? { ...x, remark, flagged: true, verified: false }
                                 : x,
                             ),
-                            { notifyDocId: doc.id },
                           );
                         }}
                       />
@@ -229,7 +213,6 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
             </div>
           </div>
 
-          {/* Enterprise data review */}
           <div>
             <h2 className={sectionTitle}>🏭 Encoded Enterprise Data</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -246,7 +229,6 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
             </div>
           </div>
 
-          {/* Staff remarks */}
           <div>
             <label className={labelCls}>📅 TNA Site Visit Date</label>
             <input
@@ -265,20 +247,25 @@ export function StaffReviewStep({ ctx }: { ctx: Tna1StepContext }) {
               className={`${inputCls} mt-2`} placeholder="Optional: field validation summary for TNA Form 02…" />
           </div>
 
-          {!allDocReviewed && (
+          {!allSectionsReviewed && (
             <InfoBanner icon="⚠️" color="amber"
-              text="All uploaded documents must be verified or flagged before approval." />
+              text="All sections must be verified or flagged before approval." />
+          )}
+          {resubmissionError && (
+            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {resubmissionError}
+            </p>
           )}
 
-          <div className="flex gap-3">
+          <div className={`${ACTION_ROW} flex-col sm:flex-row`}>
             <button onClick={() => persistStaffReview("approved")}
-              disabled={!allowWhenDemo(allDocReviewed)}
+              disabled={!allowWhenDemo(allSectionsReviewed)}
               className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
               style={{ background: "#059669" }}>
               ✅ Approve & Complete TNA Form 01 →
             </button>
             <button onClick={() => persistStaffReview("needs-revision")}
-              className="px-5 py-3 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition-all">
+              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition-all">
               🔄 Request Resubmission
             </button>
           </div>

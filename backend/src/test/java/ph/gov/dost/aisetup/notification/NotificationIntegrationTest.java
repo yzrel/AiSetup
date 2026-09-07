@@ -47,11 +47,54 @@ class NotificationIntegrationTest {
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
     }
 
+    private void verifyOtp(String channel, String target) throws Exception {
+        mockMvc.perform(post("/auth/otp/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "channel", channel,
+                                "target", target))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/auth/otp/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "channel", channel,
+                                "target", target,
+                                "code", "123456"))))
+                .andExpect(status().isOk());
+    }
+
+    /** Register a fresh applicant and return token + applicantId. */
+    private Map<String, String> registerApplicant(String phoneSuffix) throws Exception {
+        String email = "notify-" + UUID.randomUUID() + "@example.com";
+        String phone = "0917" + phoneSuffix;
+        String applicantId = "notify-app-" + UUID.randomUUID();
+        String applicationId = "LOI-2026-" + UUID.randomUUID().toString().substring(0, 6);
+        verifyOtp("email", email);
+        verifyOtp("sms", phone);
+        MvcResult result = mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "password", "Secure@123",
+                                "firstName", "Notify",
+                                "lastName", "Tester",
+                                "enterpriseName", "Notify Test Co",
+                                "applicantId", applicantId,
+                                "applicationId", applicationId,
+                                "phone", phone))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String token = objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+        return Map.of("token", token, "applicantId", applicantId, "email", email);
+    }
+
     @Test
     void applicantCreatesStaffAlertAndOfficeStaffSeesIt() throws Exception {
-        String applicantToken = loginToken("juan@abcfood.com", "Demo@1234");
+        Map<String, String> applicant = registerApplicant("1000001");
+        String applicantToken = applicant.get("token");
+        String caseId = applicant.get("applicantId");
         String staffId = "req-staff-1-" + UUID.randomUUID();
-        String applicantId = "req-applicant-1-" + UUID.randomUUID();
+        String applicantNotifId = "req-applicant-1-" + UUID.randomUUID();
 
         mockMvc.perform(post("/notifications")
                         .header("Authorization", "Bearer " + applicantToken)
@@ -60,17 +103,17 @@ class NotificationIntegrationTest {
                                 Map.of(
                                         "id", staffId,
                                         "audience", "staff",
-                                        "applicantId", "1",
+                                        "applicantId", caseId,
                                         "officeId", "south-cotabato",
                                         "kind", "action",
                                         "title", "Requirements awaiting review",
-                                        "message", "ABC Food Processing submitted documents.",
+                                        "message", "Notify Test Co submitted documents.",
                                         "urgent", true,
                                         "view", "requirements"),
                                 Map.of(
-                                        "id", applicantId,
+                                        "id", applicantNotifId,
                                         "audience", "applicant",
-                                        "applicantId", "1",
+                                        "applicantId", caseId,
                                         "kind", "info",
                                         "title", "Requirements submitted",
                                         "message", "Your documents are with your provincial DOST office.",
@@ -93,13 +136,15 @@ class NotificationIntegrationTest {
         mockMvc.perform(get("/notifications")
                         .header("Authorization", "Bearer " + applicantToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id=='" + applicantId + "')]").exists())
+                .andExpect(jsonPath("$[?(@.id=='" + applicantNotifId + "')]").exists())
                 .andExpect(jsonPath("$[?(@.id=='" + staffId + "')]").doesNotExist());
     }
 
     @Test
     void markReadAndMarkAllReadPersist() throws Exception {
-        String applicantToken = loginToken("juan@abcfood.com", "Demo@1234");
+        Map<String, String> applicant = registerApplicant("1000002");
+        String applicantToken = applicant.get("token");
+        String caseId = applicant.get("applicantId");
         String id = "prescreen-1-" + UUID.randomUUID();
 
         mockMvc.perform(post("/notifications")
@@ -108,7 +153,7 @@ class NotificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(List.of(Map.of(
                                 "id", id,
                                 "audience", "applicant",
-                                "applicantId", "1",
+                                "applicantId", caseId,
                                 "kind", "success",
                                 "title", "Pre-screening passed",
                                 "message", "Continue with enterprise registration.",
@@ -132,7 +177,7 @@ class NotificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(List.of(Map.of(
                                 "id", secondId,
                                 "audience", "applicant",
-                                "applicantId", "1",
+                                "applicantId", caseId,
                                 "kind", "info",
                                 "title", "Extra",
                                 "message", "Unread item")))))
@@ -151,7 +196,9 @@ class NotificationIntegrationTest {
 
     @Test
     void upsertDoesNotResetReadState() throws Exception {
-        String applicantToken = loginToken("juan@abcfood.com", "Demo@1234");
+        Map<String, String> applicant = registerApplicant("1000003");
+        String applicantToken = applicant.get("token");
+        String caseId = applicant.get("applicantId");
         String id = "stable-req-applicant-1-" + UUID.randomUUID();
 
         mockMvc.perform(post("/notifications")
@@ -160,7 +207,7 @@ class NotificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(List.of(Map.of(
                                 "id", id,
                                 "audience", "applicant",
-                                "applicantId", "1",
+                                "applicantId", caseId,
                                 "kind", "info",
                                 "title", "Requirements submitted",
                                 "message", "With provincial office.")))))
@@ -176,7 +223,7 @@ class NotificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(List.of(Map.of(
                                 "id", id,
                                 "audience", "applicant",
-                                "applicantId", "1",
+                                "applicantId", caseId,
                                 "kind", "info",
                                 "title", "Requirements submitted again",
                                 "message", "Should not reset read.")))))
@@ -192,14 +239,16 @@ class NotificationIntegrationTest {
 
     @Test
     void applicantCannotCreateForOtherApplicant() throws Exception {
-        String applicantToken = loginToken("juan@abcfood.com", "Demo@1234");
+        Map<String, String> applicant = registerApplicant("1000004");
+        Map<String, String> other = registerApplicant("1000005");
+        String applicantToken = applicant.get("token");
         mockMvc.perform(post("/notifications")
                         .header("Authorization", "Bearer " + applicantToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(List.of(Map.of(
                                 "id", "blocked-" + UUID.randomUUID(),
                                 "audience", "applicant",
-                                "applicantId", "2",
+                                "applicantId", other.get("applicantId"),
                                 "kind", "info",
                                 "title", "Nope",
                                 "message", "Should be forbidden")))))
@@ -217,7 +266,7 @@ class NotificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(List.of(Map.of(
                                 "id", id,
                                 "audience", "staff",
-                                "applicantId", "1",
+                                "applicantId", "staff-case-" + UUID.randomUUID(),
                                 "officeId", "south-cotabato",
                                 "kind", "action",
                                 "title", "Staff only",

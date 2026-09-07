@@ -39,7 +39,7 @@ No inline per-section footers. Live print uses CSS counters (Word hard-codes ~12
 - No logo / Republic header on print or official preview document.
 - GAD stays in the wizard only — omit from `TnaForm01Document`.
 - Type of Organization includes **LGU**; capital labels are P3M / P15M / P100M (Word `image2.png`).
-- Employee grid matches Word `image4.png`: Direct M/F, Production M/F, Non-production Senior Citizen / PWD, Indirect/Contract M/F, Total M/F.
+- Employee grid: Direct Workers is a parent row with blank M/F. Production holds M/F (legacy `employeesMale`/`employeesFemale` print here when Production is empty). Non-production shows Senior Citizen / PWD in the two value cells. Indirect/Contract M/F. Total M/F = Production + Indirect.
 - Validated by: `PSTD/CASTD/CSTD`.
 
 ## Print path

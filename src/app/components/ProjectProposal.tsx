@@ -20,6 +20,7 @@ import {
   Shield,
   Eye,
   Info,
+  Search,
 } from "lucide-react";
 import { EditableTableResponsive } from "./ui/editable-table-responsive";
 import { AuthUser, isRtecStaff } from "../store/authStore";
@@ -80,7 +81,16 @@ import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { FinancialProjectionWizard } from "./projectProposal/financialProjection/FinancialProjectionWizard";
 import { ScheduleGanttEditor } from "./projectProposal/ScheduleGanttEditor";
 import { InvestmentDecisionAnalysisEditor } from "./projectProposal/InvestmentDecisionAnalysisEditor";
-import { notifyProjectProposalSubmitted } from "../utils/notificationHelpers";
+import {
+  StaffReviewStep,
+  type PpSection,
+} from "./projectProposal/StaffReviewStep";
+import { appendStaffAssessment } from "../utils/clientAssessment";
+import {
+  notifyProjectProposalSubmitted,
+  notifyProjectProposalReviewed,
+  notifyProjectProposalResubmission,
+} from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { getPublishedTna2 } from "../utils/tnaForm02";
@@ -121,7 +131,8 @@ type StepId =
   | "waste"
   | "financial"
   | "risk"
-  | "preview";
+  | "preview"
+  | "staff-review";
 
 const STEPS: { id: StepId; label: string; icon: ReactNode }[] = [
   { id: "cover", label: "Cover", icon: <FileText className="w-4 h-4" /> },
@@ -133,7 +144,62 @@ const STEPS: { id: StepId; label: string; icon: ReactNode }[] = [
   { id: "financial", label: "Financial", icon: <Banknote className="w-4 h-4" /> },
   { id: "risk", label: "Risk", icon: <Shield className="w-4 h-4" /> },
   { id: "preview", label: "Preview", icon: <Eye className="w-4 h-4" /> },
+  { id: "staff-review", label: "Staff Review", icon: <Search className="w-4 h-4" /> },
 ];
+
+/** Content tabs staff verify/flag (excludes Preview + Staff Review). */
+const PP_SECTION_REVIEW_STEP_IDS = [
+  "cover",
+  "company",
+  "site-ops",
+  "marketing",
+  "technology",
+  "waste",
+  "financial",
+  "risk",
+] as const;
+
+const DEFAULT_PP_SECTIONS: PpSection[] = PP_SECTION_REVIEW_STEP_IDS.map((id) => {
+  const step = STEPS.find((s) => s.id === id)!;
+  return {
+    id: step.id,
+    name: step.label,
+    required: true,
+    verified: false,
+    flagged: false,
+    remark: "",
+  };
+});
+
+function hydratePpSections(
+  saved: ReturnType<typeof getProjectProposalStored>,
+): PpSection[] {
+  const sectionReview = (saved?.sectionReview ?? {}) as Record<
+    string,
+    { status?: string; remark?: string }
+  >;
+  return DEFAULT_PP_SECTIONS.map((s) => {
+    const review = sectionReview[s.id];
+    const status = review?.status;
+    return {
+      ...s,
+      verified: status === "ok",
+      flagged: status === "flagged",
+      remark: typeof review?.remark === "string" ? review.remark : "",
+    };
+  });
+}
+
+function sectionsToSectionReview(
+  sections: PpSection[],
+): Record<string, { status: "ok" | "flagged"; remark: string }> {
+  const out: Record<string, { status: "ok" | "flagged"; remark: string }> = {};
+  for (const s of sections) {
+    if (s.verified) out[s.id] = { status: "ok", remark: s.remark ?? "" };
+    else if (s.flagged) out[s.id] = { status: "flagged", remark: s.remark ?? "" };
+  }
+  return out;
+}
 
 const inputCls =
   "w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all bg-white disabled:bg-gray-50 disabled:text-gray-500";
@@ -356,6 +422,22 @@ export function ProjectProposal({
   const [submitted, setSubmitted] = useState(
     () => getProjectProposalStored(applicant)?.submitted ?? false,
   );
+  const [staffMode, setStaffMode] = useState(false);
+  const [staffApproved, setStaffApproved] = useState(
+    () => getProjectProposalStored(applicant)?.staffReviewed ?? false,
+  );
+  const [staffNotes, setStaffNotes] = useState(() => {
+    const stored = getProjectProposalStored(applicant);
+    return String(stored?.staffReviewNotesDraft ?? stored?.staffNotes ?? "");
+  });
+  const [sections, setSections] = useState<PpSection[]>(() =>
+    hydratePpSections(getProjectProposalStored(applicant)),
+  );
+  const [resubmissionError, setResubmissionError] = useState("");
+  const sectionsRef = useRef(sections);
+  const staffNotesRef = useRef(staffNotes);
+  sectionsRef.current = sections;
+  staffNotesRef.current = staffNotes;
 
   const { bind: bindAi, notice: aiFieldNotice, suggest: suggestAi, loadingField: aiLoadingField } =
     useAiFieldSuggest("project-proposal");
@@ -376,8 +458,14 @@ export function ProjectProposal({
     const stored = getProjectProposalStored(app);
     setDocument(stored?.document ?? null);
     setSubmitted(stored?.submitted ?? false);
+    setStaffApproved(!!stored?.staffReviewed);
+    setStaffNotes(String(stored?.staffReviewNotesDraft ?? stored?.staffNotes ?? ""));
+    const hydrated = hydratePpSections(stored);
+    setSections(hydrated);
+    sectionsRef.current = hydrated;
+    setResubmissionError("");
     setSubmitErrors([]);
-    if (stored?.submitted) {
+    if (stored?.submitted || stored?.staffReviewed) {
       setMaxReached(STEPS.length - 1);
     } else {
       setMaxReached(0);
@@ -393,6 +481,12 @@ export function ProjectProposal({
     const idx = STEPS.findIndex((s) => s.id === step);
     if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
   }, [step]);
+
+  useEffect(() => {
+    if (submitted || staffApproved) {
+      setMaxReached(STEPS.length - 1);
+    }
+  }, [submitted, staffApproved]);
 
   const formRef = useRef(form);
   const attachmentsRef = useRef(attachments);
@@ -533,9 +627,162 @@ export function ProjectProposal({
     submitProjectProposal(applicant.id, form, attachments, document ?? undefined);
     notifyProjectProposalSubmitted(applicant);
     setSubmitted(true);
+    setStaffApproved(false);
     setMaxReached(STEPS.length - 1);
     onSubmitSuccess?.();
   };
+
+  const persistSectionReview = useCallback(
+    (nextSections: PpSection[]) => {
+      setSections(nextSections);
+      sectionsRef.current = nextSections;
+      if (!applicant) return;
+      const existing = getProjectProposalStored(applicant);
+      applicantStore.update(applicant.id, {
+        moduleData: {
+          ...applicant.moduleData,
+          projectProposal: {
+            form: formRef.current,
+            attachments: attachmentsRef.current,
+            document: documentRef.current ?? existing?.document,
+            submitted: existing?.submitted ?? false,
+            submittedAt: existing?.submittedAt,
+            updatedAt: new Date().toISOString(),
+            sectionReview: sectionsToSectionReview(nextSections),
+            staffReviewed: existing?.staffReviewed,
+            staffReviewedAt: existing?.staffReviewedAt,
+            staffNotes: existing?.staffNotes,
+            staffReviewNotesDraft: staffNotesRef.current || undefined,
+            resubmissionRequestedAt: existing?.resubmissionRequestedAt,
+          },
+        },
+      });
+    },
+    [applicant],
+  );
+
+  const persistStaffReviewDraft = useDebouncedCallback(() => {
+    if (!applicant || !isStaff || reviewOnly) return;
+    const existing = getProjectProposalStored(applicant);
+    applicantStore.update(applicant.id, {
+      moduleData: {
+        ...applicant.moduleData,
+        projectProposal: {
+          form: formRef.current,
+          attachments: attachmentsRef.current,
+          document: documentRef.current ?? existing?.document,
+          submitted: existing?.submitted ?? false,
+          submittedAt: existing?.submittedAt,
+          updatedAt: new Date().toISOString(),
+          sectionReview: sectionsToSectionReview(sectionsRef.current),
+          staffReviewed: existing?.staffReviewed,
+          staffReviewedAt: existing?.staffReviewedAt,
+          staffNotes: existing?.staffNotes,
+          staffReviewNotesDraft: staffNotesRef.current || undefined,
+          resubmissionRequestedAt: existing?.resubmissionRequestedAt,
+        },
+      },
+    });
+  }, 400);
+
+  const handleStaffNotesChange = (value: string) => {
+    staffNotesRef.current = value;
+    setStaffNotes(value);
+    persistStaffReviewDraft();
+  };
+
+  const persistStaffReview = useCallback(
+    (decision: "approved" | "needs-revision") => {
+      if (!applicant || !user) return;
+      const currentSections = sectionsRef.current;
+      if (decision === "needs-revision") {
+        const flagged = currentSections.filter((s) => s.flagged);
+        if (flagged.length === 0) {
+          setResubmissionError(
+            "Flag at least one section and add a comment before requesting resubmission.",
+          );
+          return;
+        }
+        const missingComment = flagged.find((s) => !String(s.remark ?? "").trim());
+        if (missingComment) {
+          setResubmissionError(
+            `Add a comment for flagged section: ${missingComment.name}.`,
+          );
+          return;
+        }
+        setResubmissionError("");
+        const assessmentUpdate = appendStaffAssessment(applicant, {
+          stage: "project-proposal",
+          decision: "needs-revision",
+          assessedBy: user.email,
+          assessedAt: new Date().toISOString(),
+          remarks: staffNotes,
+        });
+        const existing = getProjectProposalStored(applicant);
+        applicantStore.update(applicant.id, {
+          ...assessmentUpdate,
+          moduleData: {
+            ...assessmentUpdate.moduleData,
+            projectProposal: {
+              form: formRef.current,
+              attachments: attachmentsRef.current,
+              document: documentRef.current ?? existing?.document,
+              submitted: false,
+              submittedAt: existing?.submittedAt,
+              updatedAt: new Date().toISOString(),
+              sectionReview: sectionsToSectionReview(currentSections),
+              staffReviewed: false,
+              staffNotes: staffNotes || undefined,
+              staffReviewNotesDraft: staffNotes || undefined,
+              resubmissionRequestedAt: new Date().toISOString(),
+            },
+          },
+        });
+        notifyProjectProposalResubmission(applicant, {
+          flaggedItems: flagged.map((s) => ({ name: s.name, remark: s.remark })),
+          staffNotes,
+        });
+        setSubmitted(false);
+        setStaffApproved(false);
+        setMaxReached(0);
+        setStep("cover");
+        return;
+      }
+
+      setResubmissionError("");
+      const assessmentUpdate = appendStaffAssessment(applicant, {
+        stage: "project-proposal",
+        decision: "approved",
+        assessedBy: user.email,
+        assessedAt: new Date().toISOString(),
+        remarks: staffNotes,
+      });
+      const existing = getProjectProposalStored(applicant);
+      applicantStore.update(applicant.id, {
+        ...assessmentUpdate,
+        moduleData: {
+          ...assessmentUpdate.moduleData,
+          projectProposal: {
+            form: formRef.current,
+            attachments: attachmentsRef.current,
+            document: documentRef.current ?? existing?.document,
+            submitted: existing?.submitted ?? true,
+            submittedAt: existing?.submittedAt,
+            updatedAt: new Date().toISOString(),
+            sectionReview: sectionsToSectionReview(currentSections),
+            staffReviewed: true,
+            staffReviewedAt: new Date().toISOString(),
+            staffNotes: staffNotes || undefined,
+            staffReviewNotesDraft: staffNotes || undefined,
+          },
+        },
+      });
+      notifyProjectProposalReviewed(applicant);
+      setStaffApproved(true);
+      setStep("preview");
+    },
+    [applicant, user, staffNotes],
+  );
 
   const updateBudgetItem = (id: string, patch: Partial<ProjectProposalBudgetRow>) => {
     setForm((prev) => ({
@@ -554,19 +801,29 @@ export function ProjectProposal({
   const tna2Published = getPublishedTna2(applicant);
   const stored = getProjectProposalStored(applicant);
   const stepIdx = STEPS.findIndex((s) => s.id === step);
+  const previewIdx = STEPS.findIndex((s) => s.id === "preview");
   const isFirstStep = stepIdx <= 0;
-  const isLastStep = stepIdx >= STEPS.length - 1;
+  const isPreviewStep = step === "preview";
+  const isStaffReviewStep = step === "staff-review";
+  const allSectionsReviewed =
+    sections.length > 0 && sections.every((s) => s.verified || s.flagged);
+  const flaggedSections = sections.filter((s) => s.flagged);
+  const showRevisionPanel =
+    !!applicant && !isStaff && !submitted && flaggedSections.length > 0;
+  /** Applicants stop at Preview; staff can continue to Staff Review. */
+  const canContinue = isStaff
+    ? stepIdx >= 0 && stepIdx < STEPS.length - 1
+    : stepIdx >= 0 && stepIdx < previewIdx;
 
   const goBack = () => {
     if (stepIdx > 0) setStep(STEPS[stepIdx - 1].id);
   };
 
   const goNext = () => {
-    if (stepIdx < STEPS.length - 1) {
-      const next = STEPS[stepIdx + 1].id;
-      setMaxReached((m) => Math.max(m, stepIdx + 1));
-      setStep(next);
-    }
+    if (!canContinue) return;
+    const next = STEPS[stepIdx + 1].id;
+    setMaxReached((m) => Math.max(m, stepIdx + 1));
+    setStep(next);
   };
 
   const goToStep = (id: StepId) => {
@@ -1238,16 +1495,31 @@ export function ProjectProposal({
           className={`${MODULE_HEADER} text-white`}
           style={{ background: `linear-gradient(135deg,${DOST_BLUE} 0%,${DOST_MID} 100%)` }}
         >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-blue-800 font-black text-sm">Ai</span>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0">
+                <span className="text-blue-800 font-black text-sm">Ai</span>
+              </div>
+              <ModuleFormHeader
+                formKey="001"
+                subtitle={
+                  `Module 7${applicant ? ` · ${applicant.enterpriseName} · ${applicant.applicationId}` : ""}`
+                }
+              />
             </div>
-            <ModuleFormHeader
-              formKey="001"
-              subtitle={
-                `Module 7${applicant ? ` · ${applicant.enterpriseName} · ${applicant.applicationId}` : ""}`
-              }
-            />
+            {isStaff && !reviewOnly && (
+              <button
+                type="button"
+                onClick={() => setStaffMode((s) => !s)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all shrink-0 ${
+                  staffMode
+                    ? "bg-white text-blue-900 border-white"
+                    : "bg-white/10 text-white border-white/30 hover:bg-white/20"
+                }`}
+              >
+                {staffMode ? "🔓 Staff Mode ON" : "🔒 Staff Mode"}
+              </button>
+            )}
           </div>
           <ModuleStepHeader
             steps={STEPS}
@@ -1276,11 +1548,39 @@ export function ProjectProposal({
             {stored?.submittedAt
               ? ` on ${new Date(stored.submittedAt).toLocaleDateString()}`
               : ""}
-            .
+            {staffApproved ? " · Staff approved" : ""}.
           </div>
         )}
 
         <div className={MODULE_BODY}>
+          {step === "cover" && showRevisionPanel && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2 mb-4">
+              <p className="text-sm font-semibold text-red-800">
+                Revisions requested by DOST staff
+              </p>
+              <p className="text-xs text-red-700">
+                Please review the flagged sections below, update your{" "}
+                {formatFormMention("001", "both")}, and resubmit.
+              </p>
+              <ul className="space-y-1.5 mt-2">
+                {flaggedSections.map((s) => (
+                  <li key={s.id} className="text-xs text-red-700 flex gap-2">
+                    <span className="text-red-400">•</span>
+                    <span>
+                      <strong>{s.name}</strong>
+                      {s.remark ? ` — ${s.remark}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {staffNotes.trim() && (
+                <p className="text-xs text-red-700 mt-2">
+                  <strong>Staff notes:</strong> {staffNotes}
+                </p>
+              )}
+            </div>
+          )}
+
           {step === "cover" && (
             <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
               <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
@@ -1308,9 +1608,38 @@ export function ProjectProposal({
 
           {aiFieldNotice && <AiAssistNotice message={aiFieldNotice} />}
 
-          {renderStep()}
+          {isStaffReviewStep ? (
+            isStaff ? (
+              <StaffReviewStep
+                applicant={applicant}
+                staffMode={staffMode}
+                setStaffMode={setStaffMode}
+                form={form}
+                document={document}
+                attachments={attachments}
+                sections={sections}
+                allSectionsReviewed={allSectionsReviewed}
+                staffNotes={staffNotes}
+                setStaffNotes={handleStaffNotesChange}
+                persistStaffReview={persistStaffReview}
+                persistSectionReview={persistSectionReview}
+                resubmissionError={resubmissionError}
+                onOpenPreview={() => setStep("preview")}
+                submitted={submitted}
+              />
+            ) : (
+              <div className="text-center py-12 space-y-2">
+                <p className="text-lg font-bold text-gray-700">Staff only</p>
+                <p className="text-sm text-gray-400">
+                  Section verification is restricted to DOST provincial staff.
+                </p>
+              </div>
+            )
+          ) : (
+            renderStep()
+          )}
 
-          {reviewOnly && user && isLastStep && (
+          {reviewOnly && user && isPreviewStep && (
             <RtecReviewCommentPanel
               user={user}
               applicantId={applicant?.id}
@@ -1318,6 +1647,7 @@ export function ProjectProposal({
             />
           )}
 
+          {!isStaffReviewStep && (
           <div className={`${ACTION_ROW} pt-4 border-t border-gray-100`}>
             {!isFirstStep && (
               <button
@@ -1338,7 +1668,7 @@ export function ProjectProposal({
               <Save className="w-4 h-4" /> Save draft
             </button>
             )}
-            {!isLastStep ? (
+            {canContinue ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1351,22 +1681,32 @@ export function ProjectProposal({
               >
                 Continue →
               </button>
-            ) : (
-              <>
-                {!submitted && !reviewOnly && (
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!applicant}
-                    className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
-                    style={{ background: "#059669" }}
-                  >
-                    <CheckCircle className="w-4 h-4" /> Submit proposal
-                  </button>
-                )}
-              </>
+            ) : null}
+            {isPreviewStep && !submitted && !reviewOnly && (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!applicant}
+                className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                style={{ background: "#059669" }}
+              >
+                <CheckCircle className="w-4 h-4" /> Submit proposal
+              </button>
             )}
           </div>
+          )}
+
+          {isStaffReviewStep && !isFirstStep && (
+            <div className={`${ACTION_ROW} pt-4 border-t border-gray-100`}>
+              <button
+                type="button"
+                onClick={goBack}
+                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all text-sm"
+              >
+                ← Back
+              </button>
+            </div>
+          )}
 
           {saveNotice && (
             <p className="text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2">

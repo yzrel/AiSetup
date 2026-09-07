@@ -49,12 +49,14 @@ public class ModuleContentValidationService {
         switch (key) {
             case "loiDocument" -> errors.addAll(validateLoiStored(data));
             case "tna1" -> errors.addAll(validateTna1(data));
+            case "tna2", "tna2Document" -> errors.addAll(validateTna2(data));
             case "projectProposal" -> errors.addAll(validateProjectProposal(data));
             case "rtecReport", "conductRtec" -> errors.addAll(validateRtecReport(data));
             case "approvalLetter", "noticeOfApproval" -> errors.addAll(validateApprovalLetter(data));
             case "landBank" -> errors.addAll(validateLandBank(data));
             case "projectCloseOut" -> errors.addAll(validateCloseOut(data));
             case "refund" -> errors.addAll(validateRefund(data));
+            case "procurement" -> errors.addAll(validateProcurement(data));
             case "financialProjection" -> errors.addAll(validateFinancialProjection(data));
             case "requirements" -> errors.addAll(validateRequirements(data));
             default -> {
@@ -159,6 +161,13 @@ public class ModuleContentValidationService {
                 stringField(form, "employmentClass"),
                 "Employment classification is required.");
         require(errors, stringField(form, "undertakingName"), "Undertaking signature is required.");
+        for (int i = 1; i <= 6; i++) {
+            Object ga = form.get("agreeGA" + i);
+            if (!Boolean.TRUE.equals(asBoolean(ga))) {
+                errors.add("All six General Agreements must be accepted.");
+                break;
+            }
+        }
         require(
                 errors,
                 stringField(form, "productionProblemsConcerns"),
@@ -168,6 +177,10 @@ public class ModuleContentValidationService {
         if (!hasPlan) {
             errors.add("Production plan is required.");
         }
+        require(
+                errors,
+                stringField(form, "orgStructureFileName"),
+                "Organizational structure upload is required.");
         require(errors, stringField(form, "plantLayoutFileName"), "Plant lay-out upload is required.");
         boolean hasProcessFlow = !TextUtils.isBlank(stringField(form, "processFlowFileName"))
                 || !TextUtils.isBlank(stringField(form, "processFlow"));
@@ -195,8 +208,25 @@ public class ModuleContentValidationService {
             form = data;
         }
         require(errors, stringField(form, "applicantName"), "Applicant name is required.");
+        require(errors, stringField(form, "designation"), "Designation / Position is required.");
         require(errors, stringField(form, "enterpriseName"), "Enterprise name is required.");
+        require(errors, stringField(form, "contactNumber"), "Contact number is required.");
+        require(errors, stringField(form, "emailAddress"), "Email address is required.");
+        require(
+                errors,
+                firstNonBlank(stringField(form, "province"), stringField(form, "region")),
+                "Province / region is required.");
+        require(errors, stringField(form, "businessType"), "Business type is required.");
+        require(errors, stringField(form, "msmeSize"), "MSME size is required.");
+        require(errors, stringField(form, "tinNumber"), "TIN number is required.");
         require(errors, stringField(form, "projectDescription"), "Project description is required.");
+        boolean programLoi = !TextUtils.isBlank(stringField(form, "programId"))
+                || !TextUtils.isBlank(stringField(form, "programName"))
+                || !TextUtils.isBlank(stringField(data, "selectedProgramId"));
+        if (!programLoi) {
+            require(errors, stringField(form, "budget"), "Estimated budget is required.");
+            require(errors, stringField(form, "timeline"), "Project timeline is required.");
+        }
         return errors;
     }
 
@@ -278,7 +308,15 @@ public class ModuleContentValidationService {
         if (form == null) {
             form = data;
         }
-        return tna1FormErrors(form);
+        List<String> errors = new ArrayList<>(tna1FormErrors(form));
+        Map<String, Object> tables = asMap(data.get("tables"));
+        if (tables != null) {
+            Object raw = tables.get("rawMaterials");
+            if (!hasNonBlankTableRow(raw)) {
+                errors.add("Raw materials table is required.");
+            }
+        }
+        return errors;
     }
 
     private List<String> validateProjectProposal(Map<String, Object> data) {
@@ -289,11 +327,22 @@ public class ModuleContentValidationService {
             return errors;
         }
         require(errors, stringField(form, "projectTitle"), "Project title is required.");
+        require(errors, stringField(form, "firmName"), "Firm name is required.");
         require(errors, stringField(form, "proponentName"), "Proponent name is required.");
         require(
                 errors,
                 stringField(form, "amountRequested"),
                 "Amount requested from SETUP is required.");
+        require(errors, stringField(form, "organizationType"), "Type of organization is required.");
+        if (!hasNonBlankTableRow(form.get("scheduleTable"))) {
+            errors.add("Add at least one project schedule / duration row.");
+        }
+        if (!hasNonBlankTableRow(form.get("equipmentTable"))) {
+            errors.add("Add at least one equipment row.");
+        }
+        if (!hasBudgetItem(form.get("budgetItems"))) {
+            errors.add("Add at least one budget line item.");
+        }
         Object attachments = data.get("attachments");
         Object kinds = data.get("attachmentKinds");
         boolean hasVicinity = hasAttachmentKind(attachments, "vicinityMap")
@@ -306,6 +355,66 @@ public class ModuleContentValidationService {
         if (!hasLayout) {
             errors.add("Proposed plant layout is required.");
         }
+        return errors;
+    }
+
+    private List<String> validateTna2(Map<String, Object> data) {
+        List<String> errors = new ArrayList<>();
+        Map<String, Object> profile = asMap(data.get("enterpriseProfile"));
+        require(
+                errors,
+                profile != null ? stringField(profile, "enterpriseName") : "",
+                "Enterprise name is required.");
+        Object findings = data.get("findingsByArea");
+        boolean hasFinding = false;
+        if (findings instanceof Collection<?> col) {
+            for (Object item : col) {
+                if (!(item instanceof Map<?, ?> m)) {
+                    continue;
+                }
+                Map<String, Object> section = castMap(m);
+                if (!TextUtils.isBlank(stringField(section, "content"))) {
+                    hasFinding = true;
+                    break;
+                }
+                Object subs = section.get("subsections");
+                if (subs instanceof Collection<?> subCol) {
+                    for (Object sub : subCol) {
+                        if (sub instanceof Map<?, ?> sm
+                                && (!TextUtils.isBlank(stringField(castMap(sm), "content"))
+                                        || !TextUtils.isBlank(stringField(castMap(sm), "title")))) {
+                            hasFinding = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasFinding) {
+                    break;
+                }
+            }
+        }
+        if (!hasFinding) {
+            errors.add("Add findings by assessment area before publishing.");
+        }
+        Object equipment = data.get("recommendedEquipment");
+        boolean hasEquipment = false;
+        if (equipment instanceof Collection<?> col) {
+            for (Object item : col) {
+                if (item instanceof Map<?, ?> m && !TextUtils.isBlank(stringField(castMap(m), "name"))) {
+                    hasEquipment = true;
+                    break;
+                }
+            }
+        }
+        if (!hasEquipment) {
+            errors.add("Add at least one recommended equipment row.");
+        }
+        Map<String, Object> assessor = asMap(data.get("assessor"));
+        require(
+                errors,
+                assessor != null ? stringField(assessor, "name") : "",
+                "Prepared by (TNA Team Leader) name is required.");
+        require(errors, stringField(data, "assessmentDate"), "Assessment date is required.");
         return errors;
     }
 
@@ -401,8 +510,27 @@ public class ModuleContentValidationService {
                 "Upload audited financial report.");
         require(
                 errors,
-                stringField(form, "equipmentAcknowledgementFileName"),
-                "Upload equipment acknowledgement receipt.");
+                stringField(form, "ptrFromAccountableOfficer"),
+                "Complete Form 005 — From accountable officer.");
+        require(
+                errors,
+                stringField(form, "ptrToAccountableOfficer"),
+                "Complete Form 005 — To accountable officer.");
+        require(errors, stringField(form, "ptrDate"), "Complete Form 005 — PTR date.");
+        require(errors, stringField(form, "ptrTransferType"), "Select Form 005 transfer type.");
+        require(
+                errors,
+                stringField(form, "ptrReasonForTransfer"),
+                "Complete Form 005 — Reason for Transfer.");
+        require(
+                errors,
+                stringField(form, "ptrApprovedByName"),
+                "Complete Form 005 — Approved by name.");
+        require(errors, stringField(form, "ptrReceivedBy"), "Complete Form 005 — Received by.");
+        require(
+                errors,
+                stringField(form, "propertyTransferSignedFileName"),
+                "Upload signed Form 005 scan.");
         if (!hasEquipmentInventoryRow(form.get("equipmentInventory"))) {
             errors.add("Complete at least one equipment inventory row.");
         }
@@ -410,6 +538,87 @@ public class ModuleContentValidationService {
             errors.add("Confirm Certificate of Ownership and IRP issuance.");
         }
         return errors;
+    }
+
+    private List<String> validateProcurement(Map<String, Object> data) {
+        List<String> errors = new ArrayList<>();
+        Map<String, Object> form = asMap(data.get("form"));
+        if (form == null) {
+            form = data;
+        }
+        Object docs = form.get("documents");
+        if (!(docs instanceof Collection<?> docCol) || docCol.isEmpty()) {
+            errors.add("Add at least one procurement document.");
+        }
+        Object items = form.get("items");
+        if (!(items instanceof Collection<?> itemCol) || itemCol.isEmpty()) {
+            errors.add("Add at least one procurement line item.");
+        } else {
+            boolean hasValidItem = false;
+            for (Object item : itemCol) {
+                if (!(item instanceof Map<?, ?> m)) {
+                    continue;
+                }
+                Map<String, Object> row = castMap(m);
+                if (!TextUtils.isBlank(stringField(row, "description"))
+                        && !TextUtils.isBlank(
+                                firstNonBlank(
+                                        stringField(row, "amount"),
+                                        stringField(row, "unitCost"),
+                                        stringField(row, "total")))) {
+                    hasValidItem = true;
+                    break;
+                }
+            }
+            if (!hasValidItem) {
+                errors.add("Each procurement line item needs a description and amount.");
+            }
+        }
+        if (!Boolean.TRUE.equals(asBoolean(form.get("liquidationFiled")))
+                && asMap(form.get("liquidation")) == null) {
+            errors.add("Record liquidation before completing procurement.");
+        }
+        if (!Boolean.TRUE.equals(asBoolean(form.get("untagged")))) {
+            errors.add("Mark equipment as untagged before completing procurement.");
+        }
+        Map<String, Object> untag = asMap(form.get("untagLetter"));
+        if (untag == null || !Boolean.TRUE.equals(asBoolean(untag.get("published")))) {
+            errors.add("Publish the Letter to Untag before completing procurement.");
+        }
+        return errors;
+    }
+
+    private static boolean hasNonBlankTableRow(Object table) {
+        if (!(table instanceof Collection<?> col) || col.isEmpty()) {
+            return false;
+        }
+        for (Object row : col) {
+            if (row instanceof Collection<?> cells) {
+                for (Object cell : cells) {
+                    if (!TextUtils.isBlank(String.valueOf(cell == null ? "" : cell))) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasBudgetItem(Object items) {
+        if (!(items instanceof Collection<?> col) || col.isEmpty()) {
+            return false;
+        }
+        for (Object item : col) {
+            if (!(item instanceof Map<?, ?> m)) {
+                continue;
+            }
+            Map<String, Object> row = castMap(m);
+            if (!TextUtils.isBlank(stringField(row, "item"))
+                    || !TextUtils.isBlank(stringField(row, "total"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasEquipmentInventoryRow(Object inventory) {

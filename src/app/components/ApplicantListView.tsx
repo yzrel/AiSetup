@@ -37,6 +37,7 @@ import { AuthUser } from "../store/authStore";
 import { getApplicantsForStaff } from "../utils/provincialOffice";
 import { applicantMatchesSearch } from "../utils/applicantText";
 import { useApplicantStoreVersion } from "../hooks/useApplicantSubscription";
+import { canAdvanceFrom } from "../utils/moduleGateways";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -179,7 +180,10 @@ function ApplicantDetail({
 
   const handleAdvance = () => {
     const next = nextModule();
-    if (next) applicantStore.advanceModule(applicant.id, next);
+    if (!next) return;
+    const gate = canAdvanceFrom(applicant, applicant.currentModule);
+    if (!gate.ok) return;
+    applicantStore.advanceModule(applicant.id, next);
   };
 
   const progress = Math.round(

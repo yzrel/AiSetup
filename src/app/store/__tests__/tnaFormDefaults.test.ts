@@ -84,4 +84,19 @@ describe("mergeTnaSavedData", () => {
     expect(form.orgStructureFileName).toBe("custom-chart.png");
     expect(form.orgStructureFileId).toBe("custom-id");
   });
+
+  it("copies enterprise-profile female count onto Production when that cell is empty", () => {
+    const { form } = mergeTnaSavedData(applicantWithOrgChart(), {
+      form: {
+        employeesMale: "1",
+        employeesFemale: "4",
+        employeesProductionMale: "1",
+        employeesProductionFemale: "",
+      },
+    });
+    expect(form.employeesProductionMale).toBe("1");
+    expect(form.employeesProductionFemale).toBe("4");
+    expect(form.employeesMale).toBe("1");
+    expect(form.employeesFemale).toBe("4");
+  });
 });

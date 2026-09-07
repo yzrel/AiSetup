@@ -1241,7 +1241,7 @@ export function RegisterPage({
                         clearErr("companyName");
                       }}
                       className={inputCls}
-                      placeholder="ABC Food Processing"
+                      placeholder="Enterprise name"
                     />
                   </Field>
                   <Field

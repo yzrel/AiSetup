@@ -23,6 +23,7 @@ import {
   prefillFindingsFromTna1,
   publishTna2Document,
   saveTna2Draft,
+  validateTna2Publish,
 } from "../utils/tnaForm02";
 import { TnaForm02Preview, printTnaForm02 } from "./TnaForm02Preview";
 import {
@@ -52,6 +53,7 @@ export function TNA2TechnicalReport({
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [publishNotice, setPublishNotice] = useState("");
+  const [publishErrors, setPublishErrors] = useState<string[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [editSavedNotice, setEditSavedNotice] = useState("");
 
@@ -140,6 +142,9 @@ export function TNA2TechnicalReport({
 
   const handlePublish = () => {
     if (!applicant || !draft) return;
+    const errors = validateTna2Publish(draft);
+    setPublishErrors(errors);
+    if (errors.length) return;
     saveTna2Draft(applicant.id, draft);
     publishTna2Document(applicant.id, draft);
     if (user) {
@@ -245,6 +250,13 @@ export function TNA2TechnicalReport({
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 {generateError}
               </p>
+            )}
+            {publishErrors.length > 0 && (
+              <ul className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 list-disc list-inside space-y-1">
+                {publishErrors.map((err) => (
+                  <li key={err}>{err}</li>
+                ))}
+              </ul>
             )}
             {publishNotice && (
               <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">

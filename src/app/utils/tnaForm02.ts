@@ -21,6 +21,7 @@ import type {
   Tna2StoredDocument,
 } from "../api/types";
 import { normalizeTna2DocumentStored } from "./normalizeCriticalModuleData";
+import { isDemoModeActive } from "./demoMode";
 
 function str(value: unknown): string {
   return value == null ? "" : String(value).trim();
@@ -627,6 +628,40 @@ export function buildLocalTna2Document(
   };
 
   return enrichTna2Summary(base);
+}
+
+/** Official required fields before staff may publish TNA Form 02. */
+export function validateTna2Publish(document: Tna2DocumentResponse | null | undefined): string[] {
+  if (isDemoModeActive()) return [];
+  const errors: string[] = [];
+  if (!document) {
+    errors.push("TNA Form 02 document is required.");
+    return errors;
+  }
+  const enterprise = String(document.enterpriseProfile?.enterpriseName ?? "").trim();
+  if (!enterprise) errors.push("Enterprise name is required.");
+  const findings = Array.isArray(document.findingsByArea) ? document.findingsByArea : [];
+  const hasFindingContent = findings.some((section) => {
+    if (String(section.content ?? "").trim()) return true;
+    return (section.subsections ?? []).some(
+      (sub) => String(sub.content ?? "").trim() || String(sub.label ?? "").trim(),
+    );
+  });
+  if (!hasFindingContent) {
+    errors.push("Add findings by assessment area before publishing.");
+  }
+  const equipment = Array.isArray(document.recommendedEquipment)
+    ? document.recommendedEquipment
+    : [];
+  const hasEquipment = equipment.some((row) => String(row?.name ?? "").trim());
+  if (!hasEquipment) {
+    errors.push("Add at least one recommended equipment row.");
+  }
+  const preparedBy = String(document.assessor?.name ?? "").trim();
+  if (!preparedBy) errors.push("Prepared by (TNA Team Leader) name is required.");
+  const preparedDate = String(document.assessmentDate ?? "").trim();
+  if (!preparedDate) errors.push("Assessment date is required.");
+  return errors;
 }
 
 export function publishTna2Document(

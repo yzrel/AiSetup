@@ -168,9 +168,26 @@
   font-weight: 700;
 }
 
-.tna-form-document .tna-form-indent-label,
-#tna-form-01-preview .tna-form-indent-label {
-  padding-left: 18px;
+/* Beat `.tna-form-table td { padding: … }` so Production / Non-production nest under Direct Workers */
+.tna-form-document .tna-form-table td.tna-form-indent-label,
+#tna-form-01-preview .tna-form-table td.tna-form-indent-label {
+  padding-left: 1.25em;
+  font-weight: 600;
+}
+
+.tna-form-document .tna-form-emp-split,
+#tna-form-01-preview .tna-form-emp-split {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.tna-form-document .tna-form-emp-sublabel,
+#tna-form-01-preview .tna-form-emp-sublabel {
+  display: block;
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #4b5563;
 }
 
 .tna-form-document .tna-form-value,

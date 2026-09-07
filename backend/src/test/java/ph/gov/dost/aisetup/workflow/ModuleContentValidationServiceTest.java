@@ -101,8 +101,16 @@ class ModuleContentValidationServiceTest {
                                 "form",
                                 Map.of(
                                         "projectTitle", "Title",
+                                        "firmName", "Acme Foods",
                                         "proponentName", "Ada",
-                                        "amountRequested", "100000"),
+                                        "amountRequested", "100000",
+                                        "organizationType", "Corporation",
+                                        "scheduleTable",
+                                        List.of(List.of("Procurement", "3 months")),
+                                        "equipmentTable",
+                                        List.of(List.of("Vacuum sealer", "1")),
+                                        "budgetItems",
+                                        List.of(Map.of("item", "Equipment", "total", "100000"))),
                                 "attachments",
                                 List.of(
                                         Map.of("kind", "vicinityMap"),
@@ -201,13 +209,12 @@ class ModuleContentValidationServiceTest {
     }
 
     @Test
-    void closeOutSubmitRequiresInventoryRow() {
+    void closeOutSubmitRequiresForm005PtrFields() {
         Map<String, Object> incomplete = Map.of(
                 "form",
                 Map.of(
                         "terminalReportFileName", "tr.pdf",
                         "auditedFinancialFileName", "fs.pdf",
-                        "equipmentAcknowledgementFileName", "ack.pdf",
                         "certificateOfOwnershipIssued", true,
                         "equipmentInventory", List.of(Map.of("description", ""))),
                 "submitted",
@@ -216,18 +223,49 @@ class ModuleContentValidationServiceTest {
                 IllegalArgumentException.class,
                 () -> service.assertHardTransition("projectCloseOut", incomplete, false));
 
+        Map<String, Object> completeForm = new java.util.HashMap<>();
+        completeForm.put("terminalReportFileName", "tr.pdf");
+        completeForm.put("auditedFinancialFileName", "fs.pdf");
+        completeForm.put("ptrFromAccountableOfficer", "Juan Dela Cruz");
+        completeForm.put("ptrToAccountableOfficer", "PSTO Cotabato");
+        completeForm.put("ptrDate", "2026-09-01");
+        completeForm.put("ptrTransferType", "donation");
+        completeForm.put("ptrReasonForTransfer", "Project completion");
+        completeForm.put("ptrApprovedByName", "Provincial Director");
+        completeForm.put("ptrReceivedBy", "Enterprise owner");
+        completeForm.put("propertyTransferSignedFileName", "ptr-signed.pdf");
+        completeForm.put("certificateOfOwnershipIssued", true);
+        completeForm.put("equipmentInventory", List.of(Map.of("description", "Vacuum sealer")));
         Map<String, Object> complete = Map.of(
-                "form",
-                Map.of(
-                        "terminalReportFileName", "tr.pdf",
-                        "auditedFinancialFileName", "fs.pdf",
-                        "equipmentAcknowledgementFileName", "ack.pdf",
-                        "certificateOfOwnershipIssued", true,
-                        "equipmentInventory",
-                        List.of(Map.of("description", "Vacuum sealer"))),
-                "submitted",
-                true);
+                "form", completeForm,
+                "submitted", true);
         assertDoesNotThrow(
                 () -> service.assertHardTransition("projectCloseOut", complete, false));
+    }
+
+    @Test
+    void rejectsIncompleteTna2Publish() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.assertHardTransition(
+                        "tna2Document",
+                        Map.of("published", true, "enterpriseProfile", Map.of()),
+                        true));
+    }
+
+    @Test
+    void acceptsCompleteTna2Publish() {
+        assertDoesNotThrow(
+                () -> service.assertHardTransition(
+                        "tna2Document",
+                        Map.of(
+                                "enterpriseProfile", Map.of("enterpriseName", "Acme"),
+                                "findingsByArea",
+                                List.of(Map.of("area", "Production", "content", "Needs upgrade")),
+                                "recommendedEquipment",
+                                List.of(Map.of("name", "Sealer")),
+                                "assessor", Map.of("name", "Engr. Reyes"),
+                                "assessmentDate", "2026-09-01"),
+                        true));
     }
 }

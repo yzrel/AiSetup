@@ -4,6 +4,7 @@
 
 import { Applicant } from "../store/applicantStore";
 import { EMPTY_TNA_TABLES } from "../store/tnaFormDefaults";
+import { syncTnaProductionSexCounts } from "../constants/tnaForm01Layout";
 import type { Tna1DocumentResponse, Tna1GenerationRequest } from "../api/types";
 
 export type TnaTables = {
@@ -263,7 +264,7 @@ export function buildTna1DocumentSnapshot(
   generatedAt: string,
 ) {
   return {
-    form: { ...form },
+    form: syncTnaProductionSexCounts({ ...form }),
     tables: {
       rawMaterials: tables.rawMaterials.map((r) => [...r]),
       production: tables.production.map((r) => [...r]),

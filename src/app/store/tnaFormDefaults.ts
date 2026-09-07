@@ -5,6 +5,7 @@
 import type { ModuleDocument } from "../api/types";
 import { Applicant } from "./applicantStore";
 import { yearFromDateEstablished } from "../utils/applicantPrefill";
+import { syncTnaProductionSexCounts } from "../constants/tnaForm01Layout";
 
 export const EMPTY_TNA_TABLES = {
   rawMaterials: [["", "", "", ""]],
@@ -247,7 +248,7 @@ export function mergeTnaSavedData(
   }
 
   return {
-    form: merged,
+    form: syncTnaProductionSexCounts(merged as Record<string, unknown>) as typeof base,
     tables: saved.tables ?? EMPTY_TNA_TABLES,
   };
 }

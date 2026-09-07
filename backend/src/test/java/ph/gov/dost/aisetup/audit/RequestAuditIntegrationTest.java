@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -46,10 +47,52 @@ class RequestAuditIntegrationTest {
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
     }
 
+    private void verifyOtp(String channel, String target) throws Exception {
+        mockMvc.perform(post("/auth/otp/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "channel", channel,
+                                "target", target))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/auth/otp/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "channel", channel,
+                                "target", target,
+                                "code", "123456"))))
+                .andExpect(status().isOk());
+    }
+
+    private Map<String, String> registerApplicant() throws Exception {
+        String email = "audit-" + UUID.randomUUID() + "@example.com";
+        String phone = "0917" + String.format("%07d", Math.abs(UUID.randomUUID().hashCode() % 10_000_000));
+        String applicantId = "audit-app-" + UUID.randomUUID();
+        String applicationId = "LOI-2026-" + UUID.randomUUID().toString().substring(0, 6);
+        verifyOtp("email", email);
+        verifyOtp("sms", phone);
+        MvcResult result = mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "password", "Secure@123",
+                                "firstName", "Audit",
+                                "lastName", "Tester",
+                                "enterpriseName", "Audit Test Co",
+                                "applicantId", applicantId,
+                                "applicationId", applicationId,
+                                "phone", phone))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String token = objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+        return Map.of("token", token, "email", email);
+    }
+
     @Test
     void authenticatedRequestWritesHttpAuditEvent() throws Exception {
         int before = auditEventRepository.findByAction("http.request").size();
-        String token = loginToken("juan@abcfood.com", "Demo@1234");
+        Map<String, String> applicant = registerApplicant();
+        String token = applicant.get("token");
+        String email = applicant.get("email");
 
         mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
@@ -58,7 +101,7 @@ class RequestAuditIntegrationTest {
         assertThat(events).hasSizeGreaterThan(before);
 
         AuditEvent match = events.stream()
-                .filter(e -> "juan@abcfood.com".equals(e.getActorEmail()))
+                .filter(e -> email.equals(e.getActorEmail()))
                 .filter(e -> e.getDetailJson() != null && e.getDetailJson().contains("/auth/me"))
                 .reduce((a, b) -> b)
                 .orElseThrow();

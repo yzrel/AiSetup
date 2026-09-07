@@ -23,6 +23,7 @@ import {
   buildTna1GenerationPayload,
   mergeAiTnaSuggestions,
 } from "../utils/tnaForm01";
+import { resolveTnaProductionSexCounts, syncTnaProductionSexCounts } from "../constants/tnaForm01Layout";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { ModuleFormHeader } from "./ModuleFormHeader";
@@ -34,9 +35,7 @@ import {
   notifyTna1Resubmission,
   notifyTna1AwaitingDirector,
   notifyTna1DirectorValidated,
-  notifyStaffVerificationRemark,
 } from "../utils/notificationHelpers";
-import { shouldNotifyRequirementRemark } from "../utils/submissionRequirements";
 import { resolveApplicantOfficeId, getOfficeContact } from "../utils/provincialOffice";
 import { applicantAiContext, useAiFieldSuggest } from "../utils/aiAssist";
 import { AiAssistNotice } from "./AiAssistField";
@@ -44,8 +43,8 @@ import { aiGenerateNotice } from "../utils/demoMode";
 import { syncTna1FormToBackendBestEffort } from "../utils/applicantPersistence";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
-import type { Tna1Doc, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
-import { DOST_BLUE, DOST_MID, STEPS } from "./tna1/tna1Ui";
+import type { Tna1Section, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
+import { DEFAULT_TNA1_SECTIONS, DOST_BLUE, DOST_MID, STEPS } from "./tna1/tna1Ui";
 import { ModuleStepHeader } from "./ModuleWorkflowLayout";
 import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { IdentificationStep } from "./tna1/IdentificationStep";
@@ -58,26 +57,16 @@ import { CompleteStep } from "./tna1/CompleteStep";
 import { StaffReviewStep } from "./tna1/StaffReviewStep";
 import { ReportsStep } from "./tna1/ReportsStep";
 
-const DEFAULT_TNA1_DOCS: Tna1Doc[] = [
-  { id: "general-agreements", name: "General Agreements", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "general_agreements.pdf" },
-  { id: "undertaking", name: "Undertaking", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "undertaking_signed.pdf" },
-  { id: "enterprise-profile", name: "Enterprise Profile", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "enterprise_profile.pdf" },
-  { id: "benchmark", name: "Benchmark Information", required: true, uploaded: true, verified: false, flagged: false, remark: "", file: "benchmark_data.pdf" },
-  { id: "production-plan", name: "Production Plan", required: true, uploaded: false, verified: false, flagged: false, remark: "", file: null },
-  { id: "marketing", name: "Marketing", required: true, uploaded: false, verified: false, flagged: false, remark: "", file: null },
-  { id: "finance-hr", name: "Finance / Other Concerns", required: false, uploaded: false, verified: false, flagged: false, remark: "", file: null },
-];
-
-function hydrateTna1Docs(saved: Record<string, unknown> | undefined | null): Tna1Doc[] {
-  const docReview = (saved?.docReview ?? {}) as Record<
+function hydrateTna1Sections(saved: Record<string, unknown> | undefined | null): Tna1Section[] {
+  const sectionReview = (saved?.sectionReview ?? {}) as Record<
     string,
     { status?: string; remark?: string }
   >;
-  return DEFAULT_TNA1_DOCS.map((d) => {
-    const review = docReview[d.id];
+  return DEFAULT_TNA1_SECTIONS.map((s) => {
+    const review = sectionReview[s.id];
     const status = review?.status;
     return {
-      ...d,
+      ...s,
       verified: status === "ok",
       flagged: status === "flagged",
       remark: typeof review?.remark === "string" ? review.remark : "",
@@ -85,11 +74,13 @@ function hydrateTna1Docs(saved: Record<string, unknown> | undefined | null): Tna
   });
 }
 
-function docsToDocReview(docs: Tna1Doc[]): Record<string, { status: "ok" | "flagged"; remark: string }> {
+function sectionsToSectionReview(
+  sections: Tna1Section[],
+): Record<string, { status: "ok" | "flagged"; remark: string }> {
   const out: Record<string, { status: "ok" | "flagged"; remark: string }> = {};
-  for (const d of docs) {
-    if (d.verified) out[d.id] = { status: "ok", remark: d.remark ?? "" };
-    else if (d.flagged) out[d.id] = { status: "flagged", remark: d.remark ?? "" };
+  for (const s of sections) {
+    if (s.verified) out[s.id] = { status: "ok", remark: s.remark ?? "" };
+    else if (s.flagged) out[s.id] = { status: "flagged", remark: s.remark ?? "" };
   }
   return out;
 }
@@ -123,14 +114,15 @@ export function TechnologyNeedsAssessment1({
   const [directorValidatedBy, setDirectorValidatedBy] = useState("");
   const [directorValidatedAt, setDirectorValidatedAt] = useState("");
 
-  // ── Document state ───────────────────────────────────────────────────────────
-  const [docs, setDocs] = useState<Tna1Doc[]>(() =>
-    DEFAULT_TNA1_DOCS.map((d) => ({ ...d })),
+  // ── Section verification state ───────────────────────────────────────────────
+  const [sections, setSections] = useState<Tna1Section[]>(() =>
+    DEFAULT_TNA1_SECTIONS.map((s) => ({ ...s })),
   );
+  const [resubmissionError, setResubmissionError] = useState("");
   const [notifiedRemarks, setNotifiedRemarks] = useState<Record<string, string>>({});
-  const docsRef = useRef(docs);
+  const sectionsRef = useRef(sections);
   const notifiedRemarksRef = useRef(notifiedRemarks);
-  docsRef.current = docs;
+  sectionsRef.current = sections;
   notifiedRemarksRef.current = notifiedRemarks;
 
   const { bind: bindTnaAi, notice: tnaAiNotice } = useAiFieldSuggest("tna1");
@@ -213,9 +205,9 @@ export function TechnologyNeedsAssessment1({
       saved?.staffReviewNotesDraft ?? saved?.staffNotes ?? "",
     );
     if (draftNotes) setStaffNotes(draftNotes);
-    const hydrated = hydrateTna1Docs(saved);
-    setDocs(hydrated);
-    docsRef.current = hydrated;
+    const hydrated = hydrateTna1Sections(saved);
+    setSections(hydrated);
+    sectionsRef.current = hydrated;
     const notified =
       saved?.notifiedRemarks && typeof saved.notifiedRemarks === "object"
         ? (saved.notifiedRemarks as Record<string, string>)
@@ -248,144 +240,45 @@ export function TechnologyNeedsAssessment1({
     }
   }, [applicantSubmitted, staffApproved, directorValidated]);
 
-  useEffect(() => {
-    const fileName =
-      String(form.productionPlanFileName ?? "").trim() ||
-      String(applicant?.moduleData?.productionPlanFile ?? "").trim() ||
-      null;
-    const hasPlan =
-      !!fileName || !!String(form.productionPlan ?? "").trim();
-    setDocs((prev) => {
-      const next = prev.map((d) =>
-        d.id === "production-plan"
-          ? {
-              ...d,
-              uploaded: hasPlan,
-              file: fileName,
-            }
-          : d,
-      );
-      docsRef.current = next;
-      return next;
-    });
-  }, [
-    form.productionPlan,
-    form.productionPlanFileName,
-    applicant?.moduleData?.productionPlanFile,
-  ]);
-
-  const maybeNotifyTna1Remark = useCallback(
-    (
-      doc: Tna1Doc,
-      prev: Tna1Doc | undefined,
-      currentNotified: Record<string, string>,
-    ): Record<string, string> => {
-      if (!applicant) return currentNotified;
-      const prevStatus = prev?.flagged ? "flagged" : prev?.verified ? "ok" : "";
-      const nextStatus = doc.flagged ? "flagged" : doc.verified ? "ok" : "";
-      if (
-        !shouldNotifyRequirementRemark({
-          prevStatus,
-          nextStatus,
-          nextRemark: doc.remark ?? "",
-          notifiedRemark: currentNotified[doc.id],
-        })
-      ) {
-        return currentNotified;
-      }
-      notifyStaffVerificationRemark({
-        applicant,
-        moduleKey: "tna1",
-        moduleLabel: formatFormMention("tna01"),
-        documentId: doc.id,
-        documentName: doc.name,
-        remark: doc.remark ?? "",
-        view: "tna1",
+  const persistSectionReview = useCallback(
+    (nextSections: Tna1Section[]) => {
+      setSections(nextSections);
+      sectionsRef.current = nextSections;
+      if (!applicant) return;
+      applicantStore.update(applicant.id, {
+        moduleData: {
+          ...applicant.moduleData,
+          tna1: {
+            ...(applicant.moduleData?.tna1 ?? {}),
+            form: formRef.current,
+            tables: tablesRef.current,
+            sectionReview: sectionsToSectionReview(nextSections),
+            notifiedRemarks: notifiedRemarksRef.current,
+          },
+        },
       });
-      return { ...currentNotified, [doc.id]: (doc.remark ?? "").trim() };
     },
     [applicant],
-  );
-
-  const persistDocReview = useCallback(
-    (nextDocs: Tna1Doc[], opts?: { notifyDocId?: string }) => {
-      const prevDocs = docsRef.current;
-      setDocs(nextDocs);
-      docsRef.current = nextDocs;
-      if (!applicant) return;
-      let nextNotified = notifiedRemarksRef.current;
-      if (opts?.notifyDocId) {
-        const nextDoc = nextDocs.find((d) => d.id === opts.notifyDocId);
-        const prevDoc = prevDocs.find((d) => d.id === opts.notifyDocId);
-        if (nextDoc) {
-          nextNotified = maybeNotifyTna1Remark(
-            nextDoc,
-            prevDoc,
-            notifiedRemarksRef.current,
-          );
-          if (nextNotified !== notifiedRemarksRef.current) {
-            setNotifiedRemarks(nextNotified);
-            notifiedRemarksRef.current = nextNotified;
-          }
-        }
-      }
-      applicantStore.update(applicant.id, {
-        moduleData: {
-          ...applicant.moduleData,
-          tna1: {
-            ...(applicant.moduleData?.tna1 ?? {}),
-            form: formRef.current,
-            tables: tablesRef.current,
-            docReview: docsToDocReview(nextDocs),
-            notifiedRemarks: nextNotified,
-          },
-        },
-      });
-    },
-    [applicant, maybeNotifyTna1Remark],
-  );
-
-  const notifyDocRemarkDebounced = useDebouncedCallback(
-    (docId: string, remark: string) => {
-      if (!applicant) return;
-      const current = docsRef.current;
-      const doc = current.find((d) => d.id === docId);
-      if (!doc || !doc.flagged) return;
-      const withRemark = current.map((d) =>
-        d.id === docId ? { ...d, remark } : d,
-      );
-      const nextDoc = withRemark.find((d) => d.id === docId)!;
-      const nextNotified = maybeNotifyTna1Remark(
-        nextDoc,
-        doc,
-        notifiedRemarksRef.current,
-      );
-      if (nextNotified === notifiedRemarksRef.current) return;
-      setNotifiedRemarks(nextNotified);
-      notifiedRemarksRef.current = nextNotified;
-      setDocs(withRemark);
-      docsRef.current = withRemark;
-      applicantStore.update(applicant.id, {
-        moduleData: {
-          ...applicant.moduleData,
-          tna1: {
-            ...(applicant.moduleData?.tna1 ?? {}),
-            form: formRef.current,
-            tables: tablesRef.current,
-            docReview: docsToDocReview(withRemark),
-            notifiedRemarks: nextNotified,
-          },
-        },
-      });
-    },
-    1500,
   );
 
   const persistStaffReview = useCallback(
     (decision: "approved" | "needs-revision") => {
       if (!applicant || !user) return;
-      const currentDocs = docsRef.current;
+      const currentSections = sectionsRef.current;
       if (decision === "needs-revision") {
+        const flagged = currentSections.filter((s) => s.flagged);
+        if (flagged.length === 0) {
+          setResubmissionError("Flag at least one section and add a comment before requesting resubmission.");
+          return;
+        }
+        const missingComment = flagged.find((s) => !String(s.remark ?? "").trim());
+        if (missingComment) {
+          setResubmissionError(
+            `Add a comment for flagged section: ${missingComment.name}.`,
+          );
+          return;
+        }
+        setResubmissionError("");
         const assessmentUpdate = appendStaffAssessment(applicant, {
           stage: "tna1",
           decision: "needs-revision",
@@ -403,16 +296,15 @@ export function TechnologyNeedsAssessment1({
               tables,
               submitted: false,
               staffReviewed: false,
-              docReview: docsToDocReview(currentDocs),
+              sectionReview: sectionsToSectionReview(currentSections),
               notifiedRemarks: notifiedRemarksRef.current,
               staffNotes: staffNotes || undefined,
+              resubmissionRequestedAt: new Date().toISOString(),
             },
           },
         });
         notifyTna1Resubmission(applicant, {
-          flaggedItems: currentDocs
-            .filter((d) => d.flagged)
-            .map((d) => ({ name: d.name, remark: d.remark })),
+          flaggedItems: flagged.map((s) => ({ name: s.name, remark: s.remark })),
           staffNotes,
         });
         setApplicantSubmitted(false);
@@ -422,6 +314,7 @@ export function TechnologyNeedsAssessment1({
         return;
       }
 
+      setResubmissionError("");
       const assessmentUpdate = appendStaffAssessment(applicant, {
         stage: "tna1",
         decision: "approved",
@@ -442,7 +335,7 @@ export function TechnologyNeedsAssessment1({
             siteVisitDate: siteVisitDate || undefined,
             siteVisitNotes: siteVisitNotes || undefined,
             siteVisitCompleted: !!siteVisitDate,
-            docReview: docsToDocReview(currentDocs),
+            sectionReview: sectionsToSectionReview(currentSections),
             notifiedRemarks: notifiedRemarksRef.current,
           },
         },
@@ -524,7 +417,9 @@ export function TechnologyNeedsAssessment1({
   const saveTnaDraft = useCallback(
     (submitted = false, opts?: { notice?: boolean }) => {
       if (!applicant || reviewOnly) return;
-      const currentForm = formRef.current;
+      const currentForm = syncTnaProductionSexCounts(
+        formRef.current as Record<string, unknown>,
+      );
       const currentTables = tablesRef.current;
       const nextModuleData = {
         ...applicant.moduleData,
@@ -540,7 +435,7 @@ export function TechnologyNeedsAssessment1({
           siteVisitDate: siteVisitDateRef.current || undefined,
           siteVisitNotes: siteVisitNotesRef.current || undefined,
           staffReviewNotesDraft: staffNotesRef.current || undefined,
-          docReview: docsToDocReview(docsRef.current),
+          sectionReview: sectionsToSectionReview(sectionsRef.current),
           notifiedRemarks: notifiedRemarksRef.current,
         },
       };
@@ -629,7 +524,7 @@ export function TechnologyNeedsAssessment1({
       moduleData: {
         ...applicant.moduleData,
         tna1: {
-          form: mergedForm,
+          form: snapshot.form,
           tables: mergedTables,
           submitted: applicant.moduleData?.tna1?.submitted ?? false,
           submittedAt: applicant.moduleData?.tna1?.submittedAt,
@@ -677,9 +572,10 @@ export function TechnologyNeedsAssessment1({
 
   // ── Computed ─────────────────────────────────────────────────────────────────
   const allGA = [form.agreeGA1,form.agreeGA2,form.agreeGA3,form.agreeGA4,form.agreeGA5,form.agreeGA6].every(Boolean);
-  const uploadedDocs  = docs.filter(d => d.uploaded);
-  const allDocReviewed = uploadedDocs.length > 0 && uploadedDocs.every(d => d.verified || d.flagged);
+  const allSectionsReviewed =
+    sections.length > 0 && sections.every((s) => s.verified || s.flagged);
 
+  const productionCounts = resolveTnaProductionSexCounts(form);
   const validationChecks = [
     { label: "Enterprise Name",         value: form.enterpriseName,       passed: !!form.enterpriseName },
     { label: "Contact Person",          value: form.contactPerson,        passed: !!form.contactPerson },
@@ -691,7 +587,7 @@ export function TechnologyNeedsAssessment1({
     { label: "Year Established",        value: form.yearEstablished,      passed: !!form.yearEstablished },
     { label: "Type of Organization",      value: form.organizationType,     passed: !!form.organizationType },
     { label: "Classification by Capital", value: form.capitalClassification, passed: !!form.capitalClassification },
-    { label: "Employees (M / F)",         value: `${form.employeesMale} M, ${form.employeesFemale} F`, passed: !!form.employeesMale && !!form.employeesFemale },
+    { label: "Employees (M / F)",         value: `${productionCounts.male} M, ${productionCounts.female} F`, passed: !!productionCounts.male && !!productionCounts.female },
     { label: "Employment Classification", value: form.employmentClass,      passed: !!form.employmentClass },
     { label: "General Agreements",      value: allGA ? "All 6 agreed" : "", passed: allGA },
     { label: "Undertaking Signature",   value: form.undertakingName,      passed: !!form.undertakingName },
@@ -715,16 +611,24 @@ export function TechnologyNeedsAssessment1({
   ];
   const allValid = validationChecks.every(c => c.passed);
 
-  const previewForm = useMemo(
-    () =>
-      (applicant?.moduleData?.tna1Document?.form as Record<string, unknown>) ?? form,
-    [applicant?.moduleData?.tna1Document, form],
-  );
-  const previewTables = useMemo(
-    () =>
-      (applicant?.moduleData?.tna1Document?.tables as typeof tables) ?? tables,
-    [applicant?.moduleData?.tna1Document, tables],
-  );
+  const previewForm = useMemo(() => {
+    const snapshot = applicant?.moduleData?.tna1Document?.form as
+      | Record<string, unknown>
+      | undefined;
+    return snapshot ? { ...snapshot, ...form } : form;
+  }, [applicant?.moduleData?.tna1Document, form]);
+  const previewTables = useMemo(() => {
+    const snapshot = applicant?.moduleData?.tna1Document?.tables as
+      | typeof tables
+      | undefined;
+    return snapshot
+      ? {
+          rawMaterials: tables.rawMaterials ?? snapshot.rawMaterials,
+          production: tables.production ?? snapshot.production,
+          equipment: tables.equipment ?? snapshot.equipment,
+        }
+      : tables;
+  }, [applicant?.moduleData?.tna1Document, tables]);
 
   const ctx: Tna1StepContext = {
     applicant,
@@ -762,12 +666,11 @@ export function TechnologyNeedsAssessment1({
     isDirectorForApplicant,
     applicantOfficeId,
     handleDirectorValidate,
-    docs,
-    setDocs,
-    uploadedDocs,
-    allDocReviewed,
-    persistDocReview,
-    notifyDocRemarkDebounced,
+    sections,
+    setSections,
+    allSectionsReviewed,
+    persistSectionReview,
+    resubmissionError,
     allGA,
     validationChecks,
     allValid,

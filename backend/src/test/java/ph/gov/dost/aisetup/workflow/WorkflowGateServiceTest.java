@@ -195,7 +195,36 @@ class WorkflowGateServiceTest {
     }
 
     @Test
-    void clientMayAdvanceToLandBankWhenRdApprovedAndPublished() {
+    void clientMayAdvanceToLandBankWhenRdApprovedPublishedAndAcknowledged() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "approval-letter",
+                Map.of(
+                        "tna1", Map.of("directorValidated", true),
+                        "tna2Document", Map.of("published", true),
+                        "staffDecision", "approved",
+                        "routingDecision", "conduct-rtec",
+                        "rtecReport", Map.of("published", true),
+                        "approvalLetter",
+                        Map.of(
+                                "published",
+                                true,
+                                "rdDecision",
+                                "approved",
+                                "acknowledged",
+                                true)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "landbank-withdrawal",
+                existing.moduleData(),
+                Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientCannotAdvanceToLandBankWithoutConforme() {
         authenticateApplicant("app-1");
         ApplicantRecordDto existing = dto(
                 "app-1",
@@ -203,12 +232,86 @@ class WorkflowGateServiceTest {
                 Map.of(
                         "rtecReport", Map.of("published", true),
                         "approvalLetter",
-                        Map.of("published", true, "rdDecision", "approved")),
+                        Map.of("published", true, "rdDecision", "approved", "acknowledged", false)),
                 Map.of("qualified", true));
         ApplicantRecordDto incoming = dto(
                 "app-1",
                 "landbank-withdrawal",
                 existing.moduleData(),
+                Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientCannotAdvancePastTna1WithoutDirectorValidation() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "tna1",
+                Map.of("tna1", Map.of("submitted", true, "directorValidated", false)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1", "tna2", existing.moduleData(), Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientMayAdvancePastTna1WhenDirectorValidated() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "tna1",
+                Map.of("tna1", Map.of("submitted", true, "directorValidated", true)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1", "tna2", existing.moduleData(), Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientCannotAdvancePastTna2UntilPublished() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "tna2",
+                Map.of("tna2Document", Map.of("published", false)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1", "project-proposal", existing.moduleData(), Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void clientMayAdvancePastTna2WhenPublished() {
+        authenticateApplicant("app-1");
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "tna2",
+                Map.of(
+                        "tna1", Map.of("directorValidated", true),
+                        "tna2Document", Map.of("published", true)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1", "project-proposal", existing.moduleData(), Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void staffMayDraftTna2WithoutBumpingCurrentModule() {
+        authenticateRole("agent", null);
+        ApplicantRecordDto existing = dto(
+                "app-1",
+                "tna1",
+                Map.of("tna1", Map.of("directorValidated", true)),
+                Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto(
+                "app-1",
+                "tna1",
+                Map.of(
+                        "tna1",
+                        Map.of("directorValidated", true),
+                        "tna2Document",
+                        Map.of("findingsByArea", java.util.List.of())),
                 Map.of("qualified", true));
         assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
     }

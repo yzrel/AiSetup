@@ -22,6 +22,7 @@ import {
 } from "./proprietorTrack";
 import { getSignedMoa, hasRdApprovedNotice, getApprovalLetterStored } from "./approvalLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
+import { isContentGateBlockingView } from "./moduleGateways";
 
 function countRequiredDocuments(applicant: Applicant | null): number {
   const uploads = buildRequirementUploadList(applicant);
@@ -265,9 +266,9 @@ export function isApplicantViewLocked(
   if (viewIdx > currentIdx) return true;
 
   // Clients cannot open LandBank or later until RD approved + Notice published,
-  // even if currentModule was advanced early.
-  const approvalIdx = MODULE_ORDER.indexOf("approval-letter");
-  if (viewIdx > approvalIdx && !hasRdApprovedNotice(applicant)) {
+  // even if currentModule was advanced early. Also apply content publish gates
+  // (TNA1 PD, published TNA2, conforme).
+  if (isContentGateBlockingView(applicant, viewModule)) {
     return true;
   }
 

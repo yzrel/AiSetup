@@ -8,6 +8,7 @@ import { MODULE_BODY } from "../moduleTheme";
 import { TnaForm01Preview, printTnaForm01 } from "../TnaForm01Preview";
 import { DocumentDeliveryPanel } from "../DocumentDeliveryPanel";
 import { formatFormMention } from "../../constants/setupForms";
+import { allowWhenDemo } from "../../utils/demoMode";
 import type { Tna1StepContext } from "./stepContext";
 import { AILoader, DOST_BLUE, InfoBanner } from "./tna1Ui";
 
@@ -23,7 +24,10 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
     previewTables,
     setStep,
     onSubmitSuccess,
+    directorValidated,
   } = ctx;
+
+  const canContinueToTna2 = allowWhenDemo(!!directorValidated);
 
   return (
     <div className={MODULE_BODY}>
@@ -130,10 +134,13 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
           <button
             type="button"
             onClick={onSubmitSuccess}
-            className="flex-1 py-3 rounded-xl text-white font-bold text-sm"
+            disabled={!canContinueToTna2}
+            className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40"
             style={{ background: "#059669" }}
           >
-            Continue to TNA 2 →
+            {directorValidated
+              ? "Continue to TNA 2 →"
+              : "Awaiting Provincial Director validation"}
           </button>
         )}
       </div>

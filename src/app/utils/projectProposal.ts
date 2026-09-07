@@ -31,7 +31,6 @@ import {
   PP_IDA_ASSET_LIFE_LABEL,
   PP_IDA_PROJECT_COST_LABEL,
   PP_IDA_ROI_CAPTION,
-  PP_VOLUME_OF_ORDERS_SAMPLE_ROWS,
   companyProfileEmployeeTotals,
   formatCompanyProfileMsmeSize,
 } from "../constants/projectProposalLayout";
@@ -495,31 +494,6 @@ function isBlankStringTable(rows: unknown): boolean {
   );
 }
 
-function looksLikePrintshop(
-  applicant: Applicant | null,
-  form?: Partial<ProjectProposalForm>,
-): boolean {
-  const tna = applicant ? getTna1Data(applicant).form : {};
-  const hay = [
-    applicant?.enterpriseName,
-    applicant?.businessNature,
-    applicant?.businessSector,
-    form?.firmName,
-    form?.productsServices,
-    tna.enterpriseName,
-    tna.sector,
-    tna.commodity,
-    tna.mainProduct,
-  ]
-    .map((v) => String(v ?? "").toLowerCase())
-    .join(" ");
-  return /\bprint(shop|ing|er)?s?\b/.test(hay);
-}
-
-function copyVolumeOfOrdersSample(): string[][] {
-  return PP_VOLUME_OF_ORDERS_SAMPLE_ROWS.map((row) => [...row]);
-}
-
 export function buildProjectProposalDraft(
   applicant: Applicant | null,
   current: Partial<ProjectProposalForm> = {},
@@ -654,12 +628,12 @@ export function buildProjectProposalDraft(
     msmeSize: applicant.msmeSize ?? "",
     assetSize: applicant.assetSize ?? "",
     classificationRange: String(applicant.moduleData?.classificationRange ?? ""),
-    employeesMale: String(form.employeesMale ?? ""),
-    employeesFemale: String(form.employeesFemale ?? ""),
-    employeesDirect: String(form.employeesMale ?? ""),
+    employeesMale: String(form.employeesProductionMale || form.employeesMale || ""),
+    employeesFemale: String(form.employeesProductionFemale || form.employeesFemale || ""),
+    employeesDirect: String(form.employeesProductionMale || form.employeesMale || ""),
     employeesIndirect: "",
-    employeesProductionMale: String(form.employeesMale ?? ""),
-    employeesProductionFemale: String(form.employeesFemale ?? ""),
+    employeesProductionMale: String(form.employeesProductionMale || form.employeesMale || ""),
+    employeesProductionFemale: String(form.employeesProductionFemale || form.employeesFemale || ""),
     employeesNonProductionMale: "",
     employeesNonProductionFemale: "",
     employeesIndirectMale: String(form.employeesIndirect ?? ""),
@@ -719,12 +693,8 @@ export function buildProjectProposalDraft(
       String(md.repaymentTerm ?? "4"),
     ),
     marketSituation: "",
-    productDemandSupply: looksLikePrintshop(applicant)
-      ? "Schools, LGUs, and MSMEs in SOCCSKSARGEN place recurring orders for forms, modules, receipts, labels, and outdoor tarpaulins; current press capacity limits peak-season fill rates."
-      : "",
-    volumeOfOrdersTable: looksLikePrintshop(applicant)
-      ? copyVolumeOfOrdersSample()
-      : [["", "", ""]],
+    productDemandSupply: "",
+    volumeOfOrdersTable: [["", "", ""]],
     distributionChannel: String(form.marketOutlets ?? "").trim() || "Local",
     competitors: String(form.marketCompetitors ?? ""),
     competitorsTable: (() => {
@@ -885,6 +855,7 @@ export function submitProjectProposal(
 ): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
+  const existing = getProjectProposalStored(applicant);
   const nextForm = withDerivedEmploymentCounts(form);
   applicantStore.update(applicantId, {
     moduleData: {
@@ -896,6 +867,12 @@ export function submitProjectProposal(
         submitted: true,
         submittedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        sectionReview: existing?.sectionReview,
+        staffReviewed: false,
+        staffReviewedAt: existing?.staffReviewedAt,
+        staffNotes: existing?.staffNotes,
+        staffReviewNotesDraft: existing?.staffReviewNotesDraft,
+        resubmissionRequestedAt: existing?.resubmissionRequestedAt,
       } satisfies ProjectProposalStored,
     },
   });
@@ -1018,6 +995,12 @@ export function saveProjectProposalDraft(
         submitted: existing?.submitted ?? false,
         submittedAt: existing?.submittedAt,
         updatedAt: new Date().toISOString(),
+        sectionReview: existing?.sectionReview,
+        staffReviewed: existing?.staffReviewed,
+        staffReviewedAt: existing?.staffReviewedAt,
+        staffNotes: existing?.staffNotes,
+        staffReviewNotesDraft: existing?.staffReviewNotesDraft,
+        resubmissionRequestedAt: existing?.resubmissionRequestedAt,
       } satisfies ProjectProposalStored,
     },
   });
@@ -1357,6 +1340,8 @@ export function validateProjectProposalSubmit(
   const errors: string[] = [];
   const title = requiredTrimmed(form.projectTitle, "Project title");
   if (title) errors.push(title.endsWith(".") ? title : `${title}.`);
+  const firm = requiredTrimmed(form.firmName, "Firm name");
+  if (firm) errors.push(firm.endsWith(".") ? firm : `${firm}.`);
   const proponent = requiredTrimmed(form.proponentName, "Proponent name");
   if (proponent) errors.push(proponent.endsWith(".") ? proponent : `${proponent}.`);
   const amount = requiredTrimmed(
@@ -1364,6 +1349,26 @@ export function validateProjectProposalSubmit(
     "Amount requested from SETUP",
   );
   if (amount) errors.push(amount.endsWith(".") ? amount : `${amount}.`);
+  const orgType = requiredTrimmed(form.organizationType, "Type of organization");
+  if (orgType) errors.push(orgType.endsWith(".") ? orgType : `${orgType}.`);
+  const hasSchedule = (form.scheduleTable ?? []).some((row) =>
+    Array.isArray(row) && row.some((cell) => String(cell ?? "").trim()),
+  );
+  if (!hasSchedule) {
+    errors.push("Add at least one project schedule / duration row.");
+  }
+  const hasEquipment = (form.equipmentTable ?? []).some((row) =>
+    Array.isArray(row) && row.some((cell) => String(cell ?? "").trim()),
+  );
+  if (!hasEquipment) {
+    errors.push("Add at least one equipment row.");
+  }
+  const hasBudget = (form.budgetItems ?? []).some(
+    (row) => String(row.item ?? "").trim() || String(row.total ?? "").trim(),
+  );
+  if (!hasBudget) {
+    errors.push("Add at least one budget line item.");
+  }
   for (const kind of REQUIRED_ATTACHMENTS) {
     if (!attachments.some((a) => a.kind === kind))
       errors.push(`${PROPOSAL_ATTACHMENT_LABELS[kind]} is required.`);

@@ -22,13 +22,13 @@ import {
 } from "./tna1Ui";
 
 export function IdentificationStep({ ctx }: { ctx: Tna1StepContext }) {
-  const { applicant, user, isStaff, form, set, saveTnaDraft, goToStep, allGA, docs } = ctx;
-  const flaggedDocs = docs.filter((d) => d.flagged);
+  const { applicant, user, isStaff, form, set, saveTnaDraft, goToStep, allGA, sections } = ctx;
+  const flaggedSections = sections.filter((s) => s.flagged);
   const showRevisionPanel =
     !!applicant &&
     !isStaff &&
     !applicant.moduleData?.tna1?.submitted &&
-    flaggedDocs.length > 0;
+    flaggedSections.length > 0;
 
   return (
     <div className={MODULE_BODY}>
@@ -48,15 +48,15 @@ export function IdentificationStep({ ctx }: { ctx: Tna1StepContext }) {
             Revisions requested by DOST staff
           </p>
           <p className="text-xs text-red-700">
-            Please review the flagged items below, update your {formatFormMention("tna01")}, and resubmit.
+            Please review the flagged sections below, update your {formatFormMention("tna01")}, and resubmit.
           </p>
           <ul className="space-y-1.5 mt-2">
-            {flaggedDocs.map((d) => (
-              <li key={d.id} className="text-xs text-red-700 flex gap-2">
+            {flaggedSections.map((s) => (
+              <li key={s.id} className="text-xs text-red-700 flex gap-2">
                 <span className="text-red-400">•</span>
                 <span>
-                  <strong>{d.name}</strong>
-                  {d.remark ? ` — ${d.remark}` : ""}
+                  <strong>{s.name}</strong>
+                  {s.remark ? ` — ${s.remark}` : ""}
                 </span>
               </li>
             ))}
