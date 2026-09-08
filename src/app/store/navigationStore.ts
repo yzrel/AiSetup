@@ -7,7 +7,7 @@ import { normalizeAdminView, type AdminView } from "./authStore";
 const VIEW_STORAGE_KEY = "aisetup.app.currentView";
 const AUTH_PAGE_KEY = "aisetup.auth.page";
 
-export type AuthPage = "landing" | "login" | "register";
+export type AuthPage = "landing" | "login" | "register" | "forgot-password";
 
 export function loadCurrentView(): AdminView | null {
   try {
@@ -43,7 +43,12 @@ export function loadAuthPage(): AuthPage {
     const raw =
       sessionStorage.getItem(AUTH_PAGE_KEY) ??
       localStorage.getItem(AUTH_PAGE_KEY);
-    if (raw === "login" || raw === "register" || raw === "landing") {
+    if (
+      raw === "login" ||
+      raw === "register" ||
+      raw === "landing" ||
+      raw === "forgot-password"
+    ) {
       return raw;
     }
   } catch {

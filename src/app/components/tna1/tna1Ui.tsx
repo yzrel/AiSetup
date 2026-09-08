@@ -34,6 +34,13 @@ export const STEPS = [
   { id: "reports",       label: "Complete",             icon: "✅" },
 ];
 
+/** Staff Review is a DOST personnel step — never shown on cooperator accounts. */
+export const TNA1_STAFF_ONLY_STEP_ID = "staff-review";
+
+export function visibleTna1Steps(isStaff: boolean) {
+  return isStaff ? STEPS : STEPS.filter((s) => s.id !== TNA1_STAFF_ONLY_STEP_ID);
+}
+
 /** Content tabs staff verify/flag in Staff Review (excludes Validation + post-submit steps). */
 export const TNA1_SECTION_REVIEW_STEP_IDS = [
   "identification",

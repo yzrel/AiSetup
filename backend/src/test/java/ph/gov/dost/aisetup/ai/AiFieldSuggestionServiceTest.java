@@ -80,6 +80,27 @@ class AiFieldSuggestionServiceTest {
     }
 
     @Test
+    void registerCompanyDescriptionStaysWithin500Characters() {
+        Map<String, Object> ctx = demoContext();
+        ctx.put("province", "Cotabato");
+        ctx.put("address", "654 Acacia Street, Public Market Poblacion, Makilala");
+        ctx.put("registrationType", "DTI (Single Proprietorship)");
+        ctx.put("yearsOfOperation", "3 years");
+        AiFieldSuggestionRequest request = new AiFieldSuggestionRequest();
+        request.setModule("register");
+        request.setField("companyDescription");
+        request.setContext(ctx);
+
+        AiFieldSuggestionResponse res = service.suggest(request);
+        assertNotNull(res.getText());
+        assertFalse(res.getText().isBlank());
+        assertTrue(res.getText().length() <= 500, res.getText());
+        assertTrue(res.getText().toLowerCase().contains("eborde"));
+        assertTrue(res.getText().toLowerCase().contains("cotabato"));
+        assertTrue(res.getText().toLowerCase().contains("dti"));
+    }
+
+    @Test
     void productServicesDoesNotNestOnRepeatedAssist() {
         AiFieldSuggestionResponse first = service.suggest(req("loi", "productServices", null));
         assertNotNull(first.getText());

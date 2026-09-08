@@ -77,6 +77,7 @@ public class AiFieldSuggestionService {
                 if (!text.isBlank()) {
                     response.setText(text);
                     response.setAiGenerated(true);
+                    clipRegisteredOutput(response);
                     return response;
                 }
             }
@@ -86,6 +87,7 @@ public class AiFieldSuggestionService {
 
         applyTemplateFallback(response, spec, context, userInstruction);
         response.setAiGenerated(false);
+        clipRegisteredOutput(response);
         return response;
     }
 
@@ -218,6 +220,11 @@ public class AiFieldSuggestionService {
                         empCount(ctx, "employeesMale"),
                         empCount(ctx, "employeesFemale")));
             }
+            return;
+        }
+
+        if ("companyDescription".equals(field)) {
+            response.setText(companyDescriptionTemplate(ctx, userInstruction));
             return;
         }
 
@@ -499,6 +506,49 @@ public class AiFieldSuggestionService {
         return "";
     }
 
+    private static String companyDescriptionTemplate(Map<String, Object> ctx, String userInstruction) {
+        String enterprise = str(ctx, "enterpriseName", "The enterprise");
+        String sector = str(ctx, "businessSector", "its priority");
+        String province = str(ctx, "province", "");
+        String address = str(ctx, "address", "");
+        String registration = str(ctx, "registrationType", str(ctx, "businessType", ""));
+        String years = str(ctx, "yearsOfOperation", "");
+        List<String> instructionProducts = extractProductsFromInstruction(userInstruction);
+        String products = instructionProducts.isEmpty()
+                ? str(ctx, "productServices", "")
+                : String.join(", ", instructionProducts);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(enterprise);
+        if (!registration.isBlank()) {
+            sb.append(" is registered as ").append(registration);
+        } else {
+            sb.append(" is an MSME");
+        }
+        sb.append(" in the ").append(sector).append(" sector");
+        if (!province.isBlank()) {
+            sb.append(" in ").append(province);
+        }
+        sb.append(", Region XII. ");
+        if (!products.isBlank() && isShortSeed(products)) {
+            sb.append("The enterprise offers ").append(products).append(". ");
+        } else {
+            sb.append("The firm focuses on quality products and reliable service for local markets. ");
+        }
+        if (!years.isBlank()) {
+            sb.append("It has been operating for ").append(years);
+            if (!years.toLowerCase().contains("year")) {
+                sb.append(years.equals("1") ? " year" : " years");
+            }
+            sb.append(". ");
+        }
+        if (!address.isBlank() && address.length() <= 120) {
+            sb.append("Operations are based at ").append(address).append(". ");
+        }
+        sb.append("The enterprise is preparing a technology upgrading application with DOST SOCCSKSARGEN SETUP.");
+        return sb.toString().trim();
+    }
+
     private String templateText(String field, String enterprise, String sector, String nature,
                               String msme, String products, String project, String outcome) {
         return switch (field) {
@@ -706,6 +756,25 @@ public class AiFieldSuggestionService {
         return s.substring(0, max - 3) + "...";
     }
 
+    private static final int COMPANY_DESCRIPTION_MAX = 500;
+
+    private static void clipRegisteredOutput(AiFieldSuggestionResponse response) {
+        if (!"companyDescription".equals(response.getField()) || response.getText() == null) {
+            return;
+        }
+        String text = response.getText().trim();
+        if (text.length() <= COMPANY_DESCRIPTION_MAX) {
+            response.setText(text);
+            return;
+        }
+        String cut = text.substring(0, COMPANY_DESCRIPTION_MAX).trim();
+        int lastStop = Math.max(cut.lastIndexOf('.'), Math.max(cut.lastIndexOf('!'), cut.lastIndexOf('?')));
+        if (lastStop >= COMPANY_DESCRIPTION_MAX / 2) {
+            cut = cut.substring(0, lastStop + 1).trim();
+        }
+        response.setText(cut);
+    }
+
     private static Map<String, Map<String, FieldSpec>> buildRegistry() {
         Map<String, Map<String, FieldSpec>> reg = new LinkedHashMap<>();
 
@@ -804,6 +873,11 @@ public class AiFieldSuggestionService {
                         "Write 3-4 sentences on other relevant concerns."),
                 entry("genderInvolvement", "Gender and Development (GAD) — Participation and Involvement", "TNA Form 01", false,
                         "Write one short paragraph (3-5 sentences) describing how women and men participate in the enterprise and how SETUP assistance will benefit them equitably. Use ONLY the provided Male/Female employee counts; do not invent roles, ratios, or headcounts. Use gender-fair language per DOST GAD guidelines.")
+        ));
+
+        reg.put("register", Map.ofEntries(
+                entry("companyDescription", "Brief Description of Company", "Public Registration", false,
+                        "Write 2-4 complete sentences (maximum 500 characters) describing the enterprise's products, services, and operations. Ground every claim in the provided registration data. Do not invent certifications, financial figures, or years of operation that are not in the data.")
         ));
 
         reg.put("tna2", Map.ofEntries(

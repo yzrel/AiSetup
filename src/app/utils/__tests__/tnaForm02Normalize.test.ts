@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  buildLocalTna2Document,
   enrichTna2Summary,
   normalizeFindingsByArea,
   prefillFindingsFromTna1,
@@ -12,6 +13,21 @@ import type { Tna2DocumentResponse } from "../../api/types";
 import { TNA_FORM_02_FINDINGS_TEMPLATE } from "../../constants/tnaForm02Layout";
 
 describe("normalizeFindingsByArea", () => {
+  it("preserves trailing spaces in subsection content so the spacebar works", () => {
+    const sections = normalizeFindingsByArea([
+      {
+        title: "1. Strategic Direction",
+        subsections: [
+          { id: "mission", label: "Mission Statement", content: "Serve the " },
+        ],
+      },
+    ]);
+    const mission = sections
+      .flatMap((s) => s.subsections ?? [])
+      .find((s) => s.id === "mission");
+    expect(mission?.content).toBe("Serve the ");
+  });
+
   it("does not crash when section title is missing", () => {
     expect(() =>
       normalizeFindingsByArea([
@@ -196,5 +212,65 @@ describe("enrichTna2Summary", () => {
     expect(doc.productivityImprovement.kpis).toEqual([
       { label: "Capacity", before: "outsourced", after: "in-house" },
     ]);
+  });
+
+  it("preserves trailing spaces on names and narrative fields", () => {
+    const doc = enrichTna2Summary({
+      documentRef: "TNA2-SPACE",
+      assessmentDate: "2026-09-08",
+      enterpriseProfile: { enterpriseName: "Eborde " },
+      findingsByArea: [
+        {
+          title: "1. Strategic Direction",
+          subsections: [
+            { id: "mission", label: "Mission Statement", content: "Serve the " },
+          ],
+        },
+      ],
+      background: "The firm ",
+      methodology: "Plant visit ",
+      otherObservations: "Layout ",
+      conclusions: "Recommend ",
+      assessor: { name: "ENGR. ", title: "PSTD ", office: "PSTO " },
+      attestedBy: {
+        name: "ENGR. NORMINA ",
+        title: "Assistant Regional Director",
+        office: "DOST ",
+      },
+      generatedAt: new Date().toISOString(),
+      aiGenerated: false,
+    } as Tna2DocumentResponse);
+
+    expect(doc.background).toBe("The firm ");
+    expect(doc.methodology).toBe("Plant visit ");
+    expect(doc.otherObservations).toBe("Layout ");
+    expect(doc.conclusions).toBe("Recommend ");
+    expect(doc.assessor.name).toBe("ENGR. ");
+    expect(doc.assessor.title).toBe("PSTD ");
+    expect(doc.assessor.office).toBe("PSTO ");
+    expect(doc.attestedBy?.name).toBe("ENGR. NORMINA ");
+    expect(doc.attestedBy?.office).toBe("DOST ");
+    const mission = doc.findingsByArea
+      ?.flatMap((s) => s.subsections ?? [])
+      .find((s) => s.id === "mission");
+    expect(mission?.content).toBe("Serve the ");
+  });
+});
+
+describe("buildLocalTna2Document recommended equipment", () => {
+  it("does not copy TNA Form 01 existing equipment into recommended equipment", () => {
+    const doc = buildLocalTna2Document({
+      enterpriseName: "Bakery Co",
+      tna1Form: { enterpriseName: "Bakery Co" },
+      tna1Tables: {
+        equipment: [
+          ["Oven", "Gas", "20 trays", "5", "2018"],
+          ["Mixer", "20 kg", "", "3", "2019"],
+        ],
+        rawMaterials: [],
+        production: [],
+      },
+    });
+    expect(doc.recommendedEquipment).toEqual([]);
   });
 });

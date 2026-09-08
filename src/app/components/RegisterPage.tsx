@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   User,
   Mail,
@@ -56,6 +56,8 @@ import { api, ApiError } from "../api/client";
 import { clearAuthToken, setAuthToken } from "../api/authToken";
 import { syncApplicantToBackend, uploadFileToBackend } from "../utils/applicantPersistence";
 import { dataUrlToFile } from "../utils/readFileAsDataUrl";
+import { useAiFieldSuggest } from "../utils/aiAssist";
+import { AiAssistNotice, AiAssistTextarea } from "./AiAssistField";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -159,6 +161,17 @@ function Field({
 const inputCls =
   "border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C2461]/20 focus:border-[#0C2461]/50 w-full bg-white";
 const selectCls = inputCls + " cursor-pointer";
+const fieldLabelCls =
+  "text-xs font-bold text-gray-600 uppercase tracking-wide";
+
+function yearsOfOperationFrom(startDate: string): string {
+  if (!startDate.trim()) return "";
+  const start = new Date(startDate);
+  if (Number.isNaN(start.getTime())) return "";
+  const years = Math.max(0, new Date().getFullYear() - start.getFullYear());
+  if (years <= 0) return "less than 1 year";
+  return years === 1 ? "1 year" : `${years} years`;
+}
 
 // ── Selfie capture ────────────────────────────────────────────────────────────
 
@@ -385,6 +398,7 @@ function OTPVerify({
   placeholder,
   type = "text",
   demoHint,
+  onLogin,
 }: {
   label: string;
   value: string;
@@ -396,6 +410,7 @@ function OTPVerify({
   type?: string;
   /** Amber demo warning when this channel is not configured. */
   demoHint?: boolean;
+  onLogin?: () => void;
 }) {
   const [otp, setOtp] = useState("");
   const [sent, setSent] = useState(false);
@@ -403,6 +418,13 @@ function OTPVerify({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+
+  useEffect(() => {
+    setError("");
+    setInfo("");
+    setSent(false);
+    setOtp("");
+  }, [value]);
 
   const send = async () => {
     if (!value || busy || verified) return;
@@ -511,9 +533,21 @@ function OTPVerify({
       )}
 
       {error && (
-        <p className="text-[10px] text-red-600 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3 shrink-0" /> {error}
-        </p>
+        <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-2">
+          <p className="flex items-start gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
+          </p>
+          {onLogin &&
+            /already registered|already exists/i.test(error) && (
+              <button
+                type="button"
+                onClick={onLogin}
+                className="mt-1.5 ml-5 font-bold text-[#0C2461] hover:underline"
+              >
+                Sign In
+              </button>
+            )}
+        </div>
       )}
 
       {verified && (
@@ -594,6 +628,29 @@ export function RegisterPage({
     demoModeEnabled: boolean;
   }>({ smtpEnabled: false, smsEnabled: false, demoModeEnabled: true });
   const [demoMode, setDemoMode] = useState(demoModeStore.isEnabled());
+  const { bind: bindRegisterAi, notice: registerAiNotice } =
+    useAiFieldSuggest("register");
+  const registerAiContext = useMemo(
+    () => ({
+      enterpriseName: form.companyName,
+      businessSector: form.businessSector,
+      province: form.province,
+      address: form.companyAddress,
+      businessType: form.registrationType,
+      registrationType: form.registrationType,
+      yearsOfOperation: yearsOfOperationFrom(form.companyStartDate),
+      companyDescription: form.companyDescription,
+    }),
+    [
+      form.companyName,
+      form.businessSector,
+      form.province,
+      form.companyAddress,
+      form.registrationType,
+      form.companyStartDate,
+      form.companyDescription,
+    ],
+  );
 
   useEffect(() => {
     void api
@@ -633,6 +690,14 @@ export function RegisterPage({
       delete n[key];
       return n;
     });
+  const companyDescriptionAi = bindRegisterAi(
+    "companyDescription",
+    registerAiContext,
+    (value) => {
+      const text = Array.isArray(value) ? value.join(" ") : String(value ?? "");
+      set("companyDescription", text.slice(0, 500));
+    },
+  );
 
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (): boolean => {
@@ -782,11 +847,21 @@ export function RegisterPage({
         "[aisetup] Registration backend sync failed:",
         err instanceof ApiError ? err.message : err,
       );
-      window.alert(
+      const message =
         err instanceof ApiError
-          ? `Account created locally, but server registration failed: ${err.message}. Start the backend and try signing in after re-registering if needed.`
-          : "Account created locally, but the server could not be reached. Start the backend (npm run backend) before signing in.",
+          ? err.message
+          : "Unable to reach the server. Start the backend (npm run backend) and try again.";
+      const alreadyRegistered =
+        err instanceof ApiError &&
+        /already exists|already registered|already linked/i.test(err.message);
+      window.alert(
+        alreadyRegistered
+          ? message
+          : err instanceof ApiError
+            ? `Registration failed: ${message}`
+            : message,
       );
+      return;
     } finally {
       clearAuthToken();
     }
@@ -1072,6 +1147,7 @@ export function RegisterPage({
                       clearErr("emailVerified");
                     }}
                     verified={form.emailVerified}
+                    onLogin={onLogin}
                     demoHint={
                       otpDelivery.demoModeEnabled &&
                       !otpDelivery.smtpEnabled
@@ -1134,6 +1210,7 @@ export function RegisterPage({
                     }}
                     placeholder="09171234567"
                     type="tel"
+                    onLogin={onLogin}
                   />
                 </Field>
 
@@ -1382,29 +1459,20 @@ export function RegisterPage({
                     />
                   </Field>
 
-                  <Field
-                    label="Brief Description of Company"
-                    hint="Describe your enterprise's products, services, and operations (max 500 characters)"
-                    hintBefore
-                  >
-                    <textarea
+                  <div className="space-y-2">
+                    <AiAssistNotice message={registerAiNotice} />
+                    <AiAssistTextarea
+                      label="Brief Description of Company"
                       value={form.companyDescription}
-                      onChange={(e) =>
-                        set(
-                          "companyDescription",
-                          e.target.value.slice(0, 500),
-                        )
-                      }
-                      rows={5}
-                      className={
-                        inputCls + " min-h-[7rem] resize-y leading-relaxed"
-                      }
-                      placeholder="We are a food processing enterprise specializing in..."
+                      onChange={(v) => set("companyDescription", v.slice(0, 500))}
+                      hint="Describe your enterprise's products, services, and operations (max 500 characters)"
+                      maxLength={500}
+                      minHeight="min-h-[7rem] resize-y leading-relaxed"
+                      inputClassName={inputCls}
+                      labelClassName={fieldLabelCls}
+                      {...companyDescriptionAi}
                     />
-                    <p className="text-[10px] text-gray-400 text-right -mt-0.5">
-                      {form.companyDescription.length}/500
-                    </p>
-                  </Field>
+                  </div>
                 </div>
 
                 {/* Image uploads */}

@@ -3,6 +3,7 @@
  */
 package ph.gov.dost.aisetup.auth.dto;
 
+import jakarta.validation.constraints.Email;
 import java.util.List;
 
 /** Partial update for a staff account (null fields are left unchanged). */
@@ -11,6 +12,9 @@ public class UpdateStaffRequest {
     private String firstName;
     private String middleName;
     private String lastName;
+
+    @Email
+    private String email;
     private String role;
     private String officeId;
     private List<String> assignedProvinces;
@@ -39,6 +43,14 @@ public class UpdateStaffRequest {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getRole() {

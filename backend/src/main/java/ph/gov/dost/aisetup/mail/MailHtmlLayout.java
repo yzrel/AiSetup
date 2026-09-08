@@ -77,10 +77,21 @@ public final class MailHtmlLayout {
 
     /** OTP verification content: large code callout + expiry note. */
     public static String otpInnerHtml(String code) {
+        return otpInnerHtml(code, "Your DOST SOCCSKSARGEN AiSETUP verification code is:");
+    }
+
+    /** Password-reset OTP content. */
+    public static String passwordResetOtpInnerHtml(String code) {
+        return otpInnerHtml(
+                code, "Your DOST SOCCSKSARGEN AiSETUP password reset code is:");
+    }
+
+    private static String otpInnerHtml(String code, String intro) {
         String safeCode = escape(code == null ? "" : code.trim());
+        String safeIntro = escape(intro == null ? "" : intro);
         return """
                 <p style="margin:0 0 20px;color:%s;font-size:15px;line-height:1.55;font-family:Arial,Helvetica,sans-serif;">
-                  Your DOST SOCCSKSARGEN AiSETUP verification code is:
+                  %s
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="margin:0 0 20px;">
                   <tr>
@@ -96,7 +107,7 @@ public final class MailHtmlLayout {
                   If you did not request this, you can ignore this email.
                 </p>
                 """
-                .formatted(BODY_TEXT, DOST_LIGHT, DOST_BLUE, safeCode, BODY_TEXT, MUTED);
+                .formatted(BODY_TEXT, safeIntro, DOST_LIGHT, DOST_BLUE, safeCode, BODY_TEXT, MUTED);
     }
 
     /** Wrap inner HTML (already safe/escaped as needed) in the branded shell. */
@@ -175,5 +186,10 @@ public final class MailHtmlLayout {
     /** Full HTML document for an OTP email. */
     public static String wrapOtp(String code) {
         return wrap(otpInnerHtml(code));
+    }
+
+    /** Full HTML document for a password-reset OTP email. */
+    public static String wrapPasswordResetOtp(String code) {
+        return wrap(passwordResetOtpInnerHtml(code));
     }
 }

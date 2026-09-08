@@ -9,6 +9,7 @@ import { TnaForm01Preview, printTnaForm01 } from "../TnaForm01Preview";
 import { DocumentDeliveryPanel } from "../DocumentDeliveryPanel";
 import { formatFormMention } from "../../constants/setupForms";
 import { allowWhenDemo } from "../../utils/demoMode";
+import { canAdvanceFrom } from "../../utils/moduleGateways";
 import type { Tna1StepContext } from "./stepContext";
 import { AILoader, DOST_BLUE, InfoBanner } from "./tna1Ui";
 
@@ -27,7 +28,9 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
     directorValidated,
   } = ctx;
 
-  const canContinueToTna2 = allowWhenDemo(!!directorValidated);
+  const canContinueToTna2 = allowWhenDemo(
+    canAdvanceFrom(applicant ?? null, "tna1").ok || !!directorValidated,
+  );
 
   return (
     <div className={MODULE_BODY}>
@@ -97,7 +100,7 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
         documentTitle={formatFormMention("tna01")}
       />
 
-      <div className="flex flex-col sm:flex-row gap-3 print:hidden">
+      <div className="flex flex-col sm:flex-row gap-3 print:hidden pb-8 sm:pb-4 sm:pr-16">
         {!isStaff && (
           <button
             onClick={() => setStep("validation")}
@@ -135,7 +138,7 @@ export function CompleteStep({ ctx }: { ctx: Tna1StepContext }) {
             type="button"
             onClick={onSubmitSuccess}
             disabled={!canContinueToTna2}
-            className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40"
+            className="flex-1 min-h-11 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             style={{ background: "#059669" }}
           >
             {directorValidated

@@ -76,11 +76,19 @@ export function FormPage({
 export function FormBlock({
   children,
   className = "",
+  keepTogether = false,
 }: {
   children: ReactNode;
   className?: string;
+  keepTogether?: boolean;
 }) {
-  return <div className={`tna-form-block tna-print-section ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`tna-form-block tna-print-section${keepTogether ? " tna-form-block-keep" : ""} ${className}`.trim()}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function FormBorderedPanel({
@@ -224,42 +232,27 @@ export function FormAttachmentBlock({
   };
 
   return (
-    <div className="tna-form-block tna-print-section">
-      <FormTable className="tna-form-field-table">
-        <tbody>
-          <tr>
-            <td className="tna-form-label tna-form-field-label" colSpan={2}>
-              {label}
-            </td>
-          </tr>
-          <tr>
-            <td
-              className="tna-form-value tna-form-field-value tna-form-attachment-cell"
-              colSpan={2}
-            >
-              <div className="tna-form-attachment" style={{ minHeight }}>
-                {showImage && (fileData || fileId || (applicantId && fileName)) ? (
-                  <StoredFileImage
-                    applicantId={applicantId}
-                    file={fileRef}
-                    alt={label}
-                    className="tna-form-attachment-img"
-                    loadingClassName="tna-form-attachment-name"
-                  />
-                ) : fileName ? (
-                  <p className="tna-form-attachment-name">
-                    {fileName}
-                    {isPdfFile(mimeType, fileName, fileData) ? " (PDF)" : ""}
-                  </p>
-                ) : (
-                  <span className="tna-form-blank-box" />
-                )}
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </FormTable>
-    </div>
+    <FormBlock keepTogether className="tna-form-attachment-block">
+      <p className="tna-form-attachment-heading">{label}</p>
+      <div className="tna-form-attachment" style={{ minHeight }}>
+        {showImage && (fileData || fileId || (applicantId && fileName)) ? (
+          <StoredFileImage
+            applicantId={applicantId}
+            file={fileRef}
+            alt={label}
+            className="tna-form-attachment-img"
+            loadingClassName="tna-form-attachment-name"
+          />
+        ) : fileName ? (
+          <p className="tna-form-attachment-name">
+            {fileName}
+            {isPdfFile(mimeType, fileName, fileData) ? " (PDF)" : ""}
+          </p>
+        ) : (
+          <span className="tna-form-blank-box" />
+        )}
+      </div>
+    </FormBlock>
   );
 }
 
@@ -816,31 +809,27 @@ export function TnaForm01Document({ form, tables, applicantId }: TnaForm01Docume
           <FormTextBlock label="" value={val(f, "otherConcerns")} lines={5} />
         </FormBlock>
 
-        <FormBlock>
-          <FormTable className="tna-form-signature-table">
-            <tbody>
-              <tr>
-                <td className="tna-form-signature-cell">
-                  <p className="tna-form-signature-title">Prepared by:</p>
-                  <div className="tna-form-signature-line" />
-                  <p className="tna-form-signature-label">{TNA_FORM_01_PREPARED_BY_LABEL}</p>
-                  <p className="tna-form-signature-name">{val(f, "undertakingName")}</p>
-                  <p className="tna-form-signature-date">
-                    Date: {formatDisplayDate(val(f, "preparedDate"))}
-                  </p>
-                </td>
-                <td className="tna-form-signature-cell">
-                  <p className="tna-form-signature-title">Validated by:</p>
-                  <div className="tna-form-signature-line" />
-                  <p className="tna-form-signature-label">{TNA_FORM_01_VALIDATED_BY_LABEL}</p>
-                  <p className="tna-form-signature-name">{val(f, "validatedByName")}</p>
-                  <p className="tna-form-signature-date">
-                    Date: {formatDisplayDate(val(f, "validatedDate"))}
-                  </p>
-                </td>
-              </tr>
-            </tbody>
-          </FormTable>
+        <FormBlock keepTogether className="tna-form-signature-block">
+          <div className="tna-form-signature-grid">
+            <div className="tna-form-signature-cell">
+              <p className="tna-form-signature-title">Prepared by:</p>
+              <div className="tna-form-signature-line" />
+              <p className="tna-form-signature-label">{TNA_FORM_01_PREPARED_BY_LABEL}</p>
+              <p className="tna-form-signature-name">{val(f, "undertakingName")}</p>
+              <p className="tna-form-signature-date">
+                Date: {formatDisplayDate(val(f, "preparedDate"))}
+              </p>
+            </div>
+            <div className="tna-form-signature-cell">
+              <p className="tna-form-signature-title">Validated by:</p>
+              <div className="tna-form-signature-line" />
+              <p className="tna-form-signature-label">{TNA_FORM_01_VALIDATED_BY_LABEL}</p>
+              <p className="tna-form-signature-name">{val(f, "validatedByName")}</p>
+              <p className="tna-form-signature-date">
+                Date: {formatDisplayDate(val(f, "validatedDate"))}
+              </p>
+            </div>
+          </div>
         </FormBlock>
       </FormPage>
     </div>

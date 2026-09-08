@@ -664,6 +664,7 @@ describe("applyGeneratedDocument marketing mapping", () => {
 
 function tnaApplicant(overrides: {
   tna1Form?: Record<string, unknown>;
+  tna1Tables?: { equipment?: string[][] };
   tna2?: Record<string, unknown>;
 }): Applicant {
   return {
@@ -698,6 +699,7 @@ function tnaApplicant(overrides: {
           processFlow: "Wash → dry → pack",
           ...overrides.tna1Form,
         },
+        ...(overrides.tna1Tables ? { tables: overrides.tna1Tables } : {}),
       },
       ...(overrides.tna2
         ? { tna2Document: { published: true, ...overrides.tna2 } }
@@ -721,6 +723,39 @@ describe("new Form 001 field forwarding from TNA", () => {
     expect(draft.employeesNonProductionFemale).toBe("");
     expect(draft.existingMarketingProblems).toBe("");
     expect(draft.volumeOfOrdersTable).toEqual([["", "", ""]]);
+  });
+
+  it("forwards TNA Form 01 Indirect/Contract male and female into Form 001", () => {
+    const draft = buildProjectProposalDraft(
+      tnaApplicant({
+        tna1Form: {
+          employeesIndirectMale: "3",
+          employeesIndirectFemale: "5",
+          employeesIndirect: "",
+          employeesContract: "",
+          registrationNo: "DTI-12-0012345",
+        },
+      }),
+    );
+    expect(draft.employeesIndirectMale).toBe("3");
+    expect(draft.employeesIndirectFemale).toBe("5");
+    expect(draft.employeesIndirect).toBe("8");
+    expect(draft.registrationNumber).toBe("DTI-12-0012345");
+  });
+
+  it("fills empty stored proposal indirect counts from TNA Form 01", () => {
+    const draft = buildProjectProposalDraft(
+      tnaApplicant({
+        tna1Form: {
+          employeesIndirectMale: "3",
+          employeesIndirectFemale: "5",
+        },
+      }),
+      { employeesIndirectMale: "", employeesIndirectFemale: "", employeesIndirect: "" },
+    );
+    expect(draft.employeesIndirectMale).toBe("3");
+    expect(draft.employeesIndirectFemale).toBe("5");
+    expect(draft.employeesIndirect).toBe("8");
   });
 
   it("does not inject printshop sample volume-of-orders into live drafts", () => {
@@ -802,5 +837,82 @@ describe("new Form 001 field forwarding from TNA", () => {
     expect(draft.wasteKinds).toBe(
       "Peelings and wash water go to a settling pond.",
     );
+  });
+});
+
+describe("intervention cost table", () => {
+  const existingEquipment = [
+    ["Oven", "Gas", "20 trays", "5", "2018"],
+    ["Bread Slicer", "Manual", "", "1", "2020"],
+  ];
+
+  it("prefills from published TNA Form 02 recommended equipment", () => {
+    const draft = buildProjectProposalDraft(
+      tnaApplicant({
+        tna2: {
+          recommendedEquipment: [
+            {
+              name: "Vacuum sealer",
+              quantity: "1",
+              estimatedCost: "85000",
+            },
+          ],
+        },
+      }),
+    );
+    expect(draft.interventionCostTable).toEqual([
+      ["Vacuum sealer", "1", "85000", "85000"],
+    ]);
+    expect(draft.interventionEquipment).toBe("Vacuum sealer");
+  });
+
+  it("keeps stored intervention cost rows including prior TNA prefill", () => {
+    const stored = [
+      ["Oven", "5", "To be verified", "To be verified"],
+      ["Bread Slicer", "1", "To be verified", "To be verified"],
+    ];
+    const draft = buildProjectProposalDraft(
+      tnaApplicant({
+        tna1Tables: { equipment: existingEquipment },
+        tna2: {
+          recommendedEquipment: [
+            {
+              name: "Oven",
+              quantity: "5",
+              estimatedCost: "To be verified",
+            },
+            {
+              name: "Bread Slicer",
+              quantity: "1",
+              estimatedCost: "To be verified",
+            },
+          ],
+        },
+      }),
+      {
+        interventionCostTable: stored,
+        interventionEquipment: "Oven, Bread Slicer",
+      },
+    );
+    expect(draft.interventionCostTable).toEqual(stored);
+    expect(draft.interventionEquipment).toBe("Oven, Bread Slicer");
+  });
+
+  it("keeps cooperator-entered requested equipment and costs", () => {
+    const stored = [
+      ["Vacuum sealer", "1", "85000", "85000"],
+      ["Labeler", "2", "40000", "80000"],
+    ];
+    const draft = buildProjectProposalDraft(
+      tnaApplicant({
+        tna1Tables: { equipment: existingEquipment },
+      }),
+      {
+        interventionCostTable: stored,
+        interventionEquipment: "Vacuum sealer, Labeler",
+      },
+    );
+    expect(draft.interventionCostTable).toEqual(stored);
+    expect(draft.interventionEquipment).toBe("Vacuum sealer, Labeler");
   });
 });

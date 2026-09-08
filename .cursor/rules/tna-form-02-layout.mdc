@@ -50,7 +50,7 @@ Word `pgMar` → `TNA_FORM_02_PAGE_MARGIN_MM`: top 24.0, right 10.6, bottom 19.1
 6. **RECOMMENDATIONS:** — plain paragraphs (not `<ol>`)
 7. **Intervention table** — four columns from `TNA_FORM_02_INTERVENTION_COLUMNS`
 8. **TNA Team:** — prose (Team Leader: / Members:)
-9. **Closing signatures** — name inline: `Reported by:{name}Date:` / `Attested by:{name}Date:`
+9. **Closing signatures** — two columns matching the template block: `Reported by: {name}` / `Date: {assessmentDate}` and `Attested by: {name}` / `Date: {assessmentDate}`. Never concatenate `Date:` onto the name.
 
 No Republic/DOST logo on official PDF.
 

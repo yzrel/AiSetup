@@ -4,17 +4,21 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  buildProjectProposalDraft,
   computeRawMaterialCostRow,
   emptyProjectProposalForm,
   emptyRawMaterialAllocationRow,
   emptyRawMaterialCostRow,
   rawMaterialAllocationFooterRow,
+  rawMaterialAllocationRowsFromTna,
   rawMaterialCostFooterRow,
+  rawMaterialCostRowsFromTna,
   recomputeRawMaterialCostTable,
   sumRawMaterialAllocationColumns,
   sumRawMaterialCostColumns,
 } from "../projectProposal";
 import { normalizeProjectProposalStored } from "../normalizeCriticalModuleData";
+import type { Applicant } from "../../store/applicantStore";
 
 describe("computeRawMaterialCostRow", () => {
   it("computes batch = Qty × Unit Cost, Weekly = batch × batches, Monthly = Weekly × 4, Annually = Monthly × 12", () => {
@@ -128,5 +132,70 @@ describe("capacity tables hydrate", () => {
     };
     expect(form.rawMaterialCostTable).toHaveLength(1);
     expect(form.rawMaterialAllocationTable).toHaveLength(1);
+  });
+});
+
+const TNA_RAW_MATERIALS = [
+  ["Cassava", "Local farm", "2", "7,500"],
+  ["Sugar", "Trader", "40", "2,500"],
+];
+
+describe("TNA raw-material forwarding", () => {
+  it("maps TNA volume, unit cost, and source into Raw Material Cost", () => {
+    const rows = rawMaterialCostRowsFromTna(TNA_RAW_MATERIALS);
+    expect(rows[0][0]).toBe("Cassava");
+    expect(rows[0][1]).toBe("7,500");
+    expect(rows[0][3]).toBe("2");
+    expect(rows[0][9]).toBe("Local farm");
+    expect(rows[1][0]).toBe("Sugar");
+    expect(rows[1][9]).toBe("Trader");
+  });
+
+  it("maps TNA names, volume share, and volume into Raw Materials Allocation", () => {
+    expect(rawMaterialAllocationRowsFromTna(TNA_RAW_MATERIALS)).toEqual([
+      ["Cassava", "75", "7,500"],
+      ["Sugar", "25", "2,500"],
+    ]);
+  });
+
+  it("prefills allocation and cost on a new proposal from TNA Form 01 tables", () => {
+    const applicant = {
+      id: "pp-rm-1",
+      enterpriseName: "Forward Foods",
+      applicantName: "Maria",
+      moduleData: {
+        tna1: {
+          submitted: true,
+          form: {},
+          tables: { rawMaterials: TNA_RAW_MATERIALS },
+        },
+      },
+    } as unknown as Applicant;
+    const draft = buildProjectProposalDraft(applicant);
+    expect(draft.rawMaterialAllocationTable).toEqual([
+      ["Cassava", "75", "7,500"],
+      ["Sugar", "25", "2,500"],
+    ]);
+    expect(draft.rawMaterialCostTable[0][0]).toBe("Cassava");
+    expect(draft.rawMaterialCostTable[1][0]).toBe("Sugar");
+  });
+
+  it("keeps TNA allocation when the stored proposal table is blank", () => {
+    const applicant = {
+      id: "pp-rm-2",
+      enterpriseName: "Forward Foods",
+      applicantName: "Maria",
+      moduleData: {
+        tna1: {
+          submitted: true,
+          form: {},
+          tables: { rawMaterials: TNA_RAW_MATERIALS },
+        },
+      },
+    } as unknown as Applicant;
+    const draft = buildProjectProposalDraft(applicant, {
+      rawMaterialAllocationTable: [["", "", ""]],
+    });
+    expect(draft.rawMaterialAllocationTable[0][0]).toBe("Cassava");
   });
 });

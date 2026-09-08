@@ -240,7 +240,7 @@ public class LoiGenerationService {
 
         if (isSetupQualified(r)) {
             paragraphs.add(String.format(
-                    "We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to %s over %s at zero percent interest. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
+                    "We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the requested seed fund amounting to %s over %s at zero percent interest. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.",
                     formatBudget(r.getCommitmentAmount()),
                     val(r.getRepaymentTerm())
             ));

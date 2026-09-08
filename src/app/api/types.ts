@@ -68,6 +68,7 @@ export interface ApiUpdateStaffRequest {
   firstName?: string;
   middleName?: string;
   lastName?: string;
+  email?: string;
   role?: ApiStaffRole;
   officeId?: string;
   assignedProvinces?: string[];
@@ -701,7 +702,7 @@ export interface FinancialProjectionDocumentResponse {
 
 // ── Shared AI field suggestion ────────────────────────────────────────────────
 
-export type AiSuggestModule = "project-proposal" | "loi" | "tna1" | "tna2";
+export type AiSuggestModule = "project-proposal" | "loi" | "tna1" | "tna2" | "register";
 
 export interface AiFieldSuggestionRequest {
   module: AiSuggestModule;
@@ -727,6 +728,20 @@ export interface AiCompletionRequest {
 
 export interface AiCompletionResponse {
   text: string;
+  aiGenerated: boolean;
+}
+
+export interface AiIfundAssessmentRequest {
+  context: Record<string, unknown>;
+}
+
+export interface AiIfundAssessmentResponse {
+  proposedAmount: string;
+  refundRisk: "LOW" | "MEDIUM" | "HIGH" | string;
+  authorityBand: string;
+  rationale: string;
+  sourcesPresent: string[];
+  sourcesMissing: string[];
   aiGenerated: boolean;
 }
 
@@ -787,7 +802,20 @@ export interface RtecReportForm {
   attachmentRefs: ProjectProposalAttachment[];
   constraintRows: RtecConstraintRow[];
   fabricatorRows: RtecFabricatorRow[];
+  /** Editor-only AI iFund assessment (not printed on Form 002). */
+  fundAssessment?: RtecFundAssessment;
   overrides?: RtecReportOverrides;
+}
+
+export interface RtecFundAssessment {
+  proposedAmount: string;
+  refundRisk: string;
+  authorityBand: string;
+  rationale: string;
+  sourcesPresent?: string[];
+  sourcesMissing?: string[];
+  aiGenerated?: boolean;
+  assessedAt?: string;
 }
 
 export interface RtecReportStored {

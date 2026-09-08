@@ -24,6 +24,7 @@ import {
   SETUP_MSME_ASSISTED_BY_SIZE,
   SETUP_MSME_ASSISTED_TOTAL,
   SETUP_PRIORITY_SECTOR_CATALOG,
+  SETUP_FAQS,
   SETUP_SERVICES,
   SETUP_WHO_CAN_APPLY,
 } from "../constants/setupBrochure";
@@ -959,33 +960,6 @@ function ProcessSection({ onLogin }: { onLogin: () => void }) {
 function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
 
-  const faqs = [
-    {
-      q: "Who can apply for SETUP?",
-      a: "Filipino-owned MSMEs (at least 60% Filipino equity) registered with DTI, SEC, or CDA that have been operating for at least 3 years are eligible.",
-    },
-    {
-      q: "How much financial assistance can I get?",
-      a: `Eligible enterprises in ${REGION_12_LABEL} can receive up to ₱5,000,000 in soft loan financing, depending on the approved project proposal and available regional allocation.`,
-    },
-    {
-      q: "What is the interest rate and repayment period?",
-      a: "SETUP loans carry a low annual interest rate with a 1-year grace period on principal. Repayment periods vary based on the loan amount and project type.",
-    },
-    {
-      q: "How long does the application process take?",
-      a: "The entire process typically takes 2–4 months from submission to fund release, depending on completeness of documents and evaluation scheduling.",
-    },
-    {
-      q: "Can I apply if I am a Person with Disability (PWD)?",
-      a: "Yes! PWD entrepreneurs are encouraged to apply. The system accommodates PWD status during registration and there may be priority processing available.",
-    },
-    {
-      q: "What technologies are eligible under SETUP?",
-      a: "Equipment, machinery, software systems, quality certification costs, product development, and training for manufacturing, agri-processing, and services sectors.",
-    },
-  ];
-
   return (
     <section id="faq" className="py-20 bg-[#EEF2F7]">
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
@@ -999,7 +973,7 @@ function FAQSection() {
         </div>
 
         <div className="space-y-3">
-          {faqs.map((faq, i) => (
+          {SETUP_FAQS.map((faq, i) => (
             <div
               key={i}
               className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
@@ -1186,9 +1160,12 @@ function Footer({ onLogin }: { onLogin: () => void }) {
         </div>
 
         <div className="border-t border-white/15 pt-5 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-white/50">
+          <p className="group text-xs text-white/50 cursor-default">
             Powered by AiSETUP Platform — Built with ❤️ for
             Filipino MSMEs
+            <span className="mt-1 block text-[10px] leading-tight text-white/0 transition-colors duration-300 group-hover:text-white/10">
+              Authored and developed by Yzrel Jade B. Eborde
+            </span>
           </p>
           <div className="flex gap-4 text-xs text-white/50">
             <button className="hover:text-white/80">

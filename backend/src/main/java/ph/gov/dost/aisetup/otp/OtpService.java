@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ph.gov.dost.aisetup.auth.UserAccountRepository;
 import ph.gov.dost.aisetup.config.AisetupProperties;
 import ph.gov.dost.aisetup.otp.dto.OtpResponses;
 
@@ -22,7 +23,13 @@ public class OtpService {
 
     public static final String CHANNEL_EMAIL = "email";
     public static final String CHANNEL_SMS = "sms";
+    /** Email OTP used only for self-service password reset (distinct from registration). */
+    public static final String CHANNEL_PASSWORD_RESET = "password-reset";
     public static final String DEMO_CODE = "123456";
+    public static final String EMAIL_ALREADY_REGISTERED =
+            "This email is already registered. Please sign in or use Forgot Password.";
+    public static final String PHONE_ALREADY_REGISTERED =
+            "This mobile number is already registered. Please sign in or use Forgot Password.";
 
     private static final Duration CODE_TTL = Duration.ofMinutes(10);
     private static final Duration RESEND_COOLDOWN = Duration.ofSeconds(60);
@@ -33,17 +40,20 @@ public class OtpService {
     private final EmailOtpSender emailOtpSender;
     private final SemaphoreSmsSender smsSender;
     private final AisetupProperties properties;
+    private final UserAccountRepository userAccountRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OtpService(
             VerificationCodeRepository repository,
             EmailOtpSender emailOtpSender,
             SemaphoreSmsSender smsSender,
-            AisetupProperties properties) {
+            AisetupProperties properties,
+            UserAccountRepository userAccountRepository) {
         this.repository = repository;
         this.emailOtpSender = emailOtpSender;
         this.smsSender = smsSender;
         this.properties = properties;
+        this.userAccountRepository = userAccountRepository;
     }
 
     public boolean isEmailConfigured() {
@@ -58,7 +68,7 @@ public class OtpService {
         if (!properties.isDemoModeEnabled()) {
             return false;
         }
-        if (CHANNEL_EMAIL.equals(channel)) {
+        if (CHANNEL_EMAIL.equals(channel) || CHANNEL_PASSWORD_RESET.equals(channel)) {
             return !isEmailConfigured();
         }
         if (CHANNEL_SMS.equals(channel)) {
@@ -67,11 +77,64 @@ public class OtpService {
         return false;
     }
 
+    /** Sends a password-reset OTP to the given email (demo fallback when SMTP is off). */
+    @Transactional
+    public Map<String, Object> sendPasswordReset(String email) {
+        return send(CHANNEL_PASSWORD_RESET, email);
+    }
+
+    /**
+     * Verifies a password-reset OTP and marks it consumed (single-use). Throws on failure.
+     */
+    @Transactional
+    public void consumePasswordReset(String email, String code) {
+        String target = normalizeTarget(CHANNEL_PASSWORD_RESET, email);
+        Instant now = Instant.now();
+
+        VerificationCode latest = repository
+                .findFirstByChannelAndTargetOrderByCreatedAtDesc(CHANNEL_PASSWORD_RESET, target)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid or expired reset code. Please request a new one."));
+
+        if (latest.isVerified()) {
+            throw new IllegalArgumentException(
+                    "This reset code was already used. Please request a new one.");
+        }
+        if (latest.getExpiresAt().isBefore(now)) {
+            throw new IllegalArgumentException(
+                    "This reset code has expired. Please request a new one.");
+        }
+        if (latest.getAttempts() >= MAX_ATTEMPTS) {
+            throw new IllegalArgumentException(
+                    "Too many incorrect attempts. Please request a new reset code.");
+        }
+
+        String submitted = code == null ? "" : code.trim();
+        boolean demoAccept = isDemoFallback(CHANNEL_PASSWORD_RESET) && DEMO_CODE.equals(submitted);
+        boolean match = demoAccept || hash(submitted).equalsIgnoreCase(latest.getCodeHash());
+        if (!match) {
+            latest.setAttempts(latest.getAttempts() + 1);
+            repository.save(latest);
+            throw new IllegalArgumentException("Incorrect verification code");
+        }
+
+        latest.setVerified(true);
+        repository.save(latest);
+    }
+
     @Transactional
     public Map<String, Object> send(String channel, String rawTarget) {
         String normalizedChannel = normalizeChannel(channel);
         String target = normalizeTarget(normalizedChannel, rawTarget);
         Instant now = Instant.now();
+
+        if (CHANNEL_EMAIL.equals(normalizedChannel)
+                && userAccountRepository.existsByEmailIgnoreCase(target)) {
+            throw new IllegalArgumentException(EMAIL_ALREADY_REGISTERED);
+        }
+        if (CHANNEL_SMS.equals(normalizedChannel) && isPhoneRegistered(target)) {
+            throw new IllegalArgumentException(PHONE_ALREADY_REGISTERED);
+        }
 
         repository
                 .findFirstByChannelAndTargetOrderByCreatedAtDesc(normalizedChannel, target)
@@ -111,6 +174,8 @@ public class OtpService {
 
         if (CHANNEL_EMAIL.equals(normalizedChannel)) {
             emailOtpSender.send(target, code);
+        } else if (CHANNEL_PASSWORD_RESET.equals(normalizedChannel)) {
+            emailOtpSender.sendPasswordReset(target, code);
         } else {
             smsSender.send(target, code);
         }
@@ -191,8 +256,18 @@ public class OtpService {
         }
     }
 
+    /** True when this mobile is stored on an existing {@code users.phone} row. */
+    public boolean isPhoneRegistered(String rawPhone) {
+        String normalized = SemaphoreSmsSender.normalizePhMobile(rawPhone);
+        if (!SemaphoreSmsSender.isValidPhMobile(normalized)) {
+            return false;
+        }
+        return userAccountRepository.existsByPhone(normalized);
+    }
+
     private void ensureProviderConfigured(String channel) {
-        if (CHANNEL_EMAIL.equals(channel) && !isEmailConfigured()) {
+        if ((CHANNEL_EMAIL.equals(channel) || CHANNEL_PASSWORD_RESET.equals(channel))
+                && !isEmailConfigured()) {
             throw new IllegalStateException(
                     "Email verification is unavailable. Configure SMTP_USERNAME / SMTP_PASSWORD or enable demo mode.");
         }
@@ -207,8 +282,10 @@ public class OtpService {
             throw new IllegalArgumentException("channel is required");
         }
         String c = channel.trim().toLowerCase();
-        if (!CHANNEL_EMAIL.equals(c) && !CHANNEL_SMS.equals(c)) {
-            throw new IllegalArgumentException("channel must be email or sms");
+        if (!CHANNEL_EMAIL.equals(c)
+                && !CHANNEL_SMS.equals(c)
+                && !CHANNEL_PASSWORD_RESET.equals(c)) {
+            throw new IllegalArgumentException("channel must be email, sms, or password-reset");
         }
         return c;
     }
@@ -217,7 +294,7 @@ public class OtpService {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("target is required");
         }
-        if (CHANNEL_EMAIL.equals(channel)) {
+        if (CHANNEL_EMAIL.equals(channel) || CHANNEL_PASSWORD_RESET.equals(channel)) {
             String email = raw.trim().toLowerCase();
             if (!email.contains("@") || email.length() < 5) {
                 throw new IllegalArgumentException("Enter a valid email address");

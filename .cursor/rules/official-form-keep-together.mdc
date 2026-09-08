@@ -1,0 +1,27 @@
+---
+description: Official print — never split attachment figures or signature blocks across pages
+globs: src/app/components/**/*Document.tsx,src/styles/*.css,src/app/utils/*Print.tsx,.cursor/rules/*-layout.mdc
+alwaysApply: false
+---
+
+# Official forms: keep attachments and signatories together
+
+On official PDFs / `window.print()`, these units must **never** be cut by a page break:
+
+- **Signatories** — the full closing block (labels, signature lines, printed names, dates). Example: TNA Form 01 Prepared by / Validated by.
+- **Attachments** — the figure as one unit (section title + image, scanned diagram, or empty box). Example: Process Flow Diagram, Production Plan Attachment, Plant Lay-Out, Organizational Structure.
+
+## Required behavior
+
+- If the unit does not fit in the remaining space on the page, move the **entire** unit to the next page.
+- Do not leave a heading or signature line on one sheet and the image/names on the next.
+- Do not clip attachment images at the box or page edge. Scale the figure to fit one A4 content area (`max-height` about 160mm, `object-fit: contain`).
+
+## Implementation
+
+- Wrap the unit in `.…-block-keep` (`break-inside: avoid` / `page-break-inside: avoid`).
+- Use a CSS grid or block layout — **not** a `<table>`. Chromium print splits table rows and cells even when `page-break-inside: avoid` is set.
+- Long narratives and data tables still use `break-inside: auto` so they can flow across pages. Keep-together is only for short atomic units (one figure, one signature block).
+
+TNA Form 01: `.tna-form-signature-block`, `.tna-form-attachment-block` in `src/styles/tnaForm01.css`.
+Form 001: `.pp-form-block-keep` on `.pp-form-sign` and `.pp-form-attachment`.

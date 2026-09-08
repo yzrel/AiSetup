@@ -21,6 +21,7 @@ import {
   Eye,
   Info,
   Search,
+  ClipboardCheck,
 } from "lucide-react";
 import { EditableTableResponsive } from "./ui/editable-table-responsive";
 import { AuthUser, isRtecStaff } from "../store/authStore";
@@ -72,6 +73,7 @@ import {
   sumExistingEquipmentColumns,
   sumRawMaterialAllocationColumns,
   sumRawMaterialCostColumns,
+  buildProjectProposalValidationChecks,
   mergeRiskRowsFillEmpty,
   validateProjectProposalSubmit,
 } from "../utils/projectProposal";
@@ -85,6 +87,7 @@ import {
   StaffReviewStep,
   type PpSection,
 } from "./projectProposal/StaffReviewStep";
+import { ValidationStep } from "./projectProposal/ValidationStep";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import {
   notifyProjectProposalSubmitted,
@@ -92,8 +95,10 @@ import {
   notifyProjectProposalResubmission,
 } from "../utils/notificationHelpers";
 import { aiGenerateErrorMessage } from "../utils/apiErrors";
-import { aiGenerateNotice } from "../utils/demoMode";
+import { allowWhenDemo, aiGenerateNotice } from "../utils/demoMode";
 import { getPublishedTna2 } from "../utils/tnaForm02";
+import { tryAdvanceModule } from "../utils/moduleGateways";
+import { FIELD_GUIDANCE } from "../constants/fieldGuidance";
 import {
   REGISTRATION_DATE_HINT,
   REGISTRATION_DATE_LABEL,
@@ -131,6 +136,7 @@ type StepId =
   | "waste"
   | "financial"
   | "risk"
+  | "validation"
   | "preview"
   | "staff-review";
 
@@ -143,11 +149,19 @@ const STEPS: { id: StepId; label: string; icon: ReactNode }[] = [
   { id: "waste", label: "Waste", icon: <Recycle className="w-4 h-4" /> },
   { id: "financial", label: "Financial", icon: <Banknote className="w-4 h-4" /> },
   { id: "risk", label: "Risk", icon: <Shield className="w-4 h-4" /> },
+  { id: "validation", label: "Validation", icon: <ClipboardCheck className="w-4 h-4" /> },
   { id: "preview", label: "Preview", icon: <Eye className="w-4 h-4" /> },
   { id: "staff-review", label: "Staff Review", icon: <Search className="w-4 h-4" /> },
 ];
 
-/** Content tabs staff verify/flag (excludes Preview + Staff Review). */
+/** Staff Review is a DOST personnel step — never shown on cooperator accounts. */
+const PP_STAFF_ONLY_STEP_ID: StepId = "staff-review";
+
+function visiblePpSteps(isStaff: boolean) {
+  return isStaff ? STEPS : STEPS.filter((s) => s.id !== PP_STAFF_ONLY_STEP_ID);
+}
+
+/** Content tabs staff verify/flag (excludes Validation + Preview + Staff Review). */
 const PP_SECTION_REVIEW_STEP_IDS = [
   "cover",
   "company",
@@ -320,6 +334,7 @@ function TableEditor({
   headers,
   rows,
   onChange,
+  hint,
   readOnlyColumns,
   multilineColumns,
   columnClassNames,
@@ -329,6 +344,7 @@ function TableEditor({
   headers: string[];
   rows: string[][];
   onChange: (rows: string[][]) => void;
+  hint?: string;
   readOnlyColumns?: number[];
   multilineColumns?: number[];
   columnClassNames?: string[];
@@ -337,6 +353,9 @@ function TableEditor({
   return (
     <div>
       <label className={labelCls}>{label}</label>
+      {hint ? (
+        <p className="text-xs text-gray-500 mb-2 leading-snug">{hint}</p>
+      ) : null}
       <EditableTableResponsive
         columns={headers}
         rows={rows}
@@ -403,6 +422,7 @@ export function ProjectProposal({
 }: ProjectProposalProps = {}) {
   const { applicant, isStaff } = useStaffApplicant(user);
   const reviewOnly = isRtecStaff(user?.role);
+  const visibleSteps = useMemo(() => visiblePpSteps(isStaff), [isStaff]);
 
   const [form, setForm] = useState<ProjectProposalForm>(() =>
     getProjectProposalForm(applicant),
@@ -466,27 +486,39 @@ export function ProjectProposal({
     setResubmissionError("");
     setSubmitErrors([]);
     if (stored?.submitted || stored?.staffReviewed) {
-      setMaxReached(STEPS.length - 1);
+      setMaxReached(visiblePpSteps(isStaff).length - 1);
     } else {
       setMaxReached(0);
     }
     setStep("cover");
-  }, []);
+  }, [isStaff]);
 
   useEffect(() => {
     loadApplicant(applicant);
   }, [applicant?.id, loadApplicant]);
 
   useEffect(() => {
-    const idx = STEPS.findIndex((s) => s.id === step);
+    if (!isStaff && step === PP_STAFF_ONLY_STEP_ID) {
+      setStep("preview");
+    }
+  }, [isStaff, step]);
+
+  useEffect(() => {
+    if (isStaff && !reviewOnly && step === "staff-review") {
+      setStaffMode(true);
+    }
+  }, [isStaff, reviewOnly, step]);
+
+  useEffect(() => {
+    const idx = visibleSteps.findIndex((s) => s.id === step);
     if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
-  }, [step]);
+  }, [step, visibleSteps]);
 
   useEffect(() => {
     if (submitted || staffApproved) {
-      setMaxReached(STEPS.length - 1);
+      setMaxReached(visibleSteps.length - 1);
     }
-  }, [submitted, staffApproved]);
+  }, [submitted, staffApproved, visibleSteps.length]);
 
   const formRef = useRef(form);
   const attachmentsRef = useRef(attachments);
@@ -624,12 +656,14 @@ export function ProjectProposal({
       setSubmitErrors(errors);
       return;
     }
+    setSubmitErrors([]);
     submitProjectProposal(applicant.id, form, attachments, document ?? undefined);
     notifyProjectProposalSubmitted(applicant);
     setSubmitted(true);
     setStaffApproved(false);
-    setMaxReached(STEPS.length - 1);
-    onSubmitSuccess?.();
+    setMaxReached(visibleSteps.length - 1);
+    // Stay on Project Proposal like TNA1 — cooperator awaits staff approval
+    // before Continue to Submit Requirements unlocks.
   };
 
   const persistSectionReview = useCallback(
@@ -780,6 +814,8 @@ export function ProjectProposal({
       notifyProjectProposalReviewed(applicant);
       setStaffApproved(true);
       setStep("preview");
+      // If the cooperator already submitted, unlock Submit Requirements now.
+      tryAdvanceModule(applicant.id, "project-proposal", user.role);
     },
     [applicant, user, staffNotes],
   );
@@ -800,11 +836,17 @@ export function ProjectProposal({
 
   const tna2Published = getPublishedTna2(applicant);
   const stored = getProjectProposalStored(applicant);
-  const stepIdx = STEPS.findIndex((s) => s.id === step);
-  const previewIdx = STEPS.findIndex((s) => s.id === "preview");
+  const stepIdx = visibleSteps.findIndex((s) => s.id === step);
+  const previewIdx = visibleSteps.findIndex((s) => s.id === "preview");
   const isFirstStep = stepIdx <= 0;
   const isPreviewStep = step === "preview";
+  const isValidationStep = step === "validation";
   const isStaffReviewStep = step === "staff-review";
+  const validationChecks = useMemo(
+    () => buildProjectProposalValidationChecks(form, attachments),
+    [form, attachments],
+  );
+  const allValidationPassed = validationChecks.every((c) => c.passed);
   const allSectionsReviewed =
     sections.length > 0 && sections.every((s) => s.verified || s.flagged);
   const flaggedSections = sections.filter((s) => s.flagged);
@@ -812,22 +854,26 @@ export function ProjectProposal({
     !!applicant && !isStaff && !submitted && flaggedSections.length > 0;
   /** Applicants stop at Preview; staff can continue to Staff Review. */
   const canContinue = isStaff
-    ? stepIdx >= 0 && stepIdx < STEPS.length - 1
+    ? stepIdx >= 0 && stepIdx < visibleSteps.length - 1
     : stepIdx >= 0 && stepIdx < previewIdx;
+  const canLeaveValidation =
+    !isValidationStep || allowWhenDemo(allValidationPassed);
 
   const goBack = () => {
-    if (stepIdx > 0) setStep(STEPS[stepIdx - 1].id);
+    if (stepIdx > 0) setStep(visibleSteps[stepIdx - 1].id);
   };
 
   const goNext = () => {
     if (!canContinue) return;
-    const next = STEPS[stepIdx + 1].id;
+    if (step === "validation" && !allowWhenDemo(allValidationPassed)) return;
+    const next = visibleSteps[stepIdx + 1].id;
     setMaxReached((m) => Math.max(m, stepIdx + 1));
     setStep(next);
   };
 
   const goToStep = (id: StepId) => {
-    const idx = STEPS.findIndex((s) => s.id === id);
+    if (!isStaff && id === PP_STAFF_ONLY_STEP_ID) return;
+    const idx = visibleSteps.findIndex((s) => s.id === id);
     if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
     setStep(id);
   };
@@ -930,14 +976,17 @@ export function ProjectProposal({
                     </div>
                   </div>
                 </div>
-                <div><label className={labelCls}>Indirect / contract</label>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Indirect / contract</label>
                   <div className="flex gap-2">
                     <input className={inputCls} placeholder="Male" value={form.employeesIndirectMale} onChange={(e) => patchForm({ employeesIndirectMale: e.target.value })} />
                     <input className={inputCls} placeholder="Female" value={form.employeesIndirectFemale} onChange={(e) => patchForm({ employeesIndirectFemale: e.target.value })} />
                   </div>
                 </div>
-                <div><label className={labelCls}>Registration Office</label><input className={inputCls} value={form.registrationOffice} onChange={(e) => patchForm({ registrationOffice: e.target.value })} /></div>
-                <div><label className={labelCls}>Registration Number</label><input className={inputCls} value={form.registrationNumber} onChange={(e) => patchForm({ registrationNumber: e.target.value })} /></div>
+                <div className="sm:col-span-2 grid sm:grid-cols-2 gap-4">
+                  <div><label className={labelCls}>Registration Office</label><input className={inputCls} value={form.registrationOffice} onChange={(e) => patchForm({ registrationOffice: e.target.value })} /></div>
+                  <div><label className={labelCls}>Registration Number</label><input className={inputCls} value={form.registrationNumber} onChange={(e) => patchForm({ registrationNumber: e.target.value })} /></div>
+                </div>
                 <div>
                   <label className={labelCls}>{REGISTRATION_DATE_LABEL}</label>
                   <p className="text-xs text-gray-500 mb-1">{REGISTRATION_DATE_HINT}</p>
@@ -994,15 +1043,15 @@ export function ProjectProposal({
                   }
                   readOnlyColumns={[...COMPENSATION_COMPUTED_COLUMNS]}
                   multilineColumns={[0]}
-                  tableClassName="table-fixed"
+                  tableClassName="min-w-[56rem]"
                   columnClassNames={[
-                    "w-[28%] min-w-[12rem]",
-                    "w-[9%]",
-                    "w-[11%]",
-                    "w-[8%]",
-                    "w-[12%]",
-                    "w-[16%]",
-                    "w-[16%]",
+                    "min-w-[12rem]",
+                    "min-w-[6rem]",
+                    "min-w-[5.5rem]",
+                    "min-w-[5rem]",
+                    "min-w-[7.5rem]",
+                    "min-w-[8rem]",
+                    "min-w-[8rem]",
                   ]}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
@@ -1070,18 +1119,18 @@ export function ProjectProposal({
                   }
                   readOnlyColumns={[...RAW_MATERIAL_COST_COMPUTED_COLUMNS]}
                   multilineColumns={[0]}
-                  tableClassName="table-fixed min-w-[64rem]"
+                  tableClassName="min-w-[78rem]"
                   columnClassNames={[
-                    "w-[22%] min-w-[14rem]",
-                    "w-[6%]",
-                    "w-[6%]",
-                    "w-[8%]",
-                    "w-[11%]",
-                    "w-[8%]",
-                    "w-[8%]",
-                    "w-[8%]",
-                    "w-[9%]",
-                    "w-[14%] min-w-[8rem]",
+                    "min-w-[11rem]",
+                    "min-w-[5.5rem]",
+                    "min-w-[4.5rem]",
+                    "min-w-[6.5rem]",
+                    "min-w-[8rem]",
+                    "min-w-[5.5rem]",
+                    "min-w-[7.5rem]",
+                    "min-w-[7.5rem]",
+                    "min-w-[8.5rem]",
+                    "min-w-[9rem]",
                   ]}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
@@ -1099,8 +1148,8 @@ export function ProjectProposal({
                     patchForm({ rawMaterialAllocationTable })
                   }
                   multilineColumns={[0]}
-                  tableClassName="table-fixed"
-                  columnClassNames={["w-[50%] min-w-[12rem]", "w-[25%]", "w-[25%]"]}
+                  tableClassName="min-w-[36rem]"
+                  columnClassNames={["min-w-[14rem]", "min-w-[7rem]", "min-w-[8rem]"]}
                 />
                 <RawMaterialAllocationTotalsLine rows={form.rawMaterialAllocationTable} />
               </div>
@@ -1219,17 +1268,17 @@ export function ProjectProposal({
                   }
                   readOnlyColumns={[...EXISTING_EQUIPMENT_COMPUTED_COLUMNS]}
                   multilineColumns={[0]}
-                  tableClassName="table-fixed min-w-[64rem]"
+                  tableClassName="min-w-[72rem]"
                   columnClassNames={[
-                    "w-[18%] min-w-[10rem]",
-                    "w-[9%]",
-                    "w-[12%]",
-                    "w-[6%]",
-                    "w-[12%]",
-                    "w-[6%]",
-                    "w-[14%]",
-                    "w-[6%]",
-                    "w-[12%]",
+                    "min-w-[11rem]",
+                    "min-w-[6.5rem]",
+                    "min-w-[8rem]",
+                    "min-w-[4.5rem]",
+                    "min-w-[7.5rem]",
+                    "min-w-[4.5rem]",
+                    "min-w-[8.5rem]",
+                    "min-w-[4.5rem]",
+                    "min-w-[8rem]",
                   ]}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
@@ -1252,7 +1301,15 @@ export function ProjectProposal({
                 <AttachmentUpload kind="plantLayout" required attachment={attachments.find((a) => a.kind === "plantLayout")} onUpload={setAttachment} onRemove={() => removeAttachment("plantLayout")} applicantId={applicant?.id} />
               </div>
               <div className="mt-4">
-                <TableEditor label="Intervention Cost Table" headers={["Equipment", "Qty", "Unit Cost", "Total"]} rows={form.interventionCostTable} onChange={(interventionCostTable) => patchForm({ interventionCostTable })} />
+                <TableEditor
+                  label="Intervention Cost Table"
+                  hint={FIELD_GUIDANCE.interventionCostTable}
+                  headers={["Equipment", "Qty", "Unit Cost", "Total"]}
+                  rows={form.interventionCostTable}
+                  onChange={(interventionCostTable) =>
+                    patchForm({ interventionCostTable })
+                  }
+                />
               </div>
             </div>
             <div className="rounded-xl border-2 border-[#0C2461]/15 bg-blue-50/40 p-5 space-y-4">
@@ -1441,6 +1498,17 @@ export function ProjectProposal({
           </div>
         );
 
+      case "validation":
+        return (
+          <ValidationStep
+            validationChecks={validationChecks}
+            allValid={allValidationPassed}
+            onGoToSection={(section) => goToStep(section)}
+            submitted={submitted}
+            staffApproved={staffApproved}
+          />
+        );
+
       case "preview":
         return (
           <div className="space-y-4">
@@ -1522,7 +1590,7 @@ export function ProjectProposal({
             )}
           </div>
           <ModuleStepHeader
-            steps={STEPS}
+            steps={visibleSteps}
             current={step}
             maxReached={maxReached}
             onStepClick={(id) => goToStep(id as StepId)}
@@ -1541,14 +1609,43 @@ export function ProjectProposal({
           </div>
         )}
 
-        {submitted && (
-          <div className="mx-6 mt-4 flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <CheckCircle className="w-4 h-4 shrink-0" />
-            Project Proposal submitted
-            {stored?.submittedAt
-              ? ` on ${new Date(stored.submittedAt).toLocaleDateString()}`
-              : ""}
-            {staffApproved ? " · Staff approved" : ""}.
+        {submitted && !staffApproved && !isStaff && (
+          <div className="mx-6 mt-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <span className="text-lg shrink-0 mt-0.5" aria-hidden>
+              ⏳
+            </span>
+            <div className="text-sm text-amber-800">
+              <p className="font-semibold mb-0.5">Awaiting staff approval</p>
+              <p className="leading-relaxed">
+                Your {formatFormMention("001")} was submitted
+                {stored?.submittedAt
+                  ? ` on ${new Date(stored.submittedAt).toLocaleString("en-PH")}`
+                  : ""}
+                . DOST will review your application. Submit Requirements unlocks
+                after staff approval.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {submitted && staffApproved && (
+          <div className="mx-6 mt-4 flex items-start gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p>
+                Project Proposal submitted
+                {stored?.submittedAt
+                  ? ` on ${new Date(stored.submittedAt).toLocaleDateString()}`
+                  : ""}
+                {" · Staff approved"}.
+              </p>
+              {!isStaff && (
+                <p className="text-xs text-green-600 mt-1">
+                  You can continue to Submit Requirements from the button below
+                  or the sidebar.
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -1626,6 +1723,7 @@ export function ProjectProposal({
                 resubmissionError={resubmissionError}
                 onOpenPreview={() => setStep("preview")}
                 submitted={submitted}
+                reviewOnly={reviewOnly}
               />
             ) : (
               <div className="text-center py-12 space-y-2">
@@ -1675,7 +1773,7 @@ export function ProjectProposal({
                   if (!reviewOnly) handleSaveDraft();
                   goNext();
                 }}
-                disabled={!applicant}
+                disabled={!applicant || !canLeaveValidation}
                 className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
                 style={{ background: DOST_BLUE }}
               >
@@ -1686,12 +1784,28 @@ export function ProjectProposal({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!applicant}
+                disabled={!applicant || !allowWhenDemo(allValidationPassed)}
                 className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
                 style={{ background: "#059669" }}
               >
                 <CheckCircle className="w-4 h-4" /> Submit proposal
               </button>
+            )}
+            {isPreviewStep && submitted && !isStaff && (
+              !staffApproved ? (
+                <div className="w-full sm:flex-1 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold text-center flex items-center justify-center px-3">
+                  Awaiting staff approval
+                </div>
+              ) : onSubmitSuccess ? (
+                <button
+                  type="button"
+                  onClick={() => onSubmitSuccess()}
+                  className="w-full sm:flex-1 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+                  style={{ background: "#059669" }}
+                >
+                  Continue to Submit Requirements →
+                </button>
+              ) : null
             )}
           </div>
           )}

@@ -433,14 +433,22 @@ export function notifyTna1Resubmission(
 }
 
 export function notifyTna2Published(applicant: Applicant) {
+  const title = `${formatFormMention("tna02", "ref")} published`;
+  const message = `Your ${formatFormMention("tna02", "both")} is now available in the AiSETUP portal. Review the report and continue to the Project Proposal when you are ready.`;
   notificationStore.add({
     id: `tna2-published-${applicant.id}-${Date.now()}`,
     audience: "applicant",
     applicantId: applicant.id,
     kind: "success",
-    title: `${formatFormMention("tna02")} published`,
-    message: "Your technical report is now available. Review it and continue your application.",
+    title,
+    message,
     view: "tna2",
+  });
+  return emailApplicantNotice({
+    applicant,
+    title,
+    message,
+    module: "tna2",
   });
 }
 

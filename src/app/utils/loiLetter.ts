@@ -131,7 +131,8 @@ export function resolveProvincialOffice(province: string): {
 }
 
 export type LoiCommitmentFields = {
-  approvedAmount: string;
+  /** Requested iFund / seed-fund amount (LOI Commitment of Refund). */
+  requestedAmount: string;
   repaymentTerm: string;
 };
 
@@ -184,7 +185,7 @@ export function buildLoiGenerationPayload(
     expectedOutcome: additional.expectedOutcome,
     budget: selectedProgram ? "" : additional.budget,
     timeline: selectedProgram ? "" : additional.timeline,
-    commitmentAmount: selectedProgram ? "" : commitment.approvedAmount,
+    commitmentAmount: selectedProgram ? "" : commitment.requestedAmount,
     repaymentTerm: selectedProgram ? "" : commitment.repaymentTerm,
     productionPlanFile: productionPlanFile ?? String(md.productionPlanFile ?? ""),
 
@@ -249,7 +250,7 @@ export function buildTemplateLoiBody(
 
   if (isSetupQualified) {
     paragraphs.push(
-      `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the approved seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
+      `We commit to fully comply with all DOST SETUP 4.0 guidelines and requirements, including the refund of the requested seed fund amounting to ${budget(payload.commitmentAmount)} over ${val(payload.repaymentTerm)} at zero percent interest, and to cover the insurance cost for acquired equipment as our enterprise counterpart. We understand our obligations under the program and pledge our full cooperation throughout the evaluation and implementation process.`,
     );
   } else {
     paragraphs.push(

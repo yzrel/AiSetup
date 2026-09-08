@@ -11,10 +11,14 @@ export const DOST_LOGO_HORIZONTAL_TRANSPARENT =
 export const DOST_LOGO_HORIZONTAL_LIGHT =
   "/assets/dost-logo-horizontal-light.png";
 
-/** Source mark asset: 759×814px — four-circle graphic ends ~697px (caption below). */
+/**
+ * Source mark asset: 759×814px.
+ * Four-circle graphic last opaque row is 665; caption "DEPARTMENT OF" starts at 697.
+ * Crop in the empty gap so the loader spin does not turn a caption sliver into a diagonal line.
+ */
 const MARK_SRC_W = 759;
 const MARK_SRC_H = 814;
-const MARK_GRAPHIC_H = 697;
+const MARK_GRAPHIC_H = 680;
 const MARK_DISPLAY_HEIGHT_RATIO = MARK_GRAPHIC_H / MARK_SRC_W;
 
 function DOSTMarkGraphic({

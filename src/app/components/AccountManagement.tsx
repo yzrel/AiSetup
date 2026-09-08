@@ -564,6 +564,7 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState(emptyCreateForm);
   const [editForm, setEditForm] = useState({
+    email: "",
     firstName: "",
     middleName: "",
     lastName: "",
@@ -610,6 +611,7 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
     setCreating(false);
     setSelected(s);
     setEditForm({
+      email: s.email,
       firstName: s.firstName,
       middleName: s.middleName ?? "",
       lastName: s.lastName,
@@ -697,11 +699,16 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
       setMessage({ type: "error", text: "First name and last name are required." });
       return;
     }
+    if (!editForm.email.trim()) {
+      setMessage({ type: "error", text: "Email is required." });
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
       const scoped = applyRtecStaffAccountDefaults(editForm);
       const payload: ApiUpdateStaffRequest = {
+        email: scoped.email.trim(),
         firstName: scoped.firstName.trim(),
         middleName: scoped.middleName.trim(),
         lastName: scoped.lastName.trim(),
@@ -1016,6 +1023,8 @@ function StaffUsersPanel({ currentUserId }: { currentUserId: string }) {
 
               <StaffFormFields
                 values={editForm}
+                email={editForm.email}
+                showEmail
                 onChange={(patch) =>
                   setEditForm((f) =>
                     applyRtecStaffAccountDefaults({ ...f, ...patch }),
@@ -1168,6 +1177,7 @@ function StaffFormFields({
   email,
   password,
   showEmailPassword,
+  showEmail,
   onChange,
   onToggleProvince,
 }: {
@@ -1183,6 +1193,8 @@ function StaffFormFields({
   email?: string;
   password?: string;
   showEmailPassword?: boolean;
+  /** Allow editing login email without the create-password fields. */
+  showEmail?: boolean;
   onChange: (
     patch: Partial<{
       email: string;
@@ -1203,23 +1215,23 @@ function StaffFormFields({
 
   return (
     <div className="space-y-3">
+      {(showEmailPassword || showEmail) && (
+        <input
+          type="email"
+          value={email ?? ""}
+          onChange={(e) => onChange({ email: e.target.value })}
+          placeholder="Email"
+          className={inputClass}
+        />
+      )}
       {showEmailPassword && (
-        <>
-          <input
-            type="email"
-            value={email ?? ""}
-            onChange={(e) => onChange({ email: e.target.value })}
-            placeholder="Email"
-            className={inputClass}
-          />
-          <input
-            type="password"
-            value={password ?? ""}
-            onChange={(e) => onChange({ password: e.target.value })}
-            placeholder="Temporary password (8+ characters)"
-            className={inputClass}
-          />
-        </>
+        <input
+          type="password"
+          value={password ?? ""}
+          onChange={(e) => onChange({ password: e.target.value })}
+          placeholder="Temporary password (8+ characters)"
+          className={inputClass}
+        />
       )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <input

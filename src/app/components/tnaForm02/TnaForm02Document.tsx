@@ -23,6 +23,7 @@ import {
   TNA_FORM_02_SUBTITLE,
   TNA_FORM_02_TITLE,
   displayValue,
+  formatDisplayDate,
 } from "../../constants/tnaForm02Layout";
 import { enrichTna2Summary } from "../../utils/tnaForm02";
 
@@ -276,33 +277,30 @@ function SignatureTemplateBlock() {
   );
 }
 
-/** Filled closing signatures — Word tabbed row (Reported by / Date / Attested by). */
+/** Filled closing signatures — two columns, date on its own line with the value. */
 function SignatureClosingBlock({ doc }: { doc: Tna2DocumentResponse }) {
   const assessor = doc.assessor ?? {};
   const attestedBy = doc.attestedBy ?? {};
   const leaderName = val(assessor.name);
-  const leaderDate = val(doc.assessmentDate);
   const ardName = val(attestedBy.name);
+  const dateText = formatDisplayDate(val(doc.assessmentDate)) || "____";
 
   return (
     <FormBlock keepTogether>
-      <div className="tna2-form-signature-closing">
-        <div className="tna2-form-signature-closing-row">
+      <div className="tna2-form-signature-columns">
+        <div className="tna2-form-signature-col">
           <p className="tna2-form-signature-line-text">
-            Reported by:{leaderName}
-            {leaderName ? " Date:" : ""}
+            Reported by:{leaderName ? ` ${leaderName}` : ""}
           </p>
-          <p className="tna2-form-signature-line-text tna2-form-signature-attest">
-            Attested by:{ardName}
-            {ardName ? "Date:" : ""}
-          </p>
-        </div>
-        {leaderDate ? (
-          <p className="tna2-form-signature-date-line">{leaderDate}</p>
-        ) : null}
-        <div className="tna2-form-signature-closing-row">
           <p className="tna2-form-signature-caption">Name of TNA Team Leader</p>
-          <p className="tna2-form-signature-caption tna2-form-signature-attest">Name of ARD</p>
+          <p className="tna2-form-signature-line-text">Date: {dateText}</p>
+        </div>
+        <div className="tna2-form-signature-col">
+          <p className="tna2-form-signature-line-text">
+            Attested by:{ardName ? ` ${ardName}` : ""}
+          </p>
+          <p className="tna2-form-signature-caption">Name of ARD</p>
+          <p className="tna2-form-signature-line-text">Date: {dateText}</p>
         </div>
       </div>
     </FormBlock>

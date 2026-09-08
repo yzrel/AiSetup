@@ -63,6 +63,18 @@ describe("moduleGateways", () => {
     expect(gate.next).toBe("tna2");
   });
 
+  it("allows tna1 → tna2 after staff + PD even if submitted was cleared", () => {
+    const applicant = baseApplicant({
+      qualified: true,
+      currentModule: "tna1",
+      moduleData: {
+        tna1: { submitted: false, staffReviewed: true, directorValidated: true },
+      },
+    });
+    expect(isModuleComplete(applicant, "tna1")).toBe(true);
+    expect(canAdvanceFrom(applicant, "tna1").ok).toBe(true);
+  });
+
   it("blocks project-proposal until TNA2 is published when still on tna2", () => {
     const applicant = baseApplicant({
       qualified: true,
@@ -105,9 +117,54 @@ describe("moduleGateways", () => {
     expect(isContentGateBlockingView(applicant, "landbank-withdrawal")).toBe(true);
   });
 
-  it("opens gates in demo mode", () => {
-    demoModeStore.setEnabled(true);
-    const applicant = baseApplicant({ currentModule: "tna1" });
-    expect(canAdvanceFrom(applicant, "tna1").ok).toBe(true);
+  it("keeps requirements locked until project proposal is staff-approved", () => {
+    const waiting = baseApplicant({
+      qualified: true,
+      currentModule: "project-proposal",
+      moduleData: {
+        projectProposal: {
+          submitted: true,
+          staffReviewed: false,
+          form: {},
+          attachments: [],
+        },
+      },
+    });
+    expect(isModuleComplete(waiting, "project-proposal")).toBe(false);
+    expect(canAdvanceFrom(waiting, "project-proposal").ok).toBe(false);
+
+    const approved = baseApplicant({
+      qualified: true,
+      currentModule: "project-proposal",
+      moduleData: {
+        projectProposal: {
+          submitted: true,
+          staffReviewed: true,
+          form: {},
+          attachments: [],
+        },
+      },
+    });
+    expect(isModuleComplete(approved, "project-proposal")).toBe(true);
+    expect(canAdvanceFrom(approved, "project-proposal").ok).toBe(true);
+    expect(canAdvanceFrom(approved, "project-proposal").next).toBe(
+      "requirements",
+    );
+  });
+
+  it("blocks advancing from project-proposal until the proposal is submitted", () => {
+    const applicant = baseApplicant({
+      qualified: true,
+      currentModule: "project-proposal",
+      moduleData: {
+        projectProposal: {
+          submitted: false,
+          form: {},
+          attachments: [],
+        },
+      },
+    });
+    expect(isModuleComplete(applicant, "project-proposal")).toBe(false);
+    expect(canAdvanceFrom(applicant, "project-proposal").ok).toBe(false);
   });
 });

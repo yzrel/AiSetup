@@ -40,4 +40,24 @@ public class EmailOtpSender {
                 MailHtmlLayout.wrapOtp(code),
                 List.of());
     }
+
+    public void sendPasswordReset(String toEmail, String code) {
+        if (!isConfigured()) {
+            throw new IllegalStateException("Email OTP is not configured (set SMTP_USERNAME / SMTP_PASSWORD)");
+        }
+        String plain =
+                """
+                Your DOST SOCCSKSARGEN AiSETUP password reset code is: %s
+
+                This code expires in 10 minutes. If you did not request a password reset, you can ignore this email.
+                """
+                        .formatted(code);
+        mailService.send(
+                List.of(toEmail),
+                List.of(),
+                "AiSETUP password reset code",
+                plain,
+                MailHtmlLayout.wrapPasswordResetOtp(code),
+                List.of());
+    }
 }

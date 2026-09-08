@@ -13,9 +13,11 @@ import type {
   ProjectProposalRiskRow,
   RtecComplianceItem,
   RtecComplianceStatus,
+  RtecFundAssessment,
   RtecReportForm,
   RtecReviewComment,
 } from "../api/types";
+import type { Applicant } from "../store/applicantStore";
 import { DOST_REGION_12_DIRECTOR_NAME } from "../constants/region12";
 import {
   RTEC_OFFICIAL_COMPLIANCE_IDS,
@@ -43,6 +45,7 @@ import {
   RTEC_TECH_PRODUCTION_PROCESS,
 } from "../constants/rtecReportLayout";
 import { RTEC_COMPLIANCE_ITEMS, RTEC_DOST_BLUE } from "../utils/rtecReport";
+import { RtecFundAssessmentCard } from "./RtecFundAssessmentCard";
 
 interface RtecReportEditorProps {
   form: RtecReportForm;
@@ -50,6 +53,8 @@ interface RtecReportEditorProps {
   step: "compliance" | "evaluation" | "recommendation" | "all";
   onSave?: () => void;
   reviewComments?: RtecReviewComment[];
+  /** Staff case used for AI iFund assessment context (Cover). */
+  applicant?: Applicant | null;
 }
 
 function uid() {
@@ -281,6 +286,7 @@ export function RtecReportEditor({
   step,
   onSave,
   reviewComments = [],
+  applicant = null,
 }: RtecReportEditorProps) {
   const formSafe: RtecReportForm = {
     ...form,
@@ -417,6 +423,26 @@ export function RtecReportEditor({
                   onChange={(projectCostTotal) => patch({ projectCostTotal })}
                 />
               </div>
+            </div>
+            <div className="mt-4 pt-1">
+            <RtecFundAssessmentCard
+              applicant={applicant}
+              form={formSafe}
+              onApply={(assessment: RtecFundAssessment, applyToSetupShare) => {
+                const next: Partial<RtecReportForm> = { fundAssessment: assessment };
+                if (applyToSetupShare && assessment.proposedAmount.trim()) {
+                  next.projectCostSetup = assessment.proposedAmount;
+                  const riskLine = `AI iFund assessment (${assessment.refundRisk} refund risk): proposed ${assessment.proposedAmount} based on financial fields encoded by the cooperator.`;
+                  const current = (formSafe.recommendation ?? "").trim();
+                  if (!current.includes("AI iFund assessment")) {
+                    next.recommendation = current
+                      ? `${current}\n\n${riskLine}`
+                      : riskLine;
+                  }
+                }
+                patch(next);
+              }}
+            />
             </div>
           </div>
         </section>

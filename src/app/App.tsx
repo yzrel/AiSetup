@@ -24,10 +24,12 @@ import { ClientFilesAdmin } from "./components/ClientFilesAdmin";
 import { StaffClientBar } from "./components/StaffClientBar";
 import { NotificationBell } from "./components/NotificationPanel";
 import { MyAccount } from "./components/MyAccount";
+import { StaffAccount } from "./components/StaffAccount";
 import { EmailOutbox } from "./components/EmailOutbox";
 import { DOSTChatbot } from "./components/DOSTChatbot";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
+import { ForgotPasswordPage } from "./components/ForgotPasswordPage";
 import { LandingPage } from "./components/LandingPage";
 import { DOSTMark } from "./components/DOSTLogos";
 import { DostLogoLoader } from "./components/DostLogoLoader";
@@ -42,6 +44,7 @@ import { getAuthToken } from "./api/authToken";
 import { resolveApplicantForUser } from "./utils/resolveApplicant";
 import { moduleToApplicantView, canApplicantAccessView, isApplicantViewLocked, isOnProgramTrack, getModuleIndex } from "./utils/applicantProgress";
 import { canAdvanceFrom, tryAdvanceModule } from "./utils/moduleGateways";
+import { toast } from "sonner";
 import { isSentEmailsNavUnlocked } from "./utils/documentDelivery";
 import { notifyModuleCompleted } from "./utils/notificationHelpers";
 import { getSetupFormTitle } from "./constants/setupForms";
@@ -307,6 +310,11 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         label: "Account Management",
         icon: Settings,
       },
+      {
+        id: "my-account" as ViewType,
+        label: "My Account",
+        icon: User,
+      },
     ],
   },
 ];
@@ -393,7 +401,7 @@ const viewTitles: Record<
   },
   "my-account": {
     title: "My Account",
-    subtitle: "Profile, password & registration details",
+    subtitle: "Profile, password & account details",
   },
   "sent-emails": {
     title: "Sent Emails",
@@ -534,7 +542,7 @@ export default function App() {
   >({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [authPage, setAuthPageState] = useState<
-    "landing" | "login" | "register"
+    "landing" | "login" | "register" | "forgot-password"
   >(() => loadAuthPage());
   const [registrationPrefill, setRegistrationPrefill] = useState<
     "DTI" | "SEC" | "CDA"
@@ -564,7 +572,9 @@ export default function App() {
       <DostLogoLoader variant="overlay" label={authTransition.label} />
     ) : null;
 
-  const setAuthPage = (page: "landing" | "login" | "register") => {
+  const setAuthPage = (
+    page: "landing" | "login" | "register" | "forgot-password",
+  ) => {
     setAuthPageState(page);
     saveAuthPage(page);
     if (page !== "login") {
@@ -849,11 +859,23 @@ export default function App() {
         </>
       );
     }
+    if (authPage === "forgot-password") {
+      return (
+        <>
+          <ForgotPasswordPage
+            onLogin={() => setAuthPage("login")}
+            onHome={() => setAuthPage("landing")}
+          />
+          {authTransitionOverlay}
+        </>
+      );
+    }
     return (
       <>
         <LoginPage
           fromRegistration={fromRegistration}
           onRegister={() => setAuthPage("register")}
+          onForgotPassword={() => setAuthPage("forgot-password")}
           onHome={() => setAuthPage("landing")}
         />
         {authTransitionOverlay}
@@ -901,6 +923,7 @@ export default function App() {
       tryAdvanceModule(app.id, module, user.role);
     } else if (app && !gate.ok) {
       // Stay on current view; do not bump currentModule.
+      toast.error(gate.reason ?? "Complete this module before proceeding.");
       const fallbackView =
         normalizeAdminView(navigateTo) ??
         normalizeAdminView(module) ??
@@ -997,7 +1020,7 @@ export default function App() {
       {/* ══ MAIN CONTENT ══ */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* ── Topbar ── */}
-        <header className="h-14 w-full min-w-0 bg-white border-b border-gray-200 flex items-center px-3 sm:px-6 shrink-0 shadow-sm z-10 gap-2 sm:gap-3">
+        <header className="h-14 w-full min-w-0 bg-white border-b border-gray-200 flex items-center px-3 sm:px-6 shrink-0 shadow-sm z-20 gap-2 sm:gap-3">
           {/* Hamburger — mobile/tablet only */}
           <button
             onClick={() => setDrawerOpen(true)}
@@ -1040,61 +1063,48 @@ export default function App() {
 
             {/* User info + logout */}
             <div className="flex items-center gap-1 shrink-0">
-              {authStore.isClientRole(user.role) ? (
-                <button
-                  type="button"
-                  onClick={() => navigate("my-account")}
-                  title="My Account"
-                  className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors text-left"
-                >
-                  {user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt="avatar"
-                      className="w-8 h-8 rounded-full object-cover border-2 border-[#0C2461]/20 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#0C2461] flex items-center justify-center shrink-0">
-                      <span className="text-white text-[11px] font-bold">
-                        {user.firstName[0]}
-                        {user.lastName[0]}
-                      </span>
-                    </div>
-                  )}
-                  <div className="hidden md:block max-w-[140px]">
-                    <p className="text-[12px] font-semibold text-gray-800 leading-tight truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
-                        {ROLE_LABELS[user.role]}
-                      </span>
-                      {user.applicationId && (
-                        <span className="text-[9px] text-gray-400 font-mono truncate">
-                          {user.applicationId}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 px-1.5 py-1">
+              <button
+                type="button"
+                onClick={() => navigate("my-account")}
+                title="My Account"
+                className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors text-left"
+              >
+                {authStore.isClientRole(user.role) && user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt="avatar"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-[#0C2461]/20 shrink-0"
+                  />
+                ) : (
                   <div className="w-8 h-8 rounded-full bg-[#0C2461] flex items-center justify-center shrink-0">
                     <span className="text-white text-[11px] font-bold">
                       {user.firstName[0]}
                       {user.lastName[0]}
                     </span>
                   </div>
-                  <div className="hidden md:block">
-                    <p className="text-[12px] font-semibold text-gray-800 leading-tight">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                )}
+                <div className="hidden md:block max-w-[140px]">
+                  <p className="text-[12px] font-semibold text-gray-800 leading-tight truncate">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                        authStore.isClientRole(user.role)
+                          ? "bg-green-100 text-green-700"
+                          : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
                       {ROLE_LABELS[user.role]}
                     </span>
+                    {user.applicationId && authStore.isClientRole(user.role) && (
+                      <span className="text-[9px] text-gray-400 font-mono truncate">
+                        {user.applicationId}
+                      </span>
+                    )}
                   </div>
                 </div>
-              )}
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -1146,7 +1156,7 @@ export default function App() {
         )}
 
         {/* ── Page content ── */}
-        <main className="relative flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 pb-20 sm:pb-6">
+        <main className="relative flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 pb-24 sm:pb-20">
           {(showHydrateGate || moduleLoading) && (
             <DostLogoLoader
               variant="overlay"
@@ -1276,7 +1286,12 @@ export default function App() {
               {safeView === "landbank-branches" && (
                 <LandBankBranchesAdmin user={user} />
               )}
-              {safeView === "my-account" && <MyAccount user={user} />}
+              {safeView === "my-account" &&
+                (authStore.isStaff(user.role) ? (
+                  <StaffAccount user={user} />
+                ) : (
+                  <MyAccount user={user} />
+                ))}
               {safeView === "sent-emails" && <EmailOutbox user={user} />}
             </>
           ) : !showHydrateGate ? (

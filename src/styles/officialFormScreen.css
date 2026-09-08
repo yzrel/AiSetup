@@ -101,29 +101,16 @@
     height: auto;
   }
 
-  .tna-form-document .tna-form-signature-table,
-  #tna-form-01-preview .tna-form-signature-table {
-    display: block;
-    width: 100%;
+  .tna-form-document .tna-form-signature-grid,
+  #tna-form-01-preview .tna-form-signature-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
     min-width: 0;
   }
 
-  .tna-form-document .tna-form-signature-table tbody,
-  #tna-form-01-preview .tna-form-signature-table tbody {
-    display: block;
-  }
-
-  .tna-form-document .tna-form-signature-table tr,
-  #tna-form-01-preview .tna-form-signature-table tr {
-    display: block;
-    margin-bottom: 1rem;
-  }
-
-  .tna-form-document .tna-form-signature-table td,
-  #tna-form-01-preview .tna-form-signature-table td {
-    display: block;
+  .tna-form-document .tna-form-signature-cell,
+  #tna-form-01-preview .tna-form-signature-cell {
     width: 100%;
-    border: none;
     padding: 0;
   }
 }

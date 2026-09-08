@@ -22,13 +22,17 @@ import ph.gov.dost.aisetup.auth.dto.AuthResponse;
 import ph.gov.dost.aisetup.auth.dto.AuthUserDto;
 import ph.gov.dost.aisetup.auth.dto.ChangePasswordRequest;
 import ph.gov.dost.aisetup.auth.dto.CreateStaffRequest;
+import ph.gov.dost.aisetup.auth.dto.ForgotPasswordRequest;
 import ph.gov.dost.aisetup.auth.dto.LoginRequest;
 import ph.gov.dost.aisetup.auth.dto.RegisterRequest;
+import ph.gov.dost.aisetup.auth.dto.ResetPasswordRequest;
 import ph.gov.dost.aisetup.auth.dto.StaffResetPasswordRequest;
 import ph.gov.dost.aisetup.auth.dto.StaffUserDto;
+import ph.gov.dost.aisetup.auth.dto.UpdateOwnProfileRequest;
 import ph.gov.dost.aisetup.auth.dto.UpdateStaffRequest;
 import ph.gov.dost.aisetup.common.PasswordPolicy;
 import ph.gov.dost.aisetup.otp.OtpService;
+import ph.gov.dost.aisetup.otp.SemaphoreSmsSender;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordDto;
 import ph.gov.dost.aisetup.persistence.ApplicantRecordRepository;
 
@@ -75,6 +79,45 @@ public class AuthService {
         return toAuthResponse(account);
     }
 
+    /**
+     * Starts password reset: sends an email OTP when the account exists and is enabled.
+     * Always returns a generic success payload so callers cannot probe for registered emails.
+     */
+    @Transactional
+    public Map<String, Object> forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        Optional<UserAccount> account = userAccountRepository.findByEmailIgnoreCase(email);
+        if (account.isPresent() && account.get().isEnabled()) {
+            return otpService.sendPasswordReset(email);
+        }
+        // Uniform response whether the email is unknown or the account is blocked.
+        return Map.of(
+                "ok", true,
+                "delivered", false,
+                "demo", false,
+                "message",
+                "If an account exists for this email, a password reset code has been sent.");
+    }
+
+    /** Completes password reset after verifying the emailed OTP. */
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        UserAccount account = userAccountRepository
+                .findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid or expired reset code. Please request a new one."));
+        if (!account.isEnabled()) {
+            throw new IllegalArgumentException(
+                    "This account has been blocked by DOST SOCCSKSARGEN. Please contact the DOST XII office for assistance.");
+        }
+        otpService.consumePasswordReset(email, request.getCode());
+        PasswordPolicy.assertValid(request.getNewPassword());
+        account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        account.setUpdatedAt(Instant.now());
+        userAccountRepository.save(account);
+    }
+
     @Transactional
     public AuthResponse registerApplicant(RegisterRequest request) {
         String role = request.getRole() == null || request.getRole().isBlank()
@@ -84,7 +127,18 @@ public class AuthService {
             throw new IllegalArgumentException("Public registration is limited to applicant accounts");
         }
         if (userAccountRepository.existsByEmailIgnoreCase(request.getEmail().trim())) {
-            throw new IllegalArgumentException("An account with this email already exists");
+            throw new IllegalArgumentException(OtpService.EMAIL_ALREADY_REGISTERED);
+        }
+        String normalizedPhone = null;
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            normalizedPhone = SemaphoreSmsSender.normalizePhMobile(request.getPhone());
+            if (!SemaphoreSmsSender.isValidPhMobile(normalizedPhone)) {
+                throw new IllegalArgumentException(
+                        "Enter a valid Philippine mobile number (e.g. 09171234567)");
+            }
+            if (otpService.isPhoneRegistered(normalizedPhone)) {
+                throw new IllegalArgumentException(OtpService.PHONE_ALREADY_REGISTERED);
+            }
         }
         PasswordPolicy.assertValid(request.getPassword());
         otpService.requireVerifiedForRegistration(request.getEmail(), request.getPhone());
@@ -98,6 +152,7 @@ public class AuthService {
         UserAccount account = new UserAccount();
         account.setId(UUID.randomUUID().toString());
         account.setEmail(email);
+        account.setPhone(normalizedPhone);
         account.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         account.setFirstName(request.getFirstName().trim());
         account.setMiddleName(request.getMiddleName() != null ? request.getMiddleName().trim() : "");
@@ -210,6 +265,60 @@ public class AuthService {
         userAccountRepository.save(account);
     }
 
+    /**
+     * Staff self-service profile update (name + optional email). Email change requires
+     * current password because email is the login identity. Role/office stay admin-managed.
+     */
+    @Transactional
+    public AuthUserDto updateOwnProfile(UserPrincipal principal, UpdateOwnProfileRequest request) {
+        UserAccount account = userAccountRepository.findById(principal.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        if (!STAFF_ROLES.contains(account.getRole())) {
+            throw new IllegalArgumentException("Only staff accounts can update this profile");
+        }
+
+        if (request.getFirstName() != null) {
+            String firstName = request.getFirstName().trim();
+            if (firstName.isEmpty()) {
+                throw new IllegalArgumentException("firstName must not be blank");
+            }
+            account.setFirstName(firstName);
+        }
+        if (request.getMiddleName() != null) {
+            account.setMiddleName(request.getMiddleName().trim());
+        }
+        if (request.getLastName() != null) {
+            String lastName = request.getLastName().trim();
+            if (lastName.isEmpty()) {
+                throw new IllegalArgumentException("lastName must not be blank");
+            }
+            account.setLastName(lastName);
+        }
+
+        if (request.getEmail() != null) {
+            String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+            if (email.isEmpty()) {
+                throw new IllegalArgumentException("email must not be blank");
+            }
+            if (!email.equalsIgnoreCase(account.getEmail())) {
+                String currentPassword = request.getCurrentPassword();
+                if (currentPassword == null || currentPassword.isBlank()) {
+                    throw new IllegalArgumentException(
+                            "Current password is required to change email");
+                }
+                if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
+                    throw new IllegalArgumentException("Current password is incorrect");
+                }
+                assertEmailAvailable(email, account.getId());
+                account.setEmail(email);
+            }
+        }
+
+        account.setUpdatedAt(Instant.now());
+        userAccountRepository.save(account);
+        return toUserDto(account);
+    }
+
     /** Staff reset of an applicant account password (no current-password check). */
     @Transactional
     public void adminResetPassword(AdminResetPasswordRequest request) {
@@ -291,6 +400,16 @@ public class AuthService {
             }
             account.setLastName(lastName);
         }
+        if (request.getEmail() != null) {
+            String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+            if (email.isEmpty()) {
+                throw new IllegalArgumentException("email must not be blank");
+            }
+            if (!email.equalsIgnoreCase(account.getEmail())) {
+                assertEmailAvailable(email, account.getId());
+                account.setEmail(email);
+            }
+        }
         if (request.getEnterpriseName() != null) {
             account.setEnterpriseName(blankToNull(request.getEnterpriseName()));
         }
@@ -346,6 +465,13 @@ public class AuthService {
         account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         account.setUpdatedAt(Instant.now());
         userAccountRepository.save(account);
+    }
+
+    private void assertEmailAvailable(String email, String excludeUserId) {
+        Optional<UserAccount> existing = userAccountRepository.findByEmailIgnoreCase(email);
+        if (existing.isPresent() && !existing.get().getId().equals(excludeUserId)) {
+            throw new IllegalArgumentException("An account with this email already exists");
+        }
     }
 
     private UserAccount requireApplicantAccount(String applicantId) {

@@ -48,6 +48,73 @@ export function parseTermYears(raw: string | number | undefined): number {
   return 5;
 }
 
+/** Years from a selected term label like "4 years". 0 if none is selected. */
+export function selectedTermYears(raw: string | number | undefined): number {
+  if (typeof raw === "number") return raw >= 3 && raw <= 5 ? raw : 0;
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  const n = parseInt(digits, 10);
+  if (n >= 3 && n <= 5) return n;
+  return 0;
+}
+
+export function parseFundAmount(raw: string | number | undefined): number {
+  if (typeof raw === "number") return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  return parseFloat(String(raw ?? "").replace(/[^\d.]/g, "")) || 0;
+}
+
+export function formatMonthlyAmortization(amount: number): string {
+  return amount.toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Requested amount ÷ months in the selected repayment term (3–5 years). */
+export function computeEstimatedMonthlyAmortization(
+  requestedAmount: string | number | undefined,
+  repaymentTerm: string | number | undefined,
+): string {
+  const years = selectedTermYears(repaymentTerm);
+  const amount = parseFundAmount(requestedAmount);
+  if (years <= 0 || amount <= 0) return "";
+  const monthly = Math.round((amount / (years * 12)) * 100) / 100;
+  return formatMonthlyAmortization(monthly);
+}
+
+export function toIsoDateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** SETUP refund starts after a one-year grace period. */
+export function defaultRepaymentStartDate(from: Date = new Date()): string {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  d.setFullYear(d.getFullYear() + 1);
+  return toIsoDateLocal(d);
+}
+
+export function applyLoiRepaymentComputations<
+  T extends {
+    requestedAmount: string;
+    repaymentTerm: string;
+    monthlyAmortization: string;
+    startDate: string;
+  },
+>(fields: T, now: Date = new Date()): T {
+  return {
+    ...fields,
+    monthlyAmortization: computeEstimatedMonthlyAmortization(
+      fields.requestedAmount,
+      fields.repaymentTerm,
+    ),
+    startDate: String(fields.startDate ?? "").trim()
+      ? fields.startDate
+      : defaultRepaymentStartDate(now),
+  };
+}
+
 export function computeRefundSchedule(input: RefundScheduleInput): RefundScheduleResult {
   const termYears = Math.min(5, Math.max(3, input.termYears || 5));
   const amount = input.approvedAmount > 0 ? input.approvedAmount : 0;

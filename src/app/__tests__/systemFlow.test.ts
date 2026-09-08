@@ -277,12 +277,12 @@ describe("system flow: registration through project close-out", () => {
         budget: "2,000,000",
         timeline: "18 months",
       },
-      { approvedAmount: "₱2,000,000", repaymentTerm: "five (5) years" },
+      { requestedAmount: "₱2,000,000", repaymentTerm: "five (5) years" },
       { signature: "Test Applicant", signedDate: "2026-01-15" },
     );
     const loiDocument = buildLocalLoiDocument(loiPayload);
     expect(loiDocument.bodyParagraphs.join(" ")).toContain(
-      "refund of the approved seed fund",
+      "refund of the requested seed fund",
     );
     expect(loiDocument.thruAddressee.officeName).toBe("PSTO - South Cotabato");
     applicantStore.update(id, {
@@ -747,7 +747,7 @@ describe("system flow: unqualified applicant branch", () => {
         budget: "",
         timeline: "",
       },
-      { approvedAmount: "", repaymentTerm: "" },
+      { requestedAmount: "", repaymentTerm: "" },
       { signature: "Test Applicant", signedDate: "2026-01-15" },
     );
     expect(loiPayload.qualified).toBe(false);

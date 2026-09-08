@@ -48,11 +48,17 @@ function mapApiUserToAuthUser(
 interface LoginPageProps {
   onRegister: () => void;
   onHome?: () => void;
+  onForgotPassword?: () => void;
   /** Show post-registration success banner when arriving from RegisterPage */
   fromRegistration?: boolean;
 }
 
-export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPageProps) {
+export function LoginPage({
+  onRegister,
+  onHome,
+  onForgotPassword,
+  fromRegistration,
+}: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -167,7 +173,20 @@ export function LoginPage({ onRegister, onHome, fromRegistration }: LoginPagePro
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Password</label>
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    Password
+                  </label>
+                  {onForgotPassword && (
+                    <button
+                      type="button"
+                      onClick={onForgotPassword}
+                      className="text-xs font-semibold text-[#0C2461] hover:underline shrink-0"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input

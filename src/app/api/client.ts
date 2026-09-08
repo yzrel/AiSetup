@@ -97,6 +97,39 @@ export const api = {
 
   me: () => apiFetch<import("./types").ApiAuthResponse["user"]>("/auth/me"),
 
+  updateMe: (payload: {
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    email?: string;
+    currentPassword?: string;
+  }) =>
+    apiFetch<import("./types").ApiAuthResponse["user"]>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  forgotPassword: (payload: { email: string }) =>
+    apiFetch<{
+      ok: boolean;
+      delivered?: boolean;
+      demo?: boolean;
+      message?: string;
+    }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  resetPassword: (payload: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }) =>
+    apiFetch<{ ok: boolean }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   changePassword: (payload: { currentPassword: string; newPassword: string }) =>
     apiFetch<{ ok: boolean }>("/auth/change-password", {
       method: "POST",
@@ -303,13 +336,24 @@ export const api = {
     ),
 
   suggestAiField: (payload: import("./types").AiFieldSuggestionRequest) =>
-    apiFetch<import("./types").AiFieldSuggestionResponse>("/ai/suggest-field", {
+    apiFetch<import("./types").AiFieldSuggestionResponse>(
+      payload.module === "register"
+        ? "/ai/register/suggest-company-description"
+        : "/ai/suggest-field",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  completeAi: (payload: import("./types").AiCompletionRequest) =>
+    apiFetch<import("./types").AiCompletionResponse>("/ai/complete", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  completeAi: (payload: import("./types").AiCompletionRequest) =>
-    apiFetch<import("./types").AiCompletionResponse>("/ai/complete", {
+  assessIfund: (payload: import("./types").AiIfundAssessmentRequest) =>
+    apiFetch<import("./types").AiIfundAssessmentResponse>("/ai/assess-ifund", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

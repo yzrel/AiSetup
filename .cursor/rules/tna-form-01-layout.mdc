@@ -29,6 +29,10 @@ No inline per-section footers. Live print uses CSS counters (Word hard-codes ~12
 
 - Section titles stay with the next paragraph (`break-after: avoid` on headings).
 - Long `.tna-form-block` sections use `break-inside: auto` in print so tables and narratives are not clipped.
+- **Never split** these units across pages (use `.tna-form-block-keep`, CSS grid/blocks — not tables):
+  - Closing signatures (Prepared by / Validated by) — labels, lines, names, and dates stay together.
+  - Attachment figures (Organizational Structure, Production Plan Attachment, Plant Lay-Out, Process Flow Diagram) — heading + image/empty box stay together. Scale the image to fit one A4 sheet (`max-height` ≤ ~160mm); do not clip the figure.
+- If a keep-together unit does not fit in the remaining space, move the **whole** unit to the next page.
 - Do **not** force one section per physical page.
 - Never use `break-before: always` on sections.
 - Official print root stays in-flow (`position: static`).

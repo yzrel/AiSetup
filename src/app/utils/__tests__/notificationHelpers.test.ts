@@ -43,6 +43,7 @@ import {
   notifyTna1DirectorValidated,
   notifyTna1Resubmission,
   notifyTna1Reviewed,
+  notifyTna2Published,
 } from "../notificationHelpers";
 import { shouldNotifyRequirementRemark } from "../submissionRequirements";
 
@@ -496,6 +497,61 @@ describe("notifyTna1DirectorValidated", () => {
         .some(
           (n) =>
             n.applicantId === "app-tna1-director-no-mail" &&
+            n.audience === "applicant",
+        ),
+    ).toBe(true);
+  });
+});
+
+describe("notifyTna2Published", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("notifies and emails the cooperator when TNA Form 02 is published", () => {
+    const applicant = sampleApplicant({ id: "app-tna2-pub" });
+    notifyTna2Published(applicant);
+
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-tna2-pub" &&
+            n.audience === "applicant" &&
+            n.kind === "success" &&
+            n.view === "tna2",
+        ),
+    ).toBe(true);
+
+    const mail = outboxFor("app-tna2-pub");
+    expect(mail.length).toBeGreaterThan(0);
+    expect(mail[0].kind).toBe("status");
+    expect(mail[0].to).toEqual(["juan@testfoods.example"]);
+    expect(mail[0].subject).toContain("published");
+    expect(mail[0].body).toContain("Technology Needs Assessment Report");
+    expect(mail[0].body).toContain("TNA Form 02");
+    expect(mail[0].body).toContain("Project Proposal");
+    expect(mail[0].module).toBe("tna2");
+  });
+
+  it("still notifies in-app when the cooperator has no email", () => {
+    const applicant = sampleApplicant({
+      id: "app-tna2-pub-no-mail",
+      emailAddress: "",
+    });
+    notifyTna2Published(applicant);
+    expect(outboxFor("app-tna2-pub-no-mail")).toHaveLength(0);
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-tna2-pub-no-mail" &&
             n.audience === "applicant",
         ),
     ).toBe(true);

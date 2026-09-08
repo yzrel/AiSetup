@@ -46,6 +46,11 @@ import {
 import { LoiDocumentPreview } from "./LoiDocumentPreview";
 import { DocumentDeliveryPanel } from "./DocumentDeliveryPanel";
 import { notifyLoiSubmitted } from "../utils/notificationHelpers";
+import {
+  applyLoiRepaymentComputations,
+  computeEstimatedMonthlyAmortization,
+  defaultRepaymentStartDate,
+} from "../utils/refundSchedule";
 
 interface LetterOfIntentProps {
   user?: AuthUser | null;
@@ -149,10 +154,10 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [commitmentRefund, setCommitmentRefund] = useState({
-    approvedAmount: "",
+    requestedAmount: "",
     repaymentTerm: "",
     monthlyAmortization: "",
-    startDate: "",
+    startDate: defaultRepaymentStartDate(),
     agreeRefundTerms: false,
     agreeInterestFree: false,
     agreeInsurance: false,
@@ -199,7 +204,17 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       setGeneralAgreement((prev) => ({ ...prev, ...draft.generalAgreement }));
     }
     if (draft?.commitmentRefund) {
-      setCommitmentRefund((prev) => ({ ...prev, ...draft.commitmentRefund }));
+      const cr = draft.commitmentRefund as Record<string, unknown>;
+      const legacyRequested = String(
+        cr.requestedAmount ?? cr.approvedAmount ?? "",
+      );
+      setCommitmentRefund((prev) =>
+        applyLoiRepaymentComputations({
+          ...prev,
+          ...draft.commitmentRefund,
+          requestedAmount: legacyRequested || prev.requestedAmount,
+        }),
+      );
     }
 
     const savedRaw = app.moduleData?.loiDocument;
@@ -235,16 +250,18 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       const md = app.moduleData ?? {};
       const restoredProgram = String(md.selectedProgramName ?? "").trim();
       if (!restoredProgram && (md.commitmentAmount || md.repaymentTerm)) {
-        setCommitmentRefund((prev) => ({
-          ...prev,
-          approvedAmount: String(md.commitmentAmount ?? prev.approvedAmount),
-          repaymentTerm: String(md.repaymentTerm ?? prev.repaymentTerm),
-          agreeRefundTerms: true,
-          agreeInterestFree: true,
-          agreePDC: true,
-          agreePenalty: true,
-          commitSignature: saved.signature?.typedName || prev.commitSignature,
-        }));
+        setCommitmentRefund((prev) =>
+          applyLoiRepaymentComputations({
+            ...prev,
+            requestedAmount: String(md.commitmentAmount ?? prev.requestedAmount),
+            repaymentTerm: String(md.repaymentTerm ?? prev.repaymentTerm),
+            agreeRefundTerms: true,
+            agreeInterestFree: true,
+            agreePDC: true,
+            agreePenalty: true,
+            commitSignature: saved.signature?.typedName || prev.commitSignature,
+          }),
+        );
       }
       const savedPlan = md.productionPlanDocument as ModuleDocument | undefined;
       if (savedPlan?.fileName) {
@@ -333,7 +350,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         ...(hasProgram
           ? {}
           : {
-              commitmentAmount: cr.approvedAmount,
+              commitmentAmount: cr.requestedAmount,
               repaymentTerm: cr.repaymentTerm,
             }),
         loiDraft: {
@@ -369,7 +386,19 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
   };
   const setCR = (k: string, v: boolean | string) => {
     setCommitmentRefund((prev) => {
-      const next = { ...prev, [k]: v };
+      let next = { ...prev, [k]: v };
+      if (k === "requestedAmount" || k === "repaymentTerm") {
+        next = {
+          ...next,
+          monthlyAmortization: computeEstimatedMonthlyAmortization(
+            next.requestedAmount,
+            next.repaymentTerm,
+          ),
+        };
+      }
+      if (k !== "startDate" && !String(next.startDate).trim()) {
+        next = { ...next, startDate: defaultRepaymentStartDate() };
+      }
       commitmentRefundRef.current = next;
       return next;
     });
@@ -423,7 +452,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     commitmentRefund.agreePDC &&
     commitmentRefund.agreePenalty &&
     commitmentRefund.commitSignature.trim().length > 2 &&
-    !!(commitmentRefund.approvedAmount) &&
+    !!(commitmentRefund.requestedAmount) &&
     !!(commitmentRefund.repaymentTerm) &&
     !!(commitmentRefund.startDate);
 
@@ -497,7 +526,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
       applicant,
       additional,
       {
-        approvedAmount: commitmentRefund.approvedAmount,
+        requestedAmount: commitmentRefund.requestedAmount,
         repaymentTerm: commitmentRefund.repaymentTerm,
       },
       {
@@ -583,7 +612,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
         ...(hasProgram
           ? {}
           : {
-              commitmentAmount: commitmentRefund.approvedAmount,
+              commitmentAmount: commitmentRefund.requestedAmount,
               repaymentTerm: commitmentRefund.repaymentTerm,
             }),
         loiSubmittedAt: new Date().toISOString(),
@@ -1267,6 +1296,16 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                   onClick={() => {
                     handleSaveDraft();
                     persistProductionPlanMeta(productionPlanDocument, productionPlanNotes);
+                    setCommitmentRefund((prev) => {
+                      const requestedAmount =
+                        prev.requestedAmount.trim() || additional.budget.trim();
+                      const next = applyLoiRepaymentComputations({
+                        ...prev,
+                        requestedAmount: requestedAmount || prev.requestedAmount,
+                      });
+                      commitmentRefundRef.current = next;
+                      return next;
+                    });
                     setStep("commitment-refund");
                   }}
                   disabled={!allowWhenDemo(productionPlanComplete)}
@@ -1301,8 +1340,8 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Approved Fund Amount (₱) *</label>
-                  <input type="text" className={inputCls} placeholder="e.g. 2,000,000" value={commitmentRefund.approvedAmount} onChange={(e) => setCR("approvedAmount", e.target.value)} />
+                  <label className={labelCls}>Request Fund Amount (₱) *</label>
+                  <input type="text" className={inputCls} placeholder="e.g. 2,000,000" value={commitmentRefund.requestedAmount} onChange={(e) => setCR("requestedAmount", e.target.value)} />
                 </div>
                 <div>
                   <label className={labelCls}>Repayment Term *</label>
@@ -1315,7 +1354,14 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 </div>
                 <div>
                   <label className={labelCls}>Estimated Monthly Amortization (₱)</label>
-                  <input type="text" className={inputCls} placeholder="Enter amount" value={commitmentRefund.monthlyAmortization} onChange={(e) => setCR("monthlyAmortization", e.target.value)} />
+                  <input
+                    type="text"
+                    className={`${inputCls} bg-gray-50`}
+                    placeholder="Computed from amount and term"
+                    value={commitmentRefund.monthlyAmortization}
+                    readOnly
+                    aria-readonly="true"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Repayment Start Date *</label>
@@ -1338,7 +1384,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
               <div className="bg-white border border-gray-200 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <p><span className="font-semibold text-gray-600">Enterprise:</span> {applicant?.enterpriseName ?? "—"}</p>
                 <p><span className="font-semibold text-gray-600">MSME Size:</span> {applicant?.msmeSize ?? "—"}</p>
-                <p><span className="font-semibold text-gray-600">Approved Amount:</span> ₱{commitmentRefund.approvedAmount || "___________"}</p>
+                <p><span className="font-semibold text-gray-600">Requested Amount:</span> ₱{commitmentRefund.requestedAmount || "___________"}</p>
                 <p><span className="font-semibold text-gray-600">Repayment Term:</span> {commitmentRefund.repaymentTerm || "___________"}</p>
                 <p><span className="font-semibold text-gray-600">Monthly Amortization:</span> ₱{commitmentRefund.monthlyAmortization || "___________"}</p>
                 <p><span className="font-semibold text-gray-600">Start Date:</span> {commitmentRefund.startDate || "___________"}</p>
@@ -1346,7 +1392,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
 
               <div className="space-y-3">
                 {[
-                  { key: "agreeRefundTerms", text: "1. I/We agree to repay the full approved SETUP seed fund amount within the agreed repayment period as specified above." },
+                  { key: "agreeRefundTerms", text: "1. I/We agree to repay the full requested SETUP seed fund amount within the agreed repayment period as specified above." },
                   { key: "agreeInterestFree", text: "2. I/We understand that the fund is interest-free (0%) for the duration of the repayment term, provided repayment is made on schedule. Late payments may incur applicable penalties." },
                   { key: "agreeInsurance", text: "3. I/We commit to cover the insurance cost for acquired equipment as our enterprise counterpart, not exceeding the rate prescribed in the Notice of Approval." },
                   { key: "agreePDC", text: "4. I/We commit to submit Post-Dated Checks (PDCs) covering the full refund period plus technology transfer fee (0.5%) prior to official release of funds." },
@@ -1490,7 +1536,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
                   <Banknote className="w-6 h-6 text-amber-600 mx-auto mb-1" />
                   <p className="text-xs font-bold text-amber-700">Commitment of Refund</p>
-                  <p className="text-xs text-amber-500 mt-0.5">₱{commitmentRefund.approvedAmount} · {commitmentRefund.repaymentTerm}</p>
+                  <p className="text-xs text-amber-500 mt-0.5">₱{commitmentRefund.requestedAmount} · {commitmentRefund.repaymentTerm}</p>
                 </div>
               )}
             </div>

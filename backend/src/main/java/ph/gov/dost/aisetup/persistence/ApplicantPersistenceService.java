@@ -16,6 +16,10 @@ import java.util.Optional;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ph.gov.dost.aisetup.auth.UserAccount;
+import ph.gov.dost.aisetup.auth.UserAccountRepository;
+import ph.gov.dost.aisetup.otp.OtpService;
+import ph.gov.dost.aisetup.otp.SemaphoreSmsSender;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveRequest;
 import ph.gov.dost.aisetup.persistence.dto.Tna1FormSaveResponse;
 import ph.gov.dost.aisetup.workflow.ModuleOrder;
@@ -38,14 +42,17 @@ public class ApplicantPersistenceService {
     private final ApplicantRecordRepository repository;
     private final ApplicantModuleDataRepository moduleDataRepository;
     private final ObjectMapper objectMapper;
+    private final UserAccountRepository userAccountRepository;
 
     public ApplicantPersistenceService(
             ApplicantRecordRepository repository,
             ApplicantModuleDataRepository moduleDataRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            UserAccountRepository userAccountRepository) {
         this.repository = repository;
         this.moduleDataRepository = moduleDataRepository;
         this.objectMapper = objectMapper;
+        this.userAccountRepository = userAccountRepository;
     }
 
     /** Reserved module row for top-level scalar / array flags (accountStatus, tinNumber, …). */
@@ -66,7 +73,9 @@ public class ApplicantPersistenceService {
         entity.setModuleDataJson(writePayload(merged, "moduleData"));
         entity.setProfileJson(writePayload(dto.profile(), "profile"));
         entity.setUpdatedAt(Instant.now());
-        return toDto(repository.save(entity));
+        ApplicantRecordDto saved = toDto(repository.save(entity));
+        syncLinkedUserContact(dto.id(), dto.profile());
+        return saved;
     }
 
     /**
@@ -95,7 +104,75 @@ public class ApplicantPersistenceService {
             entity.setProfileJson(writePayload(profile, "profile"));
         }
         entity.setUpdatedAt(Instant.now());
-        return toDto(repository.save(entity));
+        ApplicantRecordDto saved = toDto(repository.save(entity));
+        if (profile != null) {
+            syncLinkedUserContact(id, profile);
+        }
+        return saved;
+    }
+
+    /**
+     * Keeps {@code users.email} / {@code users.phone} aligned with the case profile
+     * when a linked applicant account exists. Auth uniqueness uses those columns only.
+     */
+    private void syncLinkedUserContact(String applicantId, Map<String, Object> profile) {
+        if (profile == null || applicantId == null || applicantId.isBlank()) {
+            return;
+        }
+        Optional<UserAccount> linked = userAccountRepository.findByApplicantId(applicantId);
+        if (linked.isEmpty()) {
+            return;
+        }
+        UserAccount account = linked.get();
+        boolean changed = false;
+
+        String profileEmail = profileString(profile, "emailAddress", "email");
+        if (profileEmail != null) {
+            String email = profileEmail.trim().toLowerCase();
+            if (!email.equalsIgnoreCase(account.getEmail())) {
+                userAccountRepository.findByEmailIgnoreCase(email).ifPresent(other -> {
+                    if (!other.getId().equals(account.getId())) {
+                        throw new IllegalArgumentException(OtpService.EMAIL_ALREADY_REGISTERED);
+                    }
+                });
+                account.setEmail(email);
+                changed = true;
+            }
+        }
+
+        String profilePhone = profileString(profile, "contactNumber", "phone");
+        if (profilePhone != null) {
+            String normalized = SemaphoreSmsSender.normalizePhMobile(profilePhone);
+            if (!SemaphoreSmsSender.isValidPhMobile(normalized)) {
+                throw new IllegalArgumentException(
+                        "Enter a valid Philippine mobile number (e.g. 09171234567)");
+            }
+            String current = account.getPhone();
+            if (current == null || !normalized.equals(current)) {
+                userAccountRepository.findByPhone(normalized).ifPresent(other -> {
+                    if (!other.getId().equals(account.getId())) {
+                        throw new IllegalArgumentException(OtpService.PHONE_ALREADY_REGISTERED);
+                    }
+                });
+                account.setPhone(normalized);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            account.setUpdatedAt(Instant.now());
+            userAccountRepository.save(account);
+        }
+    }
+
+    private static String profileString(Map<String, Object> profile, String... keys) {
+        for (String key : keys) {
+            Object value = profile.get(key);
+            if (value instanceof String s && !s.isBlank()) {
+                return s.trim();
+            }
+        }
+        return null;
     }
 
     /**

@@ -267,6 +267,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   onChange={handleFormChange}
                   step="compliance"
                   reviewComments={reviewComments}
+                  applicant={applicant}
                 />
               )}
 
@@ -276,6 +277,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   onChange={handleFormChange}
                   step="evaluation"
                   reviewComments={reviewComments}
+                  applicant={applicant}
                 />
               )}
 
@@ -285,6 +287,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   onChange={handleFormChange}
                   step="recommendation"
                   reviewComments={reviewComments}
+                  applicant={applicant}
                 />
               )}
 
@@ -319,6 +322,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                       step="all"
                       onSave={handleSave}
                       reviewComments={reviewComments}
+                      applicant={applicant}
                     />
                   ) : (
                     <>

@@ -102,11 +102,17 @@ export function isModuleComplete(
       return hasLoiDocument(applicant);
     case "tna1": {
       const f = tna1Flags(applicant);
-      return f.submitted && f.staffReviewed && f.directorValidated;
+      // PD validation is the hard hop to TNA 2. Do not require `submitted`
+      // here — draft autosave / step clicks used to clear that flag while
+      // staffReviewed + directorValidated stayed true, which trapped the
+      // Proceed button in a silent no-op.
+      return f.staffReviewed && f.directorValidated;
     }
     case "tna2":
       return !!getPublishedTna2(applicant);
     case "project-proposal": {
+      // Like TNA1 → TNA2 (needs PD validation): Submit Requirements unlocks
+      // only after the cooperator submits and DOST staff approve Form 001.
       const stored = getProjectProposalStored(applicant);
       return !!(stored?.submitted && stored?.staffReviewed);
     }

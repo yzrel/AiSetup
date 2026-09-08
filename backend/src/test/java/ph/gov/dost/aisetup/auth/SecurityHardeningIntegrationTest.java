@@ -461,6 +461,31 @@ class SecurityHardeningIntegrationTest {
     }
 
     @Test
+    void anonymousCanSuggestRegisterCompanyDescriptionButNotOtherAiFields() throws Exception {
+        mockMvc.perform(post("/ai/register/suggest-company-description")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "module", "loi",
+                                "field", "productServices",
+                                "context", Map.of(
+                                        "enterpriseName", "Glenda's Bakeshoppe",
+                                        "businessSector", "Food processing",
+                                        "province", "Cotabato")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.field").value("companyDescription"))
+                .andExpect(jsonPath("$.module").value("register"))
+                .andExpect(jsonPath("$.text").isNotEmpty());
+
+        mockMvc.perform(post("/ai/suggest-field")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "module", "loi",
+                                "field", "productServices",
+                                "context", Map.of("enterpriseName", "Glenda's Bakeshoppe")))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void applicantWriteResponsesOmitUnpublishedStaffDocs() throws Exception {
         String applicantId = "sec-view-" + UUID.randomUUID();
         String appId = "LOI-2026-" + UUID.randomUUID().toString().substring(0, 6);

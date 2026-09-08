@@ -141,7 +141,9 @@ Under **D. Capacity, volume and cost of production**:
    - Monthly = Weekly × 4; Annually = Monthly × 12
    - Total footer sums per-batch, Weekly, Monthly, Annually
    - Print as a dense 8pt fixed-layout table so 10 columns fit A4: wrap headers (Source/Supplier), right-align money, wrap Particulars and Source — do not clip or overlap adjacent cells
+   - Editor: wrap headers, min-width money columns so ₱ amounts are not clipped, sticky delete-row control on the right. Same delete control on every `EditableTableResponsive` table (TNA Form 01 benchmark tables included).
 3. **Raw Materials Allocation** (`rawMaterialAllocationTable`): Particulars, Ratio, Weekly — Total footer sums Ratio and Weekly
+   - Editor prefills from TNA Form 01 raw materials: Particulars = name, Weekly = volume/year, Ratio = share of numeric volumes. Blank saved allocation rows do not wipe the TNA prefill.
 
 Other wide print tables (Compensation, Budget, Refund, financial ratios) use the same wrap + right-align number pattern; Budget/projections share the dense 8pt treatment.
 
@@ -165,7 +167,8 @@ A. Company Profile is **one 9-column table** matching Word `tblGrid` / `vMerge` 
 - **Direct Workers** is the parent row only — print Male / Female / Total **blank** (do not copy TNA `employeesMale` / `employeesFemale` onto this row).
 - **Production** shows `employeesProduction*`. If Production is empty, TNA-forwarded Direct male/female print here instead. **Non-Production** shows `employeesNonProduction*` only when those fields have values.
 - The editor collects Production / Non-Production, not Direct Workers. TNA draft forwards TNA1 Direct counts into Production.
-- **Indirect/Contract Workers** from `employeesIndirectMale` / `employeesIndirectFemale`. **Total** = Production + Non-Production + Indirect.
+- **Indirect/Contract Workers** from `employeesIndirectMale` / `employeesIndirectFemale` (TNA Form 01 Indirect/Contract M/F; legacy `employeesIndirect` / `employeesContract` only if the sex keys are empty). **Total** = Production + Non-Production + Indirect.
+- Editor: Indirect/contract is a full-width row. Registration Office sits with Registration Number, not beside Indirect.
 
 ## Attachments (print slots)
 

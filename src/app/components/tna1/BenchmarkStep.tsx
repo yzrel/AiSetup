@@ -33,6 +33,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           rows={tables.rawMaterials}
           onChange={rows => setT("rawMaterials", rows)}
           onAddRow={() => setT("rawMaterials", [...tables.rawMaterials, ["","","",""]])}
+          deletable
         />
       </div>
       <div>
@@ -42,6 +43,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           rows={tables.production}
           onChange={rows => setT("production", rows)}
           onAddRow={() => setT("production", [...tables.production, ["","","",""]])}
+          deletable
         />
       </div>
       <div>
@@ -51,6 +53,7 @@ export function BenchmarkStep({ ctx }: { ctx: Tna1StepContext }) {
           rows={tables.equipment}
           onChange={rows => setT("equipment", rows)}
           onAddRow={() => setT("equipment", [...tables.equipment, ["","","","",""]])}
+          deletable
         />
       </div>
 

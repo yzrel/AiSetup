@@ -46,4 +46,6 @@ export const FIELD_GUIDANCE = {
     "Where startup or operating funds come from (own savings, loans, investors, cooperatives, grants).",
   accountingSystem:
     "How you keep financial records (manual ledger, Excel, bookkeeper, or accounting software).",
+  interventionCostTable:
+    "List each machine or tool you want SETUP to fund — one row per item, with quantity and cost. Do not list equipment you already own; that belongs in Existing production equipment above.",
 } as const;

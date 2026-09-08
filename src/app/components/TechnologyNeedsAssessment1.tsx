@@ -44,7 +44,14 @@ import { syncTna1FormToBackendBestEffort } from "../utils/applicantPersistence";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 import type { Tna1Section, Tna1StepContext, TnaFormState } from "./tna1/stepContext";
-import { DEFAULT_TNA1_SECTIONS, DOST_BLUE, DOST_MID, STEPS } from "./tna1/tna1Ui";
+import {
+  DEFAULT_TNA1_SECTIONS,
+  DOST_BLUE,
+  DOST_MID,
+  STEPS,
+  TNA1_STAFF_ONLY_STEP_ID,
+  visibleTna1Steps,
+} from "./tna1/tna1Ui";
 import { ModuleStepHeader } from "./ModuleWorkflowLayout";
 import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
 import { IdentificationStep } from "./tna1/IdentificationStep";
@@ -96,6 +103,7 @@ export function TechnologyNeedsAssessment1({
   const [maxReached, setMaxReached] = useState(0);
   const { applicant, isStaff } = useStaffApplicant(user);
   const reviewOnly = isRtecStaff(user?.role);
+  const visibleSteps = useMemo(() => visibleTna1Steps(isStaff), [isStaff]);
   const [staffMode, setStaffMode] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
 
@@ -216,29 +224,43 @@ export function TechnologyNeedsAssessment1({
     notifiedRemarksRef.current = notified;
     // Submitted / post-submit review: unlock all section tabs for navigation.
     if (saved?.submitted || saved?.staffReviewed || saved?.directorValidated) {
-      setMaxReached(STEPS.length - 1);
+      setMaxReached(visibleTna1Steps(isStaff).length - 1);
     } else {
       setMaxReached(0);
     }
-    setStep("identification");
-  }, []);
+    if (isStaff && saved?.submitted && !saved?.staffReviewed && !saved?.directorValidated) {
+      setStep("staff-review");
+    } else if (saved?.directorValidated || saved?.staffReviewed) {
+      setStep("reports");
+    } else if (saved?.submitted) {
+      setStep("complete");
+    } else {
+      setStep("identification");
+    }
+  }, [isStaff]);
 
   useEffect(() => {
     loadApplicantData(applicant);
   }, [applicant?.id, loadApplicantData]);
 
+  // Cooperators must never land on Staff Review (deep link, stale step, or tab click).
+  useEffect(() => {
+    if (isStaff || step !== TNA1_STAFF_ONLY_STEP_ID) return;
+    setStep(applicantSubmitted || staffApproved || directorValidated ? "reports" : "complete");
+  }, [isStaff, step, applicantSubmitted, staffApproved, directorValidated]);
+
   // Progress-gate: bump unlock as the user reaches new sections (Back does not lock again).
   useEffect(() => {
-    const idx = STEPS.findIndex((s) => s.id === step);
+    const idx = visibleSteps.findIndex((s) => s.id === step);
     if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
-  }, [step]);
+  }, [step, visibleSteps]);
 
   // After submit / staff approval, unlock the full workflow for tab navigation.
   useEffect(() => {
     if (applicantSubmitted || staffApproved || directorValidated) {
-      setMaxReached(STEPS.length - 1);
+      setMaxReached(visibleSteps.length - 1);
     }
-  }, [applicantSubmitted, staffApproved, directorValidated]);
+  }, [applicantSubmitted, staffApproved, directorValidated, visibleSteps.length]);
 
   const persistSectionReview = useCallback(
     (nextSections: Tna1Section[]) => {
@@ -421,15 +443,19 @@ export function TechnologyNeedsAssessment1({
         formRef.current as Record<string, unknown>,
       );
       const currentTables = tablesRef.current;
+      const alreadySubmitted = !!applicant.moduleData?.tna1?.submitted;
+      // Step clicks and field autosave call this with submitted=false. Never
+      // demote an already-submitted Form 01 — that blocks tna1 → tna2.
+      const nextSubmitted = submitted || alreadySubmitted;
       const nextModuleData = {
         ...applicant.moduleData,
         tna1: {
           ...(applicant.moduleData?.tna1 ?? {}),
           form: currentForm,
           tables: currentTables,
-          submitted,
-          submittedAt: submitted
-            ? new Date().toISOString()
+          submitted: nextSubmitted,
+          submittedAt: nextSubmitted
+            ? applicant.moduleData?.tna1?.submittedAt ?? new Date().toISOString()
             : applicant.moduleData?.tna1?.submittedAt,
           updatedAt: new Date().toISOString(),
           siteVisitDate: siteVisitDateRef.current || undefined,
@@ -453,11 +479,11 @@ export function TechnologyNeedsAssessment1({
             production: currentTables.production ?? [],
             equipment: currentTables.equipment ?? [],
           },
-          submitted,
+          submitted: nextSubmitted,
         });
       }
       if (opts?.notice !== false) {
-        setSaveNotice(submitted ? "TNA Form 01 submitted." : "Draft saved.");
+        setSaveNotice(nextSubmitted && submitted ? "TNA Form 01 submitted." : "Draft saved.");
         setTimeout(() => setSaveNotice(""), 3000);
       }
     },
@@ -501,9 +527,15 @@ export function TechnologyNeedsAssessment1({
     persistStaffReviewDraft();
   };
 
+  const setVisibleStep = (next: string) => {
+    if (!isStaff && next === TNA1_STAFF_ONLY_STEP_ID) return;
+    setStep(next);
+  };
+
   const goToStep = (next: string) => {
+    if (!isStaff && next === TNA1_STAFF_ONLY_STEP_ID) return;
     if (applicant) saveTnaDraft(false, { notice: false });
-    const idx = STEPS.findIndex((s) => s.id === next);
+    const idx = visibleSteps.findIndex((s) => s.id === next);
     if (idx >= 0) setMaxReached((m) => Math.max(m, idx));
     setStep(next);
   };
@@ -524,6 +556,7 @@ export function TechnologyNeedsAssessment1({
       moduleData: {
         ...applicant.moduleData,
         tna1: {
+          ...(applicant.moduleData?.tna1 ?? {}),
           form: snapshot.form,
           tables: mergedTables,
           submitted: applicant.moduleData?.tna1?.submitted ?? false,
@@ -640,7 +673,7 @@ export function TechnologyNeedsAssessment1({
     set,
     tables,
     setT,
-    setStep,
+    setStep: setVisibleStep,
     goToStep,
     saveTnaDraft,
     applicantSubmitted,
@@ -709,7 +742,7 @@ export function TechnologyNeedsAssessment1({
             )}
           </div>
           <ModuleStepHeader
-            steps={STEPS}
+            steps={visibleSteps}
             current={step}
             maxReached={maxReached}
             onStepClick={(id) => goToStep(id)}

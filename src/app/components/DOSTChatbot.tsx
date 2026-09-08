@@ -64,10 +64,14 @@ You can:
 3. Generate structured reports when asked.
 4. Respond in English OR Filipino/Tagalog — match the language the user uses.
 
-Key Facts:
-- SETUP provides up to ₱5 million in financial assistance to MSMEs
-- Eligible: Filipino-owned (≥60%), registered DTI/SEC/CDA, operating ≥1 year
-- Enterprise sizes: Micro (≤₱3M assets), Small (₱3M–₱15M), Medium (₱15M–₱100M)
+Key Facts (SETUP Guidelines Revision 3.0 — do not invent other amounts or interest rates):
+- SETUP provides refundable Innovation-Enabling Fund (iFund) for S&T interventions based on the approved proposal, projected cash flow, and capacity to refund — not a commercial soft loan with fixed Micro/Small/Medium caps.
+- Approval authorities by amount: ≤₱5,000,000 Regional Director; >₱5M up to ₱10M Undersecretary for Regional Operations; >₱10M DOST EXECOM.
+- Eligible: based and registered in the Philippines (DTI/SEC/CDA as applicable); wholly Filipino-owned or ≥60% Filipino ownership; intends to apply innovations to existing operations; priority MSMEs in SETUP priority sectors; Region XII AiSETUP pre-screening requires ≥3 years of operation.
+- Enterprise asset sizes (MSME Magna Carta): Micro (≤₱3M assets), Small (₱3M–₱15M), Medium (₱15M–₱100M) — these classify the firm; they are not iFund caps.
+- iFund is refundable assistance (not interest-bearing commercial credit). Refund is 3 or 5 years after Phase I (typically 6–12 months). Funds release requires post-dated checks covering total iFund. Cooperator covers equipment insurance and counterpart operating funds.
+- Process: LOI via Provincial S&T Office → TNA Forms 01/02 → Form 001 + requirements → RTEC → approval → MOA → fund release. No fixed 2–4 month SLA in the Guidelines.
+- PWD applicants follow the same eligibility rules; there is no separate PWD priority window in Guidelines 3.0.
 - Modules (canonical pipeline): (1) Pre-Screening (2) Enterprise Registration (3) Letter of Intent (4) TNA Form 01 (5) TNA Form 02 / technical report (6) Project Proposal — Form 001 (7) Submission Requirements (8) Conduct of RTEC — staff only (9) Approval Letter & MOA signing (10) LandBank & Withdrawal (11) Procurement & Liquidation (12) Refund & Delinquent Monitoring (13) Project Close-Out (14) Completed. Pre-PIS (Form 008) may be prepared around MOA signing; it is optional for LandBank enrollment.
 
 When asked to generate a report/checklist/summary/proposal outline, respond ONLY with this JSON (no extra text):
@@ -192,11 +196,16 @@ function VoiceWave({ active }: { active: boolean }) {
 
 function generateMockResponse(userText: string): string {
   const responses: Record<string, string> = {
-    eligibility: "To be eligible for the SETUP program, your enterprise must be:\n• A registered MSME (DTI/SEC/CDA)\n• In operation for at least 1 year\n• Have a valid TIN and business permits\n• Located in the Philippines\n\nWould you like me to guide you through the pre-screening process?",
-    requirements: "For the SETUP program application, you'll need:\n\n**Required Documents:**\n• DTI/SEC/CDA Registration Certificate\n• Business Permit & Mayor's Permit\n• TIN Certificate\n• Project Proposal\n• Latest Financial Statements\n• Company Profile\n\n**Optional Documents:**\n• Product/Service Catalog\n• Market Study/Analysis\n• Quality Certifications\n\nWould you like help preparing any of these documents?",
-    application: "The SETUP application process has 4 main stages:\n\n1. **Pre-screening** - Check eligibility\n2. **Registration** - Create account & submit enterprise info\n3. **Letter of Intent** - State your project goals\n4. **Requirements Submission** - Upload all documents\n\nAfter submission, your application will be assessed within 15-30 business days. Which stage would you like to know more about?",
-    timeline: "The typical SETUP program timeline is:\n\n• **Pre-screening:** 1-2 days\n• **Document submission:** 3-5 days\n• **Initial assessment:** 15-20 days\n• **Technical evaluation:** 10-15 days\n• **Approval decision:** 5-10 days\n• **Fund release:** 7-14 days after approval\n\nTotal estimated time: 2-3 months from application to fund release.",
-    funding: "SETUP provides financial assistance of:\n\n• **Micro Enterprises:** Up to ₱200,000\n• **Small Enterprises:** Up to ₱1,000,000\n• **Medium Enterprises:** Up to ₱3,000,000\n\nFunds can be used for:\n✓ Equipment and machinery\n✓ Technology upgrades\n✓ Product development\n✓ Quality certifications\n✓ Market expansion\n\nInterest rates are subsidized at 2-5% annually.",
+    eligibility:
+      "To be eligible for SETUP iFund under Guidelines 3.0, your enterprise should be:\n• Based and duly registered in the Philippines (DTI / SEC / CDA as applicable)\n• Wholly Filipino-owned or at least 60% Filipino ownership of capital/stocks\n• Intending to apply innovations to improve existing products, services, or operations\n• Preferably an MSME in a DOST SETUP priority sector\n• Operating at least 3 years (AiSETUP Region XII pre-screening)\n• Free of unsettled accountabilities with DOST\n\nPWD applicants follow the same rules — there is no separate PWD priority window.\n\nWould you like me to guide you through the pre-screening process?",
+    requirements:
+      "For SETUP application (Guidelines 3.0), you typically need:\n\n**Core documents:**\n• Letter of intent (commitment to refund iFund and cover equipment insurance)\n• TNA Form 01 and TNA Form 02\n• Project Proposal (SETUP Form 001)\n• Business permits and licenses\n• DTI / SEC / CDA registration certificate\n• Official receipt photocopy\n• Financial statements for the past three (3) years with notarized sworn statement\n• Projected financial statements\n• Sworn affidavit (no relation / no bad debt)\n• Three quotations per equipment + technical drawings\n• Board/legislative resolution (corps, coops, LGUs, etc.)\n\nWould you like help preparing any of these documents?",
+    application:
+      "The SETUP application path under Guidelines 3.0 is:\n\n1. **Letter of intent & requirements** via your Provincial S&T Office\n2. **Technology Needs Assessment** (TNA Forms 01 and 02)\n3. **Project Proposal** (Form 001) and documentary checklist\n4. **RTEC evaluation** (Review and Technical Evaluation Committee)\n5. **Approval** (Regional Director, or higher authority by amount)\n6. **MOA + Pre-Implementation PIS**, then fund release after post-dated checks\n\nIn AiSETUP you also complete online pre-screening and enterprise registration first. Which stage would you like to know more about?",
+    timeline:
+      "SETUP Guidelines 3.0 do **not** set a fixed 2–4 month SLA.\n\nTypical phases after approval:\n• **Phase I:** 6–12 months (equipment acquisition, installation, related S&T assistance)\n• **Phase II:** refund period of **3 or 5 years**\n\nApplication-to-release time depends on document completeness, TNA, RTEC scheduling, and approval authority. Stay complete and responsive to PSTO/RTEC requests to avoid delays.",
+    funding:
+      "SETUP iFund is **refundable** assistance for approved S&T interventions — not a commercial soft loan with Micro/Small/Medium peso caps.\n\n• Amount follows the approved proposal, projected cash flow, and capacity to refund\n• **≤ ₱5,000,000:** Regional Director may approve\n• **> ₱5M up to ₱10M:** Undersecretary for Regional Operations\n• **> ₱10M:** DOST EXECOM\n\nFunds may be used for technology acquisition, packaging/labeling, shop-floor R&D, ICT tools, training, consultancy, and related S&T work — **not** routine working capital/operating expenses (cooperator counterpart).\n\nRefund is **3 or 5 years** after Phase I; release requires post-dated checks covering total iFund. No commercial interest rate applies to the iFund refund.",
     status: "To check your application status:\n\n1. Log in to your account\n2. Navigate to the Dashboard\n3. View your current stage in the pipeline\n\nYou'll receive email notifications at each stage. Current processing times are displayed on your dashboard. Would you like me to explain what each status means?",
   };
 
@@ -237,7 +246,7 @@ function generateMockReport(type: string): GeneratedReport {
         },
         {
           heading: "Top Disqualification Reasons",
-          content: "1. Incomplete business registration (32%)\n2. Less than 1 year in operation (24%)\n3. Outside eligible sectors (18%)\n4. Missing tax compliance (15%)",
+          content: "1. Incomplete business registration (32%)\n2. Less than 3 years in operation (24%)\n3. Outside eligible sectors (18%)\n4. Missing tax compliance (15%)",
         },
         {
           heading: "Sector Distribution",

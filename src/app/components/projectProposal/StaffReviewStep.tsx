@@ -3,8 +3,13 @@
  *
  * Project Proposal — Staff Review (section verification + remarks).
  * Flag opens a comment box (draft only). Request Resubmission sends in-app + email.
+ *
+ * The Form 001 preview is collapsed by default. Embedding the full multi-page
+ * document inline previously overflowed the scroll box and intercepted clicks
+ * on Verify / Flag / Approve below it.
  */
 
+import { useState } from "react";
 import type { Applicant } from "../../store/applicantStore";
 import type {
   ProjectProposalAttachment,
@@ -49,6 +54,8 @@ export interface PpStaffReviewStepProps {
   resubmissionError?: string;
   onOpenPreview: () => void;
   submitted?: boolean;
+  /** RTEC observers may view but not mutate review decisions. */
+  reviewOnly?: boolean;
 }
 
 export function StaffReviewStep({
@@ -67,9 +74,13 @@ export function StaffReviewStep({
   resubmissionError,
   onOpenPreview,
   submitted,
+  reviewOnly = false,
 }: PpStaffReviewStepProps) {
+  const [showEmbeddedPreview, setShowEmbeddedPreview] = useState(false);
+  const canMutate = staffMode && !reviewOnly;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 relative z-10">
       {!staffMode ? (
         <div className="text-center py-16 space-y-4">
           <div className="text-5xl">🔒</div>
@@ -77,14 +88,16 @@ export function StaffReviewStep({
           <p className="text-sm text-gray-400">
             This section is restricted to authorized DOST Provincial Staff only.
           </p>
-          <button
-            type="button"
-            onClick={() => setStaffMode(true)}
-            className="px-6 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
-            style={{ background: DOST_BLUE }}
-          >
-            🔓 Enable Staff Mode
-          </button>
+          {!reviewOnly && (
+            <button
+              type="button"
+              onClick={() => setStaffMode(true)}
+              className="px-6 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+              style={{ background: DOST_BLUE }}
+            >
+              🔓 Enable Staff Mode
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -109,12 +122,19 @@ export function StaffReviewStep({
             </div>
           </div>
 
-          <div className="border border-blue-100 rounded-xl overflow-hidden">
+          {reviewOnly && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              RTEC view is read-only. Section verify / approve is for provincial
+              staff.
+            </div>
+          )}
+
+          <div className="relative z-0 border border-blue-100 rounded-xl overflow-hidden isolate">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100">
               <div>
                 <p className="text-sm font-bold text-blue-900">Submitted Form 001</p>
                 <p className="text-xs text-blue-700">
-                  Full printable Project Proposal as submitted by the applicant.
+                  Open the full form in Preview or expand a compact embed below.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -141,32 +161,45 @@ export function StaffReviewStep({
                 >
                   Print / Save as PDF
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmbeddedPreview((v) => !v)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg border border-blue-200 text-blue-800 bg-white hover:bg-blue-50"
+                >
+                  {showEmbeddedPreview ? "Hide embed" : "Show embed"}
+                </button>
               </div>
             </div>
-            <div className="max-h-[28rem] overflow-y-auto overflow-x-auto p-3 bg-white min-w-0">
-              <ProjectProposalPreview
-                form={form}
-                document={document}
-                attachments={attachments}
-                applicationId={applicant?.applicationId}
-                applicantId={applicant?.id}
-                aiGenerated={document?.aiGenerated}
-                submitted={submitted}
-                onPrint={() =>
-                  printProjectProposal(
-                    form,
-                    document,
-                    attachments,
-                    applicant?.applicationId,
-                    applicant?.id,
-                  )
-                }
-                compact
-              />
-            </div>
+            {showEmbeddedPreview && (
+              <div className="relative z-0 max-h-[20rem] overflow-hidden bg-white">
+                <div className="max-h-[20rem] overflow-y-auto overflow-x-auto p-3 min-w-0 overscroll-contain">
+                  <div className="pointer-events-none select-none">
+                    <ProjectProposalPreview
+                      form={form}
+                      document={document}
+                      attachments={attachments}
+                      applicationId={applicant?.applicationId}
+                      applicantId={applicant?.id}
+                      aiGenerated={document?.aiGenerated}
+                      submitted={submitted}
+                      onPrint={() =>
+                        printProjectProposal(
+                          form,
+                          document,
+                          attachments,
+                          applicant?.applicationId,
+                          applicant?.id,
+                        )
+                      }
+                      compact
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               {
                 label: "Verified",
@@ -198,7 +231,7 @@ export function StaffReviewStep({
             ))}
           </div>
 
-          <div>
+          <div className="relative z-10">
             <h2 className={sectionTitle}>📋 Section Verification Checklist</h2>
             <p className="text-xs text-gray-500 mb-2">
               Verify or flag each form section. Flag opens a comment box (saved as
@@ -232,6 +265,7 @@ export function StaffReviewStep({
                     <div className="flex gap-2 flex-shrink-0">
                       <button
                         type="button"
+                        disabled={!canMutate}
                         onClick={() =>
                           persistSectionReview(
                             sections.map((x) =>
@@ -241,12 +275,13 @@ export function StaffReviewStep({
                             ),
                           )
                         }
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         ✓ Verify
                       </button>
                       <button
                         type="button"
+                        disabled={!canMutate}
                         onClick={() =>
                           persistSectionReview(
                             sections.map((x) =>
@@ -256,7 +291,7 @@ export function StaffReviewStep({
                             ),
                           )
                         }
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         ⚑ Flag
                       </button>
@@ -269,7 +304,8 @@ export function StaffReviewStep({
                       </label>
                       <textarea
                         rows={3}
-                        className={`${inputCls} text-xs`}
+                        disabled={!canMutate}
+                        className={`${inputCls} text-xs disabled:bg-gray-50`}
                         placeholder="Explain what must be corrected in this section…"
                         value={section.remark}
                         onChange={(e) => {
@@ -290,43 +326,45 @@ export function StaffReviewStep({
             </div>
           </div>
 
-          <div>
+          <div className="relative z-10">
             <label className={labelCls}>📝 Staff Remarks</label>
             <textarea
               rows={3}
               value={staffNotes}
+              disabled={!canMutate}
               onChange={(e) => setStaffNotes(e.target.value)}
-              className={inputCls}
+              className={`${inputCls} disabled:bg-gray-50`}
               placeholder="Enter verification notes or concerns…"
             />
           </div>
 
           {!allSectionsReviewed && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+            <div className="relative z-10 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
               <span>⚠️</span>
               <p>All sections must be verified or flagged before approval.</p>
             </div>
           )}
           {resubmissionError && (
-            <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="relative z-10 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {resubmissionError}
             </p>
           )}
 
-          <div className={`${ACTION_ROW} flex-col sm:flex-row`}>
+          <div className={`relative z-10 ${ACTION_ROW} flex-col sm:flex-row`}>
             <button
               type="button"
               onClick={() => persistStaffReview("approved")}
-              disabled={!allowWhenDemo(allSectionsReviewed)}
-              className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90"
+              disabled={!canMutate || !allowWhenDemo(allSectionsReviewed)}
+              className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90"
               style={{ background: "#059669" }}
             >
               ✅ Approve & Complete Project Proposal →
             </button>
             <button
               type="button"
+              disabled={!canMutate}
               onClick={() => persistStaffReview("needs-revision")}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition-all"
+              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               🔄 Request Resubmission
             </button>

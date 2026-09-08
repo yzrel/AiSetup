@@ -48,8 +48,8 @@
   page-break-inside: avoid;
 }
 
-.tna-form-document .tna-form-block .tna-form-table,
-#tna-form-01-preview .tna-form-block .tna-form-table {
+.tna-form-document .tna-form-block:not(.tna-form-block-keep) .tna-form-table,
+#tna-form-01-preview .tna-form-block:not(.tna-form-block-keep) .tna-form-table {
   break-inside: auto;
   page-break-inside: auto;
 }
@@ -150,9 +150,23 @@
   min-height: 22px;
 }
 
-.tna-form-document .tna-form-attachment-cell,
-#tna-form-01-preview .tna-form-attachment-cell {
-  padding: 0 !important;
+.tna-form-document .tna-form-attachment-block,
+#tna-form-01-preview .tna-form-attachment-block {
+  border: 0.5pt solid #111;
+  margin-bottom: 10px;
+  overflow: visible;
+}
+
+.tna-form-document .tna-form-attachment-heading,
+#tna-form-01-preview .tna-form-attachment-heading {
+  margin: 0;
+  padding: 3px 5px;
+  font-weight: 700;
+  font-size: 10.5pt;
+  background: #f9fafb;
+  border-bottom: 0.5pt solid #111;
+  break-after: avoid;
+  page-break-after: avoid;
 }
 
 .tna-form-document .tna-form-table th,
@@ -281,13 +295,26 @@
   align-items: center;
   justify-content: center;
   background: #fff;
+  overflow: visible;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.tna-form-document .tna-form-attachment .tna-form-blank-box,
+#tna-form-01-preview .tna-form-attachment .tna-form-blank-box {
+  border: none;
 }
 
 .tna-form-document .tna-form-attachment-img,
 #tna-form-01-preview .tna-form-attachment-img {
+  display: block;
   max-width: 100%;
   max-height: 200px;
+  width: auto;
+  height: auto;
   object-fit: contain;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .tna-form-document .tna-form-attachment-name,
@@ -324,16 +351,40 @@
   font-style: normal;
 }
 
-.tna-form-document .tna-form-signature-table,
-#tna-form-01-preview .tna-form-signature-table {
+.tna-form-document .tna-form-block-keep,
+#tna-form-01-preview .tna-form-block-keep,
+.tna-form-document .tna-form-signature-block,
+#tna-form-01-preview .tna-form-signature-block,
+.tna-form-document .tna-form-signature-grid,
+#tna-form-01-preview .tna-form-signature-grid,
+.tna-form-document .tna-form-signature-cell,
+#tna-form-01-preview .tna-form-signature-cell,
+.tna-form-document .tna-form-attachment-block,
+#tna-form-01-preview .tna-form-attachment-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.tna-form-document .tna-form-signature-grid,
+#tna-form-01-preview .tna-form-signature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
   margin-top: 12px;
 }
 
 .tna-form-document .tna-form-signature-cell,
 #tna-form-01-preview .tna-form-signature-cell {
   padding: 10px 12px;
-  vertical-align: top;
-  width: 50%;
+  min-width: 0;
+}
+
+.tna-form-document .tna-form-signature-name,
+#tna-form-01-preview .tna-form-signature-name,
+.tna-form-document .tna-form-signature-date,
+#tna-form-01-preview .tna-form-signature-date {
+  break-before: avoid;
+  page-break-before: avoid;
 }
 
 .tna-form-document .tna-form-signature-title,
@@ -441,11 +492,47 @@
     break-inside: auto;
   }
 
-  #tna-form-01-print-root .tna-form-block,
-  #tna-form-01-print-root .tna-print-section {
+  #tna-form-01-print-root .tna-form-block:not(.tna-form-block-keep),
+  #tna-form-01-print-root .tna-print-section:not(.tna-form-block-keep) {
     margin-bottom: 4mm;
     break-inside: auto;
     page-break-inside: auto;
+  }
+
+  #tna-form-01-print-root .tna-form-block-keep,
+  #tna-form-01-print-root .tna-form-signature-block,
+  #tna-form-01-print-root .tna-form-attachment-block {
+    margin-bottom: 4mm;
+  }
+
+  #tna-form-01-print-root .tna-form-block-keep,
+  #tna-form-01-print-root .tna-form-signature-block,
+  #tna-form-01-print-root .tna-form-signature-grid,
+  #tna-form-01-print-root .tna-form-signature-cell,
+  #tna-form-01-print-root .tna-form-attachment-block,
+  #tna-form-01-print-root .tna-form-attachment,
+  #tna-form-01-print-root .tna-form-attachment-img {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Chromium treats inline-block as an atomic print fragment; tables still split cells. */
+  #tna-form-01-print-root .tna-form-signature-block,
+  #tna-form-01-print-root .tna-form-attachment-block {
+    display: inline-block;
+    width: 100%;
+  }
+
+  #tna-form-01-print-root .tna-form-attachment-img {
+    max-width: 100% !important;
+    max-height: 160mm !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  #tna-form-01-print-root .tna-form-signature-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   #tna-form-01-print-root .tna-form-section-heading,

@@ -151,7 +151,7 @@ const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   "client-files": STAFF_ALL,
   "account-management": STAFF_CASEWORK,
   "landbank-branches": STAFF_CASEWORK,
-  "my-account": ["client", "applicant"],
+  "my-account": STAFF_AND_CLIENT,
   "sent-emails": STAFF_CASEWORK,
 };
 

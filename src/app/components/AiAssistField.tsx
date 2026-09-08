@@ -93,6 +93,7 @@ export function AiAssistTextarea({
   aiLoading,
   minHeight = "min-h-[80px]",
   hint,
+  maxLength,
   inputClassName = aiAssistInputCls,
   labelClassName = aiAssistLabelCls,
 }: {
@@ -103,6 +104,7 @@ export function AiAssistTextarea({
   aiLoading?: boolean;
   minHeight?: string;
   hint?: string;
+  maxLength?: number;
   inputClassName?: string;
   labelClassName?: string;
 }) {
@@ -118,8 +120,16 @@ export function AiAssistTextarea({
       <textarea
         className={`${inputClassName} ${minHeight} max-w-full`}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        maxLength={maxLength}
+        onChange={(e) =>
+          onChange(maxLength ? e.target.value.slice(0, maxLength) : e.target.value)
+        }
       />
+      {maxLength != null && (
+        <p className="text-[10px] text-gray-400 text-right mt-0.5">
+          {value.length}/{maxLength}
+        </p>
+      )}
     </div>
   );
 }

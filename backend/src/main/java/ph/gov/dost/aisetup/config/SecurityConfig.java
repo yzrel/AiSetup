@@ -59,7 +59,10 @@ public class SecurityConfig {
                                 "/health",
                                 "/auth/login",
                                 "/auth/register",
-                                "/auth/otp/**")
+                                "/auth/forgot-password",
+                                "/auth/reset-password",
+                                "/auth/otp/**",
+                                "/ai/register/suggest-company-description")
                         .permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())

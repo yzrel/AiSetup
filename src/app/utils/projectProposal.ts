@@ -19,7 +19,6 @@ import type {
 import { getPublishedTna2, normalizeFindingsByArea } from "./tnaForm02";
 import { yearFromDateEstablished } from "./applicantPrefill";
 import { isDemoModeActive } from "./demoMode";
-import { requiredTrimmed } from "./fieldValidators";
 import { normalizeProjectProposalStored } from "./normalizeCriticalModuleData";
 import {
   YEAR_COUNT,
@@ -438,14 +437,57 @@ export function normalizeRefundSchedule(
   });
 }
 
+function isFilledTable(rows: unknown): rows is string[][] {
+  return Array.isArray(rows) && !isBlankStringTable(rows);
+}
+
+function pickTnaTable(
+  primary: string[][] | undefined,
+  fallback: string[][] | undefined,
+  empty: string[][],
+): string[][] {
+  if (isFilledTable(primary)) return primary;
+  if (isFilledTable(fallback)) return fallback;
+  return empty;
+}
+
 function getTna1Data(applicant: Applicant) {
   const md = applicant.moduleData ?? {};
   const tna1 = md.tna1 as
     | { form?: Record<string, unknown>; tables?: typeof EMPTY_TNA_TABLES }
     | undefined;
+  const doc = md.tna1Document as
+    | { form?: Record<string, unknown>; tables?: typeof EMPTY_TNA_TABLES }
+    | undefined;
+  const form: Record<string, unknown> = { ...(doc?.form ?? {}), ...(tna1?.form ?? {}) };
+  if (doc?.form) {
+    for (const [key, value] of Object.entries(doc.form)) {
+      if (String(form[key] ?? "").trim() === "" && String(value ?? "").trim() !== "") {
+        form[key] = value;
+      }
+    }
+  }
+  const tnaTables = tna1?.tables;
+  const docTables = doc?.tables;
   return {
-    form: tna1?.form ?? {},
-    tables: tna1?.tables ?? EMPTY_TNA_TABLES,
+    form,
+    tables: {
+      rawMaterials: pickTnaTable(
+        tnaTables?.rawMaterials,
+        docTables?.rawMaterials,
+        EMPTY_TNA_TABLES.rawMaterials,
+      ),
+      production: pickTnaTable(
+        tnaTables?.production,
+        docTables?.production,
+        EMPTY_TNA_TABLES.production,
+      ),
+      equipment: pickTnaTable(
+        tnaTables?.equipment,
+        docTables?.equipment,
+        EMPTY_TNA_TABLES.equipment,
+      ),
+    },
   };
 }
 
@@ -471,6 +513,27 @@ function formatMoney(value: string | number | undefined): string {
       : parseFloat(String(value).replace(/[^\d.]/g, ""));
   if (Number.isNaN(n)) return String(value);
   return `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function filledTnaRows(rows: string[][] | undefined): string[][] {
+  return (rows ?? []).filter(
+    (row) => Array.isArray(row) && row.some((c) => String(c ?? "").trim()),
+  );
+}
+
+/**
+ * TNA Form 01: Raw Material | Source | Unit Cost | Volume Used/Year
+ * → Form 001 E. Raw material/s: Item | Volume / Year | Source
+ */
+export function rawMaterialsListFromTna(
+  rows: string[][] | undefined,
+): string[][] {
+  const mapped = filledTnaRows(rows).map((row) => [
+    String(row[0] ?? ""),
+    String(row[3] ?? ""),
+    String(row[1] ?? ""),
+  ]);
+  return mapped.length ? mapped : [["", "", ""]];
 }
 
 function tableFromTna(
@@ -636,10 +699,16 @@ export function buildProjectProposalDraft(
     employeesProductionFemale: String(form.employeesProductionFemale || form.employeesFemale || ""),
     employeesNonProductionMale: "",
     employeesNonProductionFemale: "",
-    employeesIndirectMale: String(form.employeesIndirect ?? ""),
-    employeesIndirectFemale: String(form.employeesContract ?? ""),
+    employeesIndirectMale: String(
+      form.employeesIndirectMale || form.employeesIndirect || "",
+    ),
+    employeesIndirectFemale: String(
+      form.employeesIndirectFemale || form.employeesContract || "",
+    ),
     registrationOffice: String(md.registrationType ?? ""),
-    registrationNumber: String(md.registrationNumber ?? ""),
+    registrationNumber: String(
+      md.registrationNumber || form.registrationNo || "",
+    ),
     registrationDate: "",
     businessPermitNumber: "",
     businessPermitDate: "",
@@ -658,7 +727,11 @@ export function buildProjectProposalDraft(
       form.officeAddress ?? applicant.address ?? "",
     ),
     rawMaterialsNarrative: "",
-    rawMaterialsTable: tableFromTna(tables.rawMaterials, 3),
+    rawMaterialCostTable: rawMaterialCostRowsFromTna(tables.rawMaterials),
+    rawMaterialAllocationTable: rawMaterialAllocationRowsFromTna(
+      tables.rawMaterials,
+    ),
+    rawMaterialsTable: rawMaterialsListFromTna(tables.rawMaterials),
     productionProcess: String(
       tna2?.productionProcessAnalysis?.summary ??
         form.processFlow ??
@@ -807,6 +880,10 @@ function mergeProposalForm(
     if (typeof cur === "string" && cur.trim() === "") continue;
     if (key === "volumeOfOrdersTable" && isBlankStringTable(cur)) continue;
     if (key === "competitorsTable" && isBlankStringTable(cur)) continue;
+    if (key === "rawMaterialCostTable" && isBlankStringTable(cur)) continue;
+    if (key === "rawMaterialsTable" && isBlankStringTable(cur)) continue;
+    if (key === "rawMaterialAllocationTable" && isBlankStringTable(cur)) continue;
+    if (key === "interventionCostTable" && isBlankStringTable(cur)) continue;
     if (
       Array.isArray(cur) &&
       cur.length === 1 &&
@@ -1332,48 +1409,214 @@ export function defaultExpectedOutputBullets(
   ];
 }
 
+/** Wizard content tabs used to group Validation Results for cooperators. */
+export type ProjectProposalValidationSection =
+  | "cover"
+  | "company"
+  | "site-ops"
+  | "marketing"
+  | "technology"
+  | "waste"
+  | "financial"
+  | "risk";
+
+export const PROJECT_PROPOSAL_VALIDATION_SECTION_LABELS: Record<
+  ProjectProposalValidationSection,
+  string
+> = {
+  cover: "Cover",
+  company: "Company Profile",
+  "site-ops": "Plant & Materials",
+  marketing: "Marketing",
+  technology: "Technology",
+  waste: "Waste",
+  financial: "Financial",
+  risk: "Risk",
+};
+
+export interface ProjectProposalValidationCheck {
+  label: string;
+  value?: string;
+  passed: boolean;
+  section: ProjectProposalValidationSection;
+  /** Submit-error wording when the check fails (non-demo). */
+  error: string;
+}
+
+function tableHasContent(rows: string[][] | undefined): boolean {
+  return (rows ?? []).some(
+    (row) =>
+      Array.isArray(row) && row.some((cell) => String(cell ?? "").trim()),
+  );
+}
+
+function trimPreview(value: string, max = 80): string {
+  const t = value.trim();
+  if (!t) return "";
+  return t.length > max ? `${t.slice(0, max)}…` : t;
+}
+
+/**
+ * Completeness checklist for the Validation step and submit gate.
+ * Keeps Preview submit and the OK/MISSING UI on the same rules.
+ */
+export function buildProjectProposalValidationChecks(
+  form: ProjectProposalForm,
+  attachments: ProjectProposalAttachment[],
+): ProjectProposalValidationCheck[] {
+  const hasSchedule = tableHasContent(form.scheduleTable);
+  const hasEquipment = tableHasContent(form.equipmentTable);
+  const hasRawMaterials = tableHasContent(form.rawMaterialsTable);
+  const hasBudget = (form.budgetItems ?? []).some((row) => {
+    const total = String(row.total ?? "").trim();
+    const unitCost = String(row.unitCost ?? "").trim();
+    const setupShare = String(row.setupShare ?? "").trim();
+    // Default “Working capital” placeholder alone is not enough — need amounts.
+    return !!(total || unitCost || setupShare);
+  });
+  const hasVicinityMap = attachments.some((a) => a.kind === "vicinityMap");
+  const hasPlantLayout = attachments.some((a) => a.kind === "plantLayout");
+  const marketText =
+    String(form.marketSituation ?? "").trim() ||
+    String(form.productDemandSupply ?? "").trim();
+  const wasteText =
+    String(form.wasteVolumeMonthly ?? "").trim() ||
+    String(form.wasteKinds ?? "").trim() ||
+    String(form.wasteDisposalMethods ?? "").trim() ||
+    String(form.wasteManagement ?? "").trim();
+  const hasRisk = (form.riskRows ?? []).some((row) => {
+    const objective = String(row.objective ?? "").trim();
+    const plan = String(row.plan ?? "").trim();
+    const risk = String(row.risk ?? "").trim();
+    return !!objective && (!!plan || !!risk);
+  });
+  const vicinityAtt = attachments.find((a) => a.kind === "vicinityMap");
+  const plantAtt = attachments.find((a) => a.kind === "plantLayout");
+
+  return [
+    {
+      label: "Project Title",
+      value: trimPreview(form.projectTitle),
+      passed: !!String(form.projectTitle ?? "").trim(),
+      section: "cover",
+      error: "Project title is required.",
+    },
+    {
+      label: "Proponent Name",
+      value: trimPreview(form.proponentName),
+      passed: !!String(form.proponentName ?? "").trim(),
+      section: "cover",
+      error: "Proponent name is required.",
+    },
+    {
+      label: "Amount Requested from SETUP",
+      value: trimPreview(form.amountRequested),
+      passed: !!String(form.amountRequested ?? "").trim(),
+      section: "cover",
+      error: "Amount requested from SETUP is required.",
+    },
+    {
+      label: "General Objective",
+      value: trimPreview(form.generalObjective),
+      passed: !!String(form.generalObjective ?? "").trim(),
+      section: "cover",
+      error: "General objective is required.",
+    },
+    {
+      label: "Firm Name",
+      value: trimPreview(form.firmName),
+      passed: !!String(form.firmName ?? "").trim(),
+      section: "company",
+      error: "Firm name is required.",
+    },
+    {
+      label: "Type of Organization",
+      value: trimPreview(form.organizationType),
+      passed: !!String(form.organizationType ?? "").trim(),
+      section: "company",
+      error: "Type of organization is required.",
+    },
+    {
+      label: "Contact Person",
+      value: trimPreview(form.contactPerson),
+      passed: !!String(form.contactPerson ?? "").trim(),
+      section: "company",
+      error: "Contact person is required.",
+    },
+    {
+      label: "Vicinity Map",
+      value: vicinityAtt?.fileName ?? "",
+      passed: hasVicinityMap,
+      section: "site-ops",
+      error: `${PROPOSAL_ATTACHMENT_LABELS.vicinityMap} is required.`,
+    },
+    {
+      label: "Raw Materials Table",
+      value: hasRawMaterials ? "Entered" : "",
+      passed: hasRawMaterials,
+      section: "site-ops",
+      error: "Add at least one raw materials row.",
+    },
+    {
+      label: "Market Situation / Product Demand",
+      value: trimPreview(marketText),
+      passed: !!marketText,
+      section: "marketing",
+      error: "Market situation or product demand is required.",
+    },
+    {
+      label: "Equipment Table",
+      value: hasEquipment ? "Entered" : "",
+      passed: hasEquipment,
+      section: "technology",
+      error: "Add at least one equipment row.",
+    },
+    {
+      label: "Project Schedule",
+      value: hasSchedule ? "Entered" : "",
+      passed: hasSchedule,
+      section: "technology",
+      error: "Add at least one project schedule / duration row.",
+    },
+    {
+      label: "Plant Layout",
+      value: plantAtt?.fileName ?? "",
+      passed: hasPlantLayout,
+      section: "technology",
+      error: `${PROPOSAL_ATTACHMENT_LABELS.plantLayout} is required.`,
+    },
+    {
+      label: "Waste Management",
+      value: trimPreview(wasteText),
+      passed: !!wasteText,
+      section: "waste",
+      error: "Waste management (volume, kinds, methods, or narrative) is required.",
+    },
+    {
+      label: "Budget Line Items",
+      value: hasBudget ? "Entered" : "",
+      passed: hasBudget,
+      section: "financial",
+      error: "Add at least one budget line item.",
+    },
+    {
+      label: "Risk Management",
+      value: hasRisk ? "Entered" : "",
+      passed: hasRisk,
+      section: "risk",
+      error: "Add at least one risk row with an objective and a plan or risk.",
+    },
+  ];
+}
+
 export function validateProjectProposalSubmit(
   form: ProjectProposalForm,
   attachments: ProjectProposalAttachment[],
 ): string[] {
   if (isDemoModeActive()) return [];
-  const errors: string[] = [];
-  const title = requiredTrimmed(form.projectTitle, "Project title");
-  if (title) errors.push(title.endsWith(".") ? title : `${title}.`);
-  const firm = requiredTrimmed(form.firmName, "Firm name");
-  if (firm) errors.push(firm.endsWith(".") ? firm : `${firm}.`);
-  const proponent = requiredTrimmed(form.proponentName, "Proponent name");
-  if (proponent) errors.push(proponent.endsWith(".") ? proponent : `${proponent}.`);
-  const amount = requiredTrimmed(
-    form.amountRequested,
-    "Amount requested from SETUP",
-  );
-  if (amount) errors.push(amount.endsWith(".") ? amount : `${amount}.`);
-  const orgType = requiredTrimmed(form.organizationType, "Type of organization");
-  if (orgType) errors.push(orgType.endsWith(".") ? orgType : `${orgType}.`);
-  const hasSchedule = (form.scheduleTable ?? []).some((row) =>
-    Array.isArray(row) && row.some((cell) => String(cell ?? "").trim()),
-  );
-  if (!hasSchedule) {
-    errors.push("Add at least one project schedule / duration row.");
-  }
-  const hasEquipment = (form.equipmentTable ?? []).some((row) =>
-    Array.isArray(row) && row.some((cell) => String(cell ?? "").trim()),
-  );
-  if (!hasEquipment) {
-    errors.push("Add at least one equipment row.");
-  }
-  const hasBudget = (form.budgetItems ?? []).some(
-    (row) => String(row.item ?? "").trim() || String(row.total ?? "").trim(),
-  );
-  if (!hasBudget) {
-    errors.push("Add at least one budget line item.");
-  }
-  for (const kind of REQUIRED_ATTACHMENTS) {
-    if (!attachments.some((a) => a.kind === kind))
-      errors.push(`${PROPOSAL_ATTACHMENT_LABELS[kind]} is required.`);
-  }
-  return errors;
+  return buildProjectProposalValidationChecks(form, attachments)
+    .filter((c) => !c.passed)
+    .map((c) => c.error);
 }
 
 export function sumBudgetItems(items: ProjectProposalBudgetRow[]): string {
@@ -1644,6 +1887,54 @@ export function computeRawMaterialCostRow(row: unknown): string[] {
     formatCompensationTotal(annuallyNum),
     source,
   ];
+}
+
+/**
+ * TNA Form 01 raw materials → Form 001 Raw Material Cost.
+ * Particulars, Qty (volume/year), Unit Cost, and Source are copied.
+ * UOM and # of batches stay empty so staff can complete the per-batch formula.
+ */
+export function rawMaterialCostRowsFromTna(
+  rows: string[][] | undefined,
+): string[][] {
+  const mapped = filledTnaRows(rows).map((row) =>
+    computeRawMaterialCostRow([
+      String(row[0] ?? ""),
+      String(row[3] ?? ""),
+      "",
+      String(row[2] ?? ""),
+      "",
+      "",
+      "",
+      "",
+      "",
+      String(row[1] ?? ""),
+    ]),
+  );
+  return mapped.length ? mapped : [emptyRawMaterialCostRow()];
+}
+
+/**
+ * TNA Form 01 raw materials → Form 001 Raw Materials Allocation.
+ * Particulars and Weekly (volume/year) come from TNA. Ratio is the share of
+ * numeric volumes; staff can still edit mix and weekly use.
+ */
+export function rawMaterialAllocationRowsFromTna(
+  rows: string[][] | undefined,
+): string[][] {
+  const filled = filledTnaRows(rows);
+  if (!filled.length) return [emptyRawMaterialAllocationRow()];
+  const volumes = filled.map((row) => parseCompensationAmount(row[3]));
+  const totalVol = volumes.reduce((acc, n) => acc + n, 0);
+  return filled.map((row, i) =>
+    normalizeRawMaterialAllocationRow([
+      String(row[0] ?? ""),
+      totalVol > 0 && volumes[i] > 0
+        ? formatAllocationNumber((volumes[i] / totalVol) * 100)
+        : "",
+      String(row[3] ?? ""),
+    ]),
+  );
 }
 
 export function recomputeRawMaterialCostTable(

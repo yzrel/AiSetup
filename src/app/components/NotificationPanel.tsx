@@ -45,7 +45,7 @@ export function NotificationPanel({
   };
 
   return (
-    <div className="fixed z-50 left-3 right-3 top-[3.75rem] max-h-[calc(100vh-5rem)] flex flex-col sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(24rem,calc(100vw-2rem))] sm:max-h-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+    <div className="fixed z-[60] left-3 right-3 top-[3.75rem] max-h-[calc(100vh-5rem)] flex flex-col sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(24rem,calc(100vw-2rem))] sm:max-h-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
         <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
           <Bell className="w-4 h-4 text-[#0C2461]" />
@@ -81,10 +81,10 @@ export function NotificationPanel({
             }`}
           >
             <div className="mt-0.5 shrink-0">{kindIcon(n.kind)}</div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <div className="flex items-start justify-between gap-2">
                 <p
-                  className={`text-sm leading-tight ${
+                  className={`text-sm leading-tight break-words ${
                     !n.read ? "font-bold text-gray-900" : "font-medium text-gray-700"
                   }`}
                 >
@@ -96,7 +96,9 @@ export function NotificationPanel({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-0.5 leading-snug">{n.message}</p>
+              <p className="text-xs text-gray-500 mt-0.5 leading-snug break-words">
+                {n.message}
+              </p>
               <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.timestamp)}</p>
             </div>
             {!n.read && (
@@ -123,7 +125,7 @@ export function NotificationBell({ user, onNavigate }: NotificationBellProps) {
   const unread = notificationStore.getUnreadCount(user);
 
   return (
-    <div className="relative">
+    <div className="relative z-20">
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
@@ -140,7 +142,7 @@ export function NotificationBell({ user, onNavigate }: NotificationBellProps) {
       {open && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[55]"
             onClick={() => setOpen(false)}
             aria-hidden
           />

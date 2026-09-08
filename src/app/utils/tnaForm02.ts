@@ -27,6 +27,12 @@ function str(value: unknown): string {
   return value == null ? "" : String(value).trim();
 }
 
+/** Keep leading/trailing spaces so live text fields can accept the spacebar. */
+function asText(value: unknown): string {
+  if (value == null) return "";
+  return String(value);
+}
+
 function joinNonBlank(...parts: unknown[]): string {
   return parts.map(str).filter(Boolean).join(" ");
 }
@@ -48,10 +54,10 @@ function asObjectList<T>(value: unknown): T[] {
 
 /** Coerce string or array payloads into a string list (full-field / legacy tolerant). */
 function asStringList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(str).filter(Boolean);
+  if (Array.isArray(value)) return value.map(asText).filter((s) => s.length > 0);
   if (isPlainObject(value)) return [];
-  const s = str(value);
-  return s ? [s] : [];
+  const s = asText(value);
+  return s.length > 0 ? [s] : [];
 }
 
 function asProcessAnalysis(value: unknown): {
@@ -61,21 +67,22 @@ function asProcessAnalysis(value: unknown): {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const row = value as Record<string, unknown>;
     return {
-      summary: str(row.summary),
+      summary: asText(row.summary),
       findings: asStringList(row.findings),
     };
   }
-  const s = str(value);
+  const s = asText(value);
   return { summary: s, findings: [] };
 }
 
 function asTeamMember(value: unknown): { name: string; title?: string } {
-  if (typeof value === "string") return { name: str(value) };
+  if (typeof value === "string") return { name: asText(value) };
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const row = value as Record<string, unknown>;
+    const title = asText(row.title || row.position);
     return {
-      name: str(row.name),
-      title: str(row.title || row.position) || undefined,
+      name: asText(row.name),
+      title: title || undefined,
     };
   }
   return { name: "" };
@@ -109,12 +116,12 @@ function subsectionMap(
   for (const section of asObjectList<Tna2FindingSection>(sections)) {
     const subs = asObjectList<Tna2FindingSubsection>(section.subsections);
     for (const sub of subs) {
-      if (sub.id && str(sub.content)) map.set(sub.id, str(sub.content));
+      if (sub.id) map.set(sub.id, asText(sub.content));
     }
     // Legacy: single content blob maps to first subsection of that section
-    if (str(section.content) && !subs.some((s) => str(s.content))) {
+    if (asText(section.content) && !subs.some((s) => asText(s.content))) {
       const firstId = subs[0]?.id;
-      if (firstId && !map.has(firstId)) map.set(firstId, str(section.content));
+      if (firstId && !map.has(firstId)) map.set(firstId, asText(section.content));
     }
   }
   return map;
@@ -147,10 +154,10 @@ export function normalizeFindingsByArea(
         content: byId.get(sub.id) ?? "",
       }),
     );
-    const hasSubContent = subsections.some((s) => str(s.content));
+    const hasSubContent = subsections.some((s) => asText(s.content));
     return {
       title: template.title,
-      content: hasSubContent ? "" : str(prior?.content),
+      content: hasSubContent ? "" : asText(prior?.content),
       subsections,
     };
   });
@@ -353,8 +360,9 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
   const equipment = asObjectList<Tna2EquipmentRow>(doc.recommendedEquipment);
 
   const background =
-    str(doc.background) ||
-    [
+    asText(doc.background) !== ""
+      ? asText(doc.background)
+      : [
       profile.enterpriseName &&
         `${profile.enterpriseName} operates in the ${profile.sector || "priority"} sector`,
       profile.mainProduct && `producing ${profile.mainProduct}`,
@@ -365,8 +373,9 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
       .join(", ") + ".";
 
   const methodology =
-    str(doc.methodology) ||
-    [
+    asText(doc.methodology) !== ""
+      ? asText(doc.methodology)
+      : [
       "The assessment was conducted through on-site plant visits, direct observation of workflow and facilities,",
       "interviews with the owner and key production staff, and review of operational documents submitted with TNA Form 01.",
       ...site,
@@ -477,12 +486,13 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
     methodology,
     findingsByArea,
     otherObservations:
-      str(doc.otherObservations) ||
-      site.slice(1).join(" ") ||
-      "",
+      asText(doc.otherObservations) !== ""
+        ? asText(doc.otherObservations)
+        : site.slice(1).join(" ") || "",
     conclusions:
-      str(doc.conclusions) ||
-      [
+      asText(doc.conclusions) !== ""
+        ? asText(doc.conclusions)
+        : [
         "The enterprise demonstrates basic operational capacity with documented technology needs.",
         gaps.length
           ? `Key gaps: ${gaps.slice(0, 3).join("; ")}.`
@@ -493,13 +503,13 @@ export function enrichTna2Summary(doc: Tna2DocumentResponse): Tna2DocumentRespon
     tnaTeam,
     assessor: {
       name: assessor.name,
-      title: assessor.title || str((doc.assessor as { title?: string } | undefined)?.title),
-      office: str((doc.assessor as { office?: string } | undefined)?.office),
+      title: assessor.title || asText((doc.assessor as { title?: string } | undefined)?.title),
+      office: asText((doc.assessor as { office?: string } | undefined)?.office),
     },
     attestedBy: doc.attestedBy
       ? {
           ...asTeamMember(doc.attestedBy),
-          office: str((doc.attestedBy as { office?: string }).office),
+          office: asText((doc.attestedBy as { office?: string }).office),
         }
       : {
           name: "",
@@ -590,15 +600,7 @@ export function buildLocalTna2Document(
         "Technology upgrading aligned with SETUP program objectives.",
       "Semi-automated processing and packaging systems.",
     ],
-    recommendedEquipment: (payload.tna1Tables?.equipment ?? [])
-      .filter((row) => row.some((c) => c?.trim()))
-      .map((row, i) => ({
-        name: row[0] || "Recommended equipment",
-        specifications: row[1] || "Per TNA assessment",
-        quantity: row[3] || "1",
-        estimatedCost: "To be verified",
-        priority: i === 0 ? "High" : "Medium",
-      })),
+    recommendedEquipment: [],
     productivityImprovement: {
       kpis: [
         {

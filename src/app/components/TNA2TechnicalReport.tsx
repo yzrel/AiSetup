@@ -2,7 +2,7 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FileText, CheckCircle, Clock } from "lucide-react";
 import { AuthUser, isRtecStaff } from "../store/authStore";
 import { applicantStore, Applicant } from "../store/applicantStore";
@@ -37,6 +37,7 @@ import { aiGenerateErrorMessage } from "../utils/apiErrors";
 import { aiGenerateNotice } from "../utils/demoMode";
 import { applicantAiContext } from "../utils/aiAssist";
 import { appendStaffAssessment } from "../utils/clientAssessment";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 interface TNA2TechnicalReportProps {
   user?: AuthUser | null;
@@ -56,6 +57,11 @@ export function TNA2TechnicalReport({
   const [publishErrors, setPublishErrors] = useState<string[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [editSavedNotice, setEditSavedNotice] = useState("");
+  const editModeRef = useRef(editMode);
+  editModeRef.current = editMode;
+  const applicantIdRef = useRef(applicant?.id);
+  applicantIdRef.current = applicant?.id;
+  const pendingDraftRef = useRef<Tna2DocumentResponse | null>(null);
 
   const loadApplicant = useCallback(
     (app: Applicant | null, options?: { resetEditMode?: boolean }) => {
@@ -82,7 +88,19 @@ export function TNA2TechnicalReport({
     loadApplicant(applicant, { resetEditMode: true });
   }, [applicant?.id, loadApplicant]);
 
-  useApplicantSubscription(applicant?.id, (app) => loadApplicant(app));
+  useApplicantSubscription(applicant?.id, (app) => {
+    // Autosave writes the same record. Re-loading through enrichTna2Summary
+    // trims every field and eats spaces while the user is typing names.
+    if (editModeRef.current) return;
+    loadApplicant(app);
+  });
+
+  const scheduleTna2Draft = useDebouncedCallback(() => {
+    const id = applicantIdRef.current;
+    const next = pendingDraftRef.current;
+    if (!id || !next) return;
+    saveTna2Draft(id, next);
+  }, 400);
 
   const published = getPublishedTna2(applicant);
   const displayDoc = isStaff ? draft : published;
@@ -136,8 +154,8 @@ export function TNA2TechnicalReport({
 
   const handleDraftChange = (updated: Tna2DocumentResponse) => {
     setDraft(updated);
-    if (!applicant) return;
-    saveTna2Draft(applicant.id, updated);
+    pendingDraftRef.current = updated;
+    scheduleTna2Draft();
   };
 
   const handlePublish = () => {
@@ -158,9 +176,13 @@ export function TNA2TechnicalReport({
         }),
       });
     }
-    notifyTna2Published(applicant);
-    setPublishNotice("TNA Form 02 published to applicant.");
-    setTimeout(() => setPublishNotice(""), 4000);
+    const mailed = notifyTna2Published(applicant);
+    setPublishNotice(
+      mailed
+        ? "TNA Form 02 published. The cooperator was notified in the portal and by email."
+        : "TNA Form 02 published. The cooperator was notified in the portal. No email was sent — the applicant record has no email address.",
+    );
+    setTimeout(() => setPublishNotice(""), 6000);
   };
 
   return (
@@ -320,12 +342,14 @@ export function TNA2TechnicalReport({
                 published={isStaff ? getTna2Draft(applicant)?.published : true}
                 onPrint={() => printTnaForm02(displayDoc, applicant?.applicationId)}
               />
-              <DocumentDeliveryPanel
-                applicant={applicant}
-                user={user}
-                moduleKey="tna2"
-                documentTitle={formatFormMention("tna02")}
-              />
+              {isStaff && (
+                <DocumentDeliveryPanel
+                  applicant={applicant}
+                  user={user}
+                  moduleKey="tna2"
+                  documentTitle={formatFormMention("tna02")}
+                />
+              )}
             </>
           )}
 

@@ -7,6 +7,7 @@
 import { MODULE_BODY } from "../moduleTheme";
 import { printTnaForm01 } from "../TnaForm01Preview";
 import { allowWhenDemo } from "../../utils/demoMode";
+import { canAdvanceFrom } from "../../utils/moduleGateways";
 import { formatFormMention } from "../../constants/setupForms";
 import { getOfficeContact } from "../../utils/provincialOffice";
 import type { Tna1StepContext } from "./stepContext";
@@ -151,7 +152,7 @@ export function ReportsStep({ ctx }: { ctx: Tna1StepContext }) {
         </button>
       </div>
 
-      <div className="bg-green-50 border-2 border-green-400 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-green-50 border-2 border-green-400 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-4 sm:mr-4">
         <div className="flex items-start sm:items-center gap-3 min-w-0">
           <span className="text-3xl shrink-0">🎉</span>
           <div className="min-w-0">
@@ -168,8 +169,13 @@ export function ReportsStep({ ctx }: { ctx: Tna1StepContext }) {
         <button
           type="button"
           onClick={() => onSubmitSuccess?.()}
-          disabled={!allowWhenDemo(staffApproved && directorValidated)}
-          className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 min-h-11 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 whitespace-nowrap disabled:opacity-40"
+          disabled={
+            !allowWhenDemo(
+              canAdvanceFrom(applicant ?? null, "tna1").ok ||
+                (staffApproved && directorValidated),
+            )
+          }
+          className="relative z-10 w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 min-h-11 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           style={{ background: "#059669" }}
         >
           Proceed to TNA2 →
