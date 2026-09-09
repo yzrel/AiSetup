@@ -23,6 +23,7 @@ import {
   buildRequirementUploadList,
   countRequiredUploads,
   getRequirementAdditionalNotes,
+  getRequirementDeclarationChecked,
   getRequirementRevisionNotes,
   getRequirementStaffDecisionDraft,
   getRequirementStaffReview,
@@ -227,6 +228,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         "",
     );
     setAdditionalNotes(getRequirementAdditionalNotes(applicant));
+    setDeclarationChecked(getRequirementDeclarationChecked(applicant));
     setRevisionNotes(getRequirementRevisionNotes(applicant));
     setStaffDecision(getRequirementStaffDecisionDraft(applicant));
   }, [
@@ -235,8 +237,10 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     applicant?.moduleData?.requirementStaffReview?.updatedAt,
     applicant?.moduleData?.staffDecision,
     applicant?.moduleData?.requirementAdditionalNotes,
+    applicant?.moduleData?.requirementDeclarationChecked,
     applicant?.moduleData?.requirementRevisionNotes,
     applicant?.moduleData?.requirementStaffDecisionDraft,
+    applicant?.moduleData?.documentsSubmitted,
   ]);
 
   const persistApplicantNotesDraft = useDebouncedCallback(
@@ -263,12 +267,22 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     400,
   );
 
+  const persistDeclaration = (checked: boolean) => {
+    setDeclarationChecked(checked);
+    if (!applicant || reviewOnly) return;
+    persistRequirementNotes(
+      applicant.id,
+      { declarationChecked: checked },
+      applicantStore,
+    );
+  };
+
   const handleSaveApplicantDraft = () => {
     if (!applicant || reviewOnly) return;
     persistRequirementUploads(applicant.id, documents, applicantStore);
     persistRequirementNotes(
       applicant.id,
-      { additionalNotes, revisionNotes },
+      { additionalNotes, revisionNotes, declarationChecked },
       applicantStore,
     );
     setDraftSaved(true);
@@ -395,6 +409,7 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         documentsSubmittedList: documents.filter(d => d.uploaded).map(d => d.name),
         requirementUploads: documents,
         requirementAdditionalNotes: additionalNotes,
+        requirementDeclarationChecked: true,
         requirementsSubmittedAt: new Date().toISOString(),
       },
     });
@@ -699,7 +714,13 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
 
             {/* Declaration */}
             <label className={`flex items-start gap-3 p-4 rounded-xl border-l-4 cursor-pointer transition-all ${declarationChecked ? "bg-amber-50 border-amber-400" : "bg-amber-50/50 border-amber-300"}`}>
-              <input type="checkbox" checked={declarationChecked} onChange={e => setDeclarationChecked(e.target.checked)} className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0" />
+              <input
+                type="checkbox"
+                checked={declarationChecked}
+                onChange={(e) => persistDeclaration(e.target.checked)}
+                disabled={reviewOnly || (!isStaff && awaitingStaffReview)}
+                className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0"
+              />
               <p className="text-sm text-amber-800">
                 <strong>Declaration:</strong> I hereby certify that all documents submitted are authentic and accurate. I understand that providing false information may result in disqualification.
               </p>

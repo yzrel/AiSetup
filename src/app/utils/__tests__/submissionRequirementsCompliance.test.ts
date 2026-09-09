@@ -4,7 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 import type { Applicant } from "../../store/applicantStore";
-import { buildRequirementUploadList } from "../submissionRequirements";
+import {
+  buildRequirementUploadList,
+  getRequirementDeclarationChecked,
+  persistRequirementNotes,
+} from "../submissionRequirements";
 import { QUOTATIONS_PO_GUIDANCE } from "../requirementEquipment";
 
 describe("submissionRequirements compliance", () => {
@@ -39,5 +43,47 @@ describe("submissionRequirements compliance", () => {
     const list = buildRequirementUploadList({ msmeSize: "Small", moduleData: {} } as Applicant);
     expect(list.some((d) => d.id === "quotations")).toBe(true);
     expect(list.some((d) => d.id.startsWith("quotations-"))).toBe(false);
+  });
+});
+
+describe("requirement declaration persistence", () => {
+  it("reads explicit declaration flag from moduleData", () => {
+    expect(
+      getRequirementDeclarationChecked({
+        moduleData: { requirementDeclarationChecked: true },
+      } as Applicant),
+    ).toBe(true);
+    expect(
+      getRequirementDeclarationChecked({
+        moduleData: { requirementDeclarationChecked: false },
+      } as Applicant),
+    ).toBe(false);
+  });
+
+  it("treats already-submitted requirements as declared (legacy)", () => {
+    expect(
+      getRequirementDeclarationChecked({
+        moduleData: { documentsSubmitted: true },
+      } as Applicant),
+    ).toBe(true);
+  });
+
+  it("persists declarationChecked into moduleData", () => {
+    const applicant = {
+      id: "a1",
+      moduleData: { requirementAdditionalNotes: "n" },
+    } as Applicant;
+    const store = {
+      getById: () => applicant,
+      update: (_id: string, patch: Partial<Applicant>) => {
+        Object.assign(applicant, {
+          ...patch,
+          moduleData: { ...applicant.moduleData, ...patch.moduleData },
+        });
+      },
+    };
+    persistRequirementNotes("a1", { declarationChecked: true }, store);
+    expect(applicant.moduleData.requirementDeclarationChecked).toBe(true);
+    expect(getRequirementDeclarationChecked(applicant)).toBe(true);
   });
 });

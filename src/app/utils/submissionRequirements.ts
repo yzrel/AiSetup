@@ -278,6 +278,15 @@ export function getRequirementAdditionalNotes(
     : "";
 }
 
+export function getRequirementDeclarationChecked(
+  applicant: Applicant | null | undefined,
+): boolean {
+  if (applicant?.moduleData?.requirementDeclarationChecked === true) return true;
+  // Legacy / already-submitted cases: submit required the declaration.
+  if (applicant?.moduleData?.documentsSubmitted) return true;
+  return false;
+}
+
 export function getRequirementRevisionNotes(
   applicant: Applicant | null | undefined,
 ): string {
@@ -301,6 +310,7 @@ export function persistRequirementNotes(
   patch: {
     additionalNotes?: string;
     revisionNotes?: string;
+    declarationChecked?: boolean;
     staffDecisionDraft?: "approved" | "needs-revision" | "";
   },
   store: {
@@ -318,6 +328,9 @@ export function persistRequirementNotes(
         : {}),
       ...(patch.revisionNotes !== undefined
         ? { requirementRevisionNotes: patch.revisionNotes }
+        : {}),
+      ...(patch.declarationChecked !== undefined
+        ? { requirementDeclarationChecked: patch.declarationChecked }
         : {}),
       ...(patch.staffDecisionDraft !== undefined
         ? { requirementStaffDecisionDraft: patch.staffDecisionDraft }
