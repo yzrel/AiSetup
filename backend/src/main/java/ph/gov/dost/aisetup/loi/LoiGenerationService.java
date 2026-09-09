@@ -6,7 +6,8 @@ package ph.gov.dost.aisetup.loi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.loi.dto.AddresseeDto;
@@ -32,10 +33,10 @@ public class LoiGenerationService {
     private static final DateTimeFormatter DISPLAY_DATE =
             DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH);
 
-    private final AnthropicClient anthropicClient;
+    private final AiGateway aiGateway;
 
-    public LoiGenerationService(AnthropicClient anthropicClient) {
-        this.anthropicClient = anthropicClient;
+    public LoiGenerationService(AiGateway aiGateway) {
+        this.aiGateway = aiGateway;
     }
 
     public LoiDocumentResponse generate(LoiGenerationRequest request) {
@@ -47,7 +48,7 @@ public class LoiGenerationService {
         AiTemplateFallback.Result<List<String>> body = AiTemplateFallback.generate(
                 log,
                 "LOI body",
-                () -> anthropicClient.generateBodyParagraphs(buildPrompt(request)),
+                () -> aiGateway.generateBodyParagraphs(AiTaskTier.NORMAL, buildPrompt(request)),
                 () -> buildTemplateParagraphs(request));
         List<String> bodyParagraphs = body.value();
         boolean aiGenerated = body.aiGenerated();

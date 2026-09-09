@@ -1,4 +1,5 @@
-# Ensures backend/.env exists and ANTHROPIC_API_KEY is available for AI assist.
+# Ensures backend/.env exists and the AI provider keys are available for AI assist.
+# OPENAI_API_KEY is the primary provider; ANTHROPIC_API_KEY is an optional failover.
 param(
     [switch]$SkipInteractiveSetup
 )
@@ -48,9 +49,34 @@ function Set-EnvFileValue([string]$path, [string]$name, [string]$value) {
     [System.IO.File]::WriteAllText($path, ($lines -join [Environment]::NewLine), $utf8NoBom)
 }
 
-function Import-KeyFromFile([string]$path) {
-    $key = Get-EnvFileValue $path "ANTHROPIC_API_KEY"
-    if (-not [string]::IsNullOrWhiteSpace($key)) { return $key }
+# Resolves a key from backend/.env, then the project .env, then the system environment,
+# writing it back into backend/.env so Spring picks it up on the next boot.
+function Resolve-ApiKey([string]$name) {
+    $current = Get-EnvFileValue $envFile $name
+    if (-not [string]::IsNullOrWhiteSpace($current)) {
+        Set-Item -Path "env:$name" -Value $current
+        return $current
+    }
+
+    $repoRoot = Split-Path -Parent $backendRoot
+    $fromRootEnv = Get-EnvFileValue (Join-Path $repoRoot ".env") $name
+    if (-not [string]::IsNullOrWhiteSpace($fromRootEnv)) {
+        Set-EnvFileValue $envFile $name $fromRootEnv
+        Write-Host "Copied $name from project .env into backend/.env"
+        Set-Item -Path "env:$name" -Value $fromRootEnv
+        return $fromRootEnv
+    }
+
+    foreach ($scope in @("Process", "User", "Machine")) {
+        $fromEnv = [Environment]::GetEnvironmentVariable($name, $scope)
+        if (-not [string]::IsNullOrWhiteSpace($fromEnv)) {
+            Set-EnvFileValue $envFile $name $fromEnv
+            Write-Host "Synced $name from system environment into backend/.env"
+            Set-Item -Path "env:$name" -Value $fromEnv
+            return $fromEnv
+        }
+    }
+
     return ""
 }
 
@@ -64,47 +90,36 @@ if (-not (Test-Path $envFile)) {
     Write-Host "Created backend/.env from backend/.env.example"
 }
 
-$currentKey = Get-EnvFileValue $envFile "ANTHROPIC_API_KEY"
-if ([string]::IsNullOrWhiteSpace($currentKey)) {
-    $repoRoot = Split-Path -Parent $backendRoot
-    $rootEnv = Join-Path $repoRoot ".env"
-    $currentKey = Import-KeyFromFile $rootEnv
-    if (-not [string]::IsNullOrWhiteSpace($currentKey)) {
-        Set-EnvFileValue $envFile "ANTHROPIC_API_KEY" $currentKey
-        Write-Host "Copied ANTHROPIC_API_KEY from project .env into backend/.env"
-    }
-}
-if ([string]::IsNullOrWhiteSpace($currentKey)) {
-    $fromEnv = [Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "Process")
-    if ([string]::IsNullOrWhiteSpace($fromEnv)) {
-        $fromEnv = [Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "User")
-    }
-    if ([string]::IsNullOrWhiteSpace($fromEnv)) {
-        $fromEnv = [Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "Machine")
-    }
-    if (-not [string]::IsNullOrWhiteSpace($fromEnv)) {
-        Set-EnvFileValue $envFile "ANTHROPIC_API_KEY" $fromEnv
-        Write-Host "Synced ANTHROPIC_API_KEY from system environment into backend/.env"
-        $currentKey = $fromEnv
-    }
-}
+$openAiKey = Resolve-ApiKey "OPENAI_API_KEY"
+# Anthropic is the failover provider only: sync it if present, never prompt for it.
+$anthropicKey = Resolve-ApiKey "ANTHROPIC_API_KEY"
 
-if ([string]::IsNullOrWhiteSpace($currentKey)) {
+if ([string]::IsNullOrWhiteSpace($openAiKey)) {
     if ($env:AISETUP_SKIP_AI_SETUP -eq "1") {
-        Write-Warning "ANTHROPIC_API_KEY is not set (AISETUP_SKIP_AI_SETUP=1). Template-only mode."
+        Write-Warning "OPENAI_API_KEY is not set (AISETUP_SKIP_AI_SETUP=1)."
     } elseif (-not $SkipInteractiveSetup) {
         Write-Host ""
-        Write-Host "ANTHROPIC_API_KEY is not set. Running interactive AI setup..."
+        Write-Host "OPENAI_API_KEY is not set. Running interactive AI setup..."
         & "$PSScriptRoot\ai-setup.ps1"
-        $currentKey = Get-EnvFileValue $envFile "ANTHROPIC_API_KEY"
+        $openAiKey = Get-EnvFileValue $envFile "OPENAI_API_KEY"
+        if (-not [string]::IsNullOrWhiteSpace($openAiKey)) {
+            $env:OPENAI_API_KEY = $openAiKey
+        }
     } else {
-        Write-Warning "ANTHROPIC_API_KEY is not set. Run: npm run ai:setup"
+        Write-Warning "OPENAI_API_KEY is not set. Run: npm run ai:setup"
     }
 }
 
-if (-not [string]::IsNullOrWhiteSpace($currentKey)) {
-    $env:ANTHROPIC_API_KEY = $currentKey
-    Write-Host "AI assist ready (Anthropic API key loaded)"
+if (-not [string]::IsNullOrWhiteSpace($openAiKey)) {
+    if (-not [string]::IsNullOrWhiteSpace($anthropicKey)) {
+        Write-Host "AI assist ready (OpenAI primary, Anthropic fallback)"
+    } else {
+        Write-Host "AI assist ready (OpenAI primary, template fallback)"
+    }
+} elseif (-not [string]::IsNullOrWhiteSpace($anthropicKey)) {
+    Write-Host "AI assist ready (Anthropic only — set OPENAI_API_KEY for the primary provider)"
+} else {
+    Write-Warning "No AI provider key found. Template-only mode."
 }
 
 # Root Vite env (optional)

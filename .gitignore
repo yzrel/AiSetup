@@ -41,3 +41,6 @@ backend/data/
 /Aisetup/
 .tmp-setup-forms/
 scripts/.local-import/
+
+# k6 stress-run summaries
+scripts/k6/results/

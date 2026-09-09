@@ -29,7 +29,7 @@ if (Test-Path $envFile) {
         Set-Item -Path "env:$name" -Value $value
     }
 } else {
-    Write-Warning "No backend/.env — AI assist will use template-only mode until you add ANTHROPIC_API_KEY."
+    Write-Warning "No backend/.env — AI assist will use template-only mode until you add OPENAI_API_KEY."
 }
 
 Write-Host ""

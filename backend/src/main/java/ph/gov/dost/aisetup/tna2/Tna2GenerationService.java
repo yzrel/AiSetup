@@ -8,7 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.loi.ProvincialOfficeResolver;
@@ -36,11 +37,11 @@ public class Tna2GenerationService {
     private static final DateTimeFormatter DISPLAY_DATE =
             DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH);
 
-    private final AnthropicClient anthropicClient;
+    private final AiGateway aiGateway;
     private final ObjectMapper objectMapper;
 
-    public Tna2GenerationService(AnthropicClient anthropicClient, ObjectMapper objectMapper) {
-        this.anthropicClient = anthropicClient;
+    public Tna2GenerationService(AiGateway aiGateway, ObjectMapper objectMapper) {
+        this.aiGateway = aiGateway;
         this.objectMapper = objectMapper;
     }
 
@@ -49,7 +50,7 @@ public class Tna2GenerationService {
                 log,
                 "TNA Form 02",
                 () -> {
-                    JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
+                    JsonNode aiNode = aiGateway.generateJsonObject(AiTaskTier.COMPLEX, buildPrompt(request));
                     Tna2DocumentResponse doc = objectMapper.treeToValue(aiNode, Tna2DocumentResponse.class);
                     if (doc == null || isEmptyDocument(doc)) {
                         throw new IllegalStateException("AI returned empty document");

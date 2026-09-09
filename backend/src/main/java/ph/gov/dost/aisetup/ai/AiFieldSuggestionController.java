@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ph.gov.dost.aisetup.ai.dto.AiFieldSuggestionRequest;
 import ph.gov.dost.aisetup.ai.dto.AiFieldSuggestionResponse;
+import ph.gov.dost.aisetup.audit.AuditService;
+import ph.gov.dost.aisetup.common.TextUtils;
 import ph.gov.dost.aisetup.config.AisetupProperties;
 import ph.gov.dost.aisetup.config.SlidingWindowRateLimiter;
 
@@ -34,11 +37,15 @@ public class AiFieldSuggestionController {
             "productServices");
 
     private final AiFieldSuggestionService suggestionService;
+    private final AuditService auditService;
     private final SlidingWindowRateLimiter registerIpLimiter;
 
     public AiFieldSuggestionController(
-            AiFieldSuggestionService suggestionService, AisetupProperties properties) {
+            AiFieldSuggestionService suggestionService,
+            AuditService auditService,
+            AisetupProperties properties) {
         this.suggestionService = suggestionService;
+        this.auditService = auditService;
         Duration window = Duration.ofMinutes(Math.max(1, properties.getRateLimit().getAiWindowMinutes()));
         this.registerIpLimiter = new SlidingWindowRateLimiter(
                 Math.max(1, properties.getRateLimit().getAiPerUser()), window);
@@ -46,7 +53,13 @@ public class AiFieldSuggestionController {
 
     @PostMapping("/suggest-field")
     public AiFieldSuggestionResponse suggestField(@Valid @RequestBody AiFieldSuggestionRequest request) {
-        return suggestionService.suggest(request);
+        AiFieldSuggestionResponse response = suggestionService.suggest(request);
+        auditService.record(
+                "ai.suggest-field",
+                "ai_field",
+                request.getModule() + "." + request.getField(),
+                auditDetail("/ai/suggest-field", response));
+        return response;
     }
 
     /**
@@ -62,7 +75,25 @@ public class AiFieldSuggestionController {
         request.setModule("register");
         request.setField("companyDescription");
         request.setContext(publicRegisterContext(request.getContext()));
-        return suggestionService.suggest(request);
+        AiFieldSuggestionResponse response = suggestionService.suggest(request);
+        auditService.record(
+                "ai.suggest-field",
+                "ai_field",
+                "register.companyDescription",
+                auditDetail("/ai/register/suggest-company-description", response));
+        return response;
+    }
+
+    private static Map<String, Object> auditDetail(String api, AiFieldSuggestionResponse response) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("api", api);
+        detail.put("module", TextUtils.safe(response.getModule()));
+        detail.put("field", TextUtils.safe(response.getField()));
+        detail.put("aiGenerated", response.isAiGenerated());
+        detail.put("bullets", response.getBullets() != null ? response.getBullets().size() : 0);
+        detail.put("riskRows", response.getRiskRows() != null ? response.getRiskRows().size() : 0);
+        detail.put("preview", AuditService.preview(response.getText()));
+        return detail;
     }
 
     private static Map<String, Object> publicRegisterContext(Map<String, Object> incoming) {

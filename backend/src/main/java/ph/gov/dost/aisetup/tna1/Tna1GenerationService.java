@@ -7,7 +7,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.tna1.dto.Tna1DocumentResponse;
@@ -64,10 +65,10 @@ public class Tna1GenerationService {
             "packExpiryRemarks"
     );
 
-    private final AnthropicClient anthropicClient;
+    private final AiGateway aiGateway;
 
-    public Tna1GenerationService(AnthropicClient anthropicClient) {
-        this.anthropicClient = anthropicClient;
+    public Tna1GenerationService(AiGateway aiGateway) {
+        this.aiGateway = aiGateway;
     }
 
     private record Suggestions(Map<String, Object> form, Tna1TablesDto tables) {}
@@ -79,7 +80,7 @@ public class Tna1GenerationService {
                 () -> {
                     Map<String, Object> form = new LinkedHashMap<>();
                     Tna1TablesDto tables = new Tna1TablesDto();
-                    JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
+                    JsonNode aiNode = aiGateway.generateJsonObject(AiTaskTier.COMPLEX, buildPrompt(request));
                     extractFormSuggestions(aiNode.path("form"), request.getForm(), form);
                     extractTableSuggestions(aiNode.path("tables"), request.getTables(), tables);
                     if (form.isEmpty() && !hasTableData(tables)) {

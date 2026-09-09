@@ -4,7 +4,8 @@
 package ph.gov.dost.aisetup.proposal;
 
 import org.junit.jupiter.api.Test;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalDocumentResponse;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalGenerationRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -22,11 +24,12 @@ class ProjectProposalGenerationServiceTest {
 
     @Test
     void templateFallbackReturnsPopulatedDocument() {
-        AnthropicClient client = mock(AnthropicClient.class);
-        when(client.generateJsonObject(anyString())).thenThrow(new IllegalStateException("no key"));
+        AiGateway gateway = mock(AiGateway.class);
+        when(gateway.generateJsonObject(any(AiTaskTier.class), anyString()))
+                .thenThrow(new IllegalStateException("no key"));
 
         ProjectProposalGenerationService service =
-                new ProjectProposalGenerationService(client, new ObjectMapper());
+                new ProjectProposalGenerationService(gateway, new ObjectMapper());
 
         ProjectProposalGenerationRequest request = new ProjectProposalGenerationRequest();
         request.setApplicationId("LOI-2024-000145");
@@ -71,8 +74,8 @@ class ProjectProposalGenerationServiceTest {
     @Test
     void aiGeneratedDocumentKeepsFormEquipmentTable() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        AnthropicClient client = mock(AnthropicClient.class);
-        when(client.generateJsonObject(anyString())).thenReturn(mapper.readTree("""
+        AiGateway gateway = mock(AiGateway.class);
+        when(gateway.generateJsonObject(any(AiTaskTier.class), anyString())).thenReturn(mapper.readTree("""
                 {
                   "generalObjective": "AI objective",
                   "enterpriseBackground": "AI background",
@@ -81,7 +84,7 @@ class ProjectProposalGenerationServiceTest {
                 """));
 
         ProjectProposalGenerationService service =
-                new ProjectProposalGenerationService(client, mapper);
+                new ProjectProposalGenerationService(gateway, mapper);
 
         ProjectProposalGenerationRequest request = new ProjectProposalGenerationRequest();
         request.setEnterpriseName("ABC Food Processing");

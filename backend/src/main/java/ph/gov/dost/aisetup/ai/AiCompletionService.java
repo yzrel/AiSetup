@@ -16,12 +16,10 @@ public class AiCompletionService {
     private static final int DEFAULT_MAX_TOKENS = 2048;
     private static final int MAX_TOKENS_CAP = 4096;
 
-    private final AnthropicClient anthropicClient;
-    private final AnthropicProperties anthropicProperties;
+    private final AiGateway aiGateway;
 
-    public AiCompletionService(AnthropicClient anthropicClient, AnthropicProperties anthropicProperties) {
-        this.anthropicClient = anthropicClient;
-        this.anthropicProperties = anthropicProperties;
+    public AiCompletionService(AiGateway aiGateway) {
+        this.aiGateway = aiGateway;
     }
 
     public AiCompletionResponse complete(AiCompletionRequest request) {
@@ -31,7 +29,7 @@ public class AiCompletionService {
                 : DEFAULT_MAX_TOKENS;
 
         try {
-            String text = anthropicClient.generateText(request.getPrompt().trim(), maxTokens);
+            String text = aiGateway.generateText(AiTaskTier.NORMAL, request.getPrompt().trim(), maxTokens);
             if (!text.isBlank()) {
                 response.setText(text.trim());
                 response.setAiGenerated(true);
@@ -47,8 +45,8 @@ public class AiCompletionService {
     }
 
     private String fallbackText(String prompt) {
-        if (!anthropicProperties.isConfigured()) {
-            return "AI assist is unavailable. Set ANTHROPIC_API_KEY in backend/.env and restart the backend (npm run backend).";
+        if (!aiGateway.isConfigured()) {
+            return "AI assist is unavailable. Set OPENAI_API_KEY in backend/.env and restart the backend (npm run backend).";
         }
         return "AI assist could not complete this request right now. Please try again in a moment.";
     }

@@ -1,4 +1,5 @@
-# Saves your Anthropic API key to backend/.env for AI assist.
+# Saves your OpenAI API key to backend/.env for AI assist.
+# Anthropic stays optional: it is only used if an OpenAI call fails.
 $ErrorActionPreference = "Stop"
 $backendRoot = Split-Path -Parent $PSScriptRoot
 $envFile = Join-Path $backendRoot ".env"
@@ -36,11 +37,11 @@ function Set-EnvFileValue([string]$path, [string]$name, [string]$value) {
 }
 
 Write-Host ""
-Write-Host "Anthropic API key setup for aiSETUP AI assist"
-Write-Host "Get a key at https://console.anthropic.com/"
+Write-Host "OpenAI API key setup for aiSETUP AI assist"
+Write-Host "Get a key at https://platform.openai.com/api-keys"
 Write-Host ""
 
-$key = Read-Host "Paste ANTHROPIC_API_KEY (input hidden)" -AsSecureString
+$key = Read-Host "Paste OPENAI_API_KEY (input hidden)" -AsSecureString
 $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToBSTR($key)
 ).Trim()
@@ -49,12 +50,12 @@ if ([string]::IsNullOrWhiteSpace($plain)) {
     Write-Error "No key entered."
 }
 
-if (-not $plain.StartsWith("sk-ant-")) {
-    Write-Warning "This does not look like an Anthropic key (expected sk-ant-...). Saving anyway."
+if (-not $plain.StartsWith("sk-")) {
+    Write-Warning "This does not look like an OpenAI key (expected sk-...). Saving anyway."
 }
 
-Set-EnvFileValue $envFile "ANTHROPIC_API_KEY" $plain
-$env:ANTHROPIC_API_KEY = $plain
+Set-EnvFileValue $envFile "OPENAI_API_KEY" $plain
+$env:OPENAI_API_KEY = $plain
 
 Write-Host ""
 Write-Host "Saved to backend/.env"

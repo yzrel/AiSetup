@@ -25,7 +25,7 @@ export function aiAssistNotice(aiGenerated: boolean): string {
   if (isDemoModeActive()) {
     return "Template suggestion applied for demo. Review and edit before saving.";
   }
-  return "Suggestion filled from template. Set ANTHROPIC_API_KEY in backend/.env and restart the backend for live AI output.";
+  return "Suggestion filled from template. Set OPENAI_API_KEY in backend/.env and restart the backend for live AI output.";
 }
 
 /** User-facing notice after bulk document generation falls back to templates. */
@@ -34,7 +34,7 @@ export function aiGenerateNotice(aiGenerated: boolean, templateLabel: string): s
   if (isDemoModeActive()) {
     return `${templateLabel} filled from the standard template for demo.`;
   }
-  return `${templateLabel} generated using the standard template. Set ANTHROPIC_API_KEY in backend/.env and restart the backend for AI-drafted content.`;
+  return `${templateLabel} generated using the standard template. Set OPENAI_API_KEY in backend/.env and restart the backend for AI-drafted content.`;
 }
 
 /** Unlocks workflow step navigation while preserving real maxReached for locked styling. */

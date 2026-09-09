@@ -4,7 +4,8 @@
 package ph.gov.dost.aisetup.tna2;
 
 import org.junit.jupiter.api.Test;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.tna1.dto.Tna1TablesDto;
 import ph.gov.dost.aisetup.tna2.dto.Tna2DocumentResponse;
 import ph.gov.dost.aisetup.tna2.dto.Tna2GenerationRequest;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -23,10 +25,11 @@ class Tna2GenerationServiceTest {
 
     @Test
     void templateFallbackReturnsPopulatedDocument() {
-        AnthropicClient client = mock(AnthropicClient.class);
-        when(client.generateJsonObject(anyString())).thenThrow(new IllegalStateException("no key"));
+        AiGateway gateway = mock(AiGateway.class);
+        when(gateway.generateJsonObject(any(AiTaskTier.class), anyString()))
+                .thenThrow(new IllegalStateException("no key"));
 
-        Tna2GenerationService service = new Tna2GenerationService(client, new ObjectMapper());
+        Tna2GenerationService service = new Tna2GenerationService(gateway, new ObjectMapper());
 
         Tna2GenerationRequest request = new Tna2GenerationRequest();
         request.setApplicationId("LOI-2024-000145");
@@ -87,10 +90,11 @@ class Tna2GenerationServiceTest {
 
     @Test
     void templateFindingsMapMultiTargetSourcesToPrimaryOnly() {
-        AnthropicClient client = mock(AnthropicClient.class);
-        when(client.generateJsonObject(anyString())).thenThrow(new IllegalStateException("no key"));
+        AiGateway gateway = mock(AiGateway.class);
+        when(gateway.generateJsonObject(any(AiTaskTier.class), anyString()))
+                .thenThrow(new IllegalStateException("no key"));
 
-        Tna2GenerationService service = new Tna2GenerationService(client, new ObjectMapper());
+        Tna2GenerationService service = new Tna2GenerationService(gateway, new ObjectMapper());
 
         String safety = "PPE required; fire extinguishers inspected monthly.";
         String processFlow = "Receive → Sort → Dry → Pack → Ship";

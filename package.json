@@ -18,7 +18,11 @@
     "backend:setup": "powershell -ExecutionPolicy Bypass -File backend/scripts/setup-jdk.ps1",
     "backend": "powershell -ExecutionPolicy Bypass -File backend/scripts/run-backend.ps1",
     "ai:setup": "powershell -ExecutionPolicy Bypass -File backend/scripts/ai-setup.ps1",
-    "start": "powershell -ExecutionPolicy Bypass -File backend/scripts/start-dev.ps1"
+    "start": "powershell -ExecutionPolicy Bypass -File backend/scripts/start-dev.ps1",
+    "stress:api": "node scripts/k6/run.mjs load",
+    "stress:api:smoke": "node scripts/k6/run.mjs smoke",
+    "stress:api:stress": "node scripts/k6/run.mjs stress",
+    "stress:api:spike": "node scripts/k6/run.mjs spike"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

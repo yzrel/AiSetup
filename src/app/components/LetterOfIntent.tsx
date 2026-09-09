@@ -539,7 +539,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
     );
   };
 
-  const generateLoiDocument = async () => {
+  const generateLoiDocument = async (uiAction = "loi.generate") => {
     const payload = buildCurrentPayload();
     if (!payload || generating) return null;
 
@@ -548,7 +548,7 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
 
     let document: LoiDocumentResponse;
     try {
-      document = await api.generateLoi(payload);
+      document = await api.generateLoi(payload, uiAction);
       if (!document.aiGenerated) {
         const notice = aiGenerateNotice(document.aiGenerated, "Letter");
         if (notice) setGenerateError(notice);
@@ -642,14 +642,14 @@ export function LetterOfIntent({ user, onSubmitSuccess }: LetterOfIntentProps = 
 
   const handleFinalSubmit = async () => {
     if (!applicant || generating) return;
-    const document = await generateLoiDocument();
+    const document = await generateLoiDocument("loi.submit");
     if (!document) return;
     persistLoiDocument(document);
     setStep("complete");
   };
 
   const handleRegenerate = async () => {
-    const document = await generateLoiDocument();
+    const document = await generateLoiDocument("loi.regenerate");
     if (!document) return;
     persistLoiDocument(document);
   };

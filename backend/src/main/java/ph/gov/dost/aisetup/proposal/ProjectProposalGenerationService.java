@@ -8,7 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.common.AiTemplateFallback;
 import ph.gov.dost.aisetup.common.GadLanguagePolicy;
 import ph.gov.dost.aisetup.proposal.dto.ProjectProposalDocumentResponse;
@@ -29,11 +30,11 @@ public class ProjectProposalGenerationService {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectProposalGenerationService.class);
 
-    private final AnthropicClient anthropicClient;
+    private final AiGateway aiGateway;
     private final ObjectMapper objectMapper;
 
-    public ProjectProposalGenerationService(AnthropicClient anthropicClient, ObjectMapper objectMapper) {
-        this.anthropicClient = anthropicClient;
+    public ProjectProposalGenerationService(AiGateway aiGateway, ObjectMapper objectMapper) {
+        this.aiGateway = aiGateway;
         this.objectMapper = objectMapper;
     }
 
@@ -42,7 +43,7 @@ public class ProjectProposalGenerationService {
                 log,
                 "Project Proposal",
                 () -> {
-                    JsonNode aiNode = anthropicClient.generateJsonObject(buildPrompt(request));
+                    JsonNode aiNode = aiGateway.generateJsonObject(AiTaskTier.COMPLEX, buildPrompt(request));
                     ProjectProposalDocumentResponse doc =
                             objectMapper.treeToValue(aiNode, ProjectProposalDocumentResponse.class);
                     if (doc == null || isEmptyDocument(doc)) {

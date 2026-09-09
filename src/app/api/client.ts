@@ -15,20 +15,30 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * `uiAction` tags the request with the button that triggered it (e.g. `loi.regenerate`)
+ * so the backend audit trail records which action ran, not just the path.
+ */
+export type ApiRequestInit = RequestInit & { uiAction?: string };
+
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit = {},
+  init: ApiRequestInit = {},
 ): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && !(init.body instanceof FormData)) {
+  const { uiAction, ...requestInit } = init;
+  const headers = new Headers(requestInit.headers);
+  if (!headers.has("Content-Type") && !(requestInit.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
   const token = getAuthToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
+  if (uiAction) {
+    headers.set("X-UI-Action", uiAction);
+  }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...requestInit, headers });
 
   if (res.status === 401 && !path.startsWith("/auth/login")) {
     clearAuthToken();
@@ -216,12 +226,16 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  saveTnaForm: (payload: import("./types").ApiTnaFormPayload) =>
+  saveTnaForm: (
+    payload: import("./types").ApiTnaFormPayload,
+    uiAction?: string,
+  ) =>
     apiFetch<import("./types").ApiTnaFormSaveResponse>(
       `/applicants/${payload.applicantId}/tna1`,
       {
         method: "PUT",
         body: JSON.stringify(payload),
+        uiAction: uiAction ?? (payload.submitted ? "tna1.submit" : "tna1.save"),
       },
     ),
 
@@ -229,12 +243,14 @@ export const api = {
     applicantId: string,
     moduleKey: string,
     payload: { data: Record<string, unknown>; published?: boolean },
+    uiAction?: string,
   ) =>
     apiFetch<import("./types").ApiApplicantRecord>(
       `/applicants/${applicantId}/modules/${encodeURIComponent(moduleKey)}`,
       {
         method: "PUT",
         body: JSON.stringify(payload),
+        uiAction: uiAction ?? (payload.published ? "module.publish" : "module.save"),
       },
     ),
 
@@ -295,47 +311,66 @@ export const api = {
     return { blob, fileName, contentType: blob.type || res.headers.get("Content-Type") || undefined };
   },
 
-  generateLoi: (payload: import("./types").LoiGenerationRequest) =>
+  generateLoi: (
+    payload: import("./types").LoiGenerationRequest,
+    uiAction = "loi.generate",
+  ) =>
     apiFetch<import("./types").LoiDocumentResponse>("/loi/generate", {
       method: "POST",
       body: JSON.stringify(payload),
+      uiAction,
     }),
 
-  generateTna1: (payload: import("./types").Tna1GenerationRequest) =>
+  generateTna1: (
+    payload: import("./types").Tna1GenerationRequest,
+    uiAction = "tna1.generate",
+  ) =>
     apiFetch<import("./types").Tna1DocumentResponse>("/tna1/generate", {
       method: "POST",
       body: JSON.stringify(payload),
+      uiAction,
     }),
 
-  generateTna2: (payload: import("./types").Tna2GenerationRequest) =>
+  generateTna2: (
+    payload: import("./types").Tna2GenerationRequest,
+    uiAction = "tna2.generate",
+  ) =>
     apiFetch<import("./types").Tna2DocumentResponse>("/tna2/generate", {
       method: "POST",
       body: JSON.stringify(payload),
+      uiAction,
     }),
 
   generateProjectProposal: (
     payload: import("./types").ProjectProposalGenerationRequest,
+    uiAction = "proposal.generate",
   ) =>
     apiFetch<import("./types").ProjectProposalDocumentResponse>(
       "/project-proposal/generate",
       {
         method: "POST",
         body: JSON.stringify(payload),
+        uiAction,
       },
     ),
 
   generateFinancialProjection: (
     payload: import("./types").FinancialProjectionGenerationRequest,
+    uiAction = "financial-projection.generate",
   ) =>
     apiFetch<import("./types").FinancialProjectionDocumentResponse>(
       "/financial-projection/generate",
       {
         method: "POST",
         body: JSON.stringify(payload),
+        uiAction,
       },
     ),
 
-  suggestAiField: (payload: import("./types").AiFieldSuggestionRequest) =>
+  suggestAiField: (
+    payload: import("./types").AiFieldSuggestionRequest,
+    uiAction = "ai.suggest-field",
+  ) =>
     apiFetch<import("./types").AiFieldSuggestionResponse>(
       payload.module === "register"
         ? "/ai/register/suggest-company-description"
@@ -343,19 +378,28 @@ export const api = {
       {
         method: "POST",
         body: JSON.stringify(payload),
+        uiAction,
       },
     ),
 
-  completeAi: (payload: import("./types").AiCompletionRequest) =>
+  completeAi: (
+    payload: import("./types").AiCompletionRequest,
+    uiAction = "ai.complete",
+  ) =>
     apiFetch<import("./types").AiCompletionResponse>("/ai/complete", {
       method: "POST",
       body: JSON.stringify(payload),
+      uiAction,
     }),
 
-  assessIfund: (payload: import("./types").AiIfundAssessmentRequest) =>
+  assessIfund: (
+    payload: import("./types").AiIfundAssessmentRequest,
+    uiAction = "ai.assess-ifund",
+  ) =>
     apiFetch<import("./types").AiIfundAssessmentResponse>("/ai/assess-ifund", {
       method: "POST",
       body: JSON.stringify(payload),
+      uiAction,
     }),
 
   getAuthorityLetter: (applicationId: string) =>
@@ -386,12 +430,16 @@ export const api = {
   listApplicantRecords: () =>
     apiFetch<import("./types").ApiApplicantRecord[]>("/applicants"),
 
-  generateLbpIntroduction: (payload: Record<string, unknown>) =>
+  generateLbpIntroduction: (
+    payload: Record<string, unknown>,
+    uiAction = "fund-release.lbp-introduction",
+  ) =>
     apiFetch<{ applicationId: string; status: string; message?: string }>(
       "/fund-release/lbp-introduction/generate",
       {
         method: "POST",
         body: JSON.stringify(payload),
+        uiAction,
       },
     ),
 

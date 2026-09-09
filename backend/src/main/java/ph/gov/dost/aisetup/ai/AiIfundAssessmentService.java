@@ -39,11 +39,11 @@ public class AiIfundAssessmentService {
             new SourceSpec("projectedFsUpload", "Projected FS upload present", "projectedFinancialStatementsUploaded")
     );
 
-    private final AnthropicClient anthropicClient;
+    private final AiGateway aiGateway;
     private final ObjectMapper objectMapper;
 
-    public AiIfundAssessmentService(AnthropicClient anthropicClient, ObjectMapper objectMapper) {
-        this.anthropicClient = anthropicClient;
+    public AiIfundAssessmentService(AiGateway aiGateway, ObjectMapper objectMapper) {
+        this.aiGateway = aiGateway;
         this.objectMapper = objectMapper;
     }
 
@@ -53,7 +53,8 @@ public class AiIfundAssessmentService {
         String requested = resolveRequestedAmount(context);
 
         try {
-            JsonNode ai = anthropicClient.generateJsonObject(buildPrompt(context, sources, requested), MAX_TOKENS);
+            JsonNode ai = aiGateway.generateJsonObject(
+                    AiTaskTier.COMPLEX, buildPrompt(context, sources, requested), MAX_TOKENS);
             AiIfundAssessmentResponse parsed = parseAi(ai, requested, sources);
             if (parsed != null) {
                 return parsed;

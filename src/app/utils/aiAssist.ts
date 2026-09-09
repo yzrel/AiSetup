@@ -75,12 +75,15 @@ export async function suggestAiField(
 ): Promise<AiSuggestResult> {
   try {
     const trimmed = userInstruction?.trim().slice(0, AI_ASSIST_INSTRUCTION_MAX);
-    const res: AiFieldSuggestionResponse = await api.suggestAiField({
-      module,
-      field,
-      context,
-      ...(trimmed ? { userInstruction: trimmed } : {}),
-    });
+    const res: AiFieldSuggestionResponse = await api.suggestAiField(
+      {
+        module,
+        field,
+        context,
+        ...(trimmed ? { userInstruction: trimmed } : {}),
+      },
+      `ai.suggest-field.${module}.${field}`,
+    );
     if (res.riskRows?.length) {
       return {
         value: res.riskRows.map((row) => normalizeRiskRow(row)),

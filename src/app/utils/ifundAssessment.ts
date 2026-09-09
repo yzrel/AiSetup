@@ -56,6 +56,7 @@ export function buildIfundAssessmentContext(
       : null;
 
   return {
+    applicationId: applicant.applicationId,
     enterpriseName: applicant.enterpriseName,
     msmeSize: applicant.msmeSize,
     yearsOfOperation: applicant.yearsOfOperation,

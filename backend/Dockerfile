@@ -8,5 +8,6 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/aisetup-backend-*.jar app.jar
 EXPOSE 8080
+ENV OPENAI_API_KEY=""
 ENV ANTHROPIC_API_KEY=""
 ENTRYPOINT ["java", "-jar", "app.jar"]

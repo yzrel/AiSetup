@@ -4,7 +4,8 @@
 package ph.gov.dost.aisetup.tna1;
 
 import org.junit.jupiter.api.Test;
-import ph.gov.dost.aisetup.ai.AnthropicClient;
+import ph.gov.dost.aisetup.ai.AiGateway;
+import ph.gov.dost.aisetup.ai.AiTaskTier;
 import ph.gov.dost.aisetup.tna1.dto.Tna1DocumentResponse;
 import ph.gov.dost.aisetup.tna1.dto.Tna1GenerationRequest;
 import ph.gov.dost.aisetup.tna1.dto.Tna1TablesDto;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -21,10 +23,11 @@ class Tna1GenerationServiceTest {
 
     @Test
     void templateFallbackFillsEmptyNarrativeFields() {
-        AnthropicClient client = mock(AnthropicClient.class);
-        when(client.generateJsonObject(anyString())).thenThrow(new IllegalStateException("no key"));
+        AiGateway gateway = mock(AiGateway.class);
+        when(gateway.generateJsonObject(any(AiTaskTier.class), anyString()))
+                .thenThrow(new IllegalStateException("no key"));
 
-        Tna1GenerationService service = new Tna1GenerationService(client);
+        Tna1GenerationService service = new Tna1GenerationService(gateway);
 
         Tna1GenerationRequest request = new Tna1GenerationRequest();
         request.setEnterpriseName("ABC Food Processing");

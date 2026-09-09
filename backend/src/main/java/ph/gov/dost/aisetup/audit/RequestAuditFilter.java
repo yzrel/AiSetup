@@ -18,7 +18,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import ph.gov.dost.aisetup.auth.UserPrincipal;
 
 /**
- * Persists one {@code http.request} audit row per authenticated API call.
+ * Persists one {@code http.request} audit row per authenticated write or button-tagged
+ * API call. Untagged reads (GET/HEAD polling) are skipped so the trail stays readable.
  * Registered only in the security filter chain (servlet auto-registration disabled).
  */
 @Component
@@ -59,13 +60,21 @@ public class RequestAuditFilter extends OncePerRequestFilter {
             if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal)) {
                 return;
             }
+            String uiAction = AuditService.sanitizeUiAction(request.getHeader(AuditService.UI_ACTION_HEADER));
+            if (uiAction == null && isRead(request.getMethod())) {
+                return;
+            }
             String path = request.getRequestURI();
             if (path == null || path.isBlank()) {
                 path = request.getServletPath();
             }
-            auditService.recordHttp(request.getMethod(), path, response.getStatus());
+            auditService.recordHttp(request.getMethod(), path, response.getStatus(), uiAction);
         } catch (Exception e) {
             log.warn("Failed to persist HTTP audit event: {}", e.getMessage());
         }
+    }
+
+    private static boolean isRead(String method) {
+        return HttpMethod.GET.matches(method) || HttpMethod.HEAD.matches(method);
     }
 }

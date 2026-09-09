@@ -86,7 +86,7 @@ Requirements on the target PC:
 
 Quick start:
   1. Copy this entire folder to the other PC (USB, network share, zip, etc.)
-  2. Optional: copy backend/.env.example to backend/.env and set ANTHROPIC_API_KEY
+  2. Optional: copy backend/.env.example to backend/.env and set OPENAI_API_KEY
   3. Double-click START.bat  OR  run:  powershell -ExecutionPolicy Bypass -File scripts\start-local.ps1
   4. Browser opens at http://localhost:4173/
      API health: http://localhost:8080/api/health

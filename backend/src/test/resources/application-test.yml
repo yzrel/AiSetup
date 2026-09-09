@@ -22,8 +22,11 @@ spring:
 aisetup:
   cors:
     allowed-origins: http://localhost:5173
-  anthropic:
-    api-key:
+  ai:
+    openai:
+      api-key:
+    anthropic:
+      api-key:
   security:
     jwt-secret: test-jwt-secret-at-least-thirty-two-characters-long
     jwt-expiration-ms: 3600000

@@ -1,0 +1,15 @@
+aiSETUP k6 load fixture. Not a real submission requirement - safe to delete.
+DOST Region XII (SOCCSKSARGEN) - Small Enterprise Technology Upgrading Program.
+This file exists only to exercise the multipart upload path under load, so the
+bytes below are filler that keeps the payload near one kilobyte without hitting
+the 15 MB server limit or filling up aisetup.upload-dir during a long run.
+0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789
+abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij
+0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789
+abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij
+0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789
+abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij
+0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789
+abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij
+0123456789 0123456789 0123456789 0123456789 0123456789 0123456789 0123456789
+abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij abcdefghij

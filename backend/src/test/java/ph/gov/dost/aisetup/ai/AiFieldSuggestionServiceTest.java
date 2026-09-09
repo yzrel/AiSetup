@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -25,10 +26,10 @@ class AiFieldSuggestionServiceTest {
 
     @BeforeEach
     void setUp() {
-        AnthropicClient client = mock(AnthropicClient.class);
-        when(client.generateJsonObject(anyString(), anyInt()))
+        AiGateway gateway = mock(AiGateway.class);
+        when(gateway.generateJsonObject(any(AiTaskTier.class), anyString(), anyInt()))
                 .thenThrow(new IllegalStateException("no key"));
-        service = new AiFieldSuggestionService(client, new ObjectMapper());
+        service = new AiFieldSuggestionService(gateway, new ObjectMapper());
     }
 
     private static Map<String, Object> demoContext() {

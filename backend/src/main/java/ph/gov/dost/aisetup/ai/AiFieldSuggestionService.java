@@ -25,11 +25,11 @@ public class AiFieldSuggestionService {
     private static final Logger log = LoggerFactory.getLogger(AiFieldSuggestionService.class);
     private static final int SUGGEST_MAX_TOKENS = 2048;
 
-    private final AnthropicClient anthropicClient;
+    private final AiGateway aiGateway;
     private final ObjectMapper objectMapper;
 
-    public AiFieldSuggestionService(AnthropicClient anthropicClient, ObjectMapper objectMapper) {
-        this.anthropicClient = anthropicClient;
+    public AiFieldSuggestionService(AiGateway aiGateway, ObjectMapper objectMapper) {
+        this.aiGateway = aiGateway;
         this.objectMapper = objectMapper;
     }
 
@@ -56,8 +56,8 @@ public class AiFieldSuggestionService {
                 : "";
 
         try {
-            JsonNode ai = anthropicClient.generateJsonObject(
-                    buildPrompt(spec, context, userInstruction), SUGGEST_MAX_TOKENS);
+            JsonNode ai = aiGateway.generateJsonObject(
+                    AiTaskTier.SIMPLE, buildPrompt(spec, context, userInstruction), SUGGEST_MAX_TOKENS);
             if (spec.rows()) {
                 List<ProjectProposalRiskRowDto> rows = readRiskRows(ai);
                 if (!rows.isEmpty()) {
