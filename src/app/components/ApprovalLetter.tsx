@@ -26,17 +26,25 @@ import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
+import { WorkflowHandoffStrip } from "./WorkflowHandoffStrip";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyApprovalLetterPublished, notifyApprovalLetterRdDecision, notifyApprovalLetterConforme } from "../utils/notificationHelpers";
+import {
+  notifyApprovalLetterPublished,
+  notifyApprovalLetterRdDecision,
+  notifyApprovalLetterConforme,
+  notifyApprovalLetterAwaitingRd,
+} from "../utils/notificationHelpers";
 import type { ApprovalLetterForm, MoaAnnexCForm } from "../api/types";
 import {
   acknowledgeApprovalLetter,
   canPublishApprovalLetter,
+  endorseApprovalLetterToRd,
   getApprovalLetterForm,
   getApprovalLetterStored,
   getSignedMoa,
   hasRdApprovedNotice,
   hasRtecReportPrerequisite,
+  isApprovalLetterEndorsedToRd,
   publishApprovalLetter,
   recordRdDecision,
   saveApprovalLetterDraft,
@@ -206,6 +214,22 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
+  /** Explicit casework → Regional Director handoff (this is what notifies RD). */
+  const handleEndorseToRd = () => {
+    if (!applicant || !form || !user) return;
+    const result = endorseApprovalLetterToRd(applicant.id, form, user.email);
+    if (!result.ok) {
+      setSubmitErrors([result.error ?? "Could not send to the Regional Director."]);
+      return;
+    }
+    setSubmitErrors([]);
+    notifyApprovalLetterAwaitingRd(applicantStore.getById(applicant.id) ?? applicant);
+    setSaveNotice(
+      "Sent to the Regional Director. They were notified and can now Approve or Disapprove.",
+    );
+    setTimeout(() => setSaveNotice(""), 6000);
+  };
+
   const handleRdDecision = (decision: "approved" | "disapproved") => {
     if (!applicant || !form || !user) return;
     if (!isRegionalDirector) return;
@@ -301,6 +325,15 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
     !!applicant &&
     allowWhenDemo(rtecReady) &&
     !isPublished;
+  // Casework staff (not the RD) endorse the draft for decision.
+  const endorsedToRd = isApprovalLetterEndorsedToRd(applicant);
+  const showEndorseAction =
+    showStaffWorkflow &&
+    !isRegionalDirector &&
+    !!applicant &&
+    !isPublished &&
+    !rdDecision &&
+    !endorsedToRd;
 
   return (
     <ModuleWorkflowLayout
@@ -319,6 +352,7 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               Select an applicant to view or prepare the Notice of Approval.
             </div>
           )}
+          <WorkflowHandoffStrip applicant={applicant} user={user} />
           {applicant && showStaffWorkflow && !rtecReady && !isPublished && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-sm text-red-800">
               <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -339,10 +373,15 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-sm text-amber-900">
                 <AlertTriangle className="w-5 h-5 shrink-0" />
                 <div>
-                  <p className="font-semibold">Awaiting Regional Director decision</p>
+                  <p className="font-semibold">
+                    {endorsedToRd
+                      ? "Awaiting Regional Director decision"
+                      : "Not yet sent to the Regional Director"}
+                  </p>
                   <p className="mt-1">
-                    After a signed RTEC report, only the Regional Director may Approve or
-                    Disapprove before the Notice of Approval can be published.
+                    {endorsedToRd
+                      ? `Endorsed${stored?.readyForRdBy ? ` by ${stored.readyForRdBy}` : ""}. Only the Regional Director may Approve or Disapprove before the Notice of Approval can be published.`
+                      : "Prepare the letter, then use Send to Regional Director. That is what notifies the Regional Director and puts this case in their decision queue."}
                     {isDemoModeActive() &&
                       " Demo mode may bypass the publish gate with this warning visible."}
                   </p>
@@ -678,6 +717,18 @@ export function ApprovalLetter({ user, onSubmitSuccess }: ApprovalLetterProps = 
                     <Save className="w-4 h-4" />
                     Save Draft
                   </button>
+                  {showEndorseAction && (
+                    <button
+                      type="button"
+                      onClick={handleEndorseToRd}
+                      disabled={!allowWhenDemo(rtecReady)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+                      style={{ background: DOST_BLUE }}
+                    >
+                      <Send className="w-4 h-4" />
+                      Send to Regional Director
+                    </button>
+                  )}
                   {showRdActions && (
                     <>
                       <button

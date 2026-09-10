@@ -53,15 +53,32 @@ Reads hit the real list (`GET /applicants`), notifications, LandBank branches,
 `/auth/me`, file list/download, plus `POST /financial-projection/generate`
 (local CPU engine, no LLM).
 
+Every request sends `Accept-Encoding: gzip`. k6 sends no encoding header of its
+own, so without it the server skips compression and the run measures traffic no
+real browser would pull.
+
 Never called: `/ai/**`, `/loi|/tna1|/tna2|/project-proposal/generate`,
 `/auth/register`, OTP, forgot/reset password, `/mail/send`, admin mutations, and
 LandBank create/deactivate. Those cost money, send messages, or create accounts.
 
 Runs leave behind the harness applicant record, its uploads under
 `aisetup.upload-dir` (a long run adds a few hundred ~1 KB files), and one
-`audit_events` row per write. Clean up by deleting
-`backend/data/uploads/f6a1c0de-0000-4000-8000-a15e70000001` and the harness
-case, or point the run at a scratch database.
+`audit_events` row per write.
+
+Clean all of that up with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/k6/cleanup.ps1            # dry run
+powershell -ExecutionPolicy Bypass -File scripts/k6/cleanup.ps1 -Execute   # delete
+```
+
+It matches cases named `k6 Stress Harness%`, reports what it will remove, and
+on `-Execute` deletes the child rows (`applicant_module_data`, `file_uploads`,
+`notifications`, `audit_events`, `users`) before the `applicant_records` row,
+plus the files on disk — there are no cascading foreign keys, so leaving rows
+behind would make the case look half-deleted. It reads the connection from
+`backend/.env` and targets MySQL when `SPRING_PROFILES_ACTIVE=mysql`, otherwise
+the H2 file database.
 
 ## Reading the output
 
@@ -75,7 +92,8 @@ Requests are tagged per endpoint, so the end-of-run summary breaks latency down
 by route. A full JSON summary lands in `scripts/k6/results/` (gitignored, with
 the login token stripped out by the runner).
 
-Default H2 file DB is fine for finding the first cliff; run the backend with
-`SPRING_PROFILES_ACTIVE=mysql` for numbers closer to production. Note that
-`GET /applicants` is an unpaginated `findAll()`, and the default Hikari pool is
-10 connections — expect those to bind before CPU does.
+The run hits whichever database the backend is configured for; with
+`SPRING_PROFILES_ACTIVE=mysql` in `backend/.env` that is MySQL, otherwise the H2
+file DB. Note that `GET /applicants` is still an unpaginated `findAll()`
+returning every case's module JSON, so the list response grows with the case
+count even though it is gzipped.

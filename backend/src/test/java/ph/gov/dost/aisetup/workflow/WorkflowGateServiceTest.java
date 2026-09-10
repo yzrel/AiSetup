@@ -355,4 +355,62 @@ class WorkflowGateServiceTest {
                 () -> service.assertRtecStaffModuleWrite(
                         "rtecReport", Map.of("recommendation", "ok"), existing));
     }
+
+    private static Map<String, Object> pipelineModuleData(Object... extra) {
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("tna1", Map.of("directorValidated", true));
+        data.put("tna2Document", Map.of("published", true));
+        data.put("staffDecision", "approved");
+        data.put("routingDecision", "conduct-rtec");
+        for (int i = 0; i + 1 < extra.length; i += 2) {
+            data.put(String.valueOf(extra[i]), extra[i + 1]);
+        }
+        return data;
+    }
+
+    /**
+     * Regression for the stuck-case failure mode: a published rtecReport used to
+     * satisfy the approval gate, so an out-of-order Mark Complete could persist a
+     * "complete" report while the header advance was rejected.
+     */
+    @Test
+    void publishedRtecReportNoLongerBypassesApprovalGate() {
+        authenticateRole("agent", null);
+        Map<String, Object> moduleData =
+                pipelineModuleData("rtecReport", Map.of("published", true, "submitted", true));
+        ApplicantRecordDto existing = dto("app-1", "requirements", moduleData, Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto("app-1", "approval-letter", moduleData, Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    @Test
+    void approvalAdvanceAllowedOnceCaseReachedConductOfRtec() {
+        authenticateRole("agent", null);
+        Map<String, Object> moduleData =
+                pipelineModuleData("rtecReport", Map.of("submitted", true));
+        ApplicantRecordDto existing = dto("app-1", "conduct-rtec", moduleData, Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto("app-1", "approval-letter", moduleData, Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    /** Diana's case: routing was never confirmed, so RTEC and later must be refused. */
+    @Test
+    void approvalAdvanceRejectedWhenRoutingDecisionMissing() {
+        authenticateRole("agent", null);
+        java.util.Map<String, Object> moduleData = new java.util.HashMap<>(pipelineModuleData());
+        moduleData.remove("routingDecision");
+        ApplicantRecordDto existing = dto("app-1", "conduct-rtec", moduleData, Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto("app-1", "approval-letter", moduleData, Map.of("qualified", true));
+        assertThrows(AccessDeniedException.class, () -> service.assertSaveAllowed(incoming, existing));
+    }
+
+    /** Legacy e2e rows wrote `setup` for the SETUP/RTEC track — still accepted. */
+    @Test
+    void legacySetupRoutingStillSatisfiesRtecGate() {
+        authenticateRole("agent", null);
+        Map<String, Object> moduleData = pipelineModuleData("routingDecision", "setup");
+        ApplicantRecordDto existing = dto("app-1", "conduct-rtec", moduleData, Map.of("qualified", true));
+        ApplicantRecordDto incoming = dto("app-1", "approval-letter", moduleData, Map.of("qualified", true));
+        assertDoesNotThrow(() -> service.assertSaveAllowed(incoming, existing));
+    }
 }

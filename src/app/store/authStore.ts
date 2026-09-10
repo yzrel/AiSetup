@@ -19,8 +19,29 @@ export type UserRole =
 
 export type LoginPortal = "client" | "admin";
 
+/** Runtime allow-list for role keys arriving from the API / storage. */
+export const KNOWN_USER_ROLES: readonly UserRole[] = [
+  "applicant",
+  "client",
+  "agent",
+  "provincial-director",
+  "regional-director",
+  "rtec-staff",
+  "admin",
+] as const;
+
+/** Maps an unknown value to a known role key; returns null when unrecognized. */
+export function normalizeUserRole(value: unknown): UserRole | null {
+  if (typeof value !== "string") return null;
+  const key = value.trim().toLowerCase();
+  return (KNOWN_USER_ROLES as readonly string[]).includes(key)
+    ? (key as UserRole)
+    : null;
+}
+
 export type AdminView =
   | "dashboard"
+  | "pending-review"
   | "prescreening"
   | "registration"
   | "letter-of-intent"
@@ -45,6 +66,7 @@ export type AdminView =
 /** Runtime allow-list for persisted / API view keys (avoids shell crashes). */
 export const KNOWN_ADMIN_VIEWS: readonly AdminView[] = [
   "dashboard",
+  "pending-review",
   "prescreening",
   "registration",
   "letter-of-intent",
@@ -133,6 +155,7 @@ const STAFF_CASEWORK_AND_CLIENT: UserRole[] = [
 /** Views each role may access in the admin shell */
 const VIEW_PERMISSIONS: Record<AdminView, UserRole[]> = {
   dashboard: STAFF_AND_CLIENT,
+  "pending-review": STAFF_ALL,
   prescreening: STAFF_CASEWORK_AND_CLIENT,
   registration: STAFF_CASEWORK_AND_CLIENT,
   "letter-of-intent": STAFF_CASEWORK_AND_CLIENT,

@@ -210,6 +210,34 @@ export function syncApplicantToBackendBestEffort(applicant: Applicant): void {
 }
 
 /**
+ * Confirm the server actually accepted a `currentModule` advance.
+ *
+ * Module rows sync before the header, so a rejected header advance (workflow
+ * gate / role restriction) leaves the SoR one module behind while the local
+ * store shows the case moved on. That mismatch is what stranded cooperators
+ * with a "complete" RTEC report and a locked Notice of Approval.
+ */
+export async function confirmModuleAdvance(
+  applicantId: string,
+  expectedModule: string,
+): Promise<{ ok: boolean; serverModule?: string; error?: string }> {
+  try {
+    const record = await api.getApplicant(applicantId);
+    const serverModule = record?.currentModule ?? undefined;
+    if (serverModule === expectedModule) {
+      return { ok: true, serverModule };
+    }
+    return {
+      ok: false,
+      serverModule,
+      error: `The server kept this case on "${serverModule ?? "unknown"}" instead of "${expectedModule}".`,
+    };
+  } catch (err) {
+    return { ok: false, error: syncErrorMessage(err) };
+  }
+}
+
+/**
  * Targeted module-key save used by draft/publish helpers across all modules.
  * Falls back to creating the applicant row when the case is cold.
  */

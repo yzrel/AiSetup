@@ -5,7 +5,9 @@
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { applicantStore } from "../../store/applicantStore";
 import {
+  acknowledgeApprovalLetter,
   emptyApprovalLetterForm,
+  endorseApprovalLetterToRd,
   ensureApprovalLetterPublished,
   getApprovalLetterStored,
   hasRdApprovedNotice,
@@ -211,13 +213,20 @@ describe("client RD approval progression gate", () => {
     expect(hasRdApprovedNotice(app)).toBe(false);
     expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true);
     expect(isAwaitingStaffReview(app)).toBe(true);
+    // A saved draft is still with casework — the Regional Director only holds
+    // the case after an explicit "Send to Regional Director" endorsement.
+    expect(getAwaitingStaffReviewMessage(app).title).toMatch(/being prepared/i);
+
+    endorseApprovalLetterToRd(applicant.id, form, "agent@dost.gov.ph");
+    app = applicantStore.getById(applicant.id)!;
     expect(getAwaitingStaffReviewMessage(app).title).toMatch(/Regional Director/i);
 
     recordRdDecision(applicant.id, "approved", "rd@dost.gov.ph", form);
     app = applicantStore.getById(applicant.id)!;
     expect(hasRdApprovedNotice(app)).toBe(false);
     expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true);
-    expect(getAwaitingStaffReviewMessage(app).title).toMatch(/being prepared/i);
+    // Approved but unpublished: staff are finalizing, not awaiting a decision.
+    expect(getAwaitingStaffReviewMessage(app).title).toMatch(/being finalized/i);
 
     expect(publishApprovalLetter(applicant.id, form).ok).toBe(true);
     app = applicantStore.getById(applicant.id)!;
@@ -225,7 +234,12 @@ describe("client RD approval progression gate", () => {
     expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true); // still at approval-letter module
     expect(isAwaitingStaffReview(app)).toBe(false);
 
+    // LandBank also needs the cooperator's conforme, not just a published Notice.
     applicantStore.update(applicant.id, { currentModule: "landbank-withdrawal" });
+    app = applicantStore.getById(applicant.id)!;
+    expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(true);
+
+    acknowledgeApprovalLetter(applicant.id, "Juan Dela Cruz");
     app = applicantStore.getById(applicant.id)!;
     expect(isApplicantViewLocked(app, "landbank-withdrawal")).toBe(false);
   });
@@ -242,5 +256,67 @@ describe("client RD approval progression gate", () => {
     const jumped = applicantStore.getById(applicant.id)!;
     expect(isApplicantViewLocked(jumped, "landbank-withdrawal")).toBe(true);
     expect(isAwaitingStaffReview(jumped)).toBe(true);
+  });
+});
+
+describe("endorseApprovalLetterToRd", () => {
+  beforeEach(() => {
+    demoModeStore.setEnabled(false);
+  });
+
+  it("records who endorsed the draft and when", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    expect(
+      endorseApprovalLetterToRd(applicant.id, form, "agent@dost.gov.ph").ok,
+    ).toBe(true);
+
+    const stored = getApprovalLetterStored(
+      applicantStore.getById(applicant.id)!,
+    );
+    expect(stored?.readyForRdBy).toBe("agent@dost.gov.ph");
+    expect(stored?.readyForRdAt).toBeTruthy();
+  });
+
+  it("refuses to re-endorse a decided or published notice", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    recordRdDecision(applicant.id, "approved", "rd@dost.gov.ph", form);
+    expect(
+      endorseApprovalLetterToRd(applicant.id, form, "agent@dost.gov.ph").ok,
+    ).toBe(false);
+  });
+
+  it("requires a revised draft before re-endorsing after disapproval", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    recordRdDecision(applicant.id, "disapproved", "rd@dost.gov.ph", form);
+
+    const blocked = endorseApprovalLetterToRd(
+      applicant.id,
+      form,
+      "agent@dost.gov.ph",
+    );
+    expect(blocked.ok).toBe(false);
+    expect(blocked.error).toMatch(/revised draft/i);
+
+    // Saving a staff draft clears the disapproval, which allows re-endorsement.
+    saveApprovalLetterDraft(applicant.id, form, { clearRdDisapproval: true });
+    expect(
+      endorseApprovalLetterToRd(applicant.id, form, "agent@dost.gov.ph").ok,
+    ).toBe(true);
+  });
+
+  it("withdraws a stale endorsement when a disapproval is cleared", () => {
+    const applicant = seedApplicant();
+    const form = emptyApprovalLetterForm();
+    endorseApprovalLetterToRd(applicant.id, form, "agent@dost.gov.ph");
+    recordRdDecision(applicant.id, "disapproved", "rd@dost.gov.ph", form);
+    saveApprovalLetterDraft(applicant.id, form, { clearRdDisapproval: true });
+
+    const stored = getApprovalLetterStored(
+      applicantStore.getById(applicant.id)!,
+    );
+    expect(stored?.readyForRdAt).toBeUndefined();
   });
 });

@@ -3,6 +3,9 @@
  */
 package ph.gov.dost.aisetup.notification;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +21,8 @@ import ph.gov.dost.aisetup.notification.dto.NotificationDto;
 
 @Service
 public class NotificationService {
+
+    private static final ObjectMapper TARGET_ROLES_MAPPER = new ObjectMapper();
 
     private final NotificationRepository notificationRepository;
 
@@ -91,6 +96,7 @@ public class NotificationService {
         entity.setAudience(normalizeAudience(request.getAudience()));
         entity.setApplicantId(blankToNull(request.getApplicantId()));
         entity.setOfficeId(blankToNull(request.getOfficeId()));
+        entity.setTargetRoles(serializeTargetRoles(request.getTargetRoles()));
         entity.setKind(normalizeKind(request.getKind()));
         entity.setTitle(request.getTitle().trim());
         entity.setMessage(request.getMessage().trim());
@@ -128,14 +134,23 @@ public class NotificationService {
 
     private List<NotificationEntity> listVisible(UserPrincipal principal) {
         if (principal.isStaff()) {
-            if (principal.isAdmin() || isRegional(principal)) {
+            if (principal.isAdmin()) {
                 return notificationRepository.findAllStaff();
             }
-            String officeId = principal.getAccount().getOfficeId();
-            if (officeId == null || officeId.isBlank()) {
-                return List.of();
+            List<NotificationEntity> candidates;
+            if (isRegional(principal)) {
+                candidates = notificationRepository.findAllStaff();
+            } else {
+                String officeId = principal.getAccount().getOfficeId();
+                if (officeId == null || officeId.isBlank()) {
+                    return List.of();
+                }
+                candidates = notificationRepository.findStaffByOffice(officeId);
             }
-            return notificationRepository.findStaffByOffice(officeId);
+            // Role-targeted handoffs must not leak to every regional account.
+            return candidates.stream()
+                    .filter(entity -> matchesTargetRoles(principal, entity))
+                    .toList();
         }
 
         String applicantId = principal.getApplicantId();
@@ -157,11 +172,78 @@ public class NotificationService {
         if (!principal.isStaff()) {
             return false;
         }
-        if (principal.isAdmin() || isRegional(principal)) {
+        if (principal.isAdmin()) {
+            return true;
+        }
+        if (!matchesTargetRoles(principal, entity)) {
+            return false;
+        }
+        if (isRegional(principal)) {
             return true;
         }
         String officeId = principal.getAccount().getOfficeId();
         return officeId != null && officeId.equals(entity.getOfficeId());
+    }
+
+    /**
+     * Untargeted rows stay visible to the whole office scope (legacy behavior).
+     * Targeted rows only reach the roles named on the notification.
+     */
+    private static boolean matchesTargetRoles(UserPrincipal principal, NotificationEntity entity) {
+        List<String> roles = parseTargetRoles(entity.getTargetRoles());
+        if (roles.isEmpty()) {
+            return true;
+        }
+        String role = principal.getRole();
+        return role != null && roles.contains(role.trim().toLowerCase(Locale.ROOT));
+    }
+
+    static List<String> parseTargetRoles(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        String trimmed = raw.trim();
+        List<String> out = new ArrayList<>();
+        try {
+            JsonNode node = TARGET_ROLES_MAPPER.readTree(trimmed);
+            if (node.isArray()) {
+                for (JsonNode item : node) {
+                    String value = item.asText("").trim().toLowerCase(Locale.ROOT);
+                    if (!value.isEmpty()) {
+                        out.add(value);
+                    }
+                }
+                return List.copyOf(out);
+            }
+        } catch (JsonProcessingException ignored) {
+            // Fall through to comma-separated parsing for hand-edited rows.
+        }
+        for (String part : trimmed.split(",")) {
+            String value = part.replace("[", "").replace("]", "").replace("\"", "").trim().toLowerCase(Locale.ROOT);
+            if (!value.isEmpty()) {
+                out.add(value);
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    static String serializeTargetRoles(List<String> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return null;
+        }
+        List<String> cleaned = roles.stream()
+                .filter(role -> role != null && !role.isBlank())
+                .map(role -> role.trim().toLowerCase(Locale.ROOT))
+                .distinct()
+                .toList();
+        if (cleaned.isEmpty()) {
+            return null;
+        }
+        try {
+            return TARGET_ROLES_MAPPER.writeValueAsString(cleaned);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("targetRoles could not be serialized");
+        }
     }
 
     private static boolean isRegional(UserPrincipal principal) {
@@ -215,6 +297,8 @@ public class NotificationService {
         dto.setAudience(entity.getAudience());
         dto.setApplicantId(entity.getApplicantId());
         dto.setOfficeId(entity.getOfficeId());
+        List<String> roles = parseTargetRoles(entity.getTargetRoles());
+        dto.setTargetRoles(roles.isEmpty() ? null : roles);
         dto.setKind(entity.getKind());
         dto.setTitle(entity.getTitle());
         dto.setMessage(entity.getMessage());

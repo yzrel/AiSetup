@@ -98,6 +98,7 @@ export function StatCard({
   color,
   trend,
   trendUp = true,
+  onClick,
 }: {
   label: string;
   value: string;
@@ -106,9 +107,28 @@ export function StatCard({
   color: string;
   trend: string;
   trendUp?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4 hover:shadow-md transition-shadow">
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (
+          onClick &&
+          (event.key === "Enter" || event.key === " ")
+        ) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className={`w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4 text-left transition-shadow ${
+        onClick
+          ? "hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer"
+          : ""
+      }`}
+    >
       <div className="flex items-start justify-between">
         <div
           className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center shadow-sm shrink-0`}

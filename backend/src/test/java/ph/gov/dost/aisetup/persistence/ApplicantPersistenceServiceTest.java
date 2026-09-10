@@ -114,6 +114,55 @@ class ApplicantPersistenceServiceTest {
         assertThrows(NoSuchElementException.class, () -> service.saveTna1("missing", request));
     }
 
+    /**
+     * findAll bulk-loads module rows instead of querying per case; it must still
+     * assemble the same payload as findById, including legacy blob-only cases.
+     */
+    @Test
+    void findAllAssemblesTheSameModuleDataAsFindById() {
+        service.save(new ApplicantRecordDto(
+                "list-1",
+                "LOI-2026-000201",
+                "List One",
+                "tna1",
+                Map.of(
+                        "tna1", Map.of("submitted", true),
+                        "caseMeta", Map.of("staffDecision", "approved")),
+                Map.of("applicantName", "Ana"),
+                null));
+        service.save(new ApplicantRecordDto(
+                "list-2",
+                "LOI-2026-000202",
+                "List Two",
+                "requirements",
+                Map.of("requirements", Map.of("documentsSubmitted", true)),
+                Map.of(),
+                null));
+
+        // Legacy shape: whole-blob column only, no per-module rows.
+        ApplicantRecord legacy = new ApplicantRecord();
+        legacy.setId("list-3");
+        legacy.setApplicationId("LOI-2026-000203");
+        legacy.setEnterpriseName("List Three");
+        legacy.setCurrentModule("letter-of-intent");
+        legacy.setModuleDataJson("{\"loiDocument\":{\"published\":true},\"selectedProgramId\":\"setup\"}");
+        legacy.setProfileJson("{}");
+        repository.save(legacy);
+
+        List<ApplicantRecordDto> all = service.findAll();
+
+        for (String id : List.of("list-1", "list-2", "list-3")) {
+            ApplicantRecordDto fromList = all.stream()
+                    .filter(dto -> id.equals(dto.id()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("missing from findAll: " + id));
+            assertEquals(
+                    service.findById(id).orElseThrow().moduleData(),
+                    fromList.moduleData(),
+                    id);
+        }
+    }
+
     @Test
     void corruptModuleDataJsonNormalizesOnRead() {
         ApplicantRecord entity = new ApplicantRecord();

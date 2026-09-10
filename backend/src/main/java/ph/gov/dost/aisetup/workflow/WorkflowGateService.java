@@ -314,6 +314,16 @@ public class WorkflowGateService {
         }
     }
 
+    /**
+     * The SETUP (RTEC) track as opposed to MPEX. {@code setup} is a legacy value
+     * written by older e2e tooling before the routing keys were aligned with
+     * {@code MODULE_ORDER}; it is still accepted on read so existing cases are
+     * not stranded.
+     */
+    static boolean isRtecRouting(String routing) {
+        return "conduct-rtec".equalsIgnoreCase(routing) || "setup".equalsIgnoreCase(routing);
+    }
+
     private void assertPublishGates(
             String targetModule,
             Map<String, Object> existingModuleData,
@@ -343,23 +353,20 @@ public class WorkflowGateService {
                 throw new AccessDeniedException(
                         "RTEC and later require staff-approved Submission Requirements");
             }
-            if (targetIdx == ModuleOrder.indexOf("conduct-rtec")
-                    && !"conduct-rtec".equalsIgnoreCase(routing)) {
+            if (!isRtecRouting(routing)) {
                 throw new AccessDeniedException(
-                        "Conduct of RTEC requires routingDecision=conduct-rtec");
+                        "RTEC and later require routingDecision=conduct-rtec (confirm routing in Submission Requirements)");
             }
         }
 
-        // Soft publish gate for late modules — applicants should not jump past RTEC
-        // unless staff already advanced currentModule or a published RTEC report exists.
-        if (targetIdx >= ModuleOrder.indexOf("approval-letter")) {
-            boolean pastRtec =
-                    ModuleOrder.indexOf(existingCurrentModule) >= ModuleOrder.indexOf("conduct-rtec");
-            boolean rtecPublished = ModuleOrder.isPublished(existingModuleData, "rtecReport");
-            if (!pastRtec && !rtecPublished) {
-                throw new AccessDeniedException(
-                        "Approval and later modules require RTEC progress or a published RTEC report");
-            }
+        // Approval and later require the case to already be on Conduct of RTEC.
+        // A published rtecReport used to satisfy this, which let an out-of-order
+        // Mark Complete write a "complete" report while the header advance was
+        // rejected — stranding the cooperator on a locked Notice of Approval.
+        if (targetIdx >= ModuleOrder.indexOf("approval-letter")
+                && ModuleOrder.indexOf(existingCurrentModule) < ModuleOrder.indexOf("conduct-rtec")) {
+            throw new AccessDeniedException(
+                    "Approval and later modules require the case to reach Conduct of RTEC first");
         }
     }
 

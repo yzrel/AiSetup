@@ -122,19 +122,27 @@ const PROJECTION_INPUTS = {
   setupRefundByYear: [0, 50000, 50000, 50000, 50000],
 };
 
+// k6 sends no Accept-Encoding of its own, so without this the server skips gzip
+// and the run measures traffic no real browser would ever pull.
+const ACCEPT_GZIP = "gzip";
+
 function jsonHeaders(token) {
   return {
     "Content-Type": "application/json",
+    "Accept-Encoding": ACCEPT_GZIP,
     Authorization: `Bearer ${token}`,
   };
 }
 
 function authHeaders(token) {
-  return { Authorization: `Bearer ${token}` };
+  return { "Accept-Encoding": ACCEPT_GZIP, Authorization: `Bearer ${token}` };
 }
 
 export function setup() {
-  const health = http.get(`${BASE_URL}/health`, { tags: { name: "setup GET /health" } });
+  const health = http.get(`${BASE_URL}/health`, {
+    headers: { "Accept-Encoding": ACCEPT_GZIP },
+    tags: { name: "setup GET /health" },
+  });
   if (health.status !== 200) {
     exec.test.abort(
       `Backend not reachable at ${BASE_URL}/health (status ${health.status}). Start it with "npm run backend".`,
@@ -144,7 +152,10 @@ export function setup() {
   const login = http.post(
     `${BASE_URL}/auth/login`,
     JSON.stringify({ email: STAFF_EMAIL, password: STAFF_PASSWORD }),
-    { headers: { "Content-Type": "application/json" }, tags: { name: "setup POST /auth/login" } },
+    {
+      headers: { "Content-Type": "application/json", "Accept-Encoding": ACCEPT_GZIP },
+      tags: { name: "setup POST /auth/login" },
+    },
   );
   if (login.status !== 200) {
     exec.test.abort(
@@ -228,7 +239,10 @@ function expectOk(res, name) {
 }
 
 function getHealth() {
-  const res = http.get(`${BASE_URL}/health`, { tags: { name: "GET /health" } });
+  const res = http.get(`${BASE_URL}/health`, {
+    headers: { "Accept-Encoding": ACCEPT_GZIP },
+    tags: { name: "GET /health" },
+  });
   expectOk(res, "GET /health");
 }
 

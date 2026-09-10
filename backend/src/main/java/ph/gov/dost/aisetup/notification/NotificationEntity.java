@@ -25,6 +25,13 @@ public class NotificationEntity {
     @Column(name = "office_id", length = 128)
     private String officeId;
 
+    /**
+     * JSON array of role keys this staff notification is addressed to
+     * (e.g. {@code ["regional-director"]}). Null/blank = all staff in office scope.
+     */
+    @Column(name = "target_roles", length = 512)
+    private String targetRoles;
+
     @Column(nullable = false, length = 32)
     private String kind;
 
@@ -77,6 +84,14 @@ public class NotificationEntity {
 
     public void setOfficeId(String officeId) {
         this.officeId = officeId;
+    }
+
+    public String getTargetRoles() {
+        return targetRoles;
+    }
+
+    public void setTargetRoles(String targetRoles) {
+        this.targetRoles = targetRoles;
     }
 
     public String getKind() {

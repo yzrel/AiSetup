@@ -13,16 +13,28 @@ import { notificationStore } from "../store/notificationStore";
 import { resolveApplicantOfficeId } from "./provincialOffice";
 import { staffContextStore } from "../store/staffContextStore";
 import { formatFormMention } from "../constants/setupForms";
-import { emailApplicantNotice } from "./applicantStatusMail";
+import {
+  emailApplicantNotice,
+  emailStaffNotice,
+} from "./applicantStatusMail";
+import { CASEWORK_NOTIFY_ROLES } from "./workflowHandoff";
 
 function staffOffice(applicant: Applicant) {
   return resolveApplicantOfficeId(applicant);
 }
 
 /**
+ * PSTO casework queue (agent + Provincial Director). Used so submissions and
+ * post-RTEC drafting land with the people who act on them instead of every
+ * staff account in the region.
+ */
+const CASEWORK_ROLES = CASEWORK_NOTIFY_ROLES;
+
+/**
  * Modules that already emit a customer in-app notice on the same submit
- * that advances the workflow. `notifyModuleCompleted` still emails, but
- * skips a second generic "step completed" banner.
+ * that advances the workflow. `notifyModuleCompleted` still emails (except
+ * {@link MODULES_WITH_DEDICATED_COMPLETION_EMAIL}), but skips a second
+ * generic "step completed" banner.
  */
 const MODULES_WITH_APPLICANT_STEP_NOTICE: ReadonlySet<ModuleStatus> = new Set([
   "prescreening",
@@ -39,6 +51,14 @@ const MODULES_WITH_APPLICANT_STEP_NOTICE: ReadonlySet<ModuleStatus> = new Set([
   "project-closeout",
 ]);
 
+/**
+ * Dedicated notify* helpers already email the cooperator (and staff when
+ * required). Skip the generic `notifyModuleCompleted` status mail so the
+ * customer is not emailed twice when the module also calls `advanceFrom`.
+ */
+const MODULES_WITH_DEDICATED_COMPLETION_EMAIL: ReadonlySet<ModuleStatus> =
+  new Set(["conduct-rtec"]);
+
 export function notifyRequirementsSubmitted(applicant: Applicant) {
   const officeId = staffOffice(applicant);
   notificationStore.addMany([
@@ -47,6 +67,7 @@ export function notifyRequirementsSubmitted(applicant: Applicant) {
       audience: "staff",
       applicantId: applicant.id,
       officeId,
+      targetRoles: CASEWORK_ROLES,
       kind: "action",
       title: "Requirements awaiting review",
       message: `${applicant.enterpriseName} submitted documentary requirements for verification.`,
@@ -206,7 +227,8 @@ export function notifyRequirementsDecision(
       applicantId: applicant.id,
       kind: "success",
       title: "Requirements approved",
-      message: "Your submitted documents were verified. Proceed to the next application step.",
+      message:
+        "Your submitted documents were verified. Your provincial DOST office will route your case for the next evaluation step.",
       view: "requirements",
     });
   } else {
@@ -244,6 +266,7 @@ export function notifyPrescreeningResult(applicant: Applicant, qualified: boolea
         audience: "staff",
         applicantId: applicant.id,
         officeId: staffOffice(applicant),
+        targetRoles: CASEWORK_ROLES,
         kind: "info",
         title: "New qualified applicant",
         message: `${applicant.enterpriseName} passed pre-screening and may proceed.`,
@@ -296,12 +319,14 @@ export function notifyModuleCompleted(
     ? `You completed ${label}. You may now proceed to ${nextLabel} in the AiSETUP portal.`
     : `You completed ${label}.`;
 
-  emailApplicantNotice({
-    applicant,
-    title,
-    message,
-    module: completedModule,
-  });
+  if (!MODULES_WITH_DEDICATED_COMPLETION_EMAIL.has(completedModule)) {
+    emailApplicantNotice({
+      applicant,
+      title,
+      message,
+      module: completedModule,
+    });
+  }
 
   if (MODULES_WITH_APPLICANT_STEP_NOTICE.has(completedModule)) {
     return;
@@ -326,6 +351,7 @@ export function notifyTna1Submitted(applicant: Applicant) {
       audience: "staff",
       applicantId: applicant.id,
       officeId: staffOffice(applicant),
+      targetRoles: CASEWORK_ROLES,
       kind: "action",
       title: `${formatFormMention("tna01")} submitted`,
       message: `${applicant.enterpriseName} submitted ${formatFormMention("tna01", "both")} for staff review.`,
@@ -369,6 +395,7 @@ export function notifyTna1AwaitingDirector(applicant: Applicant) {
     audience: "staff",
     applicantId: applicant.id,
     officeId: staffOffice(applicant),
+    targetRoles: ["provincial-director"],
     kind: "action",
     title: `${formatFormMention("tna01")} awaiting director validation`,
     message: `${applicant.enterpriseName}'s ${formatFormMention("tna01")} passed staff review and awaits Provincial Director validation for this PSTO.`,
@@ -398,10 +425,11 @@ export function notifyTna1DirectorValidated(
       audience: "staff",
       applicantId: applicant.id,
       officeId: staffOffice(applicant),
-      kind: "success",
+      targetRoles: CASEWORK_ROLES,
+      kind: "action",
       title: `${formatFormMention("tna01")} validated by Provincial Director`,
-      message: `${directorName} validated ${applicant.enterpriseName}'s ${formatFormMention("tna01")}.`,
-      view: "tna1",
+      message: `${directorName} validated ${applicant.enterpriseName}'s ${formatFormMention("tna01")}. Prepare and publish ${formatFormMention("tna02")}.`,
+      view: "tna2",
     },
   ]);
   emailApplicantNotice({
@@ -453,16 +481,43 @@ export function notifyTna2Published(applicant: Applicant) {
 }
 
 export function notifyApprovalLetterPublished(applicant: Applicant) {
-  notificationStore.add({
-    id: `approval-published-${applicant.id}-${Date.now()}`,
-    audience: "applicant",
-    applicantId: applicant.id,
-    kind: "success",
-    title: `${formatFormMention("003")} published`,
-    message:
-      `Your ${formatFormMention("003", "both")} is ready. Review the letter and acknowledge conforme to proceed.`,
-    urgent: true,
-    view: "approval-letter",
+  const stamp = Date.now();
+  const title = `${formatFormMention("003")} published`;
+  const applicantMessage = `Your ${formatFormMention("003", "both")} is ready. Review the letter and acknowledge conforme to proceed.`;
+  const staffMessage = `${applicant.enterpriseName}'s ${formatFormMention("003", "both")} is published. The cooperator should review the letter and acknowledge conforme.`;
+  notificationStore.addMany([
+    {
+      id: `approval-published-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "success",
+      title,
+      message: applicantMessage,
+      urgent: true,
+      view: "approval-letter",
+    },
+    {
+      id: `approval-published-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      kind: "success",
+      title,
+      message: staffMessage,
+      view: "approval-letter",
+    },
+  ]);
+  emailApplicantNotice({
+    applicant,
+    title,
+    message: applicantMessage,
+    module: "approval-letter",
+  });
+  emailStaffNotice({
+    applicant,
+    title,
+    message: staffMessage,
+    module: "approval-letter",
   });
 }
 
@@ -579,6 +634,7 @@ export function notifyProjectProposalSubmitted(applicant: Applicant) {
       audience: "staff",
       applicantId: applicant.id,
       officeId: staffOffice(applicant),
+      targetRoles: CASEWORK_ROLES,
       kind: "action",
       title: "Project Proposal submitted",
       message: `${applicant.enterpriseName} submitted ${formatFormMention("001", "both")} for review.`,
@@ -645,6 +701,7 @@ export function notifyLoiSubmitted(applicant: Applicant) {
       audience: "staff",
       applicantId: applicant.id,
       officeId,
+      targetRoles: CASEWORK_ROLES,
       kind: "action",
       title: "Letter of Intent submitted",
       message: `${applicant.enterpriseName} submitted a Letter of Intent for review.`,
@@ -664,17 +721,112 @@ export function notifyLoiSubmitted(applicant: Applicant) {
   ]);
 }
 
+/**
+ * Provincial staff confirmed routing to RTEC evaluation. This is the handoff
+ * that used to be silent — RTEC Staff were never told a case was theirs.
+ * Only fired for the `conduct-rtec` route (never MPEX).
+ */
+export function notifyRtecReady(applicant: Applicant) {
+  const stamp = Date.now();
+  const title = `${formatFormMention("002")} evaluation ready`;
+  const staffMessage = `${applicant.enterpriseName} passed documentary verification and was routed for ${formatFormMention("002")} evaluation.`;
+  const applicantMessage = `Your documents are verified and your case was routed for ${formatFormMention("002")} evaluation by the RTEC.`;
+  notificationStore.addMany([
+    {
+      id: `rtec-ready-staff-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      targetRoles: ["rtec-staff"],
+      kind: "action",
+      title,
+      message: staffMessage,
+      urgent: true,
+      view: "conduct-rtec",
+    },
+    {
+      id: `rtec-ready-casework-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      targetRoles: CASEWORK_ROLES,
+      kind: "info",
+      title,
+      message: `${applicant.enterpriseName} was routed to RTEC. RTEC Staff will complete ${formatFormMention("002")}.`,
+      view: "conduct-rtec",
+    },
+    {
+      id: `rtec-ready-applicant-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "info",
+      title: "Routed for RTEC evaluation",
+      message: applicantMessage,
+      view: "dashboard",
+    },
+  ]);
+  emailStaffNotice({
+    applicant,
+    title,
+    message: staffMessage,
+    module: "conduct-rtec",
+  });
+}
+
+/**
+ * Casework staff endorsed the Notice of Approval for decision. Without this the
+ * Regional Director had no queue and cases stalled at "awaiting RD".
+ */
+export function notifyApprovalLetterAwaitingRd(applicant: Applicant) {
+  const stamp = Date.now();
+  const title = `${formatFormMention("003")} awaiting your decision`;
+  const rdMessage = `${applicant.enterpriseName}'s ${formatFormMention("003", "both")} is endorsed and awaiting your Approve or Disapprove decision.`;
+  const applicantMessage = `Your ${formatFormMention("003")} was endorsed to the Regional Director for decision. You will be notified once a decision is made.`;
+  notificationStore.addMany([
+    {
+      id: `approval-awaiting-rd-${applicant.id}-${stamp}`,
+      audience: "staff",
+      applicantId: applicant.id,
+      officeId: staffOffice(applicant),
+      targetRoles: ["regional-director"],
+      kind: "action",
+      title,
+      message: rdMessage,
+      urgent: true,
+      view: "approval-letter",
+    },
+    {
+      id: `approval-awaiting-rd-applicant-${applicant.id}-${stamp}`,
+      audience: "applicant",
+      applicantId: applicant.id,
+      kind: "info",
+      title: "Awaiting Regional Director decision",
+      message: applicantMessage,
+      view: "dashboard",
+    },
+  ]);
+  emailStaffNotice({
+    applicant,
+    title,
+    message: rdMessage,
+    module: "approval-letter",
+  });
+}
+
 export function notifyRtecSubmitted(applicant: Applicant) {
   const stamp = Date.now();
+  const title = `${formatFormMention("002")} completed`;
+  const applicantMessage =
+    "Your RTEC evaluation is complete. DOST staff will prepare your Notice of Approval for Regional Director decision.";
+  const staffMessage = `${applicant.enterpriseName}'s RTEC report is complete. Prepare the Notice of Approval, then send it to the Regional Director for decision.`;
   notificationStore.addMany([
     {
       id: `rtec-applicant-${applicant.id}-${stamp}`,
       audience: "applicant",
       applicantId: applicant.id,
       kind: "info",
-      title: `${formatFormMention("002")} completed`,
-      message:
-        "Your RTEC evaluation is complete. DOST staff will prepare your Notice of Approval for Regional Director decision.",
+      title,
+      message: applicantMessage,
       view: "dashboard",
     },
     {
@@ -682,12 +834,25 @@ export function notifyRtecSubmitted(applicant: Applicant) {
       audience: "staff",
       applicantId: applicant.id,
       officeId: staffOffice(applicant),
-      kind: "success",
-      title: `${formatFormMention("002")} completed`,
-      message: `${applicant.enterpriseName}'s RTEC report is complete. Proceed to Notice of Approval.`,
+      targetRoles: CASEWORK_ROLES,
+      kind: "action",
+      title,
+      message: staffMessage,
       view: "approval-letter",
     },
   ]);
+  emailApplicantNotice({
+    applicant,
+    title,
+    message: applicantMessage,
+    module: "conduct-rtec",
+  });
+  emailStaffNotice({
+    applicant,
+    title,
+    message: staffMessage,
+    module: "conduct-rtec",
+  });
 }
 
 export function notifyApprovalLetterRdDecision(
@@ -697,14 +862,18 @@ export function notifyApprovalLetterRdDecision(
   const stamp = Date.now();
   const officeId = staffOffice(applicant);
   if (decision === "approved") {
+    const applicantTitle = "Regional Director approved";
+    const applicantMessage = `The Regional Director approved your ${formatFormMention("003")}. Staff will publish the Notice of Approval shortly.`;
+    const staffTitle = `${formatFormMention("003")} ready to publish`;
+    const staffMessage = `${applicant.enterpriseName} was approved by the Regional Director. Publish the Notice of Approval.`;
     notificationStore.addMany([
       {
         id: `approval-rd-ok-applicant-${applicant.id}-${stamp}`,
         audience: "applicant",
         applicantId: applicant.id,
         kind: "success",
-        title: "Regional Director approved",
-        message: `The Regional Director approved your ${formatFormMention("003")}. Staff will publish the Notice of Approval shortly.`,
+        title: applicantTitle,
+        message: applicantMessage,
         view: "approval-letter",
       },
       {
@@ -712,23 +881,40 @@ export function notifyApprovalLetterRdDecision(
         audience: "staff",
         applicantId: applicant.id,
         officeId,
+        targetRoles: CASEWORK_ROLES,
         kind: "action",
-        title: `${formatFormMention("003")} ready to publish`,
-        message: `${applicant.enterpriseName} was approved by the Regional Director. Publish the Notice of Approval.`,
+        title: staffTitle,
+        message: staffMessage,
         urgent: true,
         view: "approval-letter",
       },
     ]);
+    emailApplicantNotice({
+      applicant,
+      title: applicantTitle,
+      message: applicantMessage,
+      module: "approval-letter",
+    });
+    emailStaffNotice({
+      applicant,
+      title: staffTitle,
+      message: staffMessage,
+      module: "approval-letter",
+    });
     return;
   }
+  const applicantTitle = "Regional Director disapproved";
+  const applicantMessage = `The Regional Director disapproved your ${formatFormMention("003")}. DOST staff will advise on next steps.`;
+  const staffTitle = `${formatFormMention("003")} disapproved`;
+  const staffMessage = `${applicant.enterpriseName} was disapproved by the Regional Director. Re-endorse before another RD decision.`;
   notificationStore.addMany([
     {
       id: `approval-rd-no-applicant-${applicant.id}-${stamp}`,
       audience: "applicant",
       applicantId: applicant.id,
       kind: "warning",
-      title: "Regional Director disapproved",
-      message: `The Regional Director disapproved your ${formatFormMention("003")}. DOST staff will advise on next steps.`,
+      title: applicantTitle,
+      message: applicantMessage,
       urgent: true,
       view: "approval-letter",
     },
@@ -737,25 +923,47 @@ export function notifyApprovalLetterRdDecision(
       audience: "staff",
       applicantId: applicant.id,
       officeId,
+      targetRoles: CASEWORK_ROLES,
       kind: "warning",
-      title: `${formatFormMention("003")} disapproved`,
-      message: `${applicant.enterpriseName} was disapproved by the Regional Director. Re-endorse before another RD decision.`,
+      title: staffTitle,
+      message: staffMessage,
       urgent: true,
       view: "approval-letter",
     },
   ]);
+  emailApplicantNotice({
+    applicant,
+    title: applicantTitle,
+    message: applicantMessage,
+    module: "approval-letter",
+  });
+  emailStaffNotice({
+    applicant,
+    title: staffTitle,
+    message: staffMessage,
+    module: "approval-letter",
+  });
 }
 
 export function notifyApprovalLetterConforme(applicant: Applicant) {
+  const title = "Conforme acknowledged";
+  const message = `${applicant.enterpriseName} acknowledged conforme on the Notice of Approval. Continue with MOA signing and LandBank & Withdrawal.`;
   notificationStore.add({
     id: `approval-conforme-staff-${applicant.id}-${Date.now()}`,
     audience: "staff",
     applicantId: applicant.id,
     officeId: staffOffice(applicant),
+    targetRoles: CASEWORK_ROLES,
     kind: "action",
-    title: "Conforme acknowledged",
-    message: `${applicant.enterpriseName} acknowledged conforme on the Notice of Approval. Continue with LandBank & Withdrawal.`,
+    title,
+    message,
     view: "landbank-withdrawal",
+  });
+  emailStaffNotice({
+    applicant,
+    title,
+    message,
+    module: "approval-letter",
   });
 }
 

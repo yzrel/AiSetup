@@ -5,6 +5,7 @@ package ph.gov.dost.aisetup.notification.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 public class CreateNotificationRequest {
 
@@ -20,6 +21,10 @@ public class CreateNotificationRequest {
 
     @Size(max = 128)
     private String officeId;
+
+    /** Staff roles this handoff is addressed to; empty = all staff in office scope. */
+    @Size(max = 8)
+    private List<String> targetRoles;
 
     @NotBlank
     @Size(max = 32)
@@ -70,6 +75,14 @@ public class CreateNotificationRequest {
 
     public void setOfficeId(String officeId) {
         this.officeId = officeId;
+    }
+
+    public List<String> getTargetRoles() {
+        return targetRoles;
+    }
+
+    public void setTargetRoles(List<String> targetRoles) {
+        this.targetRoles = targetRoles;
     }
 
     public String getKind() {

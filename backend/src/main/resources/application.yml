@@ -47,6 +47,12 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  # The staff case list ships every case with its module JSON; gzip keeps that
+  # affordable for field staff on slow connections.
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 1KB
 
 aisetup:
   cors:

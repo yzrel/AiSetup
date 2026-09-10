@@ -4,6 +4,7 @@
 package ph.gov.dost.aisetup.notification.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 public class NotificationDto {
 
@@ -11,6 +12,7 @@ public class NotificationDto {
     private String audience;
     private String applicantId;
     private String officeId;
+    private List<String> targetRoles;
     private String kind;
     private String title;
     private String message;
@@ -49,6 +51,14 @@ public class NotificationDto {
 
     public void setOfficeId(String officeId) {
         this.officeId = officeId;
+    }
+
+    public List<String> getTargetRoles() {
+        return targetRoles;
+    }
+
+    public void setTargetRoles(List<String> targetRoles) {
+        this.targetRoles = targetRoles;
     }
 
     public String getKind() {

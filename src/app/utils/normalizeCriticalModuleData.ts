@@ -177,6 +177,10 @@ export function normalizeApprovalLetterStored(
     rdDecidedAt:
       typeof obj.rdDecidedAt === "string" ? obj.rdDecidedAt : undefined,
     rdRemarks: typeof obj.rdRemarks === "string" ? obj.rdRemarks : undefined,
+    readyForRdAt:
+      typeof obj.readyForRdAt === "string" ? obj.readyForRdAt : undefined,
+    readyForRdBy:
+      typeof obj.readyForRdBy === "string" ? obj.readyForRdBy : undefined,
     signedMoa: normalizeSignedMoaDocument(obj.signedMoa),
     moaForm: normalizeMoaAnnexCForm(obj.moaForm),
     updatedAt: typeof obj.updatedAt === "string" ? obj.updatedAt : undefined,
@@ -622,5 +626,7 @@ export function mergeApprovalLetterPreservePublished(
     rdDecidedBy: incoming.rdDecidedBy ?? existing.rdDecidedBy,
     rdDecidedAt: incoming.rdDecidedAt ?? existing.rdDecidedAt,
     rdRemarks: incoming.rdRemarks ?? existing.rdRemarks,
+    readyForRdAt: incoming.readyForRdAt ?? existing.readyForRdAt,
+    readyForRdBy: incoming.readyForRdBy ?? existing.readyForRdBy,
   };
 }

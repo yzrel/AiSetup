@@ -33,6 +33,7 @@ import {
   resolveApplicantProvince,
 } from "../utils/provincialOffice";
 import { getStaffDashboardUpdatedLabel } from "../utils/dashboardMetrics";
+import { listPendingReview } from "../utils/workflowHandoff";
 import { StatCard } from "./dashboard/widgets";
 import { DashboardProvinceFilter } from "./dashboard/DashboardProvinceFilter";
 import { ApplicantOverviewTab } from "./dashboard/ApplicantOverviewTab";
@@ -85,6 +86,9 @@ export function Dashboard({
       a.currentModule === "procurement-liquidation" ||
       a.currentModule === "completed",
   ).length;
+  const staffPendingReviewCount = isClientView
+    ? 0
+    : listPendingReview(scopedApplicants, user, "mine").length;
   const provincialOffice = application
     ? getOfficeContact(resolveApplicantOfficeId(application))
     : null;
@@ -229,20 +233,12 @@ export function Dashboard({
             />
             <StatCard
               label="Needs Assessment"
-              value={String(
-                scopedApplicants.filter((a) => {
-                  const md = a.moduleData;
-                  return (
-                    (md?.documentsSubmitted && !md?.staffDecision) ||
-                    (md?.tna1?.submitted && !md?.tna1?.staffReviewed) ||
-                    (a.currentModule === "tna2" && !md?.tna2Document?.published)
-                  );
-                }).length,
-              )}
+              value={String(staffPendingReviewCount)}
               sub="Staff action required"
               icon={Banknote}
               color="bg-amber-500"
-              trend="Open Cooperators hub"
+              trend="Open review queue"
+              onClick={() => onNavigate?.("pending-review")}
             />
           </>
         )}

@@ -2,7 +2,12 @@
  * Author: Yzrel Jade B. Eborde
  */
 
-import { applicantStore, Applicant } from "../store/applicantStore";
+import {
+  applicantStore,
+  Applicant,
+  normalizeCurrentModule,
+} from "../store/applicantStore";
+import { formatFormMention } from "../constants/setupForms";
 import type {
   ProjectProposalAttachment,
   ProjectProposalForm,
@@ -368,6 +373,60 @@ export function hasRtecPrerequisites(applicant: Applicant | null): boolean {
   );
 }
 
+/**
+ * Provincial staff confirmed routing to RTEC (not MPEX, not unset).
+ * `setup` is a legacy value from older e2e tooling, accepted on read.
+ */
+export function hasRtecRoutingPrerequisite(
+  applicant: Applicant | null,
+): boolean {
+  const routing = applicant?.moduleData?.routingDecision;
+  return routing === "conduct-rtec" || routing === "setup";
+}
+
+/**
+ * Mark Complete advances the case to Approval Letter, so the case must already
+ * be sitting on Conduct of RTEC. Completing from Submission Requirements used
+ * to write the assessment locally while the server rejected the header advance,
+ * leaving the cooperator stuck with a "complete" RTEC and a locked Notice.
+ */
+export function canMarkRtecComplete(applicant: Applicant | null): {
+  ok: boolean;
+  reason?: string;
+} {
+  if (!applicant) {
+    return { ok: false, reason: "Select an applicant first." };
+  }
+  if (isDemoModeActive()) return { ok: true };
+  if (!hasProjectProposalPrerequisite(applicant)) {
+    return {
+      ok: false,
+      reason: `A submitted ${formatFormMention("001")} is required before the RTEC report can be marked complete.`,
+    };
+  }
+  if (!hasRequirementsApprovedPrerequisite(applicant)) {
+    return {
+      ok: false,
+      reason:
+        "Documentary requirements must be verified and approved by staff before the RTEC report can be marked complete.",
+    };
+  }
+  if (!hasRtecRoutingPrerequisite(applicant)) {
+    return {
+      ok: false,
+      reason: `Provincial staff must finish Submission Requirements and Confirm & Proceed to RTEC Evaluation before ${formatFormMention("002")} can be marked complete.`,
+    };
+  }
+  if (normalizeCurrentModule(applicant.currentModule) !== "conduct-rtec") {
+    return {
+      ok: false,
+      reason:
+        "This case is not on Conduct of RTEC yet. Provincial staff must route it from Submission Requirements first.",
+    };
+  }
+  return { ok: true };
+}
+
 function trimText(value: unknown): string {
   return String(value ?? "").trim();
 }
@@ -703,20 +762,32 @@ export function saveRtecReportDraft(
   });
 }
 
+/**
+ * Submitted RTEC row without writing to the store, so Mark Complete can persist
+ * the report, the staff assessment, and the module advance in a single update.
+ */
+export function buildSubmittedRtecReport(
+  applicant: Applicant,
+  form: RtecReportForm,
+): RtecReportStored {
+  const existing = getRtecReportStored(applicant);
+  const now = new Date().toISOString();
+  return {
+    form,
+    submitted: true,
+    submittedAt: now,
+    updatedAt: now,
+    reviewComments: existing?.reviewComments ?? [],
+  } satisfies RtecReportStored;
+}
+
 export function submitRtecReport(applicantId: string, form: RtecReportForm): void {
   const applicant = applicantStore.getById(applicantId);
   if (!applicant) return;
-  const existing = getRtecReportStored(applicant);
   applicantStore.update(applicantId, {
     moduleData: {
       ...applicant.moduleData,
-      rtecReport: {
-        form,
-        submitted: true,
-        submittedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        reviewComments: existing?.reviewComments ?? [],
-      } satisfies RtecReportStored,
+      rtecReport: buildSubmittedRtecReport(applicant, form),
     },
   });
 }

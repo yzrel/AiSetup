@@ -8,6 +8,7 @@ import { isAdminView, normalizeAdminView } from "../../store/authStore";
 describe("admin view normalization", () => {
   it("accepts known views", () => {
     expect(isAdminView("dashboard")).toBe(true);
+    expect(isAdminView("pending-review")).toBe(true);
     expect(isAdminView("tna2")).toBe(true);
     expect(isAdminView("landbank-branches")).toBe(true);
     expect(normalizeAdminView("requirements")).toBe("requirements");

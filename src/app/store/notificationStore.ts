@@ -9,6 +9,8 @@ import {
   AuthUser,
   authStore,
   normalizeAdminView,
+  normalizeUserRole,
+  type UserRole,
 } from "./authStore";
 import { applicantStore } from "./applicantStore";
 import {
@@ -26,6 +28,11 @@ export interface AppNotification {
   applicantId?: string;
   /** Provincial office scope for staff notifications */
   officeId?: string;
+  /**
+   * Staff roles this handoff is addressed to (e.g. `["regional-director"]`).
+   * Empty / omitted keeps the legacy "all staff in office scope" behavior.
+   */
+  targetRoles?: UserRole[];
   kind: NotificationKind;
   title: string;
   message: string;
@@ -53,12 +60,21 @@ function notify() {
   listeners.forEach((l) => l());
 }
 
+function normalizeTargetRoles(raw: unknown): UserRole[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const roles = raw
+    .map((role) => normalizeUserRole(role))
+    .filter((role): role is UserRole => role !== null);
+  return roles.length ? Array.from(new Set(roles)) : undefined;
+}
+
 function fromApi(n: ApiNotification): AppNotification {
   return {
     id: n.id,
     audience: n.audience,
     applicantId: n.applicantId,
     officeId: n.officeId,
+    targetRoles: normalizeTargetRoles(n.targetRoles),
     kind: n.kind,
     title: n.title,
     message: n.message,
@@ -75,6 +91,7 @@ function toApiPayload(n: AppNotification) {
     audience: n.audience,
     applicantId: n.applicantId,
     officeId: n.officeId,
+    targetRoles: n.targetRoles?.length ? n.targetRoles : undefined,
     kind: n.kind,
     title: n.title,
     message: n.message,
@@ -97,7 +114,15 @@ function matchesUser(n: AppNotification, user: AuthUser): boolean {
 
   if (!authStore.isStaff(user.role)) return false;
 
-  if (user.role === "admin" || user.officeId === "regional") return true;
+  if (user.role === "admin") return true;
+
+  // Role-targeted handoffs only reach the role that must act next. Regional
+  // accounts see every untargeted staff row, but must not absorb targeted ones.
+  if (n.targetRoles?.length && !n.targetRoles.includes(user.role)) {
+    return false;
+  }
+
+  if (user.officeId === "regional") return true;
 
   if (n.officeId && user.officeId) {
     return n.officeId === user.officeId;

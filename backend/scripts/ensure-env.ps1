@@ -117,7 +117,7 @@ if (-not [string]::IsNullOrWhiteSpace($openAiKey)) {
         Write-Host "AI assist ready (OpenAI primary, template fallback)"
     }
 } elseif (-not [string]::IsNullOrWhiteSpace($anthropicKey)) {
-    Write-Host "AI assist ready (Anthropic only — set OPENAI_API_KEY for the primary provider)"
+    Write-Host "AI assist ready (Anthropic only - set OPENAI_API_KEY for the primary provider)"
 } else {
     Write-Warning "No AI provider key found. Template-only mode."
 }

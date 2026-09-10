@@ -26,6 +26,7 @@ import {
 import { resolveTnaProductionSexCounts, syncTnaProductionSexCounts } from "../constants/tnaForm01Layout";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
+import { WorkflowHandoffStrip } from "./WorkflowHandoffStrip";
 import { ModuleFormHeader } from "./ModuleFormHeader";
 import { formatFormMention } from "../constants/setupForms";
 import { MODULE_HEADER } from "./moduleTheme";
@@ -767,6 +768,11 @@ export function TechnologyNeedsAssessment1({
           <StaffApplicantPicker user={user} label={`Review applicant ${formatFormMention("tna01")}`} />
         </div>
         <StaffApplicantBanner user={user} />
+        {isStaff && applicant && (
+          <div className="px-6 pt-4">
+            <WorkflowHandoffStrip applicant={applicant} user={user} />
+          </div>
+        )}
         <div className="px-6 pt-4">
           <AiAssistNotice message={tnaAiNotice} />
         </div>

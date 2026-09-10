@@ -26,22 +26,26 @@ import { applicantStore, Applicant } from "../store/applicantStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { useApplicantSubscription } from "../hooks/useApplicantSubscription";
 import { DOST_BLUE, ModuleWorkflowLayout, ACTION_ROW, type ModuleStep } from "./ModuleWorkflowLayout";
+import { WorkflowHandoffStrip } from "./WorkflowHandoffStrip";
 import { appendStaffAssessment } from "../utils/clientAssessment";
 import type { RtecReportForm } from "../api/types";
 import {
   buildRtecReportDraft,
+  buildSubmittedRtecReport,
+  canMarkRtecComplete,
   downloadRtecReportPdf,
   getRtecReportForm,
   getRtecReportStored,
   getRtecReviewComments,
   hasProjectProposalPrerequisite,
   hasRtecPrerequisites,
+  hasRtecRoutingPrerequisite,
   hasRequirementsApprovedPrerequisite,
   saveRtecReportDraft,
-  submitRtecReport,
   syncRtecFromProjectProposal,
   validateRtecReportSubmit,
 } from "../utils/rtecReport";
+import { confirmModuleAdvance } from "../utils/applicantPersistence";
 import { allowWhenDemo } from "../utils/demoMode";
 import { notifyRtecSubmitted } from "../utils/notificationHelpers";
 import { formatFormMention } from "../constants/setupForms";
@@ -74,6 +78,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
   const [saveNotice, setSaveNotice] = useState("");
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [completeNotice, setCompleteNotice] = useState("");
+  const [completing, setCompleting] = useState(false);
 
   const loadForm = useCallback((app: Applicant | null) => {
     if (!app) {
@@ -100,6 +105,8 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
   const rtecReady = hasRtecPrerequisites(applicant);
   const ppReady = hasProjectProposalPrerequisite(applicant);
   const requirementsReady = hasRequirementsApprovedPrerequisite(applicant);
+  const routingReady = hasRtecRoutingPrerequisite(applicant);
+  const completeGate = canMarkRtecComplete(applicant);
   const stored = applicant ? getRtecReportStored(applicant) : null;
   const isComplete = !!stored?.submitted;
   const reviewComments = getRtecReviewComments(applicant);
@@ -146,31 +153,65 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
     downloadRtecReportPdf(form, applicant?.applicationId, applicant?.id);
   };
 
-  const handleComplete = () => {
-    if (!applicant || !form) return;
+  /**
+   * Mark Complete is the RTEC → casework handoff. It writes the report, the
+   * assessment, and the module advance in one store update, then confirms the
+   * server accepted the advance. A rejected advance is rolled back locally so
+   * the cooperator never sees a "complete" RTEC with a stuck case.
+   */
+  const handleComplete = async () => {
+    if (!applicant || !form || completing) return;
+    const gate = canMarkRtecComplete(applicant);
+    if (!gate.ok) {
+      setSubmitErrors([gate.reason ?? "This case cannot be marked complete yet."]);
+      return;
+    }
     const errors = validateRtecReportSubmit(form);
     if (errors.length) {
       setSubmitErrors(errors);
       return;
     }
     setSubmitErrors([]);
-    submitRtecReport(applicant.id, form);
-    if (user) {
-      applicantStore.update(applicant.id, {
-        ...appendStaffAssessment(applicant, {
+    setCompleting(true);
+
+    const previousModule = applicant.currentModule;
+    const now = new Date().toISOString();
+    const assessmentPatch = user
+      ? appendStaffAssessment(applicant, {
           stage: "post-proposal",
           decision: "rtec-completed",
           assessedBy: user.email,
-          assessedAt: new Date().toISOString(),
+          assessedAt: now,
           remarks: "SETUP Form 002 RTEC Report completed",
-        }),
-        currentModule: "approval-letter",
-      });
-    } else {
-      applicantStore.update(applicant.id, { currentModule: "approval-letter" });
+        })
+      : {};
+
+    applicantStore.update(applicant.id, {
+      ...assessmentPatch,
+      moduleData: {
+        ...applicant.moduleData,
+        ...(assessmentPatch.moduleData ?? {}),
+        rtecReport: buildSubmittedRtecReport(applicant, form),
+      },
+      currentModule: "approval-letter",
+    });
+
+    const confirmed = await confirmModuleAdvance(applicant.id, "approval-letter");
+    if (!confirmed.ok) {
+      applicantStore.update(applicant.id, { currentModule: previousModule });
+      setCompleting(false);
+      setSubmitErrors([
+        `The RTEC report was saved, but this case could not be advanced to the Approval Letter. ${confirmed.error ?? ""}`.trim(),
+        "Ask provincial staff to complete Submission Requirements routing, then mark complete again.",
+      ]);
+      return;
     }
-    notifyRtecSubmitted(applicant);
-    setCompleteNotice("RTEC Report marked complete. Applicant advanced to Approval Letter.");
+
+    setCompleting(false);
+    notifyRtecSubmitted(applicantStore.getById(applicant.id) ?? applicant);
+    setCompleteNotice(
+      "RTEC Report marked complete. Case advanced to Approval Letter for the DOST casework team.",
+    );
     setTimeout(() => setCompleteNotice(""), 5000);
     onSubmitSuccess?.();
   };
@@ -193,6 +234,7 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
               Select an applicant to prepare the RTEC Report.
             </div>
           )}
+          <WorkflowHandoffStrip applicant={applicant} user={user} />
           {applicant && !rtecReady && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-sm text-red-800">
               <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -204,6 +246,22 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                     : !requirementsReady
                       ? "Documentary requirements must be verified and approved by staff before RTEC evaluation."
                       : "Complete all RTEC prerequisites before generating the report."}
+                </p>
+              </div>
+            </div>
+          )}
+          {applicant && rtecReady && !isComplete && !completeGate.ok && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-sm text-amber-900">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <div>
+                <p className="font-semibold">
+                  {routingReady
+                    ? "Case not on Conduct of RTEC yet"
+                    : "Routing to RTEC not confirmed"}
+                </p>
+                <p className="mt-1">{completeGate.reason}</p>
+                <p className="mt-1">
+                  You can still prepare and save the report — only Mark RTEC Complete is blocked.
                 </p>
               </div>
             </div>
@@ -403,13 +461,18 @@ export function ConductOfRTEC({ user, onSubmitSuccess }: ConductOfRTECProps = {}
                   </button>
                   <button
                     type="button"
-                    onClick={handleComplete}
-                    disabled={!allowWhenDemo(rtecReady) || isComplete}
+                    onClick={() => void handleComplete()}
+                    disabled={!completeGate.ok || isComplete || completing}
+                    title={completeGate.ok ? undefined : completeGate.reason}
                     className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
                   >
                     <CheckCircle className="w-4 h-4 shrink-0" />
-                    <span className="hidden sm:inline">Mark RTEC Complete</span>
-                    <span className="sm:hidden">Complete</span>
+                    <span className="hidden sm:inline">
+                      {completing ? "Completing…" : "Mark RTEC Complete"}
+                    </span>
+                    <span className="sm:hidden">
+                      {completing ? "…" : "Complete"}
+                    </span>
                   </button>
                 </div>
               </div>

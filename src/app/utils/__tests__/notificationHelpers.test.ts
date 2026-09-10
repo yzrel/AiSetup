@@ -44,7 +44,14 @@ import {
   notifyTna1Resubmission,
   notifyTna1Reviewed,
   notifyTna2Published,
+  notifyRtecSubmitted,
+  notifyRtecReady,
+  notifyApprovalLetterPublished,
+  notifyApprovalLetterRdDecision,
+  notifyApprovalLetterAwaitingRd,
+  notifyTna1AwaitingDirector,
 } from "../notificationHelpers";
+import { staffMailboxEmails } from "../applicantStatusMail";
 import { shouldNotifyRequirementRemark } from "../submissionRequirements";
 
 function sampleApplicant(overrides: Partial<Applicant> = {}): Applicant {
@@ -555,5 +562,313 @@ describe("notifyTna2Published", () => {
             n.audience === "applicant",
         ),
     ).toBe(true);
+  });
+});
+
+describe("notifyRtecSubmitted", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("notifies and emails the cooperator and DOST staff", () => {
+    const applicant = sampleApplicant({ id: "app-rtec-done" });
+    notifyRtecSubmitted(applicant);
+
+    const notices = notificationStore.getAll();
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-rtec-done" &&
+          n.audience === "applicant" &&
+          n.message.includes("RTEC evaluation is complete"),
+      ),
+    ).toBe(true);
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-rtec-done" &&
+          n.audience === "staff" &&
+          n.view === "approval-letter" &&
+          n.message.includes("Test Foods"),
+      ),
+    ).toBe(true);
+
+    const mail = outboxFor("app-rtec-done");
+    const cooperatorMail = mail.find((e) =>
+      e.to.includes("juan@testfoods.example"),
+    );
+    expect(cooperatorMail).toBeDefined();
+    expect(cooperatorMail?.kind).toBe("status");
+    expect(cooperatorMail?.subject).toContain("RTEC Report completed");
+    expect(cooperatorMail?.body).toContain("RTEC evaluation is complete");
+    expect(cooperatorMail?.module).toBe("conduct-rtec");
+
+    const staffMail = mail.find((e) =>
+      e.to.some((addr) => addr !== "juan@testfoods.example"),
+    );
+    expect(staffMail).toBeDefined();
+    expect(staffMail?.to).toEqual(staffMailboxEmails(applicant));
+    expect(staffMail?.to).toContain("pstc_southcot@region12.dost.gov.ph");
+    expect(staffMail?.to).toContain("records@region12.dost.gov.ph");
+    expect(staffMail?.subject).toContain("RTEC Report completed");
+    expect(staffMail?.body).toContain("Test Foods");
+    expect(staffMail?.body).toContain(
+      "send it to the Regional Director for decision",
+    );
+    expect(staffMail?.body).toContain("Juan Dela Cruz");
+    expect(staffMail?.module).toBe("conduct-rtec");
+  });
+
+  it("still notifies both audiences when the cooperator has no email", () => {
+    const applicant = sampleApplicant({
+      id: "app-rtec-done-no-mail",
+      emailAddress: "",
+    });
+    notifyRtecSubmitted(applicant);
+
+    const notices = notificationStore.getAll();
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-rtec-done-no-mail" &&
+          n.audience === "applicant",
+      ),
+    ).toBe(true);
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-rtec-done-no-mail" && n.audience === "staff",
+      ),
+    ).toBe(true);
+
+    const mail = outboxFor("app-rtec-done-no-mail");
+    expect(mail).toHaveLength(1);
+    expect(mail[0].to).toEqual(staffMailboxEmails(applicant));
+    expect(mail[0].to).not.toContain("");
+  });
+});
+
+describe("notifyModuleCompleted RTEC", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("does not send a second generic email after dedicated RTEC notices", () => {
+    const applicant = sampleApplicant({ id: "app-rtec-advance" });
+    notifyModuleCompleted(applicant, "conduct-rtec");
+    expect(outboxFor("app-rtec-advance")).toHaveLength(0);
+    expect(
+      notificationStore
+        .getAll()
+        .some((n) => n.id === "step-complete-app-rtec-advance-conduct-rtec"),
+    ).toBe(false);
+  });
+});
+
+describe("notifyApprovalLetterPublished", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("notifies and emails the cooperator and DOST staff", () => {
+    const applicant = sampleApplicant({ id: "app-noa-pub" });
+    notifyApprovalLetterPublished(applicant);
+
+    const notices = notificationStore.getAll();
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-noa-pub" &&
+          n.audience === "applicant" &&
+          n.urgent === true &&
+          n.message.includes("acknowledge conforme"),
+      ),
+    ).toBe(true);
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-noa-pub" &&
+          n.audience === "staff" &&
+          n.view === "approval-letter" &&
+          n.message.includes("Test Foods"),
+      ),
+    ).toBe(true);
+
+    const mail = outboxFor("app-noa-pub");
+    const cooperatorMail = mail.find((e) =>
+      e.to.includes("juan@testfoods.example"),
+    );
+    expect(cooperatorMail).toBeDefined();
+    expect(cooperatorMail?.subject).toContain("Notice of Approval published");
+    expect(cooperatorMail?.body).toContain("Form 003");
+    expect(cooperatorMail?.module).toBe("approval-letter");
+
+    const staffMail = mail.find((e) =>
+      e.to.some((addr) => addr !== "juan@testfoods.example"),
+    );
+    expect(staffMail).toBeDefined();
+    expect(staffMail?.to).toEqual(staffMailboxEmails(applicant));
+    expect(staffMail?.subject).toContain("Notice of Approval published");
+    expect(staffMail?.body).toContain("Test Foods");
+    expect(staffMail?.module).toBe("approval-letter");
+  });
+});
+
+describe("notifyApprovalLetterRdDecision", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("notifies and emails both audiences when the Regional Director approves", () => {
+    const applicant = sampleApplicant({ id: "app-noa-rd-ok" });
+    notifyApprovalLetterRdDecision(applicant, "approved");
+
+    const notices = notificationStore.getAll();
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-noa-rd-ok" &&
+          n.audience === "applicant" &&
+          n.title === "Regional Director approved",
+      ),
+    ).toBe(true);
+    expect(
+      notices.some(
+        (n) =>
+          n.applicantId === "app-noa-rd-ok" &&
+          n.audience === "staff" &&
+          n.kind === "action",
+      ),
+    ).toBe(true);
+
+    const mail = outboxFor("app-noa-rd-ok");
+    const cooperatorMail = mail.find((e) =>
+      e.to.includes("juan@testfoods.example"),
+    );
+    expect(cooperatorMail?.subject).toContain("Regional Director approved");
+    expect(cooperatorMail?.body).toContain("publish the Notice of Approval");
+    expect(cooperatorMail?.module).toBe("approval-letter");
+
+    const staffMail = mail.find((e) =>
+      e.to.some((addr) => addr !== "juan@testfoods.example"),
+    );
+    expect(staffMail?.to).toEqual(staffMailboxEmails(applicant));
+    expect(staffMail?.subject).toContain("ready to publish");
+    expect(staffMail?.body).toContain("Test Foods");
+  });
+
+  it("notifies and emails both audiences when the Regional Director disapproves", () => {
+    const applicant = sampleApplicant({ id: "app-noa-rd-no" });
+    notifyApprovalLetterRdDecision(applicant, "disapproved");
+
+    expect(
+      notificationStore
+        .getAll()
+        .some(
+          (n) =>
+            n.applicantId === "app-noa-rd-no" &&
+            n.audience === "applicant" &&
+            n.kind === "warning",
+        ),
+    ).toBe(true);
+
+    const mail = outboxFor("app-noa-rd-no");
+    const cooperatorMail = mail.find((e) =>
+      e.to.includes("juan@testfoods.example"),
+    );
+    expect(cooperatorMail?.subject).toContain("Regional Director disapproved");
+    const staffMail = mail.find((e) =>
+      e.to.some((addr) => addr !== "juan@testfoods.example"),
+    );
+    expect(staffMail?.to).toEqual(staffMailboxEmails(applicant));
+    expect(staffMail?.body).toContain("Re-endorse");
+  });
+});
+
+describe("handoff notifications", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    getAuthToken.mockReturnValue("test-token");
+    health.mockResolvedValue({ smtpEnabled: false });
+    createNotifications.mockImplementation(async (payload: unknown[]) => payload);
+    await notificationStore.hydrateFromBackend();
+  });
+
+  it("addresses the RTEC-ready handoff to RTEC staff", () => {
+    const applicant = sampleApplicant({ id: "app-rtec-ready" });
+    notifyRtecReady(applicant);
+
+    const rows = notificationStore
+      .getAll()
+      .filter((n) => n.applicantId === "app-rtec-ready");
+
+    const rtecRow = rows.find((n) => n.targetRoles?.includes("rtec-staff"));
+    expect(rtecRow).toBeDefined();
+    expect(rtecRow?.audience).toBe("staff");
+    expect(rtecRow?.view).toBe("conduct-rtec");
+    expect(rtecRow?.urgent).toBe(true);
+
+    // Casework keeps a non-actionable copy so PSTO can see where the case went.
+    const caseworkRow = rows.find(
+      (n) => n.audience === "staff" && n.targetRoles?.includes("agent"),
+    );
+    expect(caseworkRow?.kind).toBe("info");
+
+    expect(rows.some((n) => n.audience === "applicant")).toBe(true);
+  });
+
+  it("addresses the approval endorsement to the Regional Director only", () => {
+    const applicant = sampleApplicant({ id: "app-awaiting-rd" });
+    notifyApprovalLetterAwaitingRd(applicant);
+
+    const rows = notificationStore
+      .getAll()
+      .filter((n) => n.applicantId === "app-awaiting-rd");
+
+    const rdRow = rows.find((n) => n.audience === "staff");
+    expect(rdRow?.targetRoles).toEqual(["regional-director"]);
+    expect(rdRow?.kind).toBe("action");
+    expect(rdRow?.view).toBe("approval-letter");
+
+    const mail = outboxFor("app-awaiting-rd");
+    expect(mail.length).toBeGreaterThan(0);
+    expect(mail[0].to).toEqual(staffMailboxEmails(applicant));
+  });
+
+  it("routes the completed RTEC report to casework, not to RTEC staff", () => {
+    const applicant = sampleApplicant({ id: "app-rtec-done" });
+    notifyRtecSubmitted(applicant);
+
+    const staffRow = notificationStore
+      .getAll()
+      .find((n) => n.applicantId === "app-rtec-done" && n.audience === "staff");
+    expect(staffRow?.targetRoles).toEqual(["agent", "provincial-director"]);
+    expect(staffRow?.view).toBe("approval-letter");
+  });
+
+  it("directs TNA Form 01 validation to the Provincial Director only", () => {
+    const applicant = sampleApplicant({ id: "app-tna1-pd" });
+    notifyTna1AwaitingDirector(applicant);
+
+    const row = notificationStore
+      .getAll()
+      .find((n) => n.applicantId === "app-tna1-pd" && n.audience === "staff");
+    expect(row?.targetRoles).toEqual(["provincial-director"]);
   });
 });

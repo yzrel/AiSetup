@@ -692,7 +692,7 @@ PatchModule $applicantId $staffToken "caseMeta" @{
   requirementUploads     = $uploads
   documentsSubmitted     = $true
   staffDecision          = "approved"
-  routingDecision        = "setup"
+  routingDecision        = "conduct-rtec"
   staffVerifiedBy        = "Agent Reviewer"
   requirementRevisionNotes = ""
 } | Out-Null

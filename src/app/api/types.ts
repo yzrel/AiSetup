@@ -872,6 +872,9 @@ export interface ApprovalLetterStored {
   rdDecidedBy?: string;
   rdDecidedAt?: string;
   rdRemarks?: string;
+  /** Set when casework staff endorse the draft for Regional Director decision. */
+  readyForRdAt?: string;
+  readyForRdBy?: string;
   signedMoa?: SignedMoaDocument;
   /** Generated Proforma MOA (Annex C) draft fields. */
   moaForm?: MoaAnnexCForm;
@@ -1448,6 +1451,8 @@ export interface ApiNotification {
   audience: "applicant" | "staff";
   applicantId?: string;
   officeId?: string;
+  /** Staff roles this handoff is addressed to; absent = all staff in office scope. */
+  targetRoles?: string[] | null;
   kind: ApiNotificationKind;
   title: string;
   message: string;
@@ -1462,6 +1467,7 @@ export interface ApiCreateNotificationRequest {
   audience: "applicant" | "staff";
   applicantId?: string;
   officeId?: string;
+  targetRoles?: string[];
   kind: ApiNotificationKind;
   title: string;
   message: string;

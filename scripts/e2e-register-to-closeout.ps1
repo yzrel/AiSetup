@@ -281,7 +281,7 @@ Step "Project proposal to requirements" $true
 PatchModule $applicantId $staffToken "caseMeta" @{
   documentsSubmitted = $true
   staffDecision      = "approved"
-  routingDecision    = "setup"
+  routingDecision    = "conduct-rtec"
 } | Out-Null
 SetHeader $applicantId $staffToken "conduct-rtec" $profileBase | Out-Null
 Step "Requirements approved SETUP to conduct-rtec" $true

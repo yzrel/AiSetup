@@ -11,7 +11,6 @@ import {
 } from "../store/applicantStore";
 import { AdminView } from "../store/authStore";
 import { isDemoModeActive } from "./demoMode";
-import { formatFormMention } from "../constants/setupForms";
 import {
   buildRequirementUploadList,
   countRequiredUploads,
@@ -20,9 +19,10 @@ import {
   getOfficialChecklistStepCount,
   getProprietorTrackLabel,
 } from "./proprietorTrack";
-import { getSignedMoa, hasRdApprovedNotice, getApprovalLetterStored } from "./approvalLetter";
+import { getSignedMoa, hasRdApprovedNotice } from "./approvalLetter";
 import { hasPdcsRecordedForDisbursement } from "./refundDelinquent";
 import { isContentGateBlockingView } from "./moduleGateways";
+import { getWorkflowHandoff } from "./workflowHandoff";
 
 function countRequiredDocuments(applicant: Applicant | null): number {
   const uploads = buildRequirementUploadList(applicant);
@@ -189,41 +189,16 @@ export function getAwaitingStaffReviewMessage(
     };
   }
   const current = normalizeCurrentModule(applicant.currentModule);
-  if (current === "conduct-rtec") {
-    return {
-      title: "RTEC evaluation in progress",
-      body: `DOST is preparing your ${formatFormMention("002")} review. You will be notified when the approval letter is ready for your conforme.`,
-    };
-  }
-  if (current === "approval-letter") {
-    const stored = getApprovalLetterStored(applicant);
-    if (stored?.rdDecision === "disapproved") {
-      return {
-        title: "Application not approved",
-        body: "The Regional Director did not approve your Notice of Approval. DOST staff may revise and re-endorse your case. You will be notified if a decision changes.",
-      };
-    }
-    if (stored?.rdDecision !== "approved") {
-      return {
-        title: "Awaiting Regional Director decision",
-        body: "Your RTEC evaluation is complete. The Regional Director must Approve the Notice of Approval before you can proceed.",
-      };
-    }
-    return {
-      title: "Approval letter being prepared",
-      body: "DOST is finalizing your Notice of Approval. You will be able to acknowledge conforme once it is published.",
-    };
-  }
   if (current === "landbank-withdrawal") {
     return {
       title: "MOA and PDCs in progress",
       body: "DOST is coordinating MOA signing and post-dated check (PDC) recording. LandBank enrollment unlocks after both are on file.",
     };
   }
-  return {
-    title: "Under review by DOST",
-    body: "Your application is with DOST personnel for evaluation. You will be notified when you can proceed.",
-  };
+  // Everything from pre-screening through conforme reads from the shared
+  // handoff model so the cooperator sees the same "waiting on" state staff do.
+  const handoff = getWorkflowHandoff(applicant);
+  return { title: handoff.applicantTitle, body: handoff.applicantMessage };
 }
 
 export function isRoutedToMpex(applicant: Applicant | null): boolean {

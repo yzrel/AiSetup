@@ -238,7 +238,23 @@ public class ApplicantPersistenceService {
 
     @Transactional(readOnly = true)
     public List<ApplicantRecordDto> findAll() {
-        return repository.findAll().stream().map(this::toDtoReadOnly).toList();
+        List<ApplicantRecord> entities = repository.findAll();
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        // One query for every case's module rows instead of one per case.
+        Map<String, List<ApplicantModuleData>> rowsByApplicant = new LinkedHashMap<>();
+        List<String> ids = entities.stream().map(ApplicantRecord::getId).toList();
+        for (ApplicantModuleData row :
+                moduleDataRepository.findByApplicantIdInOrderByApplicantIdAscModuleKeyAsc(ids)) {
+            rowsByApplicant
+                    .computeIfAbsent(row.getApplicantId(), key -> new ArrayList<>())
+                    .add(row);
+        }
+        return entities.stream()
+                .map(entity -> toDtoReadOnly(
+                        entity, rowsByApplicant.getOrDefault(entity.getId(), List.of())))
+                .toList();
     }
 
     /**
@@ -532,11 +548,9 @@ public class ApplicantPersistenceService {
                 entity.getUpdatedAt() != null ? entity.getUpdatedAt().toString() : null);
     }
 
-    /** List views skip lazy backfill writes. */
-    private ApplicantRecordDto toDtoReadOnly(ApplicantRecord entity) {
-        String applicantId = entity.getId();
-        List<ApplicantModuleData> rows =
-                moduleDataRepository.findByApplicantIdOrderByModuleKeyAsc(applicantId);
+    /** List views skip lazy backfill writes; module rows are pre-fetched in bulk. */
+    private ApplicantRecordDto toDtoReadOnly(
+            ApplicantRecord entity, List<ApplicantModuleData> rows) {
         Map<String, Object> blob = readPayload(entity.getModuleDataJson());
         Map<String, Object> moduleData;
         if (rows.isEmpty()) {

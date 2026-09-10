@@ -272,6 +272,10 @@ export function saveApprovalLetterDraft(
     rdDecidedBy: clearDisapproval ? undefined : existing?.rdDecidedBy,
     rdDecidedAt: clearDisapproval ? undefined : existing?.rdDecidedAt,
     rdRemarks: clearDisapproval ? undefined : existing?.rdRemarks,
+    // Re-endorsement must be explicit: clearing a disapproval also withdraws the
+    // previous endorsement so the Regional Director queue is not re-flooded.
+    readyForRdAt: clearDisapproval ? undefined : existing?.readyForRdAt,
+    readyForRdBy: clearDisapproval ? undefined : existing?.readyForRdBy,
     signedMoa: existing?.signedMoa,
     moaForm: existing?.moaForm,
     updatedAt: new Date().toISOString(),
@@ -282,6 +286,61 @@ export function saveApprovalLetterDraft(
       approvalLetter: nextStored,
     },
   });
+}
+
+/**
+ * Casework staff endorse the Notice of Approval for Regional Director decision.
+ * This is the explicit handoff that puts the case in the RD queue — saving a
+ * draft alone must not notify the Regional Director.
+ */
+export function endorseApprovalLetterToRd(
+  applicantId: string,
+  form: ApprovalLetterForm,
+  endorsedBy: string,
+): { ok: boolean; error?: string } {
+  const applicant = applicantStore.getById(applicantId);
+  if (!applicant) return { ok: false, error: "Applicant not found." };
+  const existing = getApprovalLetterStored(applicant);
+  if (existing?.published) {
+    return { ok: false, error: "This Notice of Approval is already published." };
+  }
+  if (existing?.rdDecision === "approved") {
+    return {
+      ok: false,
+      error: "The Regional Director already approved this Notice of Approval.",
+    };
+  }
+  if (existing?.rdDecision === "disapproved") {
+    return {
+      ok: false,
+      error:
+        "Save a revised draft first — that clears the disapproval so the case can be re-endorsed.",
+    };
+  }
+  const now = new Date().toISOString();
+  const nextStored: ApprovalLetterStored = {
+    ...(existing ?? { form, published: false, acknowledged: false }),
+    form: { ...form, published: existing?.published ?? false },
+    published: existing?.published ?? false,
+    acknowledged: existing?.acknowledged ?? false,
+    readyForRdAt: now,
+    readyForRdBy: endorsedBy,
+    updatedAt: now,
+  };
+  applicantStore.update(applicantId, {
+    moduleData: {
+      ...applicant.moduleData,
+      approvalLetter: nextStored,
+    },
+  });
+  return { ok: true };
+}
+
+/** True once casework staff endorsed the draft for Regional Director decision. */
+export function isApprovalLetterEndorsedToRd(
+  applicant: Applicant | null,
+): boolean {
+  return !!getApprovalLetterStored(applicant)?.readyForRdAt;
 }
 
 export type RdApprovalDecision = "approved" | "disapproved";

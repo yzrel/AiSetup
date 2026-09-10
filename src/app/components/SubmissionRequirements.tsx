@@ -14,10 +14,15 @@ import { AuthUser, authStore, isRtecStaff } from "../store/authStore";
 import { useStaffApplicant } from "../hooks/useStaffApplicant";
 import { StaffApplicantPicker, StaffApplicantBanner } from "./StaffApplicantPicker";
 import { RtecReviewCommentPanel } from "./RtecReviewCommentPanel";
+import { WorkflowHandoffStrip } from "./WorkflowHandoffStrip";
 import { moduleStepPillClass, MODULE_HEADER, MODULE_BODY, MODULE_STEP_SCROLL } from "./moduleTheme";
 import { formatFormMention } from "../constants/setupForms";
 import { appendStaffAssessment } from "../utils/clientAssessment";
-import { notifyRequirementsSubmitted, notifyRequirementsDecision } from "../utils/notificationHelpers";
+import {
+  notifyRequirementsSubmitted,
+  notifyRequirementsDecision,
+  notifyRtecReady,
+} from "../utils/notificationHelpers";
 import { allowWhenDemo, isDemoModeActive } from "../utils/demoMode";
 import {
   buildRequirementUploadList,
@@ -430,7 +435,9 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
     });
   };
 
-  // Final submit — persist routing and advance applicant to the next module
+  // Final submit — persist routing and advance applicant to the next module.
+  // Routing is the handoff that hands the case to RTEC Staff, so it is also
+  // where RTEC first learns the case is theirs.
   const handleFinalSubmit = () => {
     if (!applicant || reviewOnly) return;
     const decision = routeToMpex ? "mpex" : "conduct-rtec";
@@ -450,6 +457,9 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
         requirementsSubmittedAt: new Date().toISOString(),
       },
     });
+    if (decision === "conduct-rtec") {
+      notifyRtecReady(applicantStore.getById(applicant.id) ?? applicant);
+    }
   };
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
@@ -491,6 +501,12 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
           )}
         </div>
         <StaffApplicantBanner user={user} />
+
+        {isStaff && applicant && (
+          <div className="px-5 sm:px-6 pt-4">
+            <WorkflowHandoffStrip applicant={applicant} user={user} />
+          </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════════════════
             STEP 1 — DOCUMENT SUBMISSION
@@ -1210,9 +1226,13 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
               <div className="text-sm text-blue-700">
                 <p className="font-semibold mb-0.5">Application Routing</p>
                 <p>
-                  TNA is complete and supporting documents are verified. Route the enterprise to{" "}
-                  {formatFormMention("001", "both")} or to the MPEX capacity-building track.
-                  Formal {formatFormMention("002")} evaluation occurs after the project proposal is submitted.
+                  {formatFormMention("001", "both")} and the supporting documents are verified.
+                  Route the enterprise to {formatFormMention("002")} evaluation or to the MPEX
+                  capacity-building track.
+                </p>
+                <p className="mt-1 font-semibold">
+                  Confirming routing is what hands the case to RTEC Staff — it notifies them and
+                  unlocks Mark Complete on {formatFormMention("002")}.
                 </p>
               </div>
             </div>
@@ -1238,6 +1258,9 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 <p className="text-xs text-gray-600 leading-relaxed">
                   Proceed to {formatFormMention("002")} evaluation. Requirements and {formatFormMention("001")} are on file.
                 </p>
+                <p className="text-xs font-semibold text-green-700 mt-1.5">
+                  Next: RTEC Staff
+                </p>
               </label>
 
               <label className={`rounded-2xl border-2 p-5 cursor-pointer transition-all ${routeToMpex ? "border-orange-400 bg-orange-50 shadow-md" : "border-gray-200 bg-gray-50"}`}>
@@ -1259,6 +1282,9 @@ export function SubmissionRequirements({ user, onSubmitSuccess }: SubmissionRequ
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed">
                   Enterprise requires MPEX training before re-applying for SETUP assistance.
+                </p>
+                <p className="text-xs font-semibold text-orange-700 mt-1.5">
+                  Next: MPEX capacity building — SETUP modules stay locked
                 </p>
               </label>
             </div>

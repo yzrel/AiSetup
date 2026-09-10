@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { Dashboard } from "./components/Dashboard";
+import { PendingReview } from "./components/PendingReview";
 import { PrescreeningForm } from "./components/PrescreeningForm";
 import { EnterpriseRegistration } from "./components/EnterpriseRegistration";
 import { LetterOfIntent } from "./components/LetterOfIntent";
@@ -190,6 +191,11 @@ const menuGroups: { label: string; items: MenuItem[] }[] = [
         label: "Dashboard",
         icon: LayoutDashboard,
       },
+      {
+        id: "pending-review" as ViewType,
+        label: "Pending Review",
+        icon: ClipboardCheck,
+      },
     ],
   },
   {
@@ -326,6 +332,10 @@ const viewTitles: Record<
   dashboard: {
     title: "Dashboard",
     subtitle: "SETUP Program Overview",
+  },
+  "pending-review": {
+    title: "Pending Review",
+    subtitle: "Staff review and approval queue",
   },
   prescreening: {
     title: "Pre-Screening",
@@ -942,6 +952,19 @@ export default function App() {
     navigate(fallbackView);
   };
 
+  /**
+   * Mark Complete already advanced the case and confirmed it with the server,
+   * so this only routes the actor onward. RTEC Staff cannot open Approval
+   * Letter, so they land on their own queue instead of a forbidden view.
+   */
+  const afterRtecComplete = () => {
+    navigate(
+      authStore.canAccessView(user.role, "approval-letter")
+        ? "approval-letter"
+        : "clients",
+    );
+  };
+
   const isRestrictedClient = authStore.isClientRole(user.role);
   const isStaff = authStore.isStaff(user.role);
   const sentEmailsUnlocked = isSentEmailsNavUnlocked(user);
@@ -1170,6 +1193,9 @@ export default function App() {
               {safeView === "dashboard" && (
                 <Dashboard user={user} onNavigate={navigate} />
               )}
+              {safeView === "pending-review" && (
+                <PendingReview user={user} onNavigate={navigate} />
+              )}
               {safeView === "prescreening" && (
                 <PrescreeningForm
                   user={user}
@@ -1238,7 +1264,7 @@ export default function App() {
               {safeView === "conduct-rtec" && (
                 <ConductOfRTEC
                   user={user}
-                  onSubmitSuccess={() => advanceFrom("conduct-rtec")}
+                  onSubmitSuccess={afterRtecComplete}
                 />
               )}
               {safeView === "approval-letter" && (
